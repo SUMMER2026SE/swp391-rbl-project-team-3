@@ -43,6 +43,10 @@ function LoginPage() {
         if (error) throw error;
         setSuccessMsg('Yêu cầu khôi phục mật khẩu đã được gửi! Vui lòng kiểm tra email của bạn.');
       } else if (isRegistering) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(emailInput.trim())) {
+          throw new Error('Email không đúng định dạng.');
+        }
         if (passwordInput.length < 8) {
           throw new Error('Mật khẩu đăng ký phải từ 8 ký tự trở lên.');
         }
