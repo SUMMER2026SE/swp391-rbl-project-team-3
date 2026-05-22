@@ -5,6 +5,7 @@ import './index.css';
 
 function LoginPage() {
   const [isRegistering, setIsRegistering] = useState(false);
+  const [isForgotPass, setIsForgotPass] = useState(false);
   const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [fullNameInput, setFullNameInput] = useState('');
@@ -34,7 +35,13 @@ function LoginPage() {
     setLoading(true);
 
     try {
-      if (isRegistering) {
+      if (isForgotPass) {
+        const { error } = await supabase.auth.resetPasswordForEmail(emailInput, {
+          redirectTo: window.location.origin + '/reset-password'
+        });
+        if (error) throw error;
+        setSuccessMsg('Yêu cầu khôi phục mật khẩu đã được gửi! Vui lòng kiểm tra email của bạn.');
+      } else if (isRegistering) {
         const { error } = await supabase.auth.signUp({
           email: emailInput,
           password: passwordInput,
@@ -46,7 +53,7 @@ function LoginPage() {
         });
         if (error) throw error;
         
-        // Let Supabase handle auto-login and App.jsx handle the redirect
+        setSuccessMsg('Đăng ký thành công! Vui lòng xác nhận email trước khi đăng nhập.');
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email: emailInput,
@@ -115,17 +122,17 @@ function LoginPage() {
             <img alt="DermaSmart Logo" src="https://lh3.googleusercontent.com/aida/ADBb0uiddj6CdMnqYQ2NQ2gNS__JGsBgPQWx2cgzMSUjV-6mD0NUuXFqjDCciD2rRfG3yqpqUjf6On86BpH61ioEIsnVMniDu-5fwQXKsOXQoruC848chIGCD7shN3ZsBjRvT53vJrLxxTuEAdPuXpXKSNO6j6a71dIrnJB8tr2RDReTT12L_lXF_dcmvbMwcKN8ZxtZXya1gRZ0XvNcjzSEqMuR6j0onUQdFNslqPU3afB12kawSdIxa55oCB5k" style={{ height: '50px', width: 'auto', objectFit: 'contain' }} />
           </Link>
           <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#ffffff', marginBottom: '0.5rem', letterSpacing: '-0.025em' }}>
-            {isRegistering ? 'Tạo tài khoản mới' : 'Đăng nhập'}
+            {isForgotPass ? 'Khôi phục mật khẩu' : (isRegistering ? 'Tạo tài khoản mới' : 'Đăng nhập')}
           </h2>
           <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.9rem' }}>
-            {isRegistering ? 'Gia nhập hệ thống DermaSmart' : 'Tiếp tục với tài khoản DermaSmart'}
+            {isForgotPass ? 'Nhập email của bạn để nhận liên kết đặt lại mật khẩu' : (isRegistering ? 'Gia nhập hệ thống DermaSmart' : 'Tiếp tục với tài khoản DermaSmart')}
           </p>
         </div>
         
         {errorMsg && <div style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#fca5a5', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '12px', padding: '0.875rem', marginBottom: '1.5rem', fontSize: '0.9rem', textAlign: 'center', backdropFilter: 'blur(4px)' }}>{errorMsg}</div>}
         {successMsg && <div style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#6ee7b7', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '12px', padding: '0.875rem', marginBottom: '1.5rem', fontSize: '0.9rem', textAlign: 'center', backdropFilter: 'blur(4px)' }}>{successMsg}</div>}
 
-        {!isRegistering && (
+        {!isRegistering && !isForgotPass && (
             <>
                 <button type="button" onClick={handleGoogleLogin} style={{ 
                     width: '100%', padding: '1rem', borderRadius: '12px', background: 'white', color: '#0f172a', fontSize: '1rem', fontWeight: 600, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)', boxShadow: '0 4px 12px rgba(255,255,255,0.1)', boxSizing: 'border-box'
@@ -146,7 +153,7 @@ function LoginPage() {
         )}
 
         <form onSubmit={handleSubmit}>
-          {isRegistering && (
+          {isRegistering && !isForgotPass && (
               <div style={{ marginBottom: '1.25rem' }}>
                 <label style={{ display: 'block', color: 'rgba(255,255,255,0.9)', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem' }}>Họ và tên</label>
                 <input 
@@ -167,40 +174,68 @@ function LoginPage() {
               onBlur={e => { e.target.style.background = 'rgba(0, 0, 0, 0.25)'; e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'; }}
             />
           </div>
-          <div style={{ marginBottom: '2rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                <label style={{ display: 'block', color: 'rgba(255,255,255,0.9)', fontSize: '0.875rem', fontWeight: 500 }}>Mật khẩu</label>
-                {!isRegistering && <a href="#" style={{ color: '#14b8a6', fontSize: '0.8rem', textDecoration: 'none' }}>Quên mật khẩu?</a>}
+
+          {!isForgotPass && (
+            <div style={{ marginBottom: '2rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <label style={{ display: 'block', color: 'rgba(255,255,255,0.9)', fontSize: '0.875rem', fontWeight: 500 }}>Mật khẩu</label>
+                  {!isRegistering && (
+                      <button 
+                          type="button" 
+                          onClick={() => { setIsForgotPass(true); setErrorMsg(''); setSuccessMsg(''); }} 
+                          style={{ background: 'none', border: 'none', color: '#14b8a6', fontSize: '0.8rem', textDecoration: 'none', cursor: 'pointer', padding: 0 }}
+                          onMouseEnter={e => e.target.style.color = '#5eead4'} 
+                          onMouseLeave={e => e.target.style.color = '#14b8a6'}
+                      >
+                          Quên mật khẩu?
+                      </button>
+                  )}
+              </div>
+              <input 
+                type="password" placeholder="***" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} required
+                style={{ width: '100%', padding: '0.875rem 1.25rem', borderRadius: '12px', background: 'rgba(0, 0, 0, 0.25)', border: '1px solid rgba(255, 255, 255, 0.1)', color: '#ffffff', fontSize: '1rem', outline: 'none', transition: 'all 0.2s', boxSizing: 'border-box' }}
+                onFocus={e => { e.target.style.background = 'rgba(0, 0, 0, 0.4)'; e.target.style.borderColor = 'rgba(20, 184, 166, 0.5)'; }}
+                onBlur={e => { e.target.style.background = 'rgba(0, 0, 0, 0.25)'; e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'; }}
+              />
             </div>
-            <input 
-              type="password" placeholder="***" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} required
-              style={{ width: '100%', padding: '0.875rem 1.25rem', borderRadius: '12px', background: 'rgba(0, 0, 0, 0.25)', border: '1px solid rgba(255, 255, 255, 0.1)', color: '#ffffff', fontSize: '1rem', outline: 'none', transition: 'all 0.2s', boxSizing: 'border-box' }}
-              onFocus={e => { e.target.style.background = 'rgba(0, 0, 0, 0.4)'; e.target.style.borderColor = 'rgba(20, 184, 166, 0.5)'; }}
-              onBlur={e => { e.target.style.background = 'rgba(0, 0, 0, 0.25)'; e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'; }}
-            />
-          </div>
+          )}
+
           <button type="submit" disabled={loading} style={{ 
               width: '100%', padding: '1rem', borderRadius: '12px', background: 'linear-gradient(135deg, #14b8a6, #0ea5e9)', color: 'white', fontSize: '1rem', fontWeight: 600, border: 'none', cursor: loading ? 'not-allowed' : 'pointer', transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)', boxSizing: 'border-box', boxShadow: '0 8px 20px rgba(20, 184, 166, 0.3)', opacity: loading ? 0.7 : 1
           }}
           onMouseEnter={e => { if(!loading) { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 12px 25px rgba(20, 184, 166, 0.4)'; } }}
           onMouseLeave={e => { if(!loading) { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 8px 20px rgba(20, 184, 166, 0.3)'; } }}
           >
-            {loading ? 'Đang xử lý...' : (isRegistering ? 'Đăng ký ngay' : 'Đăng nhập')}
+            {loading ? 'Đang xử lý...' : (isForgotPass ? 'Gửi liên kết khôi phục' : (isRegistering ? 'Đăng ký ngay' : 'Đăng nhập'))}
           </button>
           
           <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
-            <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.875rem' }}>
-                {isRegistering ? 'Đã có tài khoản? ' : 'Chưa có tài khoản? '}
-            </span>
-            <button 
-                type="button" 
-                onClick={() => { setIsRegistering(!isRegistering); setErrorMsg(''); setSuccessMsg(''); }} 
-                style={{ background: 'none', border: 'none', color: '#14b8a6', fontWeight: 600, fontSize: '0.875rem', textDecoration: 'none', transition: 'color 0.2s', cursor: 'pointer', padding: 0 }} 
-                onMouseEnter={e => e.target.style.color = '#5eead4'} 
-                onMouseLeave={e => e.target.style.color = '#14b8a6'}
-            >
-                {isRegistering ? 'Đăng nhập' : 'Đăng ký ngay'}
-            </button>
+            {isForgotPass ? (
+              <button 
+                  type="button" 
+                  onClick={() => { setIsForgotPass(false); setErrorMsg(''); setSuccessMsg(''); }} 
+                  style={{ background: 'none', border: 'none', color: '#14b8a6', fontWeight: 600, fontSize: '0.875rem', textDecoration: 'none', transition: 'color 0.2s', cursor: 'pointer', padding: 0 }} 
+                  onMouseEnter={e => e.target.style.color = '#5eead4'} 
+                  onMouseLeave={e => e.target.style.color = '#14b8a6'}
+              >
+                  Quay lại đăng nhập
+              </button>
+            ) : (
+              <>
+                <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.875rem' }}>
+                    {isRegistering ? 'Đã có tài khoản? ' : 'Chưa có tài khoản? '}
+                </span>
+                <button 
+                    type="button" 
+                    onClick={() => { setIsRegistering(!isRegistering); setErrorMsg(''); setSuccessMsg(''); }} 
+                    style={{ background: 'none', border: 'none', color: '#14b8a6', fontWeight: 600, fontSize: '0.875rem', textDecoration: 'none', transition: 'color 0.2s', cursor: 'pointer', padding: 0 }} 
+                    onMouseEnter={e => e.target.style.color = '#5eead4'} 
+                    onMouseLeave={e => e.target.style.color = '#14b8a6'}
+                >
+                    {isRegistering ? 'Đăng nhập' : 'Đăng ký ngay'}
+                </button>
+              </>
+            )}
           </div>
         </form>
       </div>

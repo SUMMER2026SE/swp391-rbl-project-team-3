@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from './LoginPage';
 import LandingPage from './LandingPage';
 import DoctorProfilePage from './DoctorProfilePage';
+import ResetPasswordPage from './ResetPasswordPage';
 import { supabase } from './supabaseClient';
 import './index.css';
 
@@ -49,6 +50,11 @@ function App() {
         <Route 
           path="/doctor/:id" 
           element={<DoctorProfilePage />} 
+        />
+
+        <Route 
+          path="/reset-password" 
+          element={<ResetPasswordPage />} 
         />
 
         <Route path="*" element={<Navigate to="/" replace />} />

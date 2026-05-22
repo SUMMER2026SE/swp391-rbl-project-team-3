@@ -96,7 +96,7 @@ function DoctorProfilePage() {
 
                         <div style={{ padding: '1.5rem', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', marginBottom: '2rem', border: '1px solid rgba(255,255,255,0.05)' }}>
                             <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.9rem', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Phí khám ban đầu</p>
-                            <p style={{ color: 'white', fontSize: '1.5rem', fontWeight: 700, color: '#14b8a6' }}>{doctor.consultationFee}</p>
+                            <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#14b8a6' }}>{doctor.consultationFee}</p>
                         </div>
 
                         <button className="btn-primary btn-pulse" style={{ width: '100%', padding: '1.25rem', fontSize: '1.1rem', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
