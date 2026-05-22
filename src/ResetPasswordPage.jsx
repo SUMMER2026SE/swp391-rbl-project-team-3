@@ -6,6 +6,8 @@ import './index.css';
 function ResetPasswordPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
   const [hasSession, setHasSession] = useState(false);
@@ -40,8 +42,8 @@ function ResetPasswordPage() {
     setErrorMsg('');
     setSuccessMsg('');
 
-    if (password.length < 6) {
-      setErrorMsg('Mật khẩu phải dài từ 6 ký tự trở lên.');
+    if (password.length < 8) {
+      setErrorMsg('Mật khẩu phải dài từ 8 ký tự trở lên.');
       return;
     }
 
@@ -130,22 +132,102 @@ function ResetPasswordPage() {
           <form onSubmit={handleResetPassword}>
             <div style={{ marginBottom: '1.25rem' }}>
               <label style={{ display: 'block', color: 'rgba(255,255,255,0.9)', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem' }}>Mật khẩu mới</label>
-              <input 
-                type="password" placeholder="Nhập mật khẩu mới" value={password} onChange={(e) => setPassword(e.target.value)} required
-                style={{ width: '100%', padding: '0.875rem 1.25rem', borderRadius: '12px', background: 'rgba(0, 0, 0, 0.25)', border: '1px solid rgba(255, 255, 255, 0.1)', color: '#ffffff', fontSize: '1rem', outline: 'none', transition: 'all 0.2s', boxSizing: 'border-box' }}
-                onFocus={e => { e.target.style.background = 'rgba(0, 0, 0, 0.4)'; e.target.style.borderColor = 'rgba(20, 184, 166, 0.5)'; }}
-                onBlur={e => { e.target.style.background = 'rgba(0, 0, 0, 0.25)'; e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'; }}
-              />
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <input 
+                  type={showPassword ? "text" : "password"} 
+                  placeholder="Nhập mật khẩu mới" 
+                  value={password} 
+                  onChange={(e) => setPassword(e.target.value)} 
+                  required
+                  style={{ 
+                    width: '100%', 
+                    padding: '0.875rem 3rem 0.875rem 1.25rem', 
+                    borderRadius: '12px', 
+                    background: 'rgba(0, 0, 0, 0.25)', 
+                    border: '1px solid rgba(255, 255, 255, 0.1)', 
+                    color: '#ffffff', 
+                    fontSize: '1rem', 
+                    outline: 'none', 
+                    transition: 'all 0.2s', 
+                    boxSizing: 'border-box' 
+                  }}
+                  onFocus={e => { e.target.style.background = 'rgba(0, 0, 0, 0.4)'; e.target.style.borderColor = 'rgba(20, 184, 166, 0.5)'; }}
+                  onBlur={e => { e.target.style.background = 'rgba(0, 0, 0, 0.25)'; e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'; }}
+                />
+                <button 
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '1rem',
+                    background: 'none',
+                    border: 'none',
+                    color: 'rgba(255, 255, 255, 0.5)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: 0,
+                    transition: 'color 0.2s'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.color = 'white'}
+                  onMouseLeave={e => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.5)'}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '1.25rem' }}>
+                    {showPassword ? 'visibility' : 'visibility_off'}
+                  </span>
+                </button>
+              </div>
             </div>
             
             <div style={{ marginBottom: '2rem' }}>
               <label style={{ display: 'block', color: 'rgba(255,255,255,0.9)', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem' }}>Xác nhận mật khẩu mới</label>
-              <input 
-                type="password" placeholder="Xác nhận mật khẩu mới" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required
-                style={{ width: '100%', padding: '0.875rem 1.25rem', borderRadius: '12px', background: 'rgba(0, 0, 0, 0.25)', border: '1px solid rgba(255, 255, 255, 0.1)', color: '#ffffff', fontSize: '1rem', outline: 'none', transition: 'all 0.2s', boxSizing: 'border-box' }}
-                onFocus={e => { e.target.style.background = 'rgba(0, 0, 0, 0.4)'; e.target.style.borderColor = 'rgba(20, 184, 166, 0.5)'; }}
-                onBlur={e => { e.target.style.background = 'rgba(0, 0, 0, 0.25)'; e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'; }}
-              />
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <input 
+                  type={showConfirmPassword ? "text" : "password"} 
+                  placeholder="Xác nhận mật khẩu mới" 
+                  value={confirmPassword} 
+                  onChange={(e) => setConfirmPassword(e.target.value)} 
+                  required
+                  style={{ 
+                    width: '100%', 
+                    padding: '0.875rem 3rem 0.875rem 1.25rem', 
+                    borderRadius: '12px', 
+                    background: 'rgba(0, 0, 0, 0.25)', 
+                    border: '1px solid rgba(255, 255, 255, 0.1)', 
+                    color: '#ffffff', 
+                    fontSize: '1rem', 
+                    outline: 'none', 
+                    transition: 'all 0.2s', 
+                    boxSizing: 'border-box' 
+                  }}
+                  onFocus={e => { e.target.style.background = 'rgba(0, 0, 0, 0.4)'; e.target.style.borderColor = 'rgba(20, 184, 166, 0.5)'; }}
+                  onBlur={e => { e.target.style.background = 'rgba(0, 0, 0, 0.25)'; e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'; }}
+                />
+                <button 
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '1rem',
+                    background: 'none',
+                    border: 'none',
+                    color: 'rgba(255, 255, 255, 0.5)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: 0,
+                    transition: 'color 0.2s'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.color = 'white'}
+                  onMouseLeave={e => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.5)'}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '1.25rem' }}>
+                    {showConfirmPassword ? 'visibility' : 'visibility_off'}
+                  </span>
+                </button>
+              </div>
             </div>
 
             <button type="submit" disabled={loading} style={{ 

@@ -5,6 +5,7 @@ import './index.css';
 function AuthModal({ isOpen, onClose, defaultIsRegistering = false }) {
   const [isRegistering, setIsRegistering] = useState(defaultIsRegistering);
   const [isForgotPass, setIsForgotPass] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [fullNameInput, setFullNameInput] = useState('');
@@ -16,6 +17,7 @@ function AuthModal({ isOpen, onClose, defaultIsRegistering = false }) {
     if (isOpen) {
       setIsRegistering(defaultIsRegistering);
       setIsForgotPass(false);
+      setShowPassword(false);
       setErrorMsg('');
       setSuccessMsg('');
       setEmailInput('');
@@ -54,6 +56,9 @@ function AuthModal({ isOpen, onClose, defaultIsRegistering = false }) {
         if (error) throw error;
         setSuccessMsg('Yêu cầu khôi phục mật khẩu đã được gửi! Vui lòng kiểm tra email của bạn.');
       } else if (isRegistering) {
+        if (passwordInput.length < 8) {
+          throw new Error('Mật khẩu đăng ký phải từ 8 ký tự trở lên.');
+        }
         const { error } = await supabase.auth.signUp({
           email: emailInput,
           password: passwordInput,
@@ -191,12 +196,52 @@ function AuthModal({ isOpen, onClose, defaultIsRegistering = false }) {
                       </button>
                   )}
               </div>
-              <input 
-                type="password" placeholder="***" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} required
-                style={{ width: '100%', padding: '0.875rem 1.25rem', borderRadius: '12px', background: 'rgba(0, 0, 0, 0.25)', border: '1px solid rgba(255, 255, 255, 0.1)', color: '#ffffff', fontSize: '1rem', outline: 'none', transition: 'all 0.2s', boxSizing: 'border-box' }}
-                onFocus={e => { e.target.style.background = 'rgba(0, 0, 0, 0.4)'; e.target.style.borderColor = 'rgba(20, 184, 166, 0.5)'; }}
-                onBlur={e => { e.target.style.background = 'rgba(0, 0, 0, 0.25)'; e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'; }}
-              />
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <input 
+                  type={showPassword ? "text" : "password"} 
+                  placeholder="***" 
+                  value={passwordInput} 
+                  onChange={(e) => setPasswordInput(e.target.value)} 
+                  required
+                  style={{ 
+                    width: '100%', 
+                    padding: '0.875rem 3rem 0.875rem 1.25rem', 
+                    borderRadius: '12px', 
+                    background: 'rgba(0, 0, 0, 0.25)', 
+                    border: '1px solid rgba(255, 255, 255, 0.1)', 
+                    color: '#ffffff', 
+                    fontSize: '1rem', 
+                    outline: 'none', 
+                    transition: 'all 0.2s', 
+                    boxSizing: 'border-box' 
+                  }}
+                  onFocus={e => { e.target.style.background = 'rgba(0, 0, 0, 0.4)'; e.target.style.borderColor = 'rgba(20, 184, 166, 0.5)'; }}
+                  onBlur={e => { e.target.style.background = 'rgba(0, 0, 0, 0.25)'; e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'; }}
+                />
+                <button 
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '1rem',
+                    background: 'none',
+                    border: 'none',
+                    color: 'rgba(255, 255, 255, 0.5)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: 0,
+                    transition: 'color 0.2s'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.color = 'white'}
+                  onMouseLeave={e => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.5)'}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '1.25rem' }}>
+                    {showPassword ? 'visibility' : 'visibility_off'}
+                  </span>
+                </button>
+              </div>
             </div>
           )}
 
