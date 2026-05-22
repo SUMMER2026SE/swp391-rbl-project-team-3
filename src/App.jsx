@@ -1,19 +1,37 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from './LoginPage';
 import LandingPage from './LandingPage';
+import DoctorProfilePage from './DoctorProfilePage';
+import { supabase } from './supabaseClient';
 import './index.css';
 
 function App() {
-  const [user, setUser] = useState(null);
+  const [session, setSession] = useState(null);
 
-  const handleLogin = (userData) => {
-    setUser(userData);
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
   };
 
-  const handleLogout = () => {
-    setUser(null);
-  };
+  // Convert supabase user to our local format just for UI compatibility
+  const user = session?.user ? { 
+      username: session.user.user_metadata?.full_name || session.user.email,
+      avatar: session.user.user_metadata?.avatar_url
+  } : null;
 
   return (
     <BrowserRouter>
@@ -25,7 +43,12 @@ function App() {
         
         <Route 
           path="/login" 
-          element={!user ? <LoginPage onLogin={handleLogin} /> : <Navigate to="/" replace />} 
+          element={!session ? <LoginPage /> : <Navigate to="/" replace />} 
+        />
+
+        <Route 
+          path="/doctor/:id" 
+          element={<DoctorProfilePage />} 
         />
 
         <Route path="*" element={<Navigate to="/" replace />} />

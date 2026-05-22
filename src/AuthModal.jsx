@@ -1,17 +1,28 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 import './index.css';
 
-function LoginPage() {
-  const [isRegistering, setIsRegistering] = useState(false);
+function AuthModal({ isOpen, onClose, defaultIsRegistering = false }) {
+  const [isRegistering, setIsRegistering] = useState(defaultIsRegistering);
   const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [fullNameInput, setFullNameInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
-  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isOpen) {
+      setIsRegistering(defaultIsRegistering);
+      setErrorMsg('');
+      setSuccessMsg('');
+      setEmailInput('');
+      setPasswordInput('');
+      setFullNameInput('');
+    }
+  }, [isOpen, defaultIsRegistering]);
+
+  if (!isOpen) return null;
 
   const handleGoogleLogin = async () => {
     try {
@@ -45,8 +56,7 @@ function LoginPage() {
           }
         });
         if (error) throw error;
-        
-        // Let Supabase handle auto-login and App.jsx handle the redirect
+        setSuccessMsg('Đăng ký thành công! Vui lòng kiểm tra email của bạn để kích hoạt tài khoản.');
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email: emailInput,
@@ -61,7 +71,7 @@ function LoginPage() {
             }
             throw error;
         }
-        navigate('/');
+        onClose(); // Close modal on success
       }
     } catch (error) {
       setErrorMsg(error.message);
@@ -71,31 +81,18 @@ function LoginPage() {
   };
 
   return (
-    <div style={{
-        minHeight: '100vh',
-        width: '100vw',
+    <div className="modal-overlay" onClick={onClose} style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 9999,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        position: 'relative',
-        overflow: 'hidden',
-        background: '#0f172a'
+        background: 'rgba(15, 23, 42, 0.75)',
+        backdropFilter: 'blur(8px)'
     }}>
-      {/* Background Orbs */}
-      <div className="bg-orbs">
-        <div className="orb-1"></div>
-        <div className="orb-2"></div>
-        <div className="orb-3"></div>
-      </div>
-      
-      {/* Background Image synced with Landing Page */}
-      <img alt="Futuristic clinical lab background" className="hero-bg" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0, opacity: 0.4 }} src="https://lh3.googleusercontent.com/aida/ADBb0ugiZRAensr-eNMU_UEv4qBnu7BObTmK77qcsUtesw43DPjGg6YhHs7HQRWkjUFqed-MkB7RFtFkFGuAqmsugbBk5SKavyqu8-9KUVuR68hA40m3wL8KrnJH7sCVgRRn7bVzXxs61VbJfTRehOadkIJGS7xHMLQ8RHU_06gQ8j9xZA--57F72EdVtYg1IcUDusJ8N9ddi2c4rtnZGWbXXhIDn3czjOnUyZyWHXvoeh7M7K2001PCGiFVevo"/>
-      <div className="hero-overlay" style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.5)', opacity: 0.8, zIndex: 1 }}></div>
-
-      {/* Premium Login Box */}
-      <div className="login-modal custom-scrollbar" style={{ 
+      <div className="login-modal custom-scrollbar" onClick={e => e.stopPropagation()} style={{ 
           position: 'relative', 
-          zIndex: 10, 
           width: '90%',
           maxWidth: '420px',
           maxHeight: '90vh',
@@ -107,13 +104,15 @@ function LoginPage() {
           WebkitBackdropFilter: 'blur(24px)',
           border: '1px solid rgba(255, 255, 255, 0.1)',
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.05)',
-          animation: 'fade-in-up 0.6s ease-out forwards'
       }}>
+        <button onClick={onClose} style={{
+            position: 'absolute', top: '1rem', right: '1rem', background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', padding: '0.5rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s'
+        }} onMouseEnter={e => { e.currentTarget.style.color = 'white'; e.currentTarget.style.background = 'rgba(255,255,255,0.1)' }} onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; e.currentTarget.style.background = 'transparent' }}>
+            <span className="material-symbols-outlined">close</span>
+        </button>
+
         <div className="login-header" style={{ marginBottom: '2rem', textAlign: 'center' }}>
-          {/* Logo Container */}
-          <Link to="/" style={{ display: 'inline-block', marginBottom: '1.5rem', transition: 'transform 0.3s' }} onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'} onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
-            <img alt="DermaSmart Logo" src="https://lh3.googleusercontent.com/aida/ADBb0uiddj6CdMnqYQ2NQ2gNS__JGsBgPQWx2cgzMSUjV-6mD0NUuXFqjDCciD2rRfG3yqpqUjf6On86BpH61ioEIsnVMniDu-5fwQXKsOXQoruC848chIGCD7shN3ZsBjRvT53vJrLxxTuEAdPuXpXKSNO6j6a71dIrnJB8tr2RDReTT12L_lXF_dcmvbMwcKN8ZxtZXya1gRZ0XvNcjzSEqMuR6j0onUQdFNslqPU3afB12kawSdIxa55oCB5k" style={{ height: '50px', width: 'auto', objectFit: 'contain' }} />
-          </Link>
+          <img alt="DermaSmart Logo" src="https://lh3.googleusercontent.com/aida/ADBb0uiddj6CdMnqYQ2NQ2gNS__JGsBgPQWx2cgzMSUjV-6mD0NUuXFqjDCciD2rRfG3yqpqUjf6On86BpH61ioEIsnVMniDu-5fwQXKsOXQoruC848chIGCD7shN3ZsBjRvT53vJrLxxTuEAdPuXpXKSNO6j6a71dIrnJB8tr2RDReTT12L_lXF_dcmvbMwcKN8ZxtZXya1gRZ0XvNcjzSEqMuR6j0onUQdFNslqPU3afB12kawSdIxa55oCB5k" style={{ height: '40px', width: 'auto', objectFit: 'contain', marginBottom: '1.5rem' }} />
           <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#ffffff', marginBottom: '0.5rem', letterSpacing: '-0.025em' }}>
             {isRegistering ? 'Tạo tài khoản mới' : 'Đăng nhập'}
           </h2>
@@ -208,4 +207,4 @@ function LoginPage() {
   );
 }
 
-export default LoginPage;
+export default AuthModal;
