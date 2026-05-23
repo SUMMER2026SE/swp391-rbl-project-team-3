@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import './index.css';
+import { useDoctorController } from '../controllers/useDoctorController';
+import '../index.css';
 
 function LandingPage({ user, onLogout }) {
   const [scrolled, setScrolled] = useState(false);
   const navigate = useNavigate();
+  const { getDoctors } = useDoctorController();
+  const doctorsList = getDoctors();
 
   useEffect(() => {
-    // ... logic remains same, updating the top lines
     const handleScroll = () => {
       if (window.scrollY > 50) {
         setScrolled(true);
@@ -205,109 +207,59 @@ function LandingPage({ user, onLogout }) {
             <p className="features-desc">Những chuyên gia da liễu hàng đầu, đồng hành cùng bạn trên hành trình chăm sóc và điều trị da.</p>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', padding: '0 5%' }}>
-              <div className="tilt-card" style={{ 
-                  padding: '3rem 2rem', 
-                  textAlign: 'center', 
-                  background: 'linear-gradient(145deg, rgba(255,255,255,0.95), rgba(255,255,255,0.7))',
-                  backdropFilter: 'blur(20px)',
-                  borderRadius: '32px',
-                  border: '1px solid rgba(255,255,255,0.8)',
-                  boxShadow: '0 20px 40px rgba(20, 184, 166, 0.15), inset 0 0 0 1px rgba(255,255,255,0.5)'
-              }}>
-                  <div style={{ 
-                      width: '140px', 
-                      height: '140px', 
-                      margin: '0 auto 1.5rem', 
-                      borderRadius: '50%', 
-                      padding: '4px',
-                      background: 'linear-gradient(135deg, #5eead4, #0ea5e9)',
-                      boxShadow: '0 12px 25px rgba(14, 165, 233, 0.3)'
+              {doctorsList.map((doc) => (
+                  <div key={doc.id} className="tilt-card" style={{ 
+                      padding: '3rem 2rem', 
+                      textAlign: 'center', 
+                      background: 'linear-gradient(145deg, rgba(255,255,255,0.95), rgba(255,255,255,0.7))',
+                      backdropFilter: 'blur(20px)',
+                      borderRadius: '32px',
+                      border: '1px solid rgba(255,255,255,0.8)',
+                      boxShadow: '0 20px 40px rgba(20, 184, 166, 0.15), inset 0 0 0 1px rgba(255,255,255,0.5)'
                   }}>
-                      <img src="https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?q=80&w=1470&auto=format&fit=crop" alt="Doctor" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', border: '4px solid white' }} />
+                      <div style={{ 
+                          width: '140px', 
+                          height: '140px', 
+                          margin: '0 auto 1.5rem', 
+                          borderRadius: '50%', 
+                          padding: '4px',
+                          background: 'linear-gradient(135deg, #5eead4, #0ea5e9)',
+                          boxShadow: '0 12px 25px rgba(14, 165, 233, 0.3)'
+                      }}>
+                          <img src={doc.image} alt={doc.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', border: '4px solid white' }} />
+                      </div>
+                      <h3 style={{ color: '#0f172a', marginBottom: '0.5rem', fontSize: '1.4rem', fontWeight: 800 }}>{doc.name}</h3>
+                      <p style={{ 
+                          background: 'linear-gradient(90deg, #0d9488, #0284c7)', 
+                          WebkitBackgroundClip: 'text', 
+                          WebkitTextFillColor: 'transparent',
+                          backgroundClip: 'text',
+                          color: 'transparent',
+                          marginBottom: '2rem', 
+                          fontSize: '1.05rem', 
+                          fontWeight: 700 
+                      }}>{doc.title}</p>
+                      
+                      <button style={{ 
+                          width: '100%', 
+                          padding: '1rem', 
+                          borderRadius: '16px', 
+                          background: 'linear-gradient(135deg, #14b8a6, #0ea5e9)', 
+                          color: 'white', 
+                          fontWeight: 700, 
+                          fontSize: '1.05rem',
+                          border: 'none', 
+                          cursor: 'pointer', 
+                          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                          boxShadow: '0 8px 20px rgba(20, 184, 166, 0.3)'
+                      }} 
+                      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 15px 30px rgba(20, 184, 166, 0.4)'; }} 
+                      onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 8px 20px rgba(20, 184, 166, 0.3)'; }} 
+                      onClick={() => navigate(`/doctor/${doc.id}`)}>
+                          Xem Hồ Sơ
+                      </button>
                   </div>
-                  <h3 style={{ color: '#0f172a', marginBottom: '0.5rem', fontSize: '1.4rem', fontWeight: 800 }}>TS.BS Nguyễn Trần An</h3>
-                  <p style={{ 
-                      background: 'linear-gradient(90deg, #0d9488, #0284c7)', 
-                      WebkitBackgroundClip: 'text', 
-                      WebkitTextFillColor: 'transparent',
-                      backgroundClip: 'text',
-                      color: 'transparent',
-                      marginBottom: '2rem', 
-                      fontSize: '1.05rem', 
-                      fontWeight: 700 
-                  }}>Trưởng khoa Da Liễu Thẩm Mỹ</p>
-                  
-                  <button style={{ 
-                      width: '100%', 
-                      padding: '1rem', 
-                      borderRadius: '16px', 
-                      background: 'linear-gradient(135deg, #14b8a6, #0ea5e9)', 
-                      color: 'white', 
-                      fontWeight: 700, 
-                      fontSize: '1.05rem',
-                      border: 'none', 
-                      cursor: 'pointer', 
-                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                      boxShadow: '0 8px 20px rgba(20, 184, 166, 0.3)'
-                  }} 
-                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 15px 30px rgba(20, 184, 166, 0.4)'; }} 
-                  onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 8px 20px rgba(20, 184, 166, 0.3)'; }} 
-                  onClick={() => navigate('/doctor/doc-01')}>
-                      Xem Hồ Sơ
-                  </button>
-              </div>
-              
-              <div className="tilt-card" style={{ 
-                  padding: '3rem 2rem', 
-                  textAlign: 'center', 
-                  background: 'linear-gradient(145deg, rgba(255,255,255,0.95), rgba(255,255,255,0.7))',
-                  backdropFilter: 'blur(20px)',
-                  borderRadius: '32px',
-                  border: '1px solid rgba(255,255,255,0.8)',
-                  boxShadow: '0 20px 40px rgba(20, 184, 166, 0.15), inset 0 0 0 1px rgba(255,255,255,0.5)'
-              }}>
-                  <div style={{ 
-                      width: '140px', 
-                      height: '140px', 
-                      margin: '0 auto 1.5rem', 
-                      borderRadius: '50%', 
-                      padding: '4px',
-                      background: 'linear-gradient(135deg, #5eead4, #0ea5e9)',
-                      boxShadow: '0 12px 25px rgba(14, 165, 233, 0.3)'
-                  }}>
-                      <img src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=1470&auto=format&fit=crop" alt="Doctor" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', border: '4px solid white' }} />
-                  </div>
-                  <h3 style={{ color: '#0f172a', marginBottom: '0.5rem', fontSize: '1.4rem', fontWeight: 800 }}>BSCKII Trần Thị Mai</h3>
-                  <p style={{ 
-                      background: 'linear-gradient(90deg, #0d9488, #0284c7)', 
-                      WebkitBackgroundClip: 'text', 
-                      WebkitTextFillColor: 'transparent',
-                      backgroundClip: 'text',
-                      color: 'transparent',
-                      marginBottom: '2rem', 
-                      fontSize: '1.05rem', 
-                      fontWeight: 700 
-                  }}>Bác sĩ Chuyên khoa Da Liễu</p>
-                  
-                  <button style={{ 
-                      width: '100%', 
-                      padding: '1rem', 
-                      borderRadius: '16px', 
-                      background: 'linear-gradient(135deg, #14b8a6, #0ea5e9)', 
-                      color: 'white', 
-                      fontWeight: 700, 
-                      fontSize: '1.05rem',
-                      border: 'none', 
-                      cursor: 'pointer', 
-                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                      boxShadow: '0 8px 20px rgba(20, 184, 166, 0.3)'
-                  }} 
-                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 15px 30px rgba(20, 184, 166, 0.4)'; }} 
-                  onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 8px 20px rgba(20, 184, 166, 0.3)'; }} 
-                  onClick={() => navigate('/doctor/doc-02')}>
-                      Xem Hồ Sơ
-                  </button>
-              </div>
+              ))}
           </div>
         </section>
       </main>

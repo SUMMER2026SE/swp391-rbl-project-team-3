@@ -1,12 +1,13 @@
 import React, { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doctors } from './mockData';
-import './index.css';
+import { useDoctorController } from '../controllers/useDoctorController';
+import '../index.css';
 
 function DoctorProfilePage() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const doctor = doctors.find(d => d.id === id);
+    const { getDoctorDetails } = useDoctorController();
+    const doctor = getDoctorDetails(id);
 
     useEffect(() => {
         window.scrollTo(0, 0);
@@ -94,7 +95,7 @@ function DoctorProfilePage() {
                             </div>
                         </div>
 
-                        <div style={{ padding: '1.5rem', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', marginBottom: '2rem', border: '1px solid rgba(255,255,255,0.05)' }}>
+                        <div style={{ padding: '1.5rem', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', marginBottom: '2rem', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
                             <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.9rem', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Phí khám ban đầu</p>
                             <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#14b8a6' }}>{doctor.consultationFee}</p>
                         </div>

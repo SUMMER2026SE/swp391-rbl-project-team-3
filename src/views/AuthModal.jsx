@@ -1,25 +1,35 @@
-import React, { useState, useEffect } from 'react';
-import { supabase } from './supabaseClient';
-import './index.css';
+import React, { useEffect } from 'react';
+import { useAuthController } from '../controllers/useAuthController';
+import '../index.css';
 
 function AuthModal({ isOpen, onClose, defaultIsRegistering = false }) {
-  const [isRegistering, setIsRegistering] = useState(defaultIsRegistering);
-  const [isForgotPass, setIsForgotPass] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [emailInput, setEmailInput] = useState('');
-  const [passwordInput, setPasswordInput] = useState('');
-  const [fullNameInput, setFullNameInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
+  const {
+    emailInput,
+    setEmailInput,
+    passwordInput,
+    setPasswordInput,
+    fullNameInput,
+    setFullNameInput,
+    isRegistering,
+    setIsRegistering,
+    isForgotPass,
+    setIsForgotPass,
+    showPassword,
+    setShowPassword,
+    loading,
+    errorMsg,
+    successMsg,
+    handleGoogleLogin,
+    handleSubmit,
+    resetMessages
+  } = useAuthController(onClose);
 
   useEffect(() => {
     if (isOpen) {
       setIsRegistering(defaultIsRegistering);
       setIsForgotPass(false);
       setShowPassword(false);
-      setErrorMsg('');
-      setSuccessMsg('');
+      resetMessages();
       setEmailInput('');
       setPasswordInput('');
       setFullNameInput('');
@@ -27,75 +37,6 @@ function AuthModal({ isOpen, onClose, defaultIsRegistering = false }) {
   }, [isOpen, defaultIsRegistering]);
 
   if (!isOpen) return null;
-
-  const handleGoogleLogin = async () => {
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: window.location.origin
-        }
-      });
-      if (error) throw error;
-    } catch (error) {
-      setErrorMsg(error.message);
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setErrorMsg('');
-    setSuccessMsg('');
-    setLoading(true);
-
-    try {
-      if (isForgotPass) {
-        const { error } = await supabase.auth.resetPasswordForEmail(emailInput, {
-          redirectTo: window.location.origin + '/reset-password'
-        });
-        if (error) throw error;
-        setSuccessMsg('Yêu cầu khôi phục mật khẩu đã được gửi! Vui lòng kiểm tra email của bạn.');
-      } else if (isRegistering) {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(emailInput.trim())) {
-          throw new Error('Email không đúng định dạng.');
-        }
-        if (passwordInput.length < 8) {
-          throw new Error('Mật khẩu đăng ký phải từ 8 ký tự trở lên.');
-        }
-        const { error } = await supabase.auth.signUp({
-          email: emailInput,
-          password: passwordInput,
-          options: {
-            data: {
-              full_name: fullNameInput,
-            }
-          }
-        });
-        if (error) throw error;
-        setSuccessMsg('Đăng ký thành công! Vui lòng xác nhận email trước khi đăng nhập.');
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: emailInput,
-          password: passwordInput,
-        });
-        if (error) {
-            if (error.message.includes('Invalid login credentials')) {
-                throw new Error('Email hoặc mật khẩu không chính xác.');
-            }
-            if (error.message.includes('Email not confirmed')) {
-                throw new Error('Vui lòng xác nhận email trước khi đăng nhập.');
-            }
-            throw error;
-        }
-        onClose(); // Close modal on success
-      }
-    } catch (error) {
-      setErrorMsg(error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="modal-overlay" onClick={onClose} style={{
@@ -191,7 +132,7 @@ function AuthModal({ isOpen, onClose, defaultIsRegistering = false }) {
                   {!isRegistering && (
                       <button 
                           type="button" 
-                          onClick={() => { setIsForgotPass(true); setErrorMsg(''); setSuccessMsg(''); }} 
+                          onClick={() => { setIsForgotPass(true); resetMessages(); }} 
                           style={{ background: 'none', border: 'none', color: '#14b8a6', fontSize: '0.8rem', textDecoration: 'none', cursor: 'pointer', padding: 0 }}
                           onMouseEnter={e => e.target.style.color = '#5eead4'} 
                           onMouseLeave={e => e.target.style.color = '#14b8a6'}
@@ -262,7 +203,7 @@ function AuthModal({ isOpen, onClose, defaultIsRegistering = false }) {
             {isForgotPass ? (
               <button 
                   type="button" 
-                  onClick={() => { setIsForgotPass(false); setErrorMsg(''); setSuccessMsg(''); }} 
+                  onClick={() => { setIsForgotPass(false); resetMessages(); }} 
                   style={{ background: 'none', border: 'none', color: '#14b8a6', fontWeight: 600, fontSize: '0.875rem', textDecoration: 'none', transition: 'color 0.2s', cursor: 'pointer', padding: 0 }} 
                   onMouseEnter={e => e.target.style.color = '#5eead4'} 
                   onMouseLeave={e => e.target.style.color = '#14b8a6'}
@@ -276,7 +217,7 @@ function AuthModal({ isOpen, onClose, defaultIsRegistering = false }) {
                 </span>
                 <button 
                     type="button" 
-                    onClick={() => { setIsRegistering(!isRegistering); setErrorMsg(''); setSuccessMsg(''); }} 
+                    onClick={() => { setIsRegistering(!isRegistering); resetMessages(); }} 
                     style={{ background: 'none', border: 'none', color: '#14b8a6', fontWeight: 600, fontSize: '0.875rem', textDecoration: 'none', transition: 'color 0.2s', cursor: 'pointer', padding: 0 }} 
                     onMouseEnter={e => e.target.style.color = '#5eead4'} 
                     onMouseLeave={e => e.target.style.color = '#14b8a6'}

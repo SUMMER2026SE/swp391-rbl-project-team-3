@@ -1,25 +1,34 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { supabase } from './supabaseClient';
-import './index.css';
+import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useAuthController } from '../controllers/useAuthController';
+import { AuthModel } from '../models/AuthModel';
+import '../index.css';
 
 function ResetPasswordPage() {
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const {
+    passwordInput,
+    setPasswordInput,
+    confirmPasswordInput,
+    setConfirmPasswordInput,
+    showPassword,
+    setShowPassword,
+    showConfirmPassword,
+    setShowConfirmPassword,
+    loading,
+    errorMsg,
+    setErrorMsg,
+    successMsg,
+    handleResetPassword
+  } = useAuthController();
+
   const [checkingSession, setCheckingSession] = useState(true);
   const [hasSession, setHasSession] = useState(false);
-  const [errorMsg, setErrorMsg] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
-  const navigate = useNavigate();
 
   useEffect(() => {
     // Check if user is authenticated (meaning they clicked the recovery link and Supabase signed them in)
     const checkUserSession = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const session = await AuthModel.getSession();
         if (session) {
           setHasSession(true);
         } else {
@@ -35,39 +44,7 @@ function ResetPasswordPage() {
     };
 
     checkUserSession();
-  }, []);
-
-  const handleResetPassword = async (e) => {
-    e.preventDefault();
-    setErrorMsg('');
-    setSuccessMsg('');
-
-    if (password.length < 8) {
-      setErrorMsg('Mật khẩu phải dài từ 8 ký tự trở lên.');
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setErrorMsg('Mật khẩu xác nhận không trùng khớp.');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const { error } = await supabase.auth.updateUser({ password: password });
-      if (error) throw error;
-      
-      setSuccessMsg('Đổi mật khẩu thành công! Đang tự động chuyển hướng...');
-      // Wait for 3 seconds and redirect to landing page
-      setTimeout(() => {
-        navigate('/');
-      }, 3000);
-    } catch (error) {
-      setErrorMsg(error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [setErrorMsg]);
 
   return (
     <div style={{
@@ -136,8 +113,8 @@ function ResetPasswordPage() {
                 <input 
                   type={showPassword ? "text" : "password"} 
                   placeholder="Nhập mật khẩu mới" 
-                  value={password} 
-                  onChange={(e) => setPassword(e.target.value)} 
+                  value={passwordInput} 
+                  onChange={(e) => setPasswordInput(e.target.value)} 
                   required
                   style={{ 
                     width: '100%', 
@@ -186,8 +163,8 @@ function ResetPasswordPage() {
                 <input 
                   type={showConfirmPassword ? "text" : "password"} 
                   placeholder="Xác nhận mật khẩu mới" 
-                  value={confirmPassword} 
-                  onChange={(e) => setConfirmPassword(e.target.value)} 
+                  value={confirmPasswordInput} 
+                  onChange={(e) => setConfirmPasswordInput(e.target.value)} 
                   required
                   style={{ 
                     width: '100%', 

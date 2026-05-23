@@ -1,23 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import LoginPage from './LoginPage';
-import LandingPage from './LandingPage';
-import DoctorProfilePage from './DoctorProfilePage';
-import ResetPasswordPage from './ResetPasswordPage';
-import { supabase } from './supabaseClient';
+import LoginPage from './views/LoginPage';
+import LandingPage from './views/LandingPage';
+import DoctorProfilePage from './views/DoctorProfilePage';
+import ResetPasswordPage from './views/ResetPasswordPage';
+import { AuthModel } from './models/AuthModel';
 import './index.css';
 
 function App() {
   const [session, setSession] = useState(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    AuthModel.getSession().then((session) => {
       setSession(session);
-    });
+    }).catch(console.error);
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    const subscription = AuthModel.onAuthStateChange((_event, session) => {
       setSession(session);
     });
 
@@ -25,7 +23,11 @@ function App() {
   }, []);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    try {
+      await AuthModel.signOut();
+    } catch (err) {
+      console.error('Logout failed:', err);
+    }
   };
 
   // Convert supabase user to our local format just for UI compatibility
