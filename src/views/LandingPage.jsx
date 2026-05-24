@@ -1,13 +1,27 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDoctorController } from '../controllers/useDoctorController';
+import ChangePasswordModal from './ChangePasswordModal';
 import '../index.css';
 
 function LandingPage({ user, onLogout }) {
   const [scrolled, setScrolled] = useState(false);
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const navigate = useNavigate();
   const { getDoctors } = useDoctorController();
   const doctorsList = getDoctors();
+
+  useEffect(() => {
+    if (!showUserDropdown) return;
+    const closeDropdown = (e) => {
+      if (!e.target.closest('.user-profile')) {
+        setShowUserDropdown(false);
+      }
+    };
+    document.addEventListener('click', closeDropdown);
+    return () => document.removeEventListener('click', closeDropdown);
+  }, [showUserDropdown]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -117,12 +131,93 @@ function LandingPage({ user, onLogout }) {
         </div>
         <div className="nav-actions">
           {user ? (
-            <div className="user-profile">
-              <span className="user-greeting">
+            <div className="user-profile" style={{ position: 'relative' }}>
+              <span 
+                className="user-greeting" 
+                onClick={() => setShowUserDropdown(!showUserDropdown)}
+                style={{ cursor: 'pointer', userSelect: 'none', gap: '0.5rem', display: 'flex', alignItems: 'center', transition: 'color 0.2s' }}
+                onMouseEnter={e => e.currentTarget.style.color = '#14b8a6'}
+                onMouseLeave={e => { if(!showUserDropdown) e.currentTarget.style.color = '' }}
+              >
                 <span className="material-symbols-outlined">account_circle</span>
                 Xin chào, {user.username}
+                <span className="material-symbols-outlined" style={{ fontSize: '1.2rem', transition: 'transform 0.3s', transform: showUserDropdown ? 'rotate(180deg)' : 'rotate(0)' }}>keyboard_arrow_down</span>
               </span>
-              <button className="btn-logout" onClick={() => onLogout()}>Đăng xuất</button>
+              
+              {showUserDropdown && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  right: 0,
+                  marginTop: '0.75rem',
+                  background: 'rgba(30, 41, 59, 0.95)',
+                  backdropFilter: 'blur(20px)',
+                  WebkitBackdropFilter: 'blur(20px)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '16px',
+                  boxShadow: '0 10px 25px -5px rgba(0,0,0,0.3)',
+                  padding: '0.5rem',
+                  minWidth: '180px',
+                  zIndex: 100,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.25rem'
+                }}>
+                  <button 
+                    onClick={() => { setIsChangePasswordOpen(true); setShowUserDropdown(false); }}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'rgba(255, 255, 255, 0.9)',
+                      padding: '0.75rem 1rem',
+                      borderRadius: '10px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.75rem',
+                      fontSize: '0.9rem',
+                      fontWeight: 600,
+                      textAlign: 'left',
+                      transition: 'all 0.2s',
+                      width: '100%',
+                      boxSizing: 'border-box'
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(20, 184, 166, 0.15)'; e.currentTarget.style.color = '#5eead4'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255, 255, 255, 0.9)'; }}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '1.25rem' }}>lock_reset</span>
+                    Đổi mật khẩu
+                  </button>
+                  
+                  <div style={{ height: '1px', background: 'rgba(255,255,255,0.08)', margin: '0.25rem 0' }}></div>
+                  
+                  <button 
+                    onClick={() => { onLogout(); setShowUserDropdown(false); }}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: '#fca5a5',
+                      padding: '0.75rem 1rem',
+                      borderRadius: '10px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.75rem',
+                      fontSize: '0.9rem',
+                      fontWeight: 600,
+                      textAlign: 'left',
+                      transition: 'all 0.2s',
+                      width: '100%',
+                      boxSizing: 'border-box'
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '1.25rem' }}>logout</span>
+                    Đăng xuất
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <>
@@ -283,6 +378,7 @@ function LandingPage({ user, onLogout }) {
           <a href="#">Hỗ trợ kỹ thuật</a>
         </div>
       </footer>
+      <ChangePasswordModal isOpen={isChangePasswordOpen} onClose={() => setIsChangePasswordOpen(false)} />
     </>
   );
 }

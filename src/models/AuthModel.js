@@ -63,5 +63,23 @@ export const AuthModel = {
     const { data, error } = await supabase.auth.updateUser({ password });
     if (error) throw error;
     return data;
+  },
+
+  async changePassword(oldPassword, newPassword) {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) throw new Error('Người dùng chưa đăng nhập.');
+
+    const { error: authError } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: oldPassword
+    });
+
+    if (authError) {
+      throw new Error('Mật khẩu cũ không chính xác.');
+    }
+
+    const { data, error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+    if (updateError) throw updateError;
+    return data;
   }
 };
