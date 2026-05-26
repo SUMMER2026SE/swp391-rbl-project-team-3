@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthModel } from '../models/AuthModel';
 
@@ -10,6 +10,9 @@ export function useAuthController(onSuccessCallback = null) {
 
   const [isRegistering, setIsRegistering] = useState(false);
   const [isForgotPass, setIsForgotPass] = useState(false);
+  const [otpInput, setOtpInput] = useState('');
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [isOtpVerified, setIsOtpVerified] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -18,6 +21,17 @@ export function useAuthController(onSuccessCallback = null) {
   const [successMsg, setSuccessMsg] = useState('');
 
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isForgotPass) {
+      sessionStorage.setItem('isResettingPassword', 'true');
+    } else {
+      sessionStorage.removeItem('isResettingPassword');
+    }
+    return () => {
+      sessionStorage.removeItem('isResettingPassword');
+    };
+  }, [isForgotPass]);
 
   const handleGoogleLogin = async () => {
     try {
@@ -46,8 +60,49 @@ export function useAuthController(onSuccessCallback = null) {
 
     try {
       if (isForgotPass) {
-        await AuthModel.resetPasswordForEmail(emailInput);
-        setSuccessMsg('Yêu cầu khôi phục mật khẩu đã được gửi! Vui lòng kiểm tra email của bạn.');
+        if (isOtpVerified) {
+          if (passwordInput.length < 8) {
+            throw new Error('Mật khẩu mới phải từ 8 ký tự trở lên.');
+          }
+          if (passwordInput !== confirmPasswordInput) {
+            throw new Error('Mật khẩu xác nhận không trùng khớp.');
+          }
+          // Update password
+          await AuthModel.updateUserPassword(passwordInput);
+
+          setSuccessMsg('Đặt lại mật khẩu thành công! Đang tự động chuyển hướng...');
+          setTimeout(() => {
+            setIsForgotPass(false);
+            setIsVerifyingOtp(false);
+            setIsOtpVerified(false);
+            setEmailInput('');
+            setOtpInput('');
+            setPasswordInput('');
+            setConfirmPasswordInput('');
+            resetMessages();
+            if (onSuccessCallback) {
+              onSuccessCallback();
+            } else {
+              navigate('/');
+            }
+          }, 3000);
+        } else if (isVerifyingOtp) {
+          if (!otpInput || otpInput.trim().length < 6 || otpInput.trim().length > 8) {
+            throw new Error('Mã OTP phải gồm 6 đến 8 chữ số.');
+          }
+          // Verify OTP (signs the user in)
+          await AuthModel.verifyOtpForRecovery(emailInput.trim(), otpInput.trim());
+          setIsOtpVerified(true);
+          setSuccessMsg('Xác thực OTP thành công! Vui lòng nhập mật khẩu mới bên dưới.');
+        } else {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(emailInput.trim())) {
+            throw new Error('Email không đúng định dạng.');
+          }
+          await AuthModel.resetPasswordForEmail(emailInput.trim());
+          setIsVerifyingOtp(true);
+          setSuccessMsg('Mã OTP đã được gửi đến email của bạn! Vui lòng kiểm tra và nhập mã.');
+        }
       } else if (isRegistering) {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(emailInput.trim())) {
@@ -126,6 +181,12 @@ export function useAuthController(onSuccessCallback = null) {
     setIsRegistering,
     isForgotPass,
     setIsForgotPass,
+    otpInput,
+    setOtpInput,
+    isVerifyingOtp,
+    setIsVerifyingOtp,
+    isOtpVerified,
+    setIsOtpVerified,
     showPassword,
     setShowPassword,
     showConfirmPassword,

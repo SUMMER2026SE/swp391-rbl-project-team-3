@@ -15,8 +15,18 @@ function LoginPage() {
     setIsRegistering,
     isForgotPass,
     setIsForgotPass,
+    otpInput,
+    setOtpInput,
+    isVerifyingOtp,
+    setIsVerifyingOtp,
+    isOtpVerified,
+    setIsOtpVerified,
     showPassword,
     setShowPassword,
+    showConfirmPassword,
+    setShowConfirmPassword,
+    confirmPasswordInput,
+    setConfirmPasswordInput,
     loading,
     errorMsg,
     successMsg,
@@ -70,10 +80,10 @@ function LoginPage() {
             <img alt="DermaSmart Logo" src="https://lh3.googleusercontent.com/aida/ADBb0uiddj6CdMnqYQ2NQ2gNS__JGsBgPQWx2cgzMSUjV-6mD0NUuXFqjDCciD2rRfG3yqpqUjf6On86BpH61ioEIsnVMniDu-5fwQXKsOXQoruC848chIGCD7shN3ZsBjRvT53vJrLxxTuEAdPuXpXKSNO6j6a71dIrnJB8tr2RDReTT12L_lXF_dcmvbMwcKN8ZxtZXya1gRZ0XvNcjzSEqMuR6j0onUQdFNslqPU3afB12kawSdIxa55oCB5k" style={{ height: '50px', width: 'auto', objectFit: 'contain' }} />
           </Link>
           <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#ffffff', marginBottom: '0.5rem', letterSpacing: '-0.025em' }}>
-            {isForgotPass ? 'Khôi phục mật khẩu' : (isRegistering ? 'Tạo tài khoản mới' : 'Đăng nhập')}
+            {isForgotPass ? (isOtpVerified ? 'Đặt lại mật khẩu mới' : (isVerifyingOtp ? 'Xác thực mã OTP' : 'Khôi phục mật khẩu')) : (isRegistering ? 'Tạo tài khoản mới' : 'Đăng nhập')}
           </h2>
           <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.9rem' }}>
-            {isForgotPass ? 'Nhập email của bạn để nhận liên kết đặt lại mật khẩu' : (isRegistering ? 'Gia nhập hệ thống DermaSmart' : 'Tiếp tục với tài khoản DermaSmart')}
+            {isForgotPass ? (isOtpVerified ? 'Vui lòng nhập mật khẩu mới của bạn bên dưới' : (isVerifyingOtp ? 'Mã OTP đã được gửi. Vui lòng nhập mã OTP để xác minh.' : 'Nhập email của bạn để nhận mã OTP khôi phục')) : (isRegistering ? 'Gia nhập hệ thống DermaSmart' : 'Tiếp tục với tài khoản DermaSmart')}
           </p>
         </div>
         
@@ -113,15 +123,168 @@ function LoginPage() {
               </div>
           )}
 
-          <div style={{ marginBottom: '1.25rem' }}>
-            <label style={{ display: 'block', color: 'rgba(255,255,255,0.9)', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem' }}>Địa chỉ Email</label>
-            <input 
-              type="email" placeholder="name@example.com" value={emailInput} onChange={(e) => setEmailInput(e.target.value)} required
-              style={{ width: '100%', padding: '0.875rem 1.25rem', borderRadius: '12px', background: 'rgba(0, 0, 0, 0.25)', border: '1px solid rgba(255, 255, 255, 0.1)', color: '#ffffff', fontSize: '1rem', outline: 'none', transition: 'all 0.2s', boxSizing: 'border-box' }}
-              onFocus={e => { e.target.style.background = 'rgba(0, 0, 0, 0.4)'; e.target.style.borderColor = 'rgba(20, 184, 166, 0.5)'; }}
-              onBlur={e => { e.target.style.background = 'rgba(0, 0, 0, 0.25)'; e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'; }}
-            />
-          </div>
+          {(!isForgotPass || !isOtpVerified) && (
+            <div style={{ marginBottom: '1.25rem' }}>
+              <label style={{ display: 'block', color: 'rgba(255,255,255,0.9)', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem' }}>Địa chỉ Email</label>
+              <input 
+                type="email" 
+                placeholder="name@example.com" 
+                value={emailInput} 
+                onChange={(e) => setEmailInput(e.target.value)} 
+                required
+                disabled={isForgotPass && isVerifyingOtp}
+                style={{ 
+                  width: '100%', 
+                  padding: '0.875rem 1.25rem', 
+                  borderRadius: '12px', 
+                  background: isForgotPass && isVerifyingOtp ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.25)', 
+                  border: '1px solid rgba(255, 255, 255, 0.1)', 
+                  color: isForgotPass && isVerifyingOtp ? 'rgba(255, 255, 255, 0.5)' : '#ffffff', 
+                  fontSize: '1rem', 
+                  outline: 'none', 
+                  transition: 'all 0.2s', 
+                  boxSizing: 'border-box' 
+                }}
+                onFocus={e => { if (!(isForgotPass && isVerifyingOtp)) { e.target.style.background = 'rgba(0, 0, 0, 0.4)'; e.target.style.borderColor = 'rgba(20, 184, 166, 0.5)'; } }}
+                onBlur={e => { if (!(isForgotPass && isVerifyingOtp)) { e.target.style.background = 'rgba(0, 0, 0, 0.25)'; e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'; } }}
+              />
+            </div>
+          )}
+
+          {isForgotPass && isVerifyingOtp && !isOtpVerified && (
+            <div style={{ marginBottom: '1.25rem' }}>
+              <label style={{ display: 'block', color: 'rgba(255,255,255,0.9)', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem' }}>Mã OTP</label>
+              <input 
+                type="text" 
+                maxLength={8} 
+                placeholder="Nhập mã OTP" 
+                value={otpInput} 
+                onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, ''))} 
+                required
+                style={{ 
+                  width: '100%', 
+                  padding: '0.875rem 1.25rem', 
+                  borderRadius: '12px', 
+                  background: 'rgba(0, 0, 0, 0.25)', 
+                  border: '1px solid rgba(255, 255, 255, 0.1)', 
+                  color: '#ffffff', 
+                  fontSize: '1.25rem', 
+                  fontWeight: 'bold',
+                  letterSpacing: '0.5em', 
+                  textAlign: 'center', 
+                  outline: 'none', 
+                  transition: 'all 0.2s', 
+                  boxSizing: 'border-box' 
+                }}
+                onFocus={e => { e.target.style.background = 'rgba(0, 0, 0, 0.4)'; e.target.style.borderColor = 'rgba(20, 184, 166, 0.5)'; }}
+                onBlur={e => { e.target.style.background = 'rgba(0, 0, 0, 0.25)'; e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'; }}
+              />
+            </div>
+          )}
+
+          {isForgotPass && isOtpVerified && (
+            <>
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label style={{ display: 'block', color: 'rgba(255,255,255,0.9)', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem' }}>Mật khẩu mới</label>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <input 
+                    type={showPassword ? "text" : "password"} 
+                    placeholder="Mật khẩu từ 8 ký tự" 
+                    value={passwordInput} 
+                    onChange={(e) => setPasswordInput(e.target.value)} 
+                    required
+                    style={{ 
+                      width: '100%', 
+                      padding: '0.875rem 3rem 0.875rem 1.25rem', 
+                      borderRadius: '12px', 
+                      background: 'rgba(0, 0, 0, 0.25)', 
+                      border: '1px solid rgba(255, 255, 255, 0.1)', 
+                      color: '#ffffff', 
+                      fontSize: '1rem', 
+                      outline: 'none', 
+                      transition: 'all 0.2s', 
+                      boxSizing: 'border-box' 
+                    }}
+                    onFocus={e => { e.target.style.background = 'rgba(0, 0, 0, 0.4)'; e.target.style.borderColor = 'rgba(20, 184, 166, 0.5)'; }}
+                    onBlur={e => { e.target.style.background = 'rgba(0, 0, 0, 0.25)'; e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'; }}
+                  />
+                  <button 
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: '1rem',
+                      background: 'none',
+                      border: 'none',
+                      color: 'rgba(255, 255, 255, 0.5)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: 0,
+                      transition: 'color 0.2s'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.color = 'white'}
+                    onMouseLeave={e => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.5)'}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '1.25rem' }}>
+                      {showPassword ? 'visibility' : 'visibility_off'}
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '2rem' }}>
+                <label style={{ display: 'block', color: 'rgba(255,255,255,0.9)', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem' }}>Xác nhận mật khẩu mới</label>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <input 
+                    type={showConfirmPassword ? "text" : "password"} 
+                    placeholder="Xác nhận mật khẩu" 
+                    value={confirmPasswordInput} 
+                    onChange={(e) => setConfirmPasswordInput(e.target.value)} 
+                    required
+                    style={{ 
+                      width: '100%', 
+                      padding: '0.875rem 3rem 0.875rem 1.25rem', 
+                      borderRadius: '12px', 
+                      background: 'rgba(0, 0, 0, 0.25)', 
+                      border: '1px solid rgba(255, 255, 255, 0.1)', 
+                      color: '#ffffff', 
+                      fontSize: '1rem', 
+                      outline: 'none', 
+                      transition: 'all 0.2s', 
+                      boxSizing: 'border-box' 
+                    }}
+                    onFocus={e => { e.target.style.background = 'rgba(0, 0, 0, 0.4)'; e.target.style.borderColor = 'rgba(20, 184, 166, 0.5)'; }}
+                    onBlur={e => { e.target.style.background = 'rgba(0, 0, 0, 0.25)'; e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'; }}
+                  />
+                  <button 
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: '1rem',
+                      background: 'none',
+                      border: 'none',
+                      color: 'rgba(255, 255, 255, 0.5)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: 0,
+                      transition: 'color 0.2s'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.color = 'white'}
+                    onMouseLeave={e => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.5)'}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '1.25rem' }}>
+                      {showConfirmPassword ? 'visibility' : 'visibility_off'}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
 
           {!isForgotPass && (
             <div style={{ marginBottom: '2rem' }}>
@@ -194,14 +357,14 @@ function LoginPage() {
           onMouseEnter={e => { if(!loading) { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 12px 25px rgba(20, 184, 166, 0.4)'; } }}
           onMouseLeave={e => { if(!loading) { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 8px 20px rgba(20, 184, 166, 0.3)'; } }}
           >
-            {loading ? 'Đang xử lý...' : (isForgotPass ? 'Gửi liên kết khôi phục' : (isRegistering ? 'Đăng ký ngay' : 'Đăng nhập'))}
+            {loading ? 'Đang xử lý...' : (isForgotPass ? (isOtpVerified ? 'Xác nhận đặt lại mật khẩu' : (isVerifyingOtp ? 'Xác minh mã OTP' : 'Gửi mã OTP khôi phục')) : (isRegistering ? 'Đăng ký ngay' : 'Đăng nhập'))}
           </button>
           
           <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
             {isForgotPass ? (
               <button 
                   type="button" 
-                  onClick={() => { setIsForgotPass(false); resetMessages(); }} 
+                  onClick={() => { setIsForgotPass(false); setIsVerifyingOtp(false); setIsOtpVerified(false); resetMessages(); }} 
                   style={{ background: 'none', border: 'none', color: '#14b8a6', fontWeight: 600, fontSize: '0.875rem', textDecoration: 'none', transition: 'color 0.2s', cursor: 'pointer', padding: 0 }} 
                   onMouseEnter={e => e.target.style.color = '#5eead4'} 
                   onMouseLeave={e => e.target.style.color = '#14b8a6'}

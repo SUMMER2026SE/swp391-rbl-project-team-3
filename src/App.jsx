@@ -46,7 +46,7 @@ function App() {
         
         <Route 
           path="/login" 
-          element={!session ? <LoginPage /> : <Navigate to="/" replace />} 
+          element={(!session || sessionStorage.getItem('isResettingPassword') === 'true') ? <LoginPage /> : <Navigate to="/" replace />} 
         />
 
         <Route 

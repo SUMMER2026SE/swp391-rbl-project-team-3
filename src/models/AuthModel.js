@@ -59,6 +59,16 @@ export const AuthModel = {
     return data;
   },
 
+  async verifyOtpForRecovery(email, token) {
+    const { data, error } = await supabase.auth.verifyOtp({
+      email,
+      token,
+      type: 'recovery'
+    });
+    if (error) throw error;
+    return data;
+  },
+
   async updateUserPassword(password) {
     const { data, error } = await supabase.auth.updateUser({ password });
     if (error) throw error;
