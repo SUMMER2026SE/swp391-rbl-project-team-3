@@ -60,17 +60,34 @@ export function useAuthController(onSuccessCallback = null) {
 
     try {
       if (isForgotPass) {
-        if (isOtpVerified) {
+        if (!isVerifyingOtp && !isOtpVerified) {
+          // STEP 1: SEND OTP LOGIC
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(emailInput.trim())) {
+            throw new Error('Email không đúng định dạng.');
+          }
+          await AuthModel.resetPasswordForEmail(emailInput.trim());
+          setIsVerifyingOtp(true);
+          setSuccessMsg('Mã OTP đã được gửi!');
+        } else if (isVerifyingOtp && !isOtpVerified) {
+          // STEP 2: VERIFY OTP LOGIC
+          if (!otpInput || otpInput.trim().length !== 6) {
+            throw new Error('Mã OTP phải gồm đúng 6 chữ số.');
+          }
+          await AuthModel.verifyOtpForRecovery(emailInput.trim(), otpInput.trim());
+          setIsOtpVerified(true);
+          setSuccessMsg('Xác thực thành công! Vui lòng tạo mật khẩu mới.');
+        } else if (isOtpVerified) {
+          // STEP 3: UPDATE NEW PASSWORD LOGIC
           if (passwordInput.length < 8) {
             throw new Error('Mật khẩu mới phải từ 8 ký tự trở lên.');
           }
           if (passwordInput !== confirmPasswordInput) {
             throw new Error('Mật khẩu xác nhận không trùng khớp.');
           }
-          // Update password
           await AuthModel.updateUserPassword(passwordInput);
-
-          setSuccessMsg('Đặt lại mật khẩu thành công! Đang tự động chuyển hướng...');
+          setSuccessMsg('Đổi mật khẩu thành công! Đang quay lại trang đăng nhập...');
+          
           setTimeout(() => {
             setIsForgotPass(false);
             setIsVerifyingOtp(false);
@@ -83,25 +100,9 @@ export function useAuthController(onSuccessCallback = null) {
             if (onSuccessCallback) {
               onSuccessCallback();
             } else {
-              navigate('/');
+              navigate('/login');
             }
-          }, 3000);
-        } else if (isVerifyingOtp) {
-          if (!otpInput || otpInput.trim().length < 6 || otpInput.trim().length > 8) {
-            throw new Error('Mã OTP phải gồm 6 đến 8 chữ số.');
-          }
-          // Verify OTP (signs the user in)
-          await AuthModel.verifyOtpForRecovery(emailInput.trim(), otpInput.trim());
-          setIsOtpVerified(true);
-          setSuccessMsg('Xác thực OTP thành công! Vui lòng nhập mật khẩu mới bên dưới.');
-        } else {
-          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-          if (!emailRegex.test(emailInput.trim())) {
-            throw new Error('Email không đúng định dạng.');
-          }
-          await AuthModel.resetPasswordForEmail(emailInput.trim());
-          setIsVerifyingOtp(true);
-          setSuccessMsg('Mã OTP đã được gửi đến email của bạn! Vui lòng kiểm tra và nhập mã.');
+          }, 2000);
         }
       } else if (isRegistering) {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -111,7 +112,7 @@ export function useAuthController(onSuccessCallback = null) {
         if (passwordInput.length < 8) {
           throw new Error('Mật khẩu đăng ký phải từ 8 ký tự trở lên.');
         }
-        await AuthModel.signUp(emailInput, passwordInput, fullNameInput);
+        await AuthModel.signUp(emailInput, passwordInput, fullNameInput, 'PATIENT');
         setSuccessMsg('Đăng ký thành công! Vui lòng xác nhận email trước khi đăng nhập.');
       } else {
         await AuthModel.signInWithPassword(emailInput, passwordInput);
@@ -122,11 +123,14 @@ export function useAuthController(onSuccessCallback = null) {
         }
       }
     } catch (error) {
+      console.error("OTP VERIFICATION FAILED:", error.message);
       let message = error.message;
       if (message.includes('Invalid login credentials')) {
         message = 'Email hoặc mật khẩu không chính xác.';
       } else if (message.includes('Email not confirmed')) {
         message = 'Vui lòng xác nhận email trước khi đăng nhập.';
+      } else if (message.includes('Token has expired or is invalid')) {
+        message = 'Mã OTP không hợp lệ hoặc đã hết hạn.';
       }
       setErrorMsg(message);
     } finally {

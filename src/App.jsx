@@ -1,39 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from './views/LoginPage';
 import LandingPage from './views/LandingPage';
 import DoctorProfilePage from './views/DoctorProfilePage';
 import ResetPasswordPage from './views/ResetPasswordPage';
-import { AuthModel } from './models/AuthModel';
+import AdminDashboard from './views/AdminDashboard';
+import DoctorDashboard from './views/DoctorDashboard';
+import ReceptionistDashboard from './views/ReceptionistDashboard';
+import TechnicianDashboard from './views/TechnicianDashboard';
+import UserProfilePage from './views/UserProfilePage';
+import ProtectedRoute from './components/ProtectedRoute';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import './index.css';
 
-function App() {
-  const [session, setSession] = useState(null);
-
-  useEffect(() => {
-    AuthModel.getSession().then((session) => {
-      setSession(session);
-    }).catch(console.error);
-
-    const subscription = AuthModel.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+function AppContent() {
+  const { user, logout, getDashboardPath } = useAuth();
 
   const handleLogout = async () => {
-    try {
-      await AuthModel.signOut();
-    } catch (err) {
-      console.error('Logout failed:', err);
-    }
+    await logout();
   };
 
-  // Convert supabase user to our local format just for UI compatibility
-  const user = session?.user ? { 
-      username: session.user.user_metadata?.full_name || session.user.email,
-      avatar: session.user.user_metadata?.avatar_url
+  const landingPageUser = user ? { 
+    username: user.name,
+    avatar: user.avatar 
   } : null;
 
   return (
@@ -41,12 +30,17 @@ function App() {
       <Routes>
         <Route 
           path="/" 
-          element={<LandingPage user={user} onLogout={handleLogout} />} 
+          element={<LandingPage user={landingPageUser} onLogout={handleLogout} />} 
         />
         
         <Route 
           path="/login" 
-          element={(!session || sessionStorage.getItem('isResettingPassword') === 'true') ? <LoginPage /> : <Navigate to="/" replace />} 
+          element={!user ? <LoginPage /> : <Navigate to={getDashboardPath(user.role)} replace />} 
+        />
+
+        <Route 
+          path="/login-supabase" 
+          element={!user ? <LoginPage /> : <Navigate to={getDashboardPath(user.role)} replace />} 
         />
 
         <Route 
@@ -59,9 +53,63 @@ function App() {
           element={<ResetPasswordPage />} 
         />
 
+        {/* Protected Dashboard Routes */}
+        <Route 
+          path="/dashboard/admin" 
+          element={
+            <ProtectedRoute allowedRoles={['ADMIN']}>
+              <AdminDashboard />
+            </ProtectedRoute>
+          } 
+        />
+
+        <Route 
+          path="/dashboard/doctor" 
+          element={
+            <ProtectedRoute allowedRoles={['DOCTOR']}>
+              <DoctorDashboard />
+            </ProtectedRoute>
+          } 
+        />
+
+        <Route 
+          path="/dashboard/receptionist" 
+          element={
+            <ProtectedRoute allowedRoles={['RECEPTIONIST']}>
+              <ReceptionistDashboard />
+            </ProtectedRoute>
+          } 
+        />
+
+        <Route 
+          path="/dashboard/technician" 
+          element={
+            <ProtectedRoute allowedRoles={['TECHNICIAN']}>
+              <TechnicianDashboard />
+            </ProtectedRoute>
+          } 
+        />
+
+        <Route 
+          path="/profile" 
+          element={
+            <ProtectedRoute allowedRoles={['ADMIN', 'DOCTOR', 'RECEPTIONIST', 'TECHNICIAN', 'PATIENT']}>
+              <UserProfilePage />
+            </ProtectedRoute>
+          } 
+        />
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
 

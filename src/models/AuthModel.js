@@ -12,13 +12,14 @@ export const AuthModel = {
     return subscription;
   },
 
-  async signUp(email, password, fullName) {
+  async signUp(email, password, fullName, role = 'PATIENT') {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
           full_name: fullName,
+          role: role,
         }
       }
     });

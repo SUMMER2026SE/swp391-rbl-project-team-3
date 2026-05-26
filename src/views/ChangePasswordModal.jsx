@@ -65,98 +65,49 @@ function ChangePasswordModal({ isOpen, onClose }) {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose} style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 9999,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'rgba(15, 23, 42, 0.75)',
-        backdropFilter: 'blur(8px)'
-    }}>
-      <div className="login-modal custom-scrollbar" onClick={e => e.stopPropagation()} style={{ 
-          position: 'relative', 
-          width: '90%',
-          maxWidth: '420px',
-          maxHeight: '90vh',
-          overflowY: 'auto',
-          padding: '2.5rem 2rem',
-          borderRadius: '24px',
-          background: 'rgba(30, 41, 59, 0.85)',
-          backdropFilter: 'blur(24px)',
-          WebkitBackdropFilter: 'blur(24px)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.05)',
-      }}>
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/30 backdrop-blur-sm font-sans" onClick={onClose}>
+      <div className="w-full max-w-md backdrop-blur-3xl bg-white/75 border border-white/80 shadow-[0_20px_60px_rgba(14,165,233,0.12)] rounded-[2rem] p-8 relative" onClick={e => e.stopPropagation()}>
         {/* Close Button */}
-        <button onClick={onClose} style={{
-            position: 'absolute', top: '1rem', right: '1rem', background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', padding: '0.5rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s'
-        }} onMouseEnter={e => { e.currentTarget.style.color = 'white'; e.currentTarget.style.background = 'rgba(255,255,255,0.1)' }} onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; e.currentTarget.style.background = 'transparent' }}>
+        <button 
+          onClick={onClose} 
+          className="absolute top-4 right-4 bg-transparent border-none text-slate-400 hover:text-slate-700 hover:bg-slate-100/50 p-2 rounded-full flex items-center justify-center transition-all cursor-pointer"
+        >
             <span className="material-symbols-outlined">close</span>
         </button>
 
         {/* Modal Header */}
-        <div className="login-header" style={{ marginBottom: '2rem', textAlign: 'center' }}>
-          <img alt="DermaSmart Logo" src="https://lh3.googleusercontent.com/aida/ADBb0uiddj6CdMnqYQ2NQ2gNS__JGsBgPQWx2cgzMSUjV-6mD0NUuXFqjDCciD2rRfG3yqpqUjf6On86BpH61ioEIsnVMniDu-5fwQXKsOXQoruC848chIGCD7shN3ZsBjRvT53vJrLxxTuEAdPuXpXKSNO6j6a71dIrnJB8tr2RDReTT12L_lXF_dcmvbMwcKN8ZxtZXya1gRZ0XvNcjzSEqMuR6j0onUQdFNslqPU3afB12kawSdIxa55oCB5k" style={{ height: '40px', width: 'auto', objectFit: 'contain', marginBottom: '1.5rem' }} />
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#ffffff', marginBottom: '0.5rem', letterSpacing: '-0.025em' }}>
+        <div className="mb-8 text-center">
+          <h2 className="text-2xl font-bold text-slate-800 mb-2 tracking-tight">
             Đổi mật khẩu tài khoản
           </h2>
-          <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.9rem' }}>
+          <p className="text-slate-500 text-sm">
             Vui lòng nhập mật khẩu hiện tại và mật khẩu mới của bạn
           </p>
         </div>
         
         {/* Status Alerts */}
-        {errorMsg && <div style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#fca5a5', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '12px', padding: '0.875rem', marginBottom: '1.5rem', fontSize: '0.9rem', textAlign: 'center', backdropFilter: 'blur(4px)' }}>{errorMsg}</div>}
-        {successMsg && <div style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#6ee7b7', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '12px', padding: '0.875rem', marginBottom: '1.5rem', fontSize: '0.9rem', textAlign: 'center', backdropFilter: 'blur(4px)' }}>{successMsg}</div>}
+        {errorMsg && <div className="bg-rose-50 text-rose-600 border border-rose-200 rounded-xl p-3.5 mb-6 text-sm text-center">{errorMsg}</div>}
+        {successMsg && <div className="bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-xl p-3.5 mb-6 text-sm text-center">{successMsg}</div>}
 
         <form onSubmit={handleSubmit}>
           {/* Old Password */}
-          <div style={{ marginBottom: '1.25rem' }}>
-            <label style={{ display: 'block', color: 'rgba(255,255,255,0.9)', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem' }}>Mật khẩu hiện tại</label>
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+          <div className="mb-5">
+            <label className="block text-slate-600 text-sm font-medium mb-2">Mật khẩu hiện tại</label>
+            <div className="relative flex items-center">
               <input 
                 type={showOldPassword ? "text" : "password"} 
                 placeholder="Nhập mật khẩu hiện tại" 
                 value={oldPassword} 
                 onChange={(e) => setOldPassword(e.target.value)} 
                 required
-                style={{ 
-                  width: '100%', 
-                  padding: '0.875rem 3rem 0.875rem 1.25rem', 
-                  borderRadius: '12px', 
-                  background: 'rgba(0, 0, 0, 0.25)', 
-                  border: '1px solid rgba(255, 255, 255, 0.1)', 
-                  color: '#ffffff', 
-                  fontSize: '1rem', 
-                  outline: 'none', 
-                  transition: 'all 0.2s', 
-                  boxSizing: 'border-box' 
-                }}
-                onFocus={e => { e.target.style.background = 'rgba(0, 0, 0, 0.4)'; e.target.style.borderColor = 'rgba(20, 184, 166, 0.5)'; }}
-                onBlur={e => { e.target.style.background = 'rgba(0, 0, 0, 0.25)'; e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'; }}
+                className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-emerald-500 text-slate-800 transition-colors box-border pr-12"
               />
               <button 
                 type="button"
                 onClick={() => setShowOldPassword(!showOldPassword)}
-                style={{
-                  position: 'absolute',
-                  right: '1rem',
-                  background: 'none',
-                  border: 'none',
-                  color: 'rgba(255, 255, 255, 0.5)',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: 0,
-                  transition: 'color 0.2s'
-                }}
-                onMouseEnter={e => e.currentTarget.style.color = 'white'}
-                onMouseLeave={e => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.5)'}
+                className="absolute right-4 bg-transparent border-none text-slate-400 hover:text-slate-600 cursor-pointer flex items-center justify-center p-0 transition-colors"
               >
-                <span className="material-symbols-outlined" style={{ fontSize: '1.25rem' }}>
+                <span className="material-symbols-outlined text-[1.25rem]">
                   {showOldPassword ? 'visibility' : 'visibility_off'}
                 </span>
               </button>
@@ -164,50 +115,23 @@ function ChangePasswordModal({ isOpen, onClose }) {
           </div>
 
           {/* New Password */}
-          <div style={{ marginBottom: '1.25rem' }}>
-            <label style={{ display: 'block', color: 'rgba(255,255,255,0.9)', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem' }}>Mật khẩu mới</label>
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+          <div className="mb-5">
+            <label className="block text-slate-600 text-sm font-medium mb-2">Mật khẩu mới</label>
+            <div className="relative flex items-center">
               <input 
                 type={showNewPassword ? "text" : "password"} 
                 placeholder="Tối thiểu 8 ký tự" 
                 value={newPassword} 
                 onChange={(e) => setNewPassword(e.target.value)} 
                 required
-                style={{ 
-                  width: '100%', 
-                  padding: '0.875rem 3rem 0.875rem 1.25rem', 
-                  borderRadius: '12px', 
-                  background: 'rgba(0, 0, 0, 0.25)', 
-                  border: '1px solid rgba(255, 255, 255, 0.1)', 
-                  color: '#ffffff', 
-                  fontSize: '1rem', 
-                  outline: 'none', 
-                  transition: 'all 0.2s', 
-                  boxSizing: 'border-box' 
-                }}
-                onFocus={e => { e.target.style.background = 'rgba(0, 0, 0, 0.4)'; e.target.style.borderColor = 'rgba(20, 184, 166, 0.5)'; }}
-                onBlur={e => { e.target.style.background = 'rgba(0, 0, 0, 0.25)'; e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'; }}
+                className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-emerald-500 text-slate-800 transition-colors box-border pr-12"
               />
               <button 
                 type="button"
                 onClick={() => setShowNewPassword(!showNewPassword)}
-                style={{
-                  position: 'absolute',
-                  right: '1rem',
-                  background: 'none',
-                  border: 'none',
-                  color: 'rgba(255, 255, 255, 0.5)',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: 0,
-                  transition: 'color 0.2s'
-                }}
-                onMouseEnter={e => e.currentTarget.style.color = 'white'}
-                onMouseLeave={e => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.5)'}
+                className="absolute right-4 bg-transparent border-none text-slate-400 hover:text-slate-600 cursor-pointer flex items-center justify-center p-0 transition-colors"
               >
-                <span className="material-symbols-outlined" style={{ fontSize: '1.25rem' }}>
+                <span className="material-symbols-outlined text-[1.25rem]">
                   {showNewPassword ? 'visibility' : 'visibility_off'}
                 </span>
               </button>
@@ -215,61 +139,33 @@ function ChangePasswordModal({ isOpen, onClose }) {
           </div>
 
           {/* Confirm Password */}
-          <div style={{ marginBottom: '2rem' }}>
-            <label style={{ display: 'block', color: 'rgba(255,255,255,0.9)', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem' }}>Xác nhận mật khẩu mới</label>
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+          <div className="mb-8">
+            <label className="block text-slate-600 text-sm font-medium mb-2">Xác nhận mật khẩu mới</label>
+            <div className="relative flex items-center">
               <input 
                 type={showConfirmPassword ? "text" : "password"} 
                 placeholder="Xác nhận mật khẩu mới" 
                 value={confirmPassword} 
                 onChange={(e) => setConfirmPassword(e.target.value)} 
                 required
-                style={{ 
-                  width: '100%', 
-                  padding: '0.875rem 3rem 0.875rem 1.25rem', 
-                  borderRadius: '12px', 
-                  background: 'rgba(0, 0, 0, 0.25)', 
-                  border: '1px solid rgba(255, 255, 255, 0.1)', 
-                  color: '#ffffff', 
-                  fontSize: '1rem', 
-                  outline: 'none', 
-                  transition: 'all 0.2s', 
-                  boxSizing: 'border-box' 
-                }}
-                onFocus={e => { e.target.style.background = 'rgba(0, 0, 0, 0.4)'; e.target.style.borderColor = 'rgba(20, 184, 166, 0.5)'; }}
-                onBlur={e => { e.target.style.background = 'rgba(0, 0, 0, 0.25)'; e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'; }}
+                className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-emerald-500 text-slate-800 transition-colors box-border pr-12"
               />
               <button 
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                style={{
-                  position: 'absolute',
-                  right: '1rem',
-                  background: 'none',
-                  border: 'none',
-                  color: 'rgba(255, 255, 255, 0.5)',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: 0,
-                  transition: 'color 0.2s'
-                }}
-                onMouseEnter={e => e.currentTarget.style.color = 'white'}
-                onMouseLeave={e => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.5)'}
+                className="absolute right-4 bg-transparent border-none text-slate-400 hover:text-slate-600 cursor-pointer flex items-center justify-center p-0 transition-colors"
               >
-                <span className="material-symbols-outlined" style={{ fontSize: '1.25rem' }}>
+                <span className="material-symbols-outlined text-[1.25rem]">
                   {showConfirmPassword ? 'visibility' : 'visibility_off'}
                 </span>
               </button>
             </div>
           </div>
 
-          <button type="submit" disabled={loading} style={{ 
-              width: '100%', padding: '1rem', borderRadius: '12px', background: 'linear-gradient(135deg, #14b8a6, #0ea5e9)', color: 'white', fontSize: '1rem', fontWeight: 600, border: 'none', cursor: loading ? 'not-allowed' : 'pointer', transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)', boxSizing: 'border-box', boxShadow: '0 8px 20px rgba(20, 184, 166, 0.3)', opacity: loading ? 0.7 : 1
-          }}
-          onMouseEnter={e => { if(!loading) { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 12px 25px rgba(20, 184, 166, 0.4)'; } }}
-          onMouseLeave={e => { if(!loading) { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 8px 20px rgba(20, 184, 166, 0.3)'; } }}
+          <button 
+            type="submit" 
+            disabled={loading} 
+            className={`w-full p-4 rounded-xl bg-gradient-to-r from-emerald-500 to-sky-500 text-white text-base font-semibold border-none shadow-[0_8px_20px_rgba(20,184,166,0.3)] transition-all duration-200 hover:shadow-[0_12px_25px_rgba(20,184,166,0.4)] hover:-translate-y-0.5 ${loading ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'}`}
           >
             {loading ? 'Đang cập nhật...' : 'Cập nhật mật khẩu'}
           </button>
