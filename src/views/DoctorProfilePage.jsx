@@ -1,6 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDoctorController } from '../controllers/useDoctorController';
+import { useAuth } from '../context/AuthContext';
+import BookingModal from '../components/BookingModal';
 import '../index.css';
 
 function DoctorProfilePage() {
@@ -8,6 +10,16 @@ function DoctorProfilePage() {
     const navigate = useNavigate();
     const { getDoctorDetails } = useDoctorController();
     const doctor = getDoctorDetails(id);
+    const { user } = useAuth();
+    const [isBookingOpen, setIsBookingOpen] = useState(false);
+
+    const handleBookClick = () => {
+        if (!user) {
+            navigate('/login');
+        } else {
+            setIsBookingOpen(true);
+        }
+    };
 
     useEffect(() => {
         window.scrollTo(0, 0);
@@ -100,7 +112,11 @@ function DoctorProfilePage() {
                             <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#14b8a6' }}>{doctor.consultationFee}</p>
                         </div>
 
-                        <button className="btn-primary btn-pulse" style={{ width: '100%', padding: '1.25rem', fontSize: '1.1rem', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                        <button
+                            onClick={handleBookClick}
+                            className="btn-primary btn-pulse"
+                            style={{ width: '100%', padding: '1.25rem', fontSize: '1.1rem', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', cursor: 'pointer', border: 'none' }}
+                        >
                             <span className="material-symbols-outlined">event_available</span>
                             Đặt lịch khám ngay
                         </button>
@@ -163,6 +179,12 @@ function DoctorProfilePage() {
                     </div>
                 </div>
             </div>
+            <BookingModal
+                isOpen={isBookingOpen}
+                onClose={() => setIsBookingOpen(false)}
+                preselectedDoctorId={doctor.id}
+                onSuccess={() => navigate('/profile')}
+            />
         </div>
     );
 }

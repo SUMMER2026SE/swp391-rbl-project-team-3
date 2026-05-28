@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDoctorController } from '../controllers/useDoctorController';
 import ChangePasswordModal from './ChangePasswordModal';
+import BookingModal from '../components/BookingModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Key, LogOut, User } from 'lucide-react';
 import '../index.css';
@@ -37,10 +38,33 @@ function LandingPage({ user, onLogout }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [selectedDoctor, setSelectedDoctor] = useState(null);
+  const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const [bookingDocId, setBookingDocId] = useState(null);
+  
   const navigate = useNavigate();
   const { getDoctors } = useDoctorController();
   const doctorsList = getDoctors();
   const mobileMenuRef = useRef(null);
+
+  const handleBookFromHero = () => {
+    if (!user) {
+      navigate('/login');
+    } else {
+      setBookingDocId(null);
+      setIsBookingOpen(true);
+    }
+  };
+
+  const handleBookFromModal = () => {
+    if (!user) {
+      navigate('/login');
+    } else {
+      const docId = selectedDoctor.id;
+      setSelectedDoctor(null);
+      setBookingDocId(docId);
+      setIsBookingOpen(true);
+    }
+  };
 
   // Close user dropdown on outside click
   useEffect(() => {
@@ -176,6 +200,12 @@ function LandingPage({ user, onLogout }) {
         <div className="hidden md:flex items-center gap-8">
           <a className={`transition-colors duration-300 font-semibold text-sm ${scrolled ? 'text-on-surface hover:text-primary' : 'text-gray-100 hover:text-white'}`} href="#">Trang chủ</a>
           <a className={`transition-colors duration-300 font-semibold text-sm ${scrolled ? 'text-on-surface hover:text-primary' : 'text-gray-100 hover:text-white'}`} href="#features">Tính năng AI</a>
+          <a
+            onClick={handleBookFromHero}
+            className={`transition-colors duration-300 font-semibold text-sm cursor-pointer ${scrolled ? 'text-on-surface hover:text-primary' : 'text-gray-100 hover:text-white'}`}
+          >
+            Đặt lịch khám
+          </a>
           <a className={`transition-colors duration-300 font-semibold text-sm ${scrolled ? 'text-on-surface hover:text-primary' : 'text-gray-100 hover:text-white'}`} href="#pricing">Bảng giá</a>
         </div>
 
@@ -261,6 +291,12 @@ function LandingPage({ user, onLogout }) {
         >
           <a className="text-white/90 font-semibold text-sm py-2" href="#">Trang chủ</a>
           <a className="text-white/90 font-semibold text-sm py-2" href="#features">Tính năng AI</a>
+          <a
+            onClick={() => { handleBookFromHero(); setMobileMenuOpen(false); }}
+            className="text-white/90 font-semibold text-sm py-2 cursor-pointer"
+          >
+            Đặt lịch khám
+          </a>
           <a className="text-white/90 font-semibold text-sm py-2" href="#pricing">Bảng giá</a>
           <div className="h-px bg-white/[0.08] my-2" />
           {user ? (
@@ -356,11 +392,20 @@ function LandingPage({ user, onLogout }) {
             variants={heroFadeInUp}
             className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-6 w-full sm:w-auto items-center justify-center"
           >
-            <button className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 text-white font-semibold shadow-lg shadow-emerald-500/25 px-8 py-4 rounded-2xl transition-all cursor-pointer border-none text-base">
-              Trải nghiệm AI Scan
+            <button
+              onClick={handleBookFromHero}
+              className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 text-white font-bold shadow-lg shadow-emerald-500/25 px-8 py-4 rounded-2xl transition-all cursor-pointer border-none text-base"
+            >
+              Đặt lịch khám ngay
             </button>
-            <button className="w-full sm:w-auto border border-sky-400 hover:bg-sky-50 text-sky-600 font-semibold px-8 py-4 rounded-2xl transition-all cursor-pointer bg-transparent text-base">
-              Đăng ký Phòng khám
+            <button
+              onClick={() => {
+                const featuresEl = document.getElementById('features');
+                if (featuresEl) featuresEl.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className="w-full sm:w-auto border border-sky-400 hover:bg-sky-50 text-sky-600 font-semibold px-8 py-4 rounded-2xl transition-all cursor-pointer bg-transparent text-base"
+            >
+              Xem tính năng AI
             </button>
           </motion.div>
         </motion.div>
@@ -701,12 +746,28 @@ function LandingPage({ user, onLogout }) {
                       </p>
                     </div>
                   </div>
+
+                  {/* Dynamic Book CTA inside Modal */}
+                  <button
+                    onClick={handleBookFromModal}
+                    className="mt-6 w-full py-4 rounded-2xl bg-gradient-to-r from-teal-500 to-sky-500 text-white font-bold text-sm shadow-md shadow-teal-500/20 hover:shadow-lg hover:scale-[1.01] hover:-translate-y-0.5 border-none cursor-pointer transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <span className="material-symbols-outlined">event_available</span>
+                    Đặt lịch khám ngay
+                  </button>
                 </div>
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      <BookingModal
+        isOpen={isBookingOpen}
+        onClose={() => setIsBookingOpen(false)}
+        preselectedDoctorId={bookingDocId}
+        onSuccess={() => navigate('/profile')}
+      />
     </>
   );
 }

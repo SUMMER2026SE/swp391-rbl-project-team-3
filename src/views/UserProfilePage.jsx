@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import BookingModal from '../components/BookingModal';
+import PaymentModal from '../components/PaymentModal';
+import { useAppointmentController } from '../controllers/useAppointmentController';
 import {
   User,
   Settings,
@@ -445,6 +448,183 @@ function MedicalRecordsTab() {
   );
 }
 
+// ─── Tab 4: Appointments (Patient Only) ──────────────────────────────────────
+
+function AppointmentsTab() {
+  const { user } = useAuth();
+  const { getPatientAppointments, cancelAppointment } = useAppointmentController();
+  const [selectedAptForEdit, setSelectedAptForEdit] = useState(null);
+  const [selectedAptForPay, setSelectedAptForPay] = useState(null);
+  const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
+  
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const triggerRefresh = () => setRefreshTrigger(prev => prev + 1);
+
+  const patientId = user?.id || 'mock-patient-123';
+  const appointments = getPatientAppointments(patientId);
+
+  const handleCancel = (id) => {
+    if (window.confirm('Bạn có chắc chắn muốn hủy lịch hẹn này không?')) {
+      cancelAppointment(id);
+      setSuccessMsg('Hủy lịch hẹn thành công!');
+      triggerRefresh();
+      setTimeout(() => setSuccessMsg(''), 3000);
+    }
+  };
+
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'Pending':
+        return <span className="bg-sky-100 text-sky-700 border border-sky-200 px-2.5 py-1 rounded-full text-xs font-bold">Chờ duyệt</span>;
+      case 'Paid':
+        return <span className="bg-emerald-100 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full text-xs font-bold">Đã thanh toán</span>;
+      case 'Cancelled':
+        return <span className="bg-slate-100 text-slate-500 border border-slate-200 px-2.5 py-1 rounded-full text-xs font-bold">Đã hủy</span>;
+      case 'Completed':
+        return <span className="bg-emerald-50 text-emerald-600 border border-emerald-200 px-2.5 py-1 rounded-full text-xs font-bold">Hoàn thành</span>;
+      default:
+        return <span className="bg-slate-100 text-slate-600 border border-slate-200 px-2.5 py-1 rounded-full text-xs font-bold">{status}</span>;
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <AnimatePresence>
+        {successMsg && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl p-3.5 text-sm font-semibold flex items-center gap-2 animate-bounce"
+          >
+            <CheckCircle2 className="w-4 h-4" /> {successMsg}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="p-3 bg-teal-50 rounded-xl text-teal-600 border border-teal-100">
+            <Calendar className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-slate-900">Lịch hẹn của tôi</h3>
+            <p className="text-xs text-slate-400 mt-0.5">Theo dõi lịch khám và thanh toán hóa đơn trực tuyến</p>
+          </div>
+        </div>
+        <button
+          onClick={() => { setSelectedAptForEdit(null); setIsBookingOpen(true); }}
+          className="bg-gradient-to-r from-teal-500 to-sky-500 text-white font-bold text-xs px-5 py-3 rounded-xl shadow-md shadow-teal-500/10 hover:shadow-lg hover:shadow-teal-500/20 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer border-none"
+        >
+          Đặt lịch mới
+        </button>
+      </div>
+
+      {/* List */}
+      <div className="bg-slate-50/90 border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
+        {appointments.map((apt) => (
+          <div key={apt.appointment_id} className="bg-white border border-slate-200 shadow-sm rounded-2xl p-5 hover:shadow-md hover:border-slate-300 transition-all flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 animate-[fadeIn_0.5s_ease-out]">
+            <div className="flex items-start gap-4 min-w-0 flex-1">
+              <img
+                src={apt.doctor_image}
+                alt={apt.doctor_name}
+                className="w-16 h-16 rounded-2xl object-cover object-top border border-slate-200 shrink-0 shadow-sm"
+              />
+              <div className="min-w-0 space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h4 className="font-bold text-slate-800 text-sm">{apt.doctor_name}</h4>
+                  <span className="text-[10px] text-slate-400 font-semibold">• {apt.doctor_title}</span>
+                </div>
+                <p className="text-xs font-semibold text-slate-600 flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[14px] text-slate-400">calendar_month</span> {apt.appointment_date} 
+                  <span className="material-symbols-outlined text-[14px] text-slate-400 ml-1">schedule</span> {apt.start_time} - {apt.end_time}
+                </p>
+                <p className="text-[11px] text-slate-500 truncate font-medium">
+                  <span className="font-bold text-slate-600">Dịch vụ:</span> {apt.service_name}
+                </p>
+                {apt.reason && (
+                  <p className="text-[11px] text-slate-400 italic truncate max-w-md">
+                    "{apt.reason}"
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:items-end gap-3 w-full sm:w-auto shrink-0">
+              <div className="flex justify-between items-center sm:justify-end gap-3 w-full sm:w-auto">
+                <span className="text-xs font-bold text-slate-500 sm:hidden">Trạng thái:</span>
+                {getStatusBadge(apt.status)}
+              </div>
+
+              {/* Action buttons */}
+              {apt.status === 'Pending' && (
+                <div className="flex gap-2 w-full sm:w-auto">
+                  <button
+                    onClick={() => { setSelectedAptForPay(apt); setIsPaymentOpen(true); }}
+                    className="flex-1 sm:flex-none py-2 px-4 rounded-xl bg-teal-600 text-white font-bold text-xs hover:bg-teal-500 shadow-sm transition-all border-none cursor-pointer text-center"
+                  >
+                    Thanh toán
+                  </button>
+                  <button
+                    onClick={() => { setSelectedAptForEdit(apt); setIsBookingOpen(true); }}
+                    className="flex-1 sm:flex-none py-2 px-3 rounded-xl bg-white border border-slate-200 text-slate-600 font-semibold text-xs hover:bg-slate-100 transition-all cursor-pointer text-center"
+                  >
+                    Đổi lịch
+                  </button>
+                  <button
+                    onClick={() => handleCancel(apt.appointment_id)}
+                    className="py-2 px-3 rounded-xl bg-white border border-slate-200 text-rose-600 hover:text-rose-700 hover:bg-rose-50/50 font-semibold text-xs transition-all cursor-pointer text-center border-none"
+                  >
+                    Hủy lịch
+                  </button>
+                </div>
+              )}
+              {apt.status === 'Paid' && (
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
+                  Chờ bác sĩ gọi khám
+                </span>
+              )}
+            </div>
+          </div>
+        ))}
+
+        {appointments.length === 0 && (
+          <div className="text-center py-10 border border-dashed border-slate-200 rounded-2xl bg-white/60">
+            <Calendar className="w-8 h-8 text-slate-300 mx-auto mb-3" />
+            <p className="text-sm text-slate-500 font-bold">Không có lịch hẹn nào.</p>
+            <p className="text-xs text-slate-400 mt-1">Lịch khám của bạn sẽ được hiển thị ở đây sau khi đăng ký thành công.</p>
+          </div>
+        )}
+      </div>
+
+      <BookingModal
+        isOpen={isBookingOpen}
+        onClose={() => setIsBookingOpen(false)}
+        appointmentToEdit={selectedAptForEdit}
+        onSuccess={() => {
+          setSuccessMsg(selectedAptForEdit ? 'Thay đổi lịch khám thành công!' : 'Đặt lịch khám thành công!');
+          triggerRefresh();
+          setTimeout(() => setSuccessMsg(''), 3000);
+        }}
+      />
+
+      <PaymentModal
+        isOpen={isPaymentOpen}
+        onClose={() => setIsPaymentOpen(false)}
+        appointment={selectedAptForPay}
+        onSuccess={() => {
+          setSuccessMsg('Thanh toán lịch hẹn thành công!');
+          triggerRefresh();
+          setTimeout(() => setSuccessMsg(''), 3000);
+        }}
+      />
+    </div>
+  );
+}
+
 // ─── Main UserProfilePage Component ──────────────────────────────────────────
 
 export default function UserProfilePage() {
@@ -459,7 +639,10 @@ export default function UserProfilePage() {
     { id: 'personal', label: 'Thông tin cá nhân', icon: <User className="w-4 h-4" /> },
     { id: 'settings', label: 'Cài đặt tài khoản', icon: <Settings className="w-4 h-4" /> },
     ...(role === 'PATIENT'
-      ? [{ id: 'records', label: 'Hồ sơ bệnh án', icon: <FileText className="w-4 h-4" /> }]
+      ? [
+          { id: 'appointments', label: 'Lịch hẹn của tôi', icon: <Calendar className="w-4 h-4" /> },
+          { id: 'records', label: 'Hồ sơ bệnh án', icon: <FileText className="w-4 h-4" /> }
+        ]
       : []),
   ];
 
@@ -542,6 +725,11 @@ export default function UserProfilePage() {
               {activeTab === 'settings' && (
                 <motion.div key="settings" variants={tabContentVariants} initial="hidden" animate="visible" exit="exit">
                   <AccountSettingsTab />
+                </motion.div>
+              )}
+              {activeTab === 'appointments' && (
+                <motion.div key="appointments" variants={tabContentVariants} initial="hidden" animate="visible" exit="exit">
+                  <AppointmentsTab />
                 </motion.div>
               )}
               {activeTab === 'records' && (

@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
+import { useAppointmentController } from '../controllers/useAppointmentController';
 import { 
   LayoutDashboard, 
   Users, 
@@ -45,6 +46,12 @@ export default function ReceptionistDashboard() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [isScrolled, setIsScrolled] = React.useState(false);
+  const { appointments, approveAppointment, checkinAppointment } = useAppointmentController();
+
+  const waitingPatients = appointments.filter(a => a.status === 'Paid');
+  const todayAppointments = appointments.filter(a => a.status !== 'Cancelled');
+  const pendingAppointments = appointments.filter(a => a.status === 'Pending');
+  const activeQueue = appointments.filter(a => a.status === 'Paid' || a.status === 'Completed');
 
   const handleScroll = (e) => {
     if (e.target.scrollTop > 10) {
@@ -230,12 +237,12 @@ export default function ReceptionistDashboard() {
                   <Hourglass className="w-6 h-6" />
                 </div>
                 <span className="bg-sky-50 text-sky-700 px-2.5 py-1 rounded-full text-xs font-bold border border-sky-200/20">
-                  +2 new
+                  +{waitingPatients.length} new
                 </span>
               </div>
               <h3 className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Bệnh nhân đang chờ</h3>
               <div className="flex items-baseline gap-1.5">
-                <span className="font-black text-4xl text-slate-900">12</span>
+                <span className="font-black text-4xl text-slate-900">{waitingPatients.length}</span>
                 <span className="text-xs text-slate-400 font-medium">người</span>
               </div>
             </div>
@@ -250,11 +257,11 @@ export default function ReceptionistDashboard() {
               </div>
               <h3 className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Lịch hẹn hôm nay</h3>
               <div className="flex items-baseline gap-1.5">
-                <span className="font-black text-4xl text-slate-900">45</span>
+                <span className="font-black text-4xl text-slate-900">{todayAppointments.length}</span>
                 <span className="text-xs text-slate-400 font-medium">ca khám</span>
               </div>
               <div className="mt-4 w-full bg-slate-200/50 rounded-full h-1.5 overflow-hidden">
-                <div className="bg-emerald-500 h-full rounded-full" style={{ width: '65%' }}></div>
+                <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${Math.min(100, (appointments.filter(a => a.status === 'Completed').length / (todayAppointments.length || 1)) * 100)}%` }}></div>
               </div>
             </div>
 
@@ -269,7 +276,7 @@ export default function ReceptionistDashboard() {
               </div>
               <h3 className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Thanh toán chờ xử lý</h3>
               <div className="flex items-baseline gap-1.5">
-                <span className="font-black text-4xl text-slate-900">05</span>
+                <span className="font-black text-4xl text-slate-900">{pendingAppointments.length}</span>
                 <span className="text-xs text-slate-400 font-medium">hồ sơ</span>
               </div>
             </div>
@@ -287,76 +294,51 @@ export default function ReceptionistDashboard() {
               </div>
 
               <div className="backdrop-blur-xl bg-white/40 border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.05)] rounded-[2rem] overflow-hidden flex flex-col">
-                {/* List Item 1 - Waiting State (Sky Blue badge indicator) */}
-                <div className="p-5 border-b border-slate-200/40 hover:bg-white/60 transition-colors flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-sky-50 flex items-center justify-center text-sky-700 font-bold text-lg border border-sky-100 relative">
-                      N
-                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white text-[9px] rounded-full flex items-center justify-center border border-white font-extrabold">1</span>
+                {activeQueue.map((apt, idx) => (
+                  <div key={apt.appointment_id} className={`p-5 border-b border-slate-200/40 hover:bg-white/60 transition-colors flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${apt.status === 'Completed' ? 'opacity-75' : ''}`}>
+                    <div className="flex items-center gap-4">
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg border relative ${apt.status === 'Completed' ? 'bg-slate-100 text-slate-500 border-slate-200' : 'bg-sky-50 text-sky-700 border-sky-100'}`}>
+                        {(apt.patient_name || 'B').charAt(0).toUpperCase()}
+                        {apt.status === 'Paid' && (
+                          <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white text-[9px] rounded-full flex items-center justify-center border border-white font-extrabold">
+                            {idx + 1}
+                          </span>
+                        )}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-slate-800 text-sm">{apt.patient_name}</h4>
+                        <p className="text-xs text-slate-400 font-medium flex items-center gap-1 mt-0.5">
+                          <Hourglass className="w-3.5 h-3.5 text-slate-400" /> {apt.start_time} - {apt.service_name}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="font-bold text-slate-800 text-sm">Nguyễn Văn A</h4>
-                      <p className="text-xs text-slate-400 font-medium flex items-center gap-1 mt-0.5">
-                        <Hourglass className="w-3.5 h-3.5 text-slate-400" /> 09:00 - Khám da mụn
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex gap-2 w-full sm:w-auto">
-                    <button className="flex-1 sm:flex-none px-4 py-2 rounded-xl border border-slate-200 text-slate-500 text-xs font-bold hover:bg-slate-100 transition-colors">
-                      Tìm hồ sơ
-                    </button>
-                    {/* Sky Blue Check-in Button */}
-                    <button className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-sky-600 text-white text-xs font-bold hover:bg-sky-500 transition-colors shadow-sm shadow-sky-600/10">
-                      Check-in
-                    </button>
-                  </div>
-                </div>
-
-                {/* List Item 2 - Waiting State (Sky Blue badge indicator) */}
-                <div className="p-5 border-b border-slate-200/40 hover:bg-white/60 transition-colors flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-sky-50 flex items-center justify-center text-sky-700 font-bold text-lg border border-sky-100">
-                      T
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-slate-800 text-sm">Trần Thị B</h4>
-                      <p className="text-xs text-slate-400 font-medium flex items-center gap-1 mt-0.5">
-                        <Hourglass className="w-3.5 h-3.5 text-slate-400" /> 09:30 - Tái khám Laser
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2 w-full sm:w-auto">
-                    <button className="flex-1 sm:flex-none px-4 py-2 rounded-xl border border-slate-200 text-slate-500 text-xs font-bold hover:bg-slate-100 transition-colors">
-                      Tìm hồ sơ
-                    </button>
-                    <button className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-sky-600 text-white text-xs font-bold hover:bg-sky-500 transition-colors shadow-sm shadow-sky-600/10">
-                      Check-in
-                    </button>
-                  </div>
-                </div>
-
-                {/* List Item 3 - Done State (Emerald Green indicators) */}
-                <div className="p-5 hover:bg-white/40 transition-colors flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 opacity-75">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-lg border border-slate-200">
-                      L
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-slate-600 text-sm">Lê Văn C</h4>
-                      <p className="text-xs text-slate-400 font-medium flex items-center gap-1 mt-0.5">
-                        <CheckSquare className="w-3.5 h-3.5 text-slate-400" /> 10:00 - Tư vấn dịch vụ
-                      </p>
+                    
+                    <div className="flex gap-2 w-full sm:w-auto">
+                      {apt.status === 'Paid' ? (
+                        <>
+                          <button className="flex-1 sm:flex-none px-4 py-2 rounded-xl border border-slate-200 text-slate-500 text-xs font-bold hover:bg-slate-100 transition-colors cursor-pointer bg-white">
+                            Tìm hồ sơ
+                          </button>
+                          <button
+                            onClick={() => checkinAppointment(apt.appointment_id)}
+                            className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-sky-600 text-white text-xs font-bold hover:bg-sky-500 transition-colors shadow-sm shadow-sky-600/10 cursor-pointer border-none"
+                          >
+                            Check-in
+                          </button>
+                        </>
+                      ) : (
+                        <span className="px-4 py-2 text-xs text-emerald-600 bg-emerald-50 border border-emerald-100/50 rounded-xl font-bold flex items-center gap-1.5">
+                          <CheckSquare className="w-4 h-4" /> Đã khám xong
+                        </span>
+                      )}
                     </div>
                   </div>
-
-                  <div className="flex gap-2 w-full sm:w-auto">
-                    <span className="px-4 py-2 text-xs text-emerald-600 bg-emerald-50 border border-emerald-100/50 rounded-xl font-bold flex items-center gap-1.5">
-                      <CheckSquare className="w-4 h-4" /> Đã check-in
-                    </span>
+                ))}
+                {activeQueue.length === 0 && (
+                  <div className="text-center py-8 text-slate-400 font-semibold text-sm">
+                    Không có bệnh nhân trong hàng chờ.
                   </div>
-                </div>
+                )}
               </div>
             </motion.div>
 
@@ -364,64 +346,55 @@ export default function ReceptionistDashboard() {
             <motion.div className="space-y-4" variants={fadeInUp}>
               <div className="flex justify-between items-center mb-2">
                 <h3 className="font-extrabold text-xl text-slate-900">Yêu cầu đặt lịch</h3>
-                <span className="bg-rose-50 text-rose-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-rose-200/20">3 MỚI</span>
+                <span className="bg-rose-50 text-rose-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-rose-200/20">
+                  {pendingAppointments.length} MỚI
+                </span>
               </div>
 
               <div className="space-y-3">
-                {/* Request Card 1 - Emergency/Pending indicator */}
-                <div className="backdrop-blur-xl bg-white/50 border border-white/70 shadow-[0_4px_20px_rgba(0,0,0,0.02)] rounded-2xl p-4 hover:shadow-md transition-all cursor-pointer border-l-4 border-l-sky-500 relative">
-                  <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-bold text-slate-800 text-xs">Phạm Mai Hương</h4>
-                    <span className="text-[10px] text-slate-400 font-medium">10 phút trước</span>
+                {pendingAppointments.map((apt) => (
+                  <div key={apt.appointment_id} className="backdrop-blur-xl bg-white/50 border border-white/70 shadow-[0_4px_20px_rgba(0,0,0,0.02)] rounded-2xl p-4 hover:shadow-md transition-all cursor-pointer border-l-4 border-l-sky-500 relative animate-pulse">
+                    <div className="flex justify-between items-start mb-2">
+                      <h4 className="font-bold text-slate-800 text-xs">{apt.patient_name}</h4>
+                      <span className="text-[10px] text-slate-400 font-medium">Vừa xong</span>
+                    </div>
+                    <div className="text-xs text-slate-500 font-medium space-y-1.5">
+                      <p className="flex items-center gap-2">
+                        <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                        {apt.appointment_date} - {apt.start_time}
+                      </p>
+                      <p className="flex items-center gap-2">
+                        <Plus className="w-3.5 h-3.5 text-slate-400" />
+                        {apt.service_name}
+                      </p>
+                    </div>
+                    <div className="flex gap-2 mt-4">
+                      <button
+                        onClick={() => approveAppointment(apt.appointment_id, 'rec-01')}
+                        className="flex-1 py-2 rounded-xl bg-teal-50 text-teal-700 text-[11px] font-bold hover:bg-teal-100/50 border border-teal-200/10 transition-colors cursor-pointer border-none"
+                      >
+                        Phê duyệt
+                      </button>
+                      <button
+                        onClick={() => alert(`Liên hệ bệnh nhân: ${apt.patient_name}`)}
+                        className="flex-1 py-2 rounded-xl bg-slate-100 text-slate-600 text-[11px] font-bold hover:bg-slate-200/60 border border-slate-200/10 transition-colors cursor-pointer border-none"
+                      >
+                        Liên hệ
+                      </button>
+                    </div>
                   </div>
-                  <div className="text-xs text-slate-500 font-medium space-y-1.5">
-                    <p className="flex items-center gap-2">
-                      <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                      25/10/2026 - 14:00
-                    </p>
-                    <p className="flex items-center gap-2">
-                      <Plus className="w-3.5 h-3.5 text-slate-400" />
-                      Trị nám Laser
-                    </p>
+                ))}
+                {pendingAppointments.length === 0 && (
+                  <div className="text-center py-8 text-slate-400 font-semibold text-xs border border-dashed border-slate-200 rounded-2xl bg-white/60">
+                    Không có yêu cầu đặt lịch mới.
                   </div>
-                  <div className="flex gap-2 mt-4">
-                    <button className="flex-1 py-2 rounded-xl bg-teal-50 text-teal-700 text-[11px] font-bold hover:bg-teal-100/50 border border-teal-200/10 transition-colors">
-                      Phê duyệt
-                    </button>
-                    <button className="flex-1 py-2 rounded-xl bg-slate-100 text-slate-600 text-[11px] font-bold hover:bg-slate-200/60 border border-slate-200/10 transition-colors">
-                      Liên hệ
-                    </button>
-                  </div>
-                </div>
-
-                {/* Request Card 2 */}
-                <div className="backdrop-blur-xl bg-white/50 border border-white/70 shadow-[0_4px_20px_rgba(0,0,0,0.02)] rounded-2xl p-4 hover:shadow-md transition-all cursor-pointer border-l-4 border-l-sky-500 relative">
-                  <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-bold text-slate-800 text-xs">Hoàng Khang</h4>
-                    <span className="text-[10px] text-slate-400 font-medium">1 giờ trước</span>
-                  </div>
-                  <div className="text-xs text-slate-500 font-medium space-y-1.5">
-                    <p className="flex items-center gap-2">
-                      <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                      25/10/2026 - 15:30
-                    </p>
-                    <p className="flex items-center gap-2">
-                      <Plus className="w-3.5 h-3.5 text-slate-400" />
-                      Khám dị ứng da
-                    </p>
-                  </div>
-                  <div className="flex gap-2 mt-4">
-                    <button className="flex-1 py-2 rounded-xl bg-teal-50 text-teal-700 text-[11px] font-bold hover:bg-teal-100/50 border border-teal-200/10 transition-colors">
-                      Phê duyệt
-                    </button>
-                    <button className="flex-1 py-2 rounded-xl bg-slate-100 text-slate-600 text-[11px] font-bold hover:bg-slate-200/60 border border-slate-200/10 transition-colors">
-                      Liên hệ
-                    </button>
-                  </div>
-                </div>
+                )}
               </div>
 
-              <button className="w-full mt-4 py-3 rounded-2xl border border-dashed border-slate-300 text-slate-400 hover:bg-white/40 hover:text-teal-600 hover:border-teal-300 transition-all text-xs font-bold flex items-center justify-center gap-1.5">
+              <button
+                onClick={() => navigate('/profile')}
+                className="w-full mt-4 py-3 rounded-2xl border border-dashed border-slate-300 text-slate-400 hover:bg-white/40 hover:text-teal-600 hover:border-teal-300 transition-all text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer bg-white"
+              >
                 <UserPlus className="w-4 h-4" /> Tự thêm lịch hẹn
               </button>
             </motion.div>
