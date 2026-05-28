@@ -111,7 +111,7 @@ export default function BookingModal({ isOpen, onClose, preselectedDoctorId = nu
       if (onSuccess) onSuccess();
       onClose();
     } catch (err) {
-      setErrorMsg('Có lỗi xảy ra, vui lòng thử lại.');
+      setErrorMsg(err?.message || 'Có lỗi xảy ra, vui lòng thử lại.');
     }
   };
 

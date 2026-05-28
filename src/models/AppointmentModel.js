@@ -125,11 +125,25 @@ export const AppointmentModel = {
     return list.find(item => item.appointment_id === appointmentId) || null;
   },
 
+  hasAppointmentOnDate(patientId, appointmentDate, excludeAppointmentId = null) {
+    const list = this._loadAppointments();
+    return list.some((item) => {
+      if (excludeAppointmentId && item.appointment_id === excludeAppointmentId) return false;
+      return item.patient_id === patientId && item.appointment_date === appointmentDate;
+    });
+  },
+
   addAppointment(aptData) {
+    const patientId = aptData.patient_id || "mock-patient-123";
+    const appointmentDate = aptData.appointment_date;
+    if (this.hasAppointmentOnDate(patientId, appointmentDate)) {
+      throw new Error('Bạn chỉ có thể đặt 1 lịch khám mỗi ngày.');
+    }
+
     const list = this._loadAppointments();
     const newApt = {
       appointment_id: `apt-${Math.floor(1000 + Math.random() * 9000)}`,
-      patient_id: aptData.patient_id || "mock-patient-123",
+      patient_id: patientId,
       patient_name: aptData.patient_name || "Bệnh nhân",
       doctor_id: aptData.doctor_id,
       doctor_name: aptData.doctor_name,
@@ -139,7 +153,7 @@ export const AppointmentModel = {
       service_id: aptData.service_id || "srv-01",
       service_name: aptData.service_name || "Khám da liễu tổng quát",
       slot_id: aptData.slot_id,
-      appointment_date: aptData.appointment_date,
+      appointment_date: appointmentDate,
       start_time: aptData.start_time,
       end_time: aptData.end_time,
       reason: aptData.reason || "",
@@ -157,7 +171,16 @@ export const AppointmentModel = {
     if (idx === -1) {
       throw new Error(`Appointment with ID ${appointmentId} not found.`);
     }
-    list[idx] = { ...list[idx], ...updatedFields };
+
+    const existing = list[idx];
+    const newPatientId = updatedFields.patient_id || existing.patient_id;
+    const newAppointmentDate = updatedFields.appointment_date || existing.appointment_date;
+
+    if (this.hasAppointmentOnDate(newPatientId, newAppointmentDate, appointmentId)) {
+      throw new Error('Bạn chỉ có thể có 1 lịch khám mỗi ngày.');
+    }
+
+    list[idx] = { ...existing, ...updatedFields };
     localStorage.setItem(APPOINTMENTS_KEY, JSON.stringify(list));
     return list[idx];
   },
