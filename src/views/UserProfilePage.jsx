@@ -27,7 +27,8 @@ import {
   ClipboardList,
   ChevronRight,
   CheckCircle2,
-  MapPin
+  MapPin,
+  CalendarCheck,
 } from 'lucide-react';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -641,7 +642,7 @@ export default function UserProfilePage() {
     ...(role === 'PATIENT'
       ? [
           { id: 'appointments', label: 'Lịch hẹn của tôi', icon: <Calendar className="w-4 h-4" /> },
-          { id: 'records', label: 'Hồ sơ bệnh án', icon: <FileText className="w-4 h-4" /> }
+          { id: 'records', label: 'Hồ sơ bệnh án', icon: <FileText className="w-4 h-4" /> },
         ]
       : []),
   ];

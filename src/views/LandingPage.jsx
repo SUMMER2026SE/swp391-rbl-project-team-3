@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDoctorController } from '../controllers/useDoctorController';
 import ChangePasswordModal from './ChangePasswordModal';
 import BookingModal from '../components/BookingModal';
+import FloatingChatbot from '../components/PatientPortal/FloatingChatbot';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Key, LogOut, User } from 'lucide-react';
 import '../index.css';
@@ -37,8 +38,8 @@ function LandingPage({ user, onLogout }) {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
-  const [selectedDoctor, setSelectedDoctor] = useState(null);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const [selectedDoctor, setSelectedDoctor] = useState(null);
   const [bookingDocId, setBookingDocId] = useState(null);
   
   const navigate = useNavigate();
@@ -659,6 +660,7 @@ function LandingPage({ user, onLogout }) {
       </motion.footer>
 
       <ChangePasswordModal isOpen={isChangePasswordOpen} onClose={() => setIsChangePasswordOpen(false)} />
+      <FloatingChatbot onBookAppointment={() => setIsBookingOpen(true)} />
 
       {/* Doctor Profile Modal (Liquid Glass) */}
       <AnimatePresence>

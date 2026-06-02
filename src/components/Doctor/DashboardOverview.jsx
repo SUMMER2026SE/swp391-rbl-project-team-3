@@ -1,0 +1,74 @@
+import React from 'react';
+import { Users, Brain, CheckCircle2, AlertCircle } from 'lucide-react';
+import { mockAppointments } from '../../mockData';
+
+export default function DashboardOverview({ doctorId }) {
+  // Mock today's date based on mock data
+  const today = "2026-06-05";
+  
+  const todayAppointments = mockAppointments?.filter(
+    apt => apt?.doctorId === doctorId && apt?.date === today
+  ) || [];
+
+  const totalPatientsToday = todayAppointments.length;
+  
+  const waitingPatients = todayAppointments.filter(
+    apt => apt?.status === 'Đã xác nhận' || apt?.status === 'Chờ xác nhận'
+  ).length;
+
+  const completedPatients = todayAppointments.filter(
+    apt => apt?.status === 'Đã khám'
+  ).length;
+
+  // Mock pending AI results
+  const pendingAIResults = 2;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="font-extrabold text-2xl md:text-3xl text-slate-900 tracking-tight">Tổng quan</h1>
+          <p className="text-sm text-slate-500 font-medium mt-1">Xin chào Bác sĩ, chúc bạn một ngày làm việc hiệu quả.</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="backdrop-blur-xl bg-white/40 border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.05)] rounded-[2rem] p-6 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-teal-500/5 rounded-bl-full -z-10 group-hover:bg-teal-500/10 transition-all duration-500"></div>
+          <div className="w-12 h-12 rounded-2xl bg-teal-50 flex items-center justify-center text-teal-600 mb-4 shadow-inner border border-teal-100/50">
+            <Users className="w-6 h-6" />
+          </div>
+          <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Tổng bệnh nhân hôm nay</p>
+          <p className="font-extrabold text-3xl text-slate-800">{totalPatientsToday}</p>
+        </div>
+
+        <div className="backdrop-blur-xl bg-white/40 border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.05)] rounded-[2rem] p-6 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 rounded-bl-full -z-10 group-hover:bg-amber-500/10 transition-all duration-500"></div>
+          <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-600 mb-4 shadow-inner border border-amber-100/50">
+            <AlertCircle className="w-6 h-6" />
+          </div>
+          <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Đang chờ khám</p>
+          <p className="font-extrabold text-3xl text-slate-800">{waitingPatients}</p>
+        </div>
+
+        <div className="backdrop-blur-xl bg-white/40 border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.05)] rounded-[2rem] p-6 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-sky-500/5 rounded-bl-full -z-10 group-hover:bg-sky-500/10 transition-all duration-500"></div>
+          <div className="w-12 h-12 rounded-2xl bg-sky-50 flex items-center justify-center text-sky-600 mb-4 shadow-inner border border-sky-100/50">
+            <Brain className="w-6 h-6" />
+          </div>
+          <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Kết quả AI chờ duyệt</p>
+          <p className="font-extrabold text-3xl text-slate-800">{pendingAIResults}</p>
+        </div>
+
+        <div className="backdrop-blur-xl bg-white/40 border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.05)] rounded-[2rem] p-6 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-bl-full -z-10 group-hover:bg-emerald-500/10 transition-all duration-500"></div>
+          <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 mb-4 shadow-inner border border-emerald-100/50">
+            <CheckCircle2 className="w-6 h-6" />
+          </div>
+          <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Đã hoàn thành</p>
+          <p className="font-extrabold text-3xl text-slate-800">{completedPatients}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
