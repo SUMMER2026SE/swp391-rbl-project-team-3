@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDoctorController } from '../controllers/useDoctorController';
 import ChangePasswordModal from './ChangePasswordModal';
 import BookingModal from '../components/BookingModal';
+import FreeSkinScanModal from '../components/FreeSkinScanModal';
 import FloatingChatbot from '../components/PatientPortal/FloatingChatbot';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Key, LogOut, User } from 'lucide-react';
@@ -39,6 +40,7 @@ function LandingPage({ user, onLogout }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const [isAIScanOpen, setIsAIScanOpen] = useState(false);
   const [selectedDoctor, setSelectedDoctor] = useState(null);
   const [bookingDocId, setBookingDocId] = useState(null);
   
@@ -400,11 +402,17 @@ function LandingPage({ user, onLogout }) {
               Đặt lịch khám ngay
             </button>
             <button
+              onClick={() => setIsAIScanOpen(true)}
+              className="w-full sm:w-auto bg-gradient-to-r from-sky-400 to-emerald-400 hover:from-sky-500 hover:to-emerald-500 text-white font-bold shadow-lg shadow-sky-500/25 px-8 py-4 rounded-2xl transition-all cursor-pointer border-none text-base flex items-center justify-center gap-2"
+            >
+              ✨ Soi da AI miễn phí
+            </button>
+            <button
               onClick={() => {
                 const featuresEl = document.getElementById('features');
                 if (featuresEl) featuresEl.scrollIntoView({ behavior: 'smooth' });
               }}
-              className="w-full sm:w-auto border border-sky-400 hover:bg-sky-50 text-sky-600 font-semibold px-8 py-4 rounded-2xl transition-all cursor-pointer bg-transparent text-base"
+              className="w-full sm:w-auto border border-sky-300 hover:bg-white/50 text-sky-600 font-semibold px-8 py-4 rounded-2xl transition-all cursor-pointer bg-transparent text-base"
             >
               Xem tính năng AI
             </button>
@@ -660,7 +668,8 @@ function LandingPage({ user, onLogout }) {
       </motion.footer>
 
       <ChangePasswordModal isOpen={isChangePasswordOpen} onClose={() => setIsChangePasswordOpen(false)} />
-      <FloatingChatbot onBookAppointment={() => setIsBookingOpen(true)} />
+      <FloatingChatbot onBookAppointment={() => setIsBookingOpen(true)} onAIScan={() => setIsAIScanOpen(true)} />
+      <FreeSkinScanModal isOpen={isAIScanOpen} onClose={() => setIsAIScanOpen(false)} onBookAppointment={() => setIsBookingOpen(true)} />
 
       {/* Doctor Profile Modal (Liquid Glass) */}
       <AnimatePresence>
