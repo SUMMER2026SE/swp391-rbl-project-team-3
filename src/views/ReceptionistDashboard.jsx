@@ -41,6 +41,8 @@ import {
   mockTimeSlots 
 } from '../mockData';
 import LiveChatDrawer from '../components/Receptionist/LiveChatDrawer';
+import ReceptionistChatTab from '../components/Receptionist/ReceptionistChatTab';
+import { ReceptionistChatModel } from '../models/ChatModel';
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 30 },
@@ -71,8 +73,19 @@ export default function ReceptionistDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const { appointments, approveAppointment, checkinAppointment, bookAppointment, cancelAppointment } = useAppointmentController();
   const [patients, setPatients] = useState(mockPatients);
-  const [chatMessages, setChatMessages] = useState(mockChatMessages);
+  const [chatMessages, setChatMessages] = useState([]);
   const [toast, setToast] = useState(null);
+
+  // Poll receptionist messages from ReceptionistChatModel to keep state synchronized
+  useEffect(() => {
+    const fetchMsgs = () => {
+      const msgs = ReceptionistChatModel.getAllMessages();
+      setChatMessages(msgs);
+    };
+    fetchMsgs();
+    const interval = setInterval(fetchMsgs, 2000);
+    return () => clearInterval(interval);
+  }, []);
   
   // Manual Appointment Modal State
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -216,32 +229,28 @@ export default function ReceptionistDashboard() {
 
   // 6. Handle sending message from receptionist
   const handleSendMessage = (patientId, text) => {
-    const newMsg = {
-      id: `msg-${Date.now()}`,
+    const newMsg = ReceptionistChatModel.addMessage({
       senderId: 'staff-01', // Receptionist ID
       senderName: 'Lễ tân Hoàng Anh',
       senderRole: 'RECEPTIONIST',
       text: text,
-      timestamp: new Date().toISOString(),
       mode: 'Live',
       patientId: patientId
-    };
+    });
     
     setChatMessages(prev => [...prev, newMsg]);
 
     // Simulate patient response after 1.5s to show rich interactivity
     setTimeout(() => {
       const activePatient = (patients || []).find(p => p.id === patientId);
-      const replyMsg = {
-        id: `msg-${Date.now() + 1}`,
+      const replyMsg = ReceptionistChatModel.addMessage({
         senderId: patientId,
         senderName: activePatient ? activePatient.fullName : 'Bệnh nhân',
         senderRole: 'PATIENT',
         text: `Dạ vâng ạ, cảm ơn lễ tân đã hỗ trợ nhiệt tình!`,
-        timestamp: new Date().toISOString(),
         mode: 'Live',
         patientId: patientId
-      };
+      });
       setChatMessages(prev => [...prev, replyMsg]);
       showToast(`Tin nhắn mới từ bệnh nhân ${activePatient ? activePatient.fullName : 'Bệnh nhân'}`, 'info');
     }, 1500);
@@ -324,6 +333,7 @@ export default function ReceptionistDashboard() {
               { id: 'appointments', label: 'Quản lý Lịch hẹn', icon: CalendarDays },
               { id: 'payments', label: 'Thanh toán & Hóa đơn', icon: CreditCard },
               { id: 'doctor_schedules', label: 'Lịch Bác sĩ', icon: Stethoscope },
+              { id: 'chat', label: 'Trò chuyện & Hỗ trợ', icon: MessageSquare },
             ].map(tab => (
               <button
                 key={tab.id}
@@ -413,14 +423,6 @@ export default function ReceptionistDashboard() {
               Cổng lễ tân
             </span>
             <div className="flex items-center gap-3 text-slate-500">
-              <button 
-                onClick={() => handleOpenChat('pat-01', 'Lê Minh Khôi')}
-                className="hover:bg-slate-100 hover:text-teal-600 transition-all p-2 rounded-full relative active:scale-95 border-none cursor-pointer bg-transparent flex items-center justify-center"
-                title="Mở Kênh Trò Chuyện Trực Tiếp"
-              >
-                <MessageSquare className="w-5 h-5 text-slate-600" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-              </button>
               <button className="hover:bg-slate-100 hover:text-teal-600 transition-all p-2 rounded-full relative active:scale-95 border-none cursor-pointer bg-transparent flex items-center justify-center">
                 <Bell className="w-5 h-5" />
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full"></span>
@@ -590,6 +592,24 @@ export default function ReceptionistDashboard() {
                                 </>
                               )}
                             </p>
+                            
+                            {/* Payment Deposit & Collection Status */}
+                            {apt.status === 'Paid' && (
+                              <div className="text-[10px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-200/20 font-bold mt-1 inline-block">
+                                💳 Đã cọc: 50,000 VNĐ — Thu thêm: <strong className="text-slate-700">{(() => {
+                                  const parseFeeStr = (f) => f ? (parseInt(f.replace(/[^0-9]/g, ''), 10) || 500000) : 500000;
+                                  const doc = doctors.find(d => d.id === apt.doctor_id);
+                                  const feeStr = doc?.consultationFee || '500,000 VNĐ';
+                                  const remaining = parseFeeStr(feeStr) - 50000;
+                                  return remaining.toLocaleString('vi-VN') + ' VNĐ';
+                                })()}</strong> (Tại quầy)
+                              </div>
+                            )}
+                            {apt.status === 'Completed' && (
+                              <div className="text-[10px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/20 font-bold mt-1 inline-block">
+                                ✓ Đã khám xong &amp; Đã thu đủ tiền
+                              </div>
+                            )}
                           </div>
                         </div>
                         
@@ -753,6 +773,13 @@ export default function ReceptionistDashboard() {
                 <div className="p-8 backdrop-blur-xl bg-white/40 border border-white/60 shadow-sm rounded-[2rem] text-center text-slate-500 font-medium">
                   Tính năng đang được phát triển...
                 </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'chat' && (
+              <motion.div key="chat" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+                <h2 className="text-2xl font-bold text-slate-800 mb-6">Trò chuyện &amp; Hỗ trợ trực tuyến</h2>
+                <ReceptionistChatTab />
               </motion.div>
             )}
           </AnimatePresence>
