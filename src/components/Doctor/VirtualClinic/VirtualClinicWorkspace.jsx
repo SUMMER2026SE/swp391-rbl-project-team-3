@@ -1,16 +1,77 @@
-import React from 'react';
-import { ArrowLeft, CheckCircle2 } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ArrowLeft, CheckCircle2, MessageSquare, X, Send } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import PatientVitals from './LeftPanel/PatientVitals';
 import AISkinAnalysis from './LeftPanel/AISkinAnalysis';
 import DiagnosisForm from './RightPanel/DiagnosisForm';
 import TreatmentPlanForm from './RightPanel/TreatmentPlanForm';
 import PrescriptionForm from './RightPanel/PrescriptionForm';
+import { ChatModel } from '../../../models/ChatModel';
+import { doctors } from '../../../mockData';
 
 export default function VirtualClinicWorkspace({ appointment, onBack }) {
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [conversation, setConversation] = useState([]);
+  const [inputValue, setInputValue] = useState('');
+  const messagesEndRef = useRef(null);
+
+  const doctorId = appointment?.doctorId || 'doc-01';
+  const patientId = appointment?.patientId || 'pat-01';
+  const patientName = appointment?.patientName || 'Bệnh nhân';
+  const activeDoctor = doctors.find(d => d.id === doctorId) || doctors[0];
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    if (isChatOpen) {
+      scrollToBottom();
+    }
+  }, [conversation, isChatOpen]);
+
+  // Polling for messages between doctor and current patient
+  useEffect(() => {
+    if (!isChatOpen || !appointment) return;
+
+    const fetchMsgs = () => {
+      const msgs = ChatModel.getMessagesBetween(patientId, doctorId);
+      setConversation(msgs);
+    };
+
+    fetchMsgs();
+    const interval = setInterval(fetchMsgs, 2000); // Poll every 2 seconds
+    return () => clearInterval(interval);
+  }, [isChatOpen, patientId, doctorId, appointment]);
+
   if (!appointment) return null;
 
+  const handleSend = (e) => {
+    if (e) e.preventDefault();
+    if (!inputValue.trim()) return;
+
+    const newMsg = ChatModel.addMessage({
+      senderId: doctorId,
+      senderName: activeDoctor.name,
+      senderRole: 'DOCTOR',
+      receiverId: patientId,
+      receiverName: patientName,
+      text: inputValue.trim()
+    });
+
+    setConversation(prev => [...prev, newMsg]);
+    setInputValue('');
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden relative">
       {/* Workspace Header */}
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-4">
@@ -55,7 +116,7 @@ export default function VirtualClinicWorkspace({ appointment, onBack }) {
                 alert('Khám xong! Lưu hồ sơ...');
                 onBack();
               }}
-              className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white py-4 px-6 rounded-[1.5rem] font-bold text-lg shadow-lg shadow-emerald-500/20 hover:shadow-xl hover:shadow-emerald-500/30 active:scale-95 transition-all flex justify-center items-center gap-3"
+              className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white py-4 px-6 rounded-[1.5rem] font-bold text-lg shadow-lg shadow-emerald-500/20 hover:shadow-xl hover:shadow-emerald-500/30 active:scale-95 transition-all flex justify-center items-center gap-3 border-none cursor-pointer"
             >
               <CheckCircle2 className="w-6 h-6" />
               Hoàn tất khám & Lưu hồ sơ
@@ -64,6 +125,8 @@ export default function VirtualClinicWorkspace({ appointment, onBack }) {
         </div>
 
       </div>
+
+
 
       <style>{`
         .custom-scrollbar::-webkit-scrollbar {

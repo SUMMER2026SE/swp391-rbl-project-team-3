@@ -10,7 +10,8 @@ import {
   Search, 
   Bell, 
   Settings, 
-  User 
+  User,
+  MessageSquare
 } from 'lucide-react';
 
 // Import Tab Components
@@ -18,6 +19,8 @@ import DashboardOverview from '../components/Doctor/DashboardOverview';
 import ScheduleWaitingList from '../components/Doctor/ScheduleWaitingList';
 import WorkSchedule from '../components/Doctor/WorkSchedule';
 import VirtualClinicWorkspace from '../components/Doctor/VirtualClinic/VirtualClinicWorkspace';
+import DoctorChatTab from '../components/Doctor/DoctorChatTab';
+import { doctors } from '../mockData';
 
 export default function DoctorDashboard() {
   const { user, logout } = useAuth();
@@ -28,7 +31,10 @@ export default function DoctorDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [activeAppointment, setActiveAppointment] = useState(null);
 
-  const doctorId = user?.id || 'doc-01'; // Fallback to mock doctor 1
+  const [currentDoctorId, setCurrentDoctorId] = useState(
+    (user?.id && typeof user.id === 'string' && user.id.startsWith('doc-')) ? user.id : 'doc-01'
+  );
+  const activeDoctor = doctors.find(d => d.id === currentDoctorId) || doctors[0];
 
   const handleScroll = (e) => {
     if (e.target.scrollTop > 10) {
@@ -161,8 +167,25 @@ export default function DoctorDashboard() {
 
           <div className="flex items-center gap-6">
             <div className="text-right hidden md:block">
-              <p className="font-bold text-sm text-slate-900 leading-none">{user?.name || 'BS. CKII. Trần Văn A'}</p>
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Doctor Portal</span>
+              {!user?.isSupabase ? (
+                <div className="flex flex-col items-end">
+                  <select
+                    value={currentDoctorId}
+                    onChange={(e) => setCurrentDoctorId(e.target.value)}
+                    className="font-bold text-sm text-slate-900 bg-white/80 border border-slate-200 rounded-xl px-3 py-1.5 outline-none focus:border-teal-500 transition-all text-right shadow-sm cursor-pointer"
+                  >
+                    {doctors.map(d => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                  </select>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Doctor Portal (Demo)</span>
+                </div>
+              ) : (
+                <>
+                  <p className="font-bold text-sm text-slate-900 leading-none">{user?.name || 'BS. CKII. Trần Văn A'}</p>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Doctor Portal</span>
+                </>
+              )}
             </div>
             <div className="flex items-center gap-3 text-slate-500">
               <button className="hover:bg-slate-100 hover:text-teal-600 transition-all p-2 rounded-full relative active:scale-95">
@@ -172,10 +195,14 @@ export default function DoctorDashboard() {
               <button className="hover:bg-slate-100 hover:text-teal-600 transition-all p-2 rounded-full active:scale-95">
                 <Settings className="w-5 h-5" />
               </button>
-              <button className="w-8 h-8 rounded-full overflow-hidden border border-slate-200 active:scale-95 transition-transform">
-                <div className="w-full h-full bg-teal-50 flex items-center justify-center text-teal-600 font-bold text-xs">
-                  <User className="w-4 h-4" />
-                </div>
+              <button className="w-8 h-8 rounded-full overflow-hidden border border-slate-200 active:scale-95 transition-transform flex items-center justify-center">
+                {activeDoctor?.image ? (
+                  <img src={activeDoctor.image} alt={activeDoctor.name} className="w-full h-full object-cover object-top" />
+                ) : (
+                  <div className="w-full h-full bg-teal-50 flex items-center justify-center text-teal-600 font-bold text-xs">
+                    <User className="w-4 h-4" />
+                  </div>
+                )}
               </button>
             </div>
           </div>
@@ -196,9 +223,10 @@ export default function DoctorDashboard() {
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
             >
-              {activeTab === 'overview' && <DashboardOverview doctorId={doctorId} />}
-              {activeTab === 'waiting_list' && <ScheduleWaitingList doctorId={doctorId} onStartExam={setActiveAppointment} />}
-              {activeTab === 'schedule' && <WorkSchedule doctorId={doctorId} />}
+              {activeTab === 'overview' && <DashboardOverview doctorId={currentDoctorId} />}
+              {activeTab === 'waiting_list' && <ScheduleWaitingList doctorId={currentDoctorId} onStartExam={setActiveAppointment} />}
+              {activeTab === 'schedule' && <WorkSchedule doctorId={currentDoctorId} />}
+              {activeTab === 'chat' && <DoctorChatTab doctorId={currentDoctorId} />}
             </motion.div>
           )}
         </main>
