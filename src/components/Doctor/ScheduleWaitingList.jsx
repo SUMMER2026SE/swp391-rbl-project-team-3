@@ -6,9 +6,11 @@ export default function ScheduleWaitingList({ doctorId, onStartExam }) {
   // Mock today's date
   const today = "2026-06-05";
 
-  // FOR TESTING: Bypass strict filters to guarantee data renders
-  // Remove doctorId and date checks
-  const todayAppointments = mockAppointments?.sort((a, b) => a.time.localeCompare(b.time)) || [];
+  // Restore proper filtering: Only show appointments where status === 'Đang chờ' (Checked-in)
+  // Clone to avoid mutating original array
+  const todayAppointments = [...(mockAppointments || [])]
+    .filter(apt => apt.status === 'Đang chờ')
+    .sort((a, b) => a.time.localeCompare(b.time));
 
   const handleStartExam = (apt) => {
     if (onStartExam) {

@@ -45,7 +45,7 @@ export function AuthProvider({ children }) {
 
   const login = (role) => {
     const newUser = {
-      id: Date.now(),
+      id: role === 'DOCTOR' ? 'doc-01' : Date.now(),
       name: ROLE_DISPLAY_NAMES[role] || role,
       role,
     };

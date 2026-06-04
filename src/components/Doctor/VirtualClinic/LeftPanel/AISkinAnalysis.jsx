@@ -20,13 +20,20 @@ export default function AISkinAnalysis({ patientId }) {
     ]
   };
 
-  // Try to find the latest AI result for the patient, fallback to the first mock if none, or hardcoded fallback
-  const aiResult = mockAISkinResults?.find(r => r.patientId === patientId) || mockAISkinResults?.[0] || fallbackResult;
+  // Try to find the latest AI result for the patient
+  const aiResult = mockAISkinResults?.find(r => r.patientId === patientId);
 
-  if (!aiResult) return null; // Should never happen now
+  if (!aiResult) {
+    return (
+      <div className="glass-3d water-refract rounded-[2rem] p-8 text-center text-slate-500 font-medium mb-6">
+        <Brain className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+        <p className="text-sm font-semibold">Chưa có dữ liệu xét nghiệm/AI cho bệnh nhân này.</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="backdrop-blur-xl bg-white/40 border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.05)] rounded-[2rem] p-6">
+    <div className="glass-3d water-refract rounded-[2rem] p-6">
       <div className="flex justify-between items-center mb-6 pb-4 border-b border-slate-200/40">
         <h3 className="font-extrabold text-lg text-slate-900 flex items-center gap-2">
           <Brain className="w-5 h-5 text-teal-600" />

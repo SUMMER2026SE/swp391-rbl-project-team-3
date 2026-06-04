@@ -3,7 +3,7 @@ import { Stethoscope } from 'lucide-react';
 
 export default function DiagnosisForm() {
   return (
-    <div className="backdrop-blur-xl bg-white/40 border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.05)] rounded-[2rem] p-6 mb-6">
+    <div className="glass-3d water-refract rounded-[2rem] p-6 mb-6">
       <div className="flex items-center gap-2 mb-4 pb-4 border-b border-slate-200/40">
         <Stethoscope className="w-5 h-5 text-teal-600" />
         <h3 className="font-extrabold text-lg text-slate-900">Chẩn đoán Lâm sàng</h3>
