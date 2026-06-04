@@ -1,41 +1,85 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { motion } from 'framer-motion';
-import { 
+import {
+  motion,
+  useScroll,
+  useTransform,
+  useSpring,
+  useMotionTemplate,
+} from 'framer-motion';
+import {
   LayoutDashboard, 
   Users, 
   Calendar, 
-  Inbox, 
-  TrendingUp, 
-  HelpCircle, 
   LogOut, 
   Search, 
   Bell, 
   Settings, 
-  Plus, 
-  Stethoscope, 
-  CheckCircle2, 
-  ChevronRight, 
-  Activity, 
-  FileText, 
-  Brain, 
-  Sliders, 
   User 
 } from 'lucide-react';
+
+// Import Tab Components
+import DashboardOverview from '../components/Doctor/DashboardOverview';
+import ScheduleWaitingList from '../components/Doctor/ScheduleWaitingList';
+import WorkSchedule from '../components/Doctor/WorkSchedule';
+import VirtualClinicWorkspace from '../components/Doctor/VirtualClinic/VirtualClinicWorkspace';
 
 export default function DoctorDashboard() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [isScrolled, setIsScrolled] = React.useState(false);
 
-  const handleScroll = (e) => {
-    if (e.target.scrollTop > 10) {
-      setIsScrolled(true);
-    } else {
-      setIsScrolled(false);
-    }
-  };
+  // State-based routing
+  const [activeTab, setActiveTab] = useState('overview');
+  const [activeAppointment, setActiveAppointment] = useState(null);
+
+  const doctorId = user?.id || 'doc-01'; // Fallback to mock doctor 1
+
+  /* --------------------------------------------------------------
+     Continuous scroll-linked navbar morph (Part 2).
+     We track the scroll position of the inner content container and
+     interpolate every geometric property smoothly. Each value is wrapped
+     in a spring so the bar "breathes" into its pill shape instead of
+     snapping between two discrete states.
+     -------------------------------------------------------------- */
+  const scrollRef = useRef(null);
+  const { scrollY } = useScroll({ container: scrollRef });
+
+  const spring = { stiffness: 220, damping: 32, mass: 0.9 };
+  // raw interpolations across the first 120px of scroll
+  const widthRaw = useTransform(scrollY, [0, 120], [100, 90]);
+  const maxWRaw = useTransform(scrollY, [0, 120], [1600, 1140]);
+  const radiusRaw = useTransform(scrollY, [0, 120], [0, 32]);
+  const topRaw = useTransform(scrollY, [0, 120], [0, 16]);
+  const padXRaw = useTransform(scrollY, [0, 120], [32, 30]);
+  const bgRaw = useTransform(scrollY, [0, 120], [0, 0.72]);
+  const shadowRaw = useTransform(scrollY, [0, 120], [0, 0.12]);
+  const ringRaw = useTransform(scrollY, [0, 120], [0, 0.7]);
+
+  // springy motion values
+  const widthMV = useSpring(widthRaw, spring);
+  const maxWMV = useSpring(maxWRaw, spring);
+  const radiusMV = useSpring(radiusRaw, spring);
+  const topMV = useSpring(topRaw, spring);
+  const padXMV = useSpring(padXRaw, spring);
+  const bgMV = useSpring(bgRaw, spring);
+  const shadowMV = useSpring(shadowRaw, spring);
+  const ringMV = useSpring(ringRaw, spring);
+
+  // composed CSS strings
+  const navWidth = useMotionTemplate`${widthMV}%`;
+  const navMaxWidth = useMotionTemplate`${maxWMV}px`;
+  const navRadius = useMotionTemplate`${radiusMV}px`;
+  const navTop = useMotionTemplate`${topMV}px`;
+  const navPadX = useMotionTemplate`${padXMV}px`;
+  const navBg = useMotionTemplate`rgba(255, 255, 255, ${bgMV})`;
+  const navShadow = useMotionTemplate`0 14px 40px rgba(2, 32, 29, ${shadowMV}), inset 0 1px 2px rgba(255,255,255,0.9), inset 0 0 0 1px rgba(255,255,255,${ringMV})`;
+
+  const navItems = [
+    { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard },
+    { id: 'waiting_list', label: 'Hàng chờ & Lịch khám', icon: Users },
+    { id: 'schedule', label: 'Lịch làm việc', icon: Calendar },
+  ];
 
   return (
     <div className="min-h-screen bg-slate-50 relative overflow-x-hidden flex w-full font-sans antialiased text-slate-800">
@@ -54,11 +98,6 @@ export default function DoctorDashboard() {
         .bg-mesh-blob-2 {
           animation: float-reverse 20s ease-in-out infinite;
         }
-        .form-input-focus:focus {
-          background: #ffffff !important;
-          border-color: #14b8a6 !important;
-          box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.1) !important;
-        }
       `}</style>
 
       {/* Pristine Medical Mesh Gradients */}
@@ -68,49 +107,40 @@ export default function DoctorDashboard() {
       </div>
 
       {/* Unified Glass Sidebar */}
-      <aside className="hidden md:flex backdrop-blur-2xl bg-white/60 border-r border-white/50 w-64 fixed h-full z-40 flex-col py-8 px-4 justify-between">
+      <aside className="hidden md:flex backdrop-blur-2xl bg-white/60 border-r border-white/60 w-64 fixed h-full z-40 flex-col py-8 px-4 justify-between shadow-[4px_0_24px_rgba(0,0,0,0.03),inset_-1px_0_2px_rgba(255,255,255,0.7)]">
         <div>
           {/* Logo Brand */}
           <div className="px-4 mb-8 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-teal-500 to-sky-500 flex items-center justify-center text-white font-bold shadow-md shadow-teal-500/10">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-black text-lg shadow-lg shadow-teal-500/25">
               DS
             </div>
             <div>
-              <h1 className="font-bold text-lg text-slate-900 tracking-tight leading-none">DermaSmart</h1>
-              <span className="text-[11px] text-slate-500 font-medium">Clinic Management</span>
+              <h1 className="font-black text-xl text-gradient-emerald tracking-tight leading-none">DermaSmart</h1>
+              <span className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider">Doctor Portal</span>
             </div>
           </div>
 
-          {/* New Appointment Button */}
-          <div className="px-2 mb-6">
-            <button className="w-full bg-gradient-to-r from-teal-600 to-sky-600 text-white py-3 px-4 rounded-xl font-semibold shadow-md shadow-teal-600/10 hover:shadow-lg hover:shadow-teal-600/20 active:scale-95 transition-all flex justify-center items-center gap-2 text-sm">
-              <Plus className="w-4 h-4" />
-              New Appointment
-            </button>
-          </div>
-
           {/* Navigation Links */}
-          <nav className="space-y-1">
-            <a href="#" className="flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-slate-600 hover:text-teal-600 hover:bg-teal-50/40 transition-all">
-              <LayoutDashboard className="w-5 h-5 text-slate-400" />
-              <span className="text-sm">Dashboard</span>
-            </a>
-            <a href="#" className="flex items-center gap-3 px-4 py-3 rounded-xl font-bold bg-teal-50 text-teal-700 shadow-sm border border-teal-100/50 transition-all">
-              <Activity className="w-5 h-5 text-teal-600" />
-              <span className="text-sm">Hàng chờ khám</span>
-            </a>
-            <a href="#" className="flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-slate-600 hover:text-teal-600 hover:bg-teal-50/40 transition-all">
-              <Calendar className="w-5 h-5 text-slate-400" />
-              <span className="text-sm">Appointments</span>
-            </a>
-            <a href="#" className="flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-slate-600 hover:text-teal-600 hover:bg-teal-50/40 transition-all">
-              <Inbox className="w-5 h-5 text-slate-400" />
-              <span className="text-sm">Inventory</span>
-            </a>
-            <a href="#" className="flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-slate-600 hover:text-teal-600 hover:bg-teal-50/40 transition-all">
-              <TrendingUp className="w-5 h-5 text-slate-400" />
-              <span className="text-sm">Analytics</span>
-            </a>
+          <nav className="space-y-1.5">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all active:scale-[0.98] ${
+                    isActive
+                      ? 'font-extrabold bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/25'
+                      : 'font-semibold text-slate-600 hover:text-teal-700 hover:bg-teal-50/60'
+                  }`}
+                >
+                  <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                  <span className="text-[15px]">{item.label}</span>
+                </button>
+              );
+            })}
           </nav>
         </div>
 
@@ -123,10 +153,6 @@ export default function DoctorDashboard() {
             <User className="w-5 h-5 text-slate-400" />
             <span className="text-sm">Hồ sơ cá nhân</span>
           </button>
-          <a href="#" className="flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-slate-600 hover:text-teal-600 hover:bg-teal-50/40 transition-all">
-            <HelpCircle className="w-5 h-5 text-slate-400" />
-            <span className="text-sm">Support</span>
-          </a>
           <button
             onClick={async () => {
               await logout();
@@ -135,342 +161,89 @@ export default function DoctorDashboard() {
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-slate-600 hover:text-rose-600 hover:bg-rose-50/40 transition-all"
           >
             <LogOut className="w-5 h-5 text-slate-400" />
-            <span className="text-sm">Sign Out</span>
+            <span className="text-sm">Đăng xuất</span>
           </button>
         </div>
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 md:ml-64 flex flex-col h-screen overflow-y-auto z-10" onScroll={handleScroll}>
-        {/* Dynamic Morphing Pill Topbar */}
+      <div
+        ref={scrollRef}
+        className="flex-1 md:ml-64 flex flex-col h-screen overflow-y-auto z-10"
+      >
+        {/* Continuous Morphing Pill Topbar (scroll-linked, no snapping) */}
         <motion.header
-          animate={{
-            width: isScrolled ? "92%" : "100%",
-            maxWidth: isScrolled ? "1100px" : "100%",
-            top: isScrolled ? "16px" : "0px",
-            borderRadius: isScrolled ? "9999px" : "0px",
-            backgroundColor: isScrolled ? "rgba(255, 255, 255, 0.75)" : "transparent",
-            boxShadow: isScrolled ? "0 10px 30px rgba(0,0,0,0.06)" : "none",
-            borderBottom: isScrolled ? "none" : "1px solid rgba(226, 232, 240, 0.8)",
-            border: isScrolled ? "1px solid rgba(255, 255, 255, 0.8)" : "none",
+          style={{
+            position: 'sticky',
+            top: navTop,
+            zIndex: 50,
+            margin: '0 auto',
+            left: 0,
+            right: 0,
+            width: navWidth,
+            maxWidth: navMaxWidth,
+            borderRadius: navRadius,
+            paddingLeft: navPadX,
+            paddingRight: navPadX,
+            backgroundColor: navBg,
+            boxShadow: navShadow,
           }}
-          transition={{ type: "spring", stiffness: 200, damping: 25 }}
-          style={{ position: 'sticky', zIndex: 50, margin: '0 auto', left: 0, right: 0 }}
-          className="backdrop-blur-xl flex justify-between items-center w-full px-8 h-20"
+          className="backdrop-blur-2xl flex justify-between items-center h-20"
         >
           <div className="flex items-center gap-4">
-            <span className="font-extrabold text-xl text-teal-600 md:hidden tracking-tight">DermaSmart</span>
-            <div className="hidden md:flex items-center bg-white/60 border border-slate-200/50 rounded-full px-4 py-1.5 focus-within:ring-2 focus-within:ring-teal-500/20 focus-within:border-teal-500 transition-all shadow-sm">
-              <Search className="w-4 h-4 text-slate-400 mr-2" />
+            <span className="font-black text-2xl text-gradient-emerald md:hidden tracking-tight">DermaSmart</span>
+            <div className="hidden md:flex items-center glass-inner rounded-full pl-4 pr-5 py-2.5 focus-within:ring-2 focus-within:ring-teal-500/30 focus-within:border-teal-400 transition-all">
+              <Search className="w-[18px] h-[18px] text-slate-400 mr-2.5" />
               <input
-                className="bg-transparent border-none outline-none text-sm placeholder-slate-400 w-64 p-0 focus:ring-0"
+                className="bg-transparent border-none outline-none text-[15px] font-medium text-slate-700 placeholder-slate-400 w-72 p-0 focus:ring-0"
                 placeholder="Tìm kiếm bệnh nhân, hồ sơ..."
                 type="text"
               />
             </div>
           </div>
 
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-5">
             <div className="text-right hidden md:block">
-              <p className="font-bold text-sm text-slate-900 leading-none">{user?.name || 'Bác sĩ Trần Văn A'}</p>
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Doctor Portal</span>
+              <p className="font-extrabold text-[15px] text-slate-900 leading-tight tracking-tight">{user?.name || 'BS. CKII. Trần Văn A'}</p>
+              <span className="text-[11px] text-teal-600 font-bold uppercase tracking-wider">Doctor Portal</span>
             </div>
-            <div className="flex items-center gap-3 text-slate-500">
-              <button className="hover:bg-slate-100 hover:text-teal-600 transition-all p-2 rounded-full relative active:scale-95">
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full"></span>
+            <div className="flex items-center gap-2.5 text-slate-500">
+              <button className="hover:bg-white/70 hover:text-teal-600 transition-all p-2.5 rounded-full relative active:scale-95">
+                <Bell className="w-[22px] h-[22px]" />
+                <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-white"></span>
               </button>
-              <button className="hover:bg-slate-100 hover:text-teal-600 transition-all p-2 rounded-full active:scale-95">
-                <Settings className="w-5 h-5" />
+              <button className="hover:bg-white/70 hover:text-teal-600 transition-all p-2.5 rounded-full active:scale-95">
+                <Settings className="w-[22px] h-[22px]" />
               </button>
-              <button className="w-8 h-8 rounded-full overflow-hidden border border-slate-200 active:scale-95 transition-transform">
-                <div className="w-full h-full bg-teal-50 flex items-center justify-center text-teal-600 font-bold text-xs">
-                  <User className="w-4 h-4" />
+              <button className="w-11 h-11 rounded-full overflow-hidden ring-2 ring-white shadow-md shadow-teal-500/10 active:scale-95 transition-transform">
+                <div className="w-full h-full bg-gradient-to-br from-teal-500 to-sky-500 flex items-center justify-center text-white">
+                  <User className="w-5 h-5" />
                 </div>
               </button>
             </div>
           </div>
         </motion.header>
 
-        {/* Dashboard Content */}
-        <main className="p-8 space-y-8 max-w-7xl w-full mx-auto">
-          {/* Quick Stats Header */}
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
-            <div>
-              <h1 className="font-extrabold text-2xl md:text-3xl text-slate-900 tracking-tight mb-1">
-                Đang khám: Nguyễn Thị Lan
-              </h1>
-              <p className="text-sm text-slate-500 font-medium flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-                Phòng khám số 3 • Đã chờ 15 phút
-              </p>
-            </div>
-
-            <div className="flex gap-4 w-full md:w-auto">
-              <div className="backdrop-blur-xl bg-white/40 border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.05)] rounded-2xl px-6 py-3 flex items-center gap-4 flex-1 md:flex-none">
-                <div className="w-10 h-10 rounded-xl bg-sky-50 flex items-center justify-center text-sky-600 border border-sky-100/50 shadow-inner">
-                  <Users className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Bệnh nhân còn lại</p>
-                  <p className="font-extrabold text-xl text-slate-800">12</p>
-                </div>
-              </div>
-
-              <div className="backdrop-blur-xl bg-white/40 border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.05)] rounded-2xl px-6 py-3 flex items-center gap-4 flex-1 md:flex-none">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 border border-emerald-100/50 shadow-inner">
-                  <CheckCircle2 className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Ca hoàn thành</p>
-                  <p className="font-extrabold text-xl text-slate-800">08</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Split View Layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            {/* Left Column: Patient Profile & Analysis (Bento Grid Style) */}
-            <div className="lg:col-span-7 flex flex-col gap-8">
-              {/* Patient Profile Card (Diluted Red/Rose tag for allergies) */}
-              <div className="backdrop-blur-xl bg-white/40 border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.05)] rounded-[2rem] p-6 relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-teal-500/5 rounded-bl-full -z-10 group-hover:bg-teal-500/10 transition-all duration-500"></div>
-                <div className="flex flex-col sm:flex-row gap-6 items-start">
-                  <img
-                    alt="Ảnh hồ sơ bệnh nhân Nguyễn Thị Lan"
-                    className="w-24 h-24 rounded-2xl border-2 border-white shadow-md object-cover"
-                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuAQTTYhWuIogqCXc_9uJkEQG7hEpfWz_IumR4SbjVMFWWWhm1o31IqiCvW-kUfkLsgYAt-zFgZVh_wYkQnY0egxs1F3BW6w04KuTm0IB3ut-14kbMONYJE6kUPGYLLNgNyTx2Cd8JwnmioAcuw-bIPAJNN80NV8TxWqhJDuhNIxrq5n62qioHaVRD92GbKqTXMmeXlBBN07-JP4aFlh7UrYgHj339tYjes1IsjT4GX8f-wJ_1I8wTZhL77hElS_XbKv_S6eXV5T-Mrs"
-                  />
-                  <div className="flex-1 w-full">
-                    <div className="flex flex-col sm:flex-row justify-between items-start gap-2">
-                      <div>
-                        <h2 className="font-extrabold text-xl text-slate-900">Nguyễn Thị Lan, 28 tuổi</h2>
-                        <p className="text-xs text-slate-500 font-medium flex items-center gap-1 mt-1">
-                          Nữ • ID: PT-2023-891
-                        </p>
-                      </div>
-                      {/* Sky Blue badge for normal medical status */}
-                      <span className="bg-sky-50 text-sky-700 px-3 py-1 rounded-full font-bold text-xs border border-sky-200/20">
-                        Viêm da cơ địa
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-4 mt-6 pt-4 border-t border-slate-200/40">
-                      <div>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Lần khám trước</p>
-                        <p className="font-bold text-sm text-slate-800">12/09/2026</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Dị ứng</p>
-                        {/* Diluted Red/Rose alert text for critical safety */}
-                        <p className="font-extrabold text-sm text-rose-600 bg-rose-50 border border-rose-200/30 px-2 py-0.5 rounded-lg inline-block">
-                          Penicillin
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Huyết áp</p>
-                        <p className="font-bold text-sm text-slate-800">120/80</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* AI Skin Analysis Results */}
-              <div className="backdrop-blur-xl bg-white/40 border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.05)] rounded-[2rem] p-6 flex-1">
-                <div className="flex justify-between items-center mb-6">
-                  <h3 className="font-extrabold text-lg text-slate-900 flex items-center gap-2">
-                    <Brain className="w-5 h-5 text-teal-600" />
-                    Phân tích da AI
-                  </h3>
-                  <button className="text-teal-600 text-xs font-bold hover:underline">Xem lịch sử</button>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <div className="relative rounded-2xl overflow-hidden bg-slate-100 aspect-square flex items-center justify-center border border-slate-200/40">
-                    <img
-                      alt="Ảnh chụp cận cảnh da mặt với phân tích AI"
-                      className="absolute inset-0 w-full h-full object-cover opacity-90"
-                      src="https://lh3.googleusercontent.com/aida-public/AB6AXuDjYqW6i9SSrSV4gryuCdmYiq1r6HBH9rGtdrh8aE_bRlbWxjFGN4d5EvXEGC6CskumD3go75H6Idt11t5HUb5xDX1f-ZcnvhssKr6fwnhU23L_ppFE0GVvsgTKuv3b7GTx9U0TUfQyZPDooFrzHBUMPreY5nAHLbRB2fedyLRYttaoQ4sLfxiNgNWnSitYCi_IPdVORRDGDKvP5wolSsSifgHh7kUdX7mbo-HiLhqYCxGGOAAoyHWtGtq_GZzn4-dKTUWEMqv_s10N"
-                    />
-                    {/* AI Overlay Markers */}
-                    <div className="absolute top-[30%] left-[40%] w-4 h-4 rounded-full border-2 border-teal-500 bg-teal-500/20 animate-pulse"></div>
-                    <div className="absolute top-[60%] left-[20%] w-4 h-4 rounded-full border-2 border-sky-500 bg-sky-500/20"></div>
-                  </div>
-
-                  <div className="flex flex-col justify-center gap-4">
-                    <div>
-                      <div className="flex justify-between mb-1">
-                        <span className="text-xs font-bold text-slate-700">Độ ẩm</span>
-                        {/* Diluted Rose/Red tag for low moisture */}
-                        <span className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200/30 px-2 py-0.5 rounded-lg">Thấp (32%)</span>
-                      </div>
-                      <div className="w-full bg-slate-200/50 rounded-full h-2">
-                        <div className="bg-rose-500 h-2 rounded-full" style={{ width: '32%' }}></div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="flex justify-between mb-1">
-                        <span className="text-xs font-bold text-slate-700">Sắc tố (Melanin)</span>
-                        <span className="text-xs font-bold text-teal-700 bg-teal-50 border border-teal-200/30 px-2 py-0.5 rounded-lg">Bình thường (65%)</span>
-                      </div>
-                      <div className="w-full bg-slate-200/50 rounded-full h-2">
-                        <div className="bg-teal-500 h-2 rounded-full" style={{ width: '65%' }}></div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="flex justify-between mb-1">
-                        <span className="text-xs font-bold text-slate-700">Độ nhạy cảm</span>
-                        <span className="text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200/30 px-2 py-0.5 rounded-lg">Cao (88%)</span>
-                      </div>
-                      <div className="w-full bg-slate-200/50 rounded-full h-2">
-                        <div className="bg-amber-500 h-2 rounded-full" style={{ width: '88%' }}></div>
-                      </div>
-                    </div>
-
-                    <div className="mt-2 p-4 rounded-2xl bg-teal-50/50 border border-teal-200/30">
-                      <p className="font-bold text-xs text-teal-800 mb-1 flex items-center gap-1">
-                        <Brain className="w-3.5 h-3.5" />
-                        Kết luận AI:
-                      </p>
-                      <p className="text-xs text-slate-600 font-medium leading-relaxed">
-                        Dấu hiệu viêm da cấp tính tại vùng má. Hàng rào bảo vệ da suy yếu nghiêm trọng. Cần ưu tiên phục hồi độ ẩm.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Right Column: Treatment & Prescription Form */}
-            <div className="lg:col-span-5">
-              <div className="backdrop-blur-xl bg-white/40 border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.05)] rounded-[2rem] p-6 h-full flex flex-col justify-between">
-                <div>
-                  <h3 className="font-extrabold text-lg text-slate-900 mb-6 pb-4 border-b border-slate-200/40 flex items-center gap-2">
-                    <FileText className="w-5 h-5 text-teal-600" />
-                    Kế hoạch Điều trị
-                  </h3>
-
-                  <form className="space-y-5">
-                    {/* Chẩn đoán */}
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-2">Chẩn đoán xác định</label>
-                      <input
-                        className="w-full bg-white/70 border border-slate-200/80 rounded-xl py-2.5 px-4 text-sm outline-none transition-all form-input-focus"
-                        type="text"
-                        defaultValue="Viêm da cơ địa cấp tính (L20.9)"
-                      />
-                    </div>
-
-                    {/* Chỉ định liệu trình */}
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-2">
-                        Chỉ định Liệu trình tại phòng khám
-                      </label>
-                      <div className="grid grid-cols-2 gap-3">
-                        <label className="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-200/60 bg-white/50 cursor-pointer hover:bg-teal-50/30 transition-all text-xs font-semibold text-slate-700">
-                          <input
-                            defaultChecked
-                            className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500/30 border-slate-300"
-                            type="checkbox"
-                          />
-                          <span>Chiếu đèn sinh học</span>
-                        </label>
-                        <label className="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-200/60 bg-white/50 cursor-pointer hover:bg-teal-50/30 transition-all text-xs font-semibold text-slate-700">
-                          <input
-                            className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500/30 border-slate-300"
-                            type="checkbox"
-                          />
-                          <span>Peel da hóa học</span>
-                        </label>
-                        <label className="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-200/60 bg-white/50 cursor-pointer hover:bg-teal-50/30 transition-all text-xs font-semibold text-slate-700">
-                          <input
-                            defaultChecked
-                            className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500/30 border-slate-300"
-                            type="checkbox"
-                          />
-                          <span>Điện di tinh chất</span>
-                        </label>
-                        <label className="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-200/60 bg-white/50 cursor-pointer hover:bg-teal-50/30 transition-all text-xs font-semibold text-slate-700">
-                          <input
-                            className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500/30 border-slate-300"
-                            type="checkbox"
-                          />
-                          <span>Lấy nhân mụn</span>
-                        </label>
-                      </div>
-                    </div>
-
-                    {/* Kê đơn thuốc */}
-                    <div>
-                      <div className="flex justify-between items-center mb-2">
-                        <label className="block text-xs font-bold text-slate-700">Đơn thuốc (Toa thuốc)</label>
-                        <button
-                          className="text-teal-600 text-xs font-bold flex items-center gap-1 hover:underline"
-                          type="button"
-                        >
-                          <Plus className="w-3.5 h-3.5" /> Thêm thuốc
-                        </button>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        {/* Thuốc 1 */}
-                        <div className="p-3.5 rounded-xl border border-slate-200/60 bg-white/60 relative group shadow-sm">
-                          <div className="font-bold text-xs text-teal-700 mb-1">Fucidin H 15g (Kem bôi)</div>
-                          <div className="text-[11px] text-slate-500 font-medium flex gap-4">
-                            <span>SL: 1 tuýp</span>
-                            <span>Bôi lớp mỏng vùng da bệnh 2 lần/ngày</span>
-                          </div>
-                        </div>
-                        {/* Thuốc 2 */}
-                        <div className="p-3.5 rounded-xl border border-slate-200/60 bg-white/60 relative group shadow-sm">
-                          <div className="font-bold text-xs text-teal-700 mb-1">Cetirizin 10mg (Viên nén)</div>
-                          <div className="text-[11px] text-slate-500 font-medium flex gap-4">
-                            <span>SL: 14 viên</span>
-                            <span>Uống 1 viên vào buổi tối</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Lời dặn */}
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-2">Lời dặn của Bác sĩ</label>
-                      <textarea
-                        className="w-full bg-white/70 border border-slate-200/80 rounded-xl py-2.5 px-4 text-xs font-semibold outline-none transition-all resize-none placeholder-slate-400 form-input-focus"
-                        placeholder="Nhập lời dặn dò, kiêng cữ cho bệnh nhân..."
-                        rows="2"
-                      ></textarea>
-                    </div>
-
-                    {/* Hẹn tái khám */}
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-2">Hẹn tái khám</label>
-                      <select className="w-full bg-white/70 border border-slate-200/80 rounded-xl py-2.5 px-4 text-xs font-semibold outline-none transition-all cursor-pointer form-input-focus">
-                        <option>Sau 1 tuần (Ngày 24/10/2026)</option>
-                        <option>Sau 2 tuần</option>
-                        <option>Sau 1 tháng</option>
-                        <option>Không hẹn lại</option>
-                      </select>
-                    </div>
-                  </form>
-                </div>
-
-                <div className="mt-6 pt-6 border-t border-slate-200/40 flex gap-3">
-                  <button className="flex-1 py-3 px-4 rounded-xl border border-slate-200 text-slate-500 font-bold text-xs hover:bg-slate-100 transition-all">
-                    Lưu nháp
-                  </button>
-                  <button className="flex-[2] bg-gradient-to-r from-teal-600 to-sky-600 text-white py-3 px-4 rounded-xl font-semibold shadow-md shadow-teal-600/10 hover:shadow-lg hover:shadow-teal-600/20 active:scale-95 transition-all flex justify-center items-center gap-2 text-xs">
-                    <CheckCircle2 className="w-4 h-4" />
-                    Hoàn thành khám &amp; In toa
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+        {/* Dashboard Content Container */}
+        <main className="p-8 max-w-7xl w-full mx-auto">
+          {activeAppointment ? (
+            <VirtualClinicWorkspace 
+              appointment={activeAppointment} 
+              onBack={() => setActiveAppointment(null)} 
+            />
+          ) : (
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              {activeTab === 'overview' && <DashboardOverview doctorId={doctorId} />}
+              {activeTab === 'waiting_list' && <ScheduleWaitingList doctorId={doctorId} onStartExam={setActiveAppointment} />}
+              {activeTab === 'schedule' && <WorkSchedule doctorId={doctorId} />}
+            </motion.div>
+          )}
         </main>
       </div>
     </div>

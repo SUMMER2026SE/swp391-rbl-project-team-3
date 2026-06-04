@@ -2,7 +2,16 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDoctorController } from '../controllers/useDoctorController';
 import ChangePasswordModal from './ChangePasswordModal';
-import { motion, AnimatePresence } from 'framer-motion';
+import FloatingChatbot from '../components/PatientPortal/FloatingChatbot';
+import BookAppointmentForm from '../components/PatientPortal/BookAppointmentForm';
+import {
+  motion,
+  AnimatePresence,
+  useScroll,
+  useTransform,
+  useSpring,
+  useMotionTemplate,
+} from 'framer-motion';
 import { Key, LogOut, User } from 'lucide-react';
 import '../index.css';
 
@@ -36,11 +45,39 @@ function LandingPage({ user, onLogout }) {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [selectedDoctor, setSelectedDoctor] = useState(null);
   const navigate = useNavigate();
   const { getDoctors } = useDoctorController();
   const doctorsList = getDoctors();
   const mobileMenuRef = useRef(null);
+
+  /* --------------------------------------------------------------
+     Continuous scroll-linked navbar morph (Part 2).
+     `scrolled` (set in the effect below) only drives discrete text-color
+     swaps; ALL geometry is interpolated smoothly from these springs so
+     the bar gradually breathes into a floating pill — never snapping.
+     -------------------------------------------------------------- */
+  const { scrollY } = useScroll();
+  const navSpring = { stiffness: 220, damping: 32, mass: 0.9 };
+  const navWidthMV = useSpring(useTransform(scrollY, [0, 120], [100, 82]), navSpring);
+  const navMaxWMV = useSpring(useTransform(scrollY, [0, 120], [2200, 1080]), navSpring);
+  const navRadiusMV = useSpring(useTransform(scrollY, [0, 120], [0, 34]), navSpring);
+  const navTopMV = useSpring(useTransform(scrollY, [0, 120], [0, 16]), navSpring);
+  const navHeightMV = useSpring(useTransform(scrollY, [0, 120], [86, 70]), navSpring);
+  const navPadMV = useSpring(useTransform(scrollY, [0, 120], [24, 34]), navSpring);
+  const navBgMV = useSpring(useTransform(scrollY, [0, 120], [0.04, 0.72]), navSpring);
+  const navShadowMV = useSpring(useTransform(scrollY, [0, 120], [0, 0.1]), navSpring);
+  const navRingMV = useSpring(useTransform(scrollY, [0, 120], [0.1, 0.65]), navSpring);
+
+  const navWidth = useMotionTemplate`${navWidthMV}%`;
+  const navMaxWidth = useMotionTemplate`${navMaxWMV}px`;
+  const navRadius = useMotionTemplate`${navRadiusMV}px`;
+  const navTop = useMotionTemplate`${navTopMV}px`;
+  const navHeight = useMotionTemplate`${navHeightMV}px`;
+  const navPad = useMotionTemplate`${navPadMV}px`;
+  const navBg = useMotionTemplate`rgba(255, 255, 255, ${navBgMV})`;
+  const navShadow = useMotionTemplate`0 14px 40px rgba(2, 32, 29, ${navShadowMV}), inset 0 1px 2px rgba(255,255,255,0.85), inset 0 0 0 1px rgba(255,255,255,${navRingMV})`;
 
   // Close user dropdown on outside click
   useEffect(() => {
@@ -140,34 +177,26 @@ function LandingPage({ user, onLogout }) {
         <div className="absolute top-[30%] left-[50%] w-[40vw] h-[40vw] rounded-full bg-primary-fixed-dim/20 blur-[100px] animate-[float_18s_ease-in-out_infinite_3s]" />
       </div>
 
-      {/* TopNavBar */}
+      {/* TopNavBar — continuous scroll-linked morph (no snapping) */}
       <motion.nav
-        className={`fixed top-0 left-1/2 -translate-x-1/2 z-50 flex items-center justify-between backdrop-blur-xl ${
-          scrolled
-            ? 'bg-white/70 border border-white/50 shadow-[0_10px_30px_rgba(0,0,0,0.08)]'
-            : 'bg-white/5 border-b border-white/10'
-        }`}
-        animate={{
-          width: scrolled ? "80%" : "100%",
-          maxWidth: scrolled ? "1024px" : "100vw",
-          top: scrolled ? "16px" : "0px",
-          borderRadius: scrolled ? "9999px" : "0px",
-          paddingLeft: scrolled ? "2rem" : "1.5rem",
-          paddingRight: scrolled ? "2rem" : "1.5rem",
-          height: scrolled ? "70px" : "80px",
-        }}
-        transition={{
-          type: "spring",
-          stiffness: 200,
-          damping: 30,
-          mass: 0.8,
+        className="fixed left-1/2 -translate-x-1/2 z-50 flex items-center justify-between backdrop-blur-2xl border border-white/30"
+        style={{
+          top: navTop,
+          width: navWidth,
+          maxWidth: navMaxWidth,
+          height: navHeight,
+          borderRadius: navRadius,
+          paddingLeft: navPad,
+          paddingRight: navPad,
+          backgroundColor: navBg,
+          boxShadow: navShadow,
         }}
       >
         <a
           className="flex items-center gap-2 transition-transform hover:scale-105"
           href="#"
         >
-          <span className="font-bold text-2xl bg-clip-text text-transparent bg-gradient-to-r from-emerald-600 to-sky-500">
+          <span className="font-black text-[26px] bg-clip-text text-transparent bg-gradient-to-r from-emerald-600 to-sky-500 tracking-tight">
             DermaSmart
           </span>
         </a>
@@ -614,6 +643,8 @@ function LandingPage({ user, onLogout }) {
       </motion.footer>
 
       <ChangePasswordModal isOpen={isChangePasswordOpen} onClose={() => setIsChangePasswordOpen(false)} />
+      <BookAppointmentForm isOpen={isBookingOpen} onClose={() => setIsBookingOpen(false)} />
+      <FloatingChatbot onBookAppointment={() => setIsBookingOpen(true)} />
 
       {/* Doctor Profile Modal (Liquid Glass) */}
       <AnimatePresence>

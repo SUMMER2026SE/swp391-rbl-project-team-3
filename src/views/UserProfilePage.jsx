@@ -24,8 +24,10 @@ import {
   ClipboardList,
   ChevronRight,
   CheckCircle2,
-  MapPin
+  MapPin,
+  CalendarCheck,
 } from 'lucide-react';
+import AppointmentsTab from '../components/PatientPortal/AppointmentsTab';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -459,7 +461,10 @@ export default function UserProfilePage() {
     { id: 'personal', label: 'Thông tin cá nhân', icon: <User className="w-4 h-4" /> },
     { id: 'settings', label: 'Cài đặt tài khoản', icon: <Settings className="w-4 h-4" /> },
     ...(role === 'PATIENT'
-      ? [{ id: 'records', label: 'Hồ sơ bệnh án', icon: <FileText className="w-4 h-4" /> }]
+      ? [
+          { id: 'appointments', label: 'Lịch hẹn', icon: <CalendarCheck className="w-4 h-4" /> },
+          { id: 'records', label: 'Hồ sơ bệnh án', icon: <FileText className="w-4 h-4" /> },
+        ]
       : []),
   ];
 
@@ -542,6 +547,11 @@ export default function UserProfilePage() {
               {activeTab === 'settings' && (
                 <motion.div key="settings" variants={tabContentVariants} initial="hidden" animate="visible" exit="exit">
                   <AccountSettingsTab />
+                </motion.div>
+              )}
+              {activeTab === 'appointments' && (
+                <motion.div key="appointments" variants={tabContentVariants} initial="hidden" animate="visible" exit="exit">
+                  <AppointmentsTab />
                 </motion.div>
               )}
               {activeTab === 'records' && (
