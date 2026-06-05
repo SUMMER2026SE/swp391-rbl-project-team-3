@@ -362,8 +362,11 @@ function LandingPage({ user, onLogout }) {
             <button className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 text-white font-semibold shadow-lg shadow-emerald-500/25 px-8 py-4 rounded-2xl transition-all cursor-pointer border-none text-base">
               Trải nghiệm AI Scan
             </button>
-            <button className="w-full sm:w-auto border border-sky-400 hover:bg-sky-50 text-sky-600 font-semibold px-8 py-4 rounded-2xl transition-all cursor-pointer bg-transparent text-base">
-              Đăng ký Phòng khám
+            <button 
+              onClick={() => setIsBookingOpen(true)}
+              className="w-full sm:w-auto border border-sky-400 hover:bg-sky-50 text-sky-600 font-semibold px-8 py-4 rounded-2xl transition-all cursor-pointer bg-transparent text-base"
+            >
+              Đặt Phòng khám 
             </button>
           </motion.div>
         </motion.div>

@@ -40,6 +40,7 @@ import {
   mockTimeSlots 
 } from '../mockData';
 import LiveChatDrawer from '../components/Receptionist/LiveChatDrawer';
+import { useAppointmentController } from '../controllers/useAppointmentController';
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 30 },
@@ -68,7 +69,9 @@ export default function ReceptionistDashboard() {
 
   // ─── STATE MANAGEMENT ───────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState('overview');
-  const [appointments, setAppointments] = useState([]);
+  
+  const { appointments, updateAppointmentStatus, addDirectAppointment } = useAppointmentController();
+  
   const [patients, setPatients] = useState(mockPatients);
   const [chatMessages, setChatMessages] = useState(mockChatMessages);
   const [toast, setToast] = useState(null);
@@ -91,19 +94,6 @@ export default function ReceptionistDashboard() {
 
   // ─── INITIALIZATION (Adjust Dates to Coordinate with Today's Date) ───────
   const todayStr = "2026-06-01"; // Timeline current date
-
-  useEffect(() => {
-    // Map initial mock appointments to today/other dates so stats are dynamic and realistic
-    const initialized = (mockAppointments || []).map((apt, index) => {
-      // Set some appointments to today (2026-06-01) for dashboard visualization
-      if (index === 0) return { ...apt, date: todayStr, status: "Đã xác nhận" }; // Ready for check-in
-      if (index === 1) return { ...apt, date: todayStr, status: "Chờ xác nhận" }; // Booking request 1
-      if (index === 2) return { ...apt, date: todayStr, status: "Đang chờ" }; // Checked-in (Bệnh nhân đang chờ)
-      if (index === 3) return { ...apt, date: todayStr, status: "Chờ xác nhận" }; // Booking request 2
-      return apt;
-    });
-    setAppointments(initialized);
-  }, []);
 
   const handleScroll = (e) => {
     if (e.target.scrollTop > 10) {
@@ -135,25 +125,19 @@ export default function ReceptionistDashboard() {
   
   // 1. Check-in Button Action
   const handleCheckIn = (aptId, patientName) => {
-    setAppointments(prev => (prev || []).map(a => 
-      a.id === aptId ? { ...a, status: 'Đang chờ' } : a
-    ));
+    updateAppointmentStatus(aptId, 'Đang chờ');
     showToast(`Check-in thành công cho bệnh nhân ${patientName}!`, 'success');
   };
 
   // 2. Approve Button Action
   const handleApprove = (aptId, patientName) => {
-    setAppointments(prev => (prev || []).map(a => 
-      a.id === aptId ? { ...a, status: 'Đã xác nhận' } : a
-    ));
+    updateAppointmentStatus(aptId, 'Đã xác nhận');
     showToast(`Đã phê duyệt lịch hẹn khám của ${patientName}!`, 'success');
   };
 
   // 3. Reject/Cancel Button Action
   const handleReject = (aptId, patientName) => {
-    setAppointments(prev => (prev || []).map(a => 
-      a.id === aptId ? { ...a, status: 'Đã hủy' } : a
-    ));
+    updateAppointmentStatus(aptId, 'Đã hủy');
     showToast(`Đã từ chối/hủy lịch hẹn khám của ${patientName}.`, 'error');
   };
 
@@ -194,7 +178,7 @@ export default function ReceptionistDashboard() {
     };
 
     setPatients(prev => [...prev, createdPatient]);
-    setAppointments(prev => [createdAppointment, ...prev]);
+    addDirectAppointment(createdAppointment);
     setIsAddOpen(false);
     
     // Reset Form

@@ -1,14 +1,27 @@
-import React from 'react';
-import { mockAppointments } from '../../mockData';
+import React, { useState, useEffect } from 'react';
+import { AppointmentModel } from '../../models/AppointmentModel';
 import { Clock, PlayCircle } from 'lucide-react';
 
 export default function ScheduleWaitingList({ doctorId, onStartExam }) {
   // Mock today's date
   const today = "2026-06-05";
 
-  // FOR TESTING: Bypass strict filters to guarantee data renders
-  // Remove doctorId and date checks
-  const todayAppointments = mockAppointments?.sort((a, b) => a.time.localeCompare(b.time)) || [];
+  const [todayAppointments, setTodayAppointments] = useState([]);
+
+  useEffect(() => {
+    const fetchAppointments = () => {
+      const all = AppointmentModel.getAll();
+      // Lọc theo đúng bác sĩ và loại bỏ lịch đã hủy để hiển thị danh sách chờ khám thực tế
+      const filtered = all.filter(apt => apt?.doctorId === doctorId && apt?.status !== 'Đã hủy');
+      setTodayAppointments(filtered.sort((a, b) => a?.time.localeCompare(b?.time)));
+    };
+
+    fetchAppointments();
+    window.addEventListener('appointments-updated', fetchAppointments);
+    return () => {
+      window.removeEventListener('appointments-updated', fetchAppointments);
+    };
+  }, [doctorId]);
 
   const handleStartExam = (apt) => {
     if (onStartExam) {
