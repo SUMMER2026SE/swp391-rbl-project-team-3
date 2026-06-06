@@ -43,11 +43,43 @@ export function AuthProvider({ children }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Mock user profiles per role — dùng để demo đúng dữ liệu mẫu
+  const MOCK_PROFILES = {
+    PATIENT: {
+      id: 'pat-01',
+      name: 'Lê Minh Khôi',
+      phone: '0901 234 567',
+      email: 'leminhkhoi@gmail.com',
+      gender: 'Nam',
+      dob: '1995-03-15',
+      address: '45 Nguyễn Huệ, Quận 1, TP. Hồ Chí Minh',
+      avatar: 'https://i.pravatar.cc/150?u=pat01',
+    },
+    DOCTOR: {
+      id: 'doc-01',
+      name: 'BS. CKII. Trần Văn A',
+    },
+    RECEPTIONIST: {
+      id: 'staff-01',
+      name: 'Lễ tân Hoàng Anh',
+    },
+    TECHNICIAN: {
+      id: 'tech-01',
+      name: 'KTV. Lê Thị C',
+    },
+    ADMIN: {
+      id: 'admin-01',
+      name: 'Quản trị viên',
+    },
+  };
+
   const login = (role) => {
+    const profile = MOCK_PROFILES[role] || {};
     const newUser = {
-      id: Date.now(),
-      name: ROLE_DISPLAY_NAMES[role] || role,
+      id: profile.id || `mock-${role.toLowerCase()}-${Date.now()}`,
+      name: profile.name || ROLE_DISPLAY_NAMES[role] || role,
       role,
+      ...profile,
     };
     setMockUser(newUser);
     localStorage.setItem('dermasmart_mock_user', JSON.stringify(newUser));

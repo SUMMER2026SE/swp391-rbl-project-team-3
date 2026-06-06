@@ -163,7 +163,7 @@ export default function FloatingChatbot({ onBookAppointment }) {
                       {msg.senderName}
                     </span>
                     <div
-                      className={`max-w-[75%] px-3 py-2 rounded-2xl text-xs leading-relaxed ${
+                      className={`max-w-[75%] px-3 py-2 rounded-xl text-xs leading-relaxed ${
                         isPatient
                           ? 'bg-emerald-500 text-white rounded-br-md'
                           : 'bg-slate-50/90 border border-slate-200 text-slate-800 rounded-bl-md'

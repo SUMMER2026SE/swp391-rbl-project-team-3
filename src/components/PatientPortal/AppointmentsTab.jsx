@@ -16,10 +16,13 @@ import {
   FileText,
   Pill,
   ClipboardList,
+  Edit3,
 } from 'lucide-react';
 import { useAppointmentController } from '../../controllers/useAppointmentController';
+import { useFeedbackController } from '../../controllers/useFeedbackController';
 import { useAuth } from '../../context/AuthContext';
-import { doctors } from '../../mockData';
+import { DoctorModel } from '../../models/DoctorModel';
+import FeedbackFormModal from './FeedbackFormModal';
 
 // ─── Status Badge Component ─────────────────────────────────────────────────
 
@@ -29,6 +32,7 @@ const STATUS_STYLES = {
   'Đang chờ': 'bg-teal-50 text-teal-700 border border-teal-200',
   'Đã khám': 'bg-sky-50 text-sky-700 border border-sky-200',
   'Đã hủy': 'bg-rose-50 text-rose-700 border border-rose-200',
+  'Reviewed': 'bg-indigo-50 text-indigo-700 border border-indigo-200',
 };
 
 const PAYMENT_STYLES = {
@@ -48,7 +52,7 @@ function StatusBadge({ text, type = 'status' }) {
 
 // ─── Appointment Card Component ──────────────────────────────────────────────
 
-function AppointmentCard({ apt, index, isUpcoming, onCancel, onReschedule, onViewFeedback }) {
+function AppointmentCard({ apt, index, isUpcoming, onCancel, onReschedule, onViewFeedback, onWriteFeedback, existingFeedback }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 15 }}
@@ -81,6 +85,14 @@ function AppointmentCard({ apt, index, isUpcoming, onCancel, onReschedule, onVie
           {apt.fee}
         </span>
         <StatusBadge text={apt.paymentStatus} type="payment" />
+        {/* Show star rating if feedback exists */}
+        {existingFeedback && (
+          <span className="flex items-center gap-0.5">
+            {[1,2,3,4,5].map(s => (
+              <Star key={s} className={`w-3 h-3 ${s <= existingFeedback.overallRating ? 'fill-amber-400 text-amber-400' : 'fill-slate-200 text-slate-200'}`} />
+            ))}
+          </span>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -93,23 +105,52 @@ function AppointmentCard({ apt, index, isUpcoming, onCancel, onReschedule, onVie
               <X className="w-3 h-3" />
               Hủy lịch
             </button>
-            <button 
-              onClick={() => onReschedule(apt)}
-              className="text-sky-600 hover:bg-sky-50 border border-sky-200 rounded-xl px-4 py-2 text-xs font-semibold transition-all cursor-pointer bg-white flex items-center gap-1.5"
-            >
-              <RefreshCw className="w-3 h-3" />
-              Đổi lịch
-            </button>
+            {apt.rescheduleCount >= 2 ? (
+              <span 
+                className="text-slate-400 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-semibold flex items-center gap-1.5 cursor-not-allowed select-none opacity-60" 
+                title="Đã đổi lịch tối đa 2 lần. Vui lòng liên hệ Lễ tân."
+              >
+                <RefreshCw className="w-3 h-3 text-slate-400" />
+                Đổi lịch (Hết lượt)
+              </span>
+            ) : (
+              <button
+                onClick={() => onReschedule(apt)}
+                className="text-sky-600 hover:bg-sky-50 border border-sky-200 rounded-xl px-4 py-2 text-xs font-semibold transition-all cursor-pointer bg-white flex items-center gap-1.5"
+              >
+                <RefreshCw className="w-3 h-3" />
+                Đổi lịch
+              </button>
+            )}
           </>
         )}
-        {!isUpcoming && apt.status === 'Đã khám' && (
-          <button
-            onClick={() => onViewFeedback(apt)}
-            className="text-sky-600 hover:bg-sky-50 border border-sky-200 rounded-xl px-4 py-2 text-xs font-semibold transition-all cursor-pointer bg-white flex items-center gap-1.5"
-          >
-            <MessageSquare className="w-3 h-3" />
-            Xem phản hồi
-          </button>
+        {!isUpcoming && (apt.status === 'Đã khám' || apt.status === 'Reviewed') && (
+          <>
+            {existingFeedback ? (
+              <button
+                onClick={() => onViewFeedback(apt)}
+                className="text-amber-600 hover:bg-amber-50 border border-amber-200 rounded-xl px-4 py-2 text-xs font-semibold transition-all cursor-pointer bg-white flex items-center gap-1.5"
+              >
+                <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                Xem đánh giá
+              </button>
+            ) : (
+              <button
+                onClick={() => onWriteFeedback(apt)}
+                className="text-emerald-600 hover:bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2 text-xs font-semibold transition-all cursor-pointer bg-white flex items-center gap-1.5"
+              >
+                <Edit3 className="w-3 h-3" />
+                Viết đánh giá
+              </button>
+            )}
+            <button
+              onClick={() => onViewFeedback(apt)}
+              className="text-sky-600 hover:bg-sky-50 border border-sky-200 rounded-xl px-4 py-2 text-xs font-semibold transition-all cursor-pointer bg-white flex items-center gap-1.5"
+            >
+              <MessageSquare className="w-3 h-3" />
+              Chi tiết khám
+            </button>
+          </>
         )}
       </div>
     </motion.div>
@@ -119,7 +160,7 @@ function AppointmentCard({ apt, index, isUpcoming, onCancel, onReschedule, onVie
 // ─── Reschedule Confirmation Modal ───────────────────────────────────────────
 
 function RescheduleModal({ apt, onClose, onConfirm, rescheduleError }) {
-  const { getAvailableSlots } = useAppointmentController();
+  const { getAvailableSlots, canCancel } = useAppointmentController();
   const [newDate, setNewDate] = useState('');
   const [newTime, setNewTime] = useState('');
 
@@ -127,7 +168,7 @@ function RescheduleModal({ apt, onClose, onConfirm, rescheduleError }) {
   tomorrow.setDate(tomorrow.getDate() + 1);
   const minDate = tomorrow.toISOString().split('T')[0];
 
-  const selectedDoctorData = doctors.find((d) => d.id === apt.doctorId);
+  const selectedDoctorData = DoctorModel.getAllDoctors().find((d) => d.id === apt.doctorId);
 
   let isDoctorWorkingOnDay = true;
   let doctorScheduleText = '';
@@ -188,6 +229,15 @@ function RescheduleModal({ apt, onClose, onConfirm, rescheduleError }) {
             <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
             <div>
               <span className="font-bold">Lỗi đổi lịch:</span> {rescheduleError}
+            </div>
+          </div>
+        )}
+
+        {!canCancel(apt) && (
+          <div className="mb-4 p-3.5 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5 text-xs text-amber-700 font-semibold leading-relaxed">
+            <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+            <div>
+              Lưu ý: Bạn đang đổi lịch sát giờ hẹn (dưới 24h). Việc đổi lịch sẽ phát sinh thêm phụ phí 50.000 VNĐ cộng vào hóa đơn khám.
             </div>
           </div>
         )}
@@ -354,9 +404,17 @@ function CancelModal({ apt, onClose, onConfirm, cancelError }) {
   );
 }
 
-// ─── Feedback / Detail Modal ─────────────────────────────────────────────────
+// ─── View Feedback Modal ─────────────────────────────────────────────────────
 
-function FeedbackModal({ apt, onClose }) {
+function ViewFeedbackModal({ apt, feedback, onClose }) {
+  const CRITERIA_LABELS = {
+    doctor: 'Bác sĩ',
+    technician: 'Kỹ thuật viên',
+    treatmentEffect: 'Hiệu quả điều trị',
+    waitingTime: 'Thời gian chờ',
+    facility: 'Cơ sở vật chất',
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -370,63 +428,122 @@ function FeedbackModal({ apt, onClose }) {
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.9, opacity: 0, y: 20 }}
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-        className="w-full max-w-lg backdrop-blur-3xl bg-white/75 border border-white/80 shadow-2xl rounded-[2rem] p-8 relative"
+        className="w-full max-w-lg backdrop-blur-3xl bg-white/90 border border-white/80 shadow-2xl rounded-[2rem] p-7 relative max-h-[88vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 bg-transparent border-none text-slate-400 hover:text-slate-700 hover:bg-slate-100/50 p-2 rounded-full flex items-center justify-center transition-all cursor-pointer"
-        >
+        <button onClick={onClose} className="absolute top-4 right-4 bg-transparent border-none text-slate-400 hover:text-slate-700 hover:bg-slate-100/50 p-2 rounded-full flex items-center justify-center transition-all cursor-pointer">
           <X className="w-5 h-5" />
         </button>
 
-        <div className="mb-6">
+        <div className="mb-5">
           <h3 className="text-xl font-bold text-slate-800 mb-1">Chi tiết lượt khám</h3>
           <p className="text-sm text-slate-500">{apt.date} • {apt.time} • {apt.service}</p>
         </div>
 
         <div className="space-y-4">
-          <div className="bg-slate-50/90 border border-slate-200 rounded-2xl p-4">
-            <div className="flex items-center gap-2 mb-1">
+          {/* Doctor info */}
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4">
+            <div className="flex items-center gap-2">
               <Stethoscope className="w-4 h-4 text-emerald-500" />
               <span className="text-sm font-bold text-slate-700">{apt.doctorName}</span>
             </div>
           </div>
+
+          {/* Diagnosis */}
           {apt.diagnosis && (
-            <div className="bg-slate-50/90 border border-slate-200 rounded-2xl p-4">
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4">
               <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                <ClipboardList className="w-3.5 h-3.5" />
-                Chẩn đoán
+                <ClipboardList className="w-3.5 h-3.5" /> Chẩn đoán
               </p>
               <p className="text-sm text-slate-700 font-medium">{apt.diagnosis}</p>
             </div>
           )}
+
+          {/* Prescription */}
           {apt.prescription && (
-            <div className="bg-slate-50/90 border border-slate-200 rounded-2xl p-4">
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4">
               <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                <Pill className="w-3.5 h-3.5" />
-                Đơn thuốc
+                <Pill className="w-3.5 h-3.5" /> Đơn thuốc
               </p>
               <p className="text-sm text-slate-700 font-medium">{apt.prescription}</p>
             </div>
           )}
-          <div className="bg-slate-50/90 border border-slate-200 rounded-2xl p-4">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <Star className="w-3.5 h-3.5" />
-              Phản hồi của bạn
+
+          {/* Timeline Audit Logs */}
+          {apt.history && apt.history.length > 0 && (
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 mb-4">
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-teal-600" /> Nhật ký cuộc hẹn
+              </p>
+              <div className="space-y-3 relative before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200 pl-4">
+                {apt.history.map((h, i) => (
+                  <div key={i} className="relative text-xs">
+                    <div className="absolute -left-6 top-1.5 w-2 h-2 rounded-full bg-teal-500 ring-4 ring-slate-50 animate-pulse"></div>
+                    <p className="font-bold text-slate-700">
+                      {new Date(h.timestamp).toLocaleDateString('vi-VN')} {new Date(h.timestamp).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})}
+                    </p>
+                    <p className="text-slate-500 mt-0.5 leading-snug">{h.details}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Feedback block */}
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+            <p className="text-xs font-bold text-amber-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" /> Đánh giá của bạn
             </p>
-            {apt.feedback ? (
-              <p className="text-sm text-slate-700 font-medium italic">"{apt.feedback}"</p>
+            {feedback ? (
+              <div className="space-y-3">
+                {/* Overall stars */}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-slate-700">Tổng thể:</span>
+                  <div className="flex items-center gap-0.5">
+                    {[1,2,3,4,5].map(s => (
+                      <Star key={s} className={`w-5 h-5 ${s <= feedback.overallRating ? 'fill-amber-400 text-amber-400' : 'fill-slate-200 text-slate-200'}`} />
+                    ))}
+                  </div>
+                  <span className="text-sm font-bold text-amber-600">{feedback.overallRating}/5</span>
+                </div>
+                {/* Criteria */}
+                {feedback.criteriaRatings && Object.entries(feedback.criteriaRatings).filter(([,v]) => v > 0).map(([k, v]) => (
+                  <div key={k} className="flex items-center gap-2">
+                    <span className="text-xs text-slate-500 w-32 shrink-0">{CRITERIA_LABELS[k]}:</span>
+                    <div className="flex items-center gap-0.5">
+                      {[1,2,3,4,5].map(s => (
+                        <Star key={s} className={`w-3.5 h-3.5 ${s <= v ? 'fill-amber-400 text-amber-400' : 'fill-slate-200 text-slate-200'}`} />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                {/* Comment */}
+                {feedback.comment && (
+                  <p className="text-sm text-slate-700 italic border-t border-amber-200 pt-3">"{feedback.comment}"</p>
+                )}
+                {/* Images */}
+                {feedback.images?.length > 0 && (
+                  <div className="flex gap-2 flex-wrap border-t border-amber-200 pt-3">
+                    {feedback.images.map((img, i) => (
+                      <img key={i} src={img} alt="" className="w-16 h-16 rounded-xl object-cover border border-amber-200" />
+                    ))}
+                  </div>
+                )}
+                {/* Admin reply */}
+                {feedback.adminReply && (
+                  <div className="bg-white border border-amber-200 rounded-xl p-3 mt-2">
+                    <p className="text-xs font-bold text-emerald-700 mb-1">Phản hồi từ phòng khám:</p>
+                    <p className="text-xs text-slate-600 italic">{feedback.adminReply.text}</p>
+                  </div>
+                )}
+              </div>
             ) : (
-              <p className="text-sm text-slate-400 italic">Bạn chưa để lại phản hồi cho lượt khám này.</p>
+              <p className="text-sm text-slate-400 italic">Bạn chưa để lại đánh giá cho lượt khám này.</p>
             )}
           </div>
         </div>
 
-        <button
-          onClick={onClose}
-          className="w-full mt-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-sky-500 text-white font-semibold text-sm shadow-md shadow-emerald-500/20 hover:shadow-lg hover:-translate-y-0.5 transition-all border-none cursor-pointer"
-        >
+        <button onClick={onClose} className="w-full mt-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-sky-500 text-white font-semibold text-sm shadow-md shadow-emerald-500/20 hover:shadow-lg hover:-translate-y-0.5 transition-all border-none cursor-pointer">
           Đóng
         </button>
       </motion.div>
@@ -439,59 +556,45 @@ function FeedbackModal({ apt, onClose }) {
 export default function AppointmentsTab() {
   const { user } = useAuth();
   const patientId = user?.id || 'pat-01';
-  
+
   const { appointments, cancelAppointment, rescheduleAppointment } = useAppointmentController(patientId);
+  const { getFeedbackByAppointment } = useFeedbackController({ patientId });
+
   const [cancelTarget, setCancelTarget] = useState(null);
   const [cancelError, setCancelError] = useState('');
-  
   const [rescheduleTarget, setRescheduleTarget] = useState(null);
   const [rescheduleError, setRescheduleError] = useState('');
-  
-  const [feedbackTarget, setFeedbackTarget] = useState(null);
+  const [viewTarget, setViewTarget] = useState(null);
+  const [writeFeedbackTarget, setWriteFeedbackTarget] = useState(null);
 
   const upcoming = appointments.filter(
     (a) => a.status === 'Đã xác nhận' || a.status === 'Chờ xác nhận' || a.status === 'Đang chờ'
   );
   const past = appointments.filter(
-    (a) => a.status === 'Đã khám' || a.status === 'Đã hủy'
+    (a) => a.status === 'Đã khám' || a.status === 'Đã hủy' || a.status === 'Reviewed'
   );
 
   const handleConfirmCancel = () => {
     if (cancelTarget) {
       setCancelError('');
       const res = cancelAppointment(cancelTarget.id);
-      if (res.success) {
-        setCancelTarget(null);
-      } else {
-        setCancelError(res.error);
-      }
+      if (res.success) setCancelTarget(null);
+      else setCancelError(res.error);
     }
-  };
-
-  const handleCloseCancelModal = () => {
-    setCancelTarget(null);
-    setCancelError('');
   };
 
   const handleConfirmReschedule = (newDate, newTime) => {
     if (rescheduleTarget) {
       setRescheduleError('');
       const res = rescheduleAppointment(rescheduleTarget.id, newDate, newTime);
-      if (res.success) {
-        setRescheduleTarget(null);
-      } else {
-        setRescheduleError(res.error);
-      }
+      if (res.success) setRescheduleTarget(null);
+      else setRescheduleError(res.error);
     }
-  };
-
-  const handleCloseRescheduleModal = () => {
-    setRescheduleTarget(null);
-    setRescheduleError('');
   };
 
   return (
     <div className="space-y-8">
+      {/* Upcoming */}
       <div>
         <div className="flex items-center gap-3 mb-4">
           <div className="p-3 bg-emerald-50 rounded-xl text-emerald-600 border border-emerald-100">
@@ -502,7 +605,6 @@ export default function AppointmentsTab() {
             <p className="text-xs text-slate-400 mt-0.5">Các lượt khám đã đặt và đang chờ</p>
           </div>
         </div>
-
         <div className="bg-slate-50/90 border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
           {upcoming.length > 0 ? (
             upcoming.map((apt, idx) => (
@@ -513,7 +615,9 @@ export default function AppointmentsTab() {
                 isUpcoming
                 onCancel={setCancelTarget}
                 onReschedule={setRescheduleTarget}
-                onViewFeedback={setFeedbackTarget}
+                onViewFeedback={setViewTarget}
+                onWriteFeedback={setWriteFeedbackTarget}
+                existingFeedback={getFeedbackByAppointment(apt.id)}
               />
             ))
           ) : (
@@ -526,6 +630,7 @@ export default function AppointmentsTab() {
         </div>
       </div>
 
+      {/* Past */}
       <div>
         <div className="flex items-center gap-3 mb-4">
           <div className="p-3 bg-sky-50 rounded-xl text-sky-600 border border-sky-100">
@@ -536,7 +641,6 @@ export default function AppointmentsTab() {
             <p className="text-xs text-slate-400 mt-0.5">Lịch sử khám bệnh và thanh toán</p>
           </div>
         </div>
-
         <div className="bg-slate-50/90 border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
           {past.length > 0 ? (
             past.map((apt, idx) => (
@@ -547,7 +651,9 @@ export default function AppointmentsTab() {
                 isUpcoming={false}
                 onCancel={setCancelTarget}
                 onReschedule={setRescheduleTarget}
-                onViewFeedback={setFeedbackTarget}
+                onViewFeedback={setViewTarget}
+                onWriteFeedback={setWriteFeedbackTarget}
+                existingFeedback={getFeedbackByAppointment(apt.id)}
               />
             ))
           ) : (
@@ -560,33 +666,32 @@ export default function AppointmentsTab() {
         </div>
       </div>
 
+      {/* Modals */}
       <AnimatePresence>
         {cancelTarget && (
-          <CancelModal
-            apt={cancelTarget}
-            onClose={handleCloseCancelModal}
-            onConfirm={handleConfirmCancel}
-            cancelError={cancelError}
-          />
+          <CancelModal apt={cancelTarget} onClose={() => { setCancelTarget(null); setCancelError(''); }} onConfirm={handleConfirmCancel} cancelError={cancelError} />
         )}
       </AnimatePresence>
-
       <AnimatePresence>
         {rescheduleTarget && (
-          <RescheduleModal
-            apt={rescheduleTarget}
-            onClose={handleCloseRescheduleModal}
-            onConfirm={handleConfirmReschedule}
-            rescheduleError={rescheduleError}
+          <RescheduleModal apt={rescheduleTarget} onClose={() => { setRescheduleTarget(null); setRescheduleError(''); }} onConfirm={handleConfirmReschedule} rescheduleError={rescheduleError} />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {viewTarget && (
+          <ViewFeedbackModal
+            apt={viewTarget}
+            feedback={getFeedbackByAppointment(viewTarget.id)}
+            onClose={() => setViewTarget(null)}
           />
         )}
       </AnimatePresence>
-
       <AnimatePresence>
-        {feedbackTarget && (
-          <FeedbackModal
-            apt={feedbackTarget}
-            onClose={() => setFeedbackTarget(null)}
+        {writeFeedbackTarget && (
+          <FeedbackFormModal
+            apt={writeFeedbackTarget}
+            onClose={() => setWriteFeedbackTarget(null)}
+            onSubmitted={() => setWriteFeedbackTarget(null)}
           />
         )}
       </AnimatePresence>

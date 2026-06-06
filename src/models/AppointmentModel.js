@@ -1,4 +1,7 @@
-import { mockAppointments, doctors } from '../mockData';
+import { mockAppointments } from '../mockData';
+import { DoctorModel } from './DoctorModel';
+import { SystemLogModel } from './SystemLogModel';
+import { NotificationModel } from './NotificationModel';
 
 // Map Vietnamese day names to JS Date getDay() index
 const DAY_MAP = {
@@ -45,8 +48,69 @@ export const AppointmentModel = {
   },
 
   getByPatientId(patientId) {
-    const list = this.getAll();
-    return list.filter(a => a.patientId === patientId);
+    let list = this.getAll();
+    const patientApts = list.filter(a => a.patientId === patientId);
+    
+    // Inject mock completed appointments for any patient with no completed appointments
+    const completed = patientApts.filter(a => a.status === 'Đã khám' || a.status === 'Reviewed');
+    if (completed.length === 0 && patientId) {
+      const mockApt1 = {
+        id: `apt-mock-completed-1-${patientId}`,
+        patientId: patientId,
+        patientName: 'Nhựt Nguyễn Quang',
+        doctorId: 'doc-01',
+        doctorName: 'BS. CKII. Trần Văn A',
+        date: '2026-06-05',
+        time: '09:00',
+        status: 'Đã khám',
+        service: 'Khám Da Liễu Tổng Quát',
+        paymentStatus: 'Đã thanh toán',
+        fee: '300,000 VNĐ',
+        diagnosis: 'Viêm da tiết bã nhẹ vùng mặt',
+        prescription: 'Ketoconazole 2% cream thoa ngày 2 lần x 14 ngày',
+        notes: 'Hạn chế ăn đồ cay nóng, rửa mặt bằng nước ấm.'
+      };
+      
+      const mockApt2 = {
+        id: `apt-mock-completed-2-${patientId}`,
+        patientId: patientId,
+        patientName: 'Nhựt Nguyễn Quang',
+        doctorId: 'doc-02',
+        doctorName: 'ThS. BS. Nguyễn Thị B',
+        date: '2026-05-28',
+        time: '14:30',
+        status: 'Đã khám',
+        service: 'Điều Trị Nám Chuyên Sâu',
+        paymentStatus: 'Đã thanh toán',
+        fee: '1,800,000 VNĐ',
+        diagnosis: 'Nám mảng hai bên má, cải thiện 30%',
+        prescription: 'Arbutin serum dưỡng tối, Kem chống nắng phổ rộng ban ngày',
+        notes: 'Chống nắng kỹ, tái khám sau 4 tuần.'
+      };
+
+      const mockApt3 = {
+        id: `apt-mock-completed-3-${patientId}`,
+        patientId: patientId,
+        patientName: 'Nhựt Nguyễn Quang',
+        doctorId: 'doc-03',
+        doctorName: 'KTV. Lê Thị C',
+        date: '2026-05-30',
+        time: '10:00',
+        status: 'Đã khám',
+        service: 'Soi Da AI Chuyên Sâu',
+        paymentStatus: 'Đã thanh toán',
+        fee: '500,000 VNĐ',
+        diagnosis: 'Da dầu vùng chữ T, khô hai má. Cần soi kỹ các lớp sắc tố.',
+        prescription: 'Sữa rửa mặt dịu nhẹ ngày 2 lần, dưỡng ẩm dạng gel.',
+        notes: 'Chụp hình phân tích da AI.'
+      };
+      
+      list.push(mockApt1, mockApt2, mockApt3);
+      this.save(list);
+      return [mockApt1, mockApt2, mockApt3];
+    }
+    
+    return patientApts;
   },
 
   // Check if a time slot is already booked for a specific doctor
@@ -63,7 +127,7 @@ export const AppointmentModel = {
 
   // Get days of the week a doctor is scheduled to work
   getDoctorWorkingDays(doctorId) {
-    const doc = doctors.find(d => d.id === doctorId);
+    const doc = DoctorModel.getDoctorById(doctorId);
     if (!doc || !doc.schedule) return [];
     
     // Map schedule days like "Thứ Hai" to numeric day index (1)
@@ -102,7 +166,7 @@ export const AppointmentModel = {
     const dayOfWeek = this.getLocalDayOfWeek(date);
     const workingDays = this.getDoctorWorkingDays(doctorId);
     if (workingDays.length > 0 && !workingDays.includes(dayOfWeek)) {
-      const doc = doctors.find(d => d.id === doctorId);
+      const doc = DoctorModel.getDoctorById(doctorId);
       const scheduleStr = doc ? doc.schedule.map(s => s.day).join(', ') : '';
       return {
         valid: false,
@@ -173,7 +237,7 @@ export const AppointmentModel = {
     }
 
     const appointments = this.getAll();
-    const doc = doctors.find(d => d.id === bookingData.doctorId);
+    const doc = DoctorModel.getDoctorById(bookingData.doctorId);
 
     const newApt = {
       id: `apt-${Date.now()}`,
@@ -233,6 +297,15 @@ export const AppointmentModel = {
     return appointments[aptIdx];
   },
 
+  applySurcharge(feeStr, amount) {
+    if (!feeStr) return `${amount.toLocaleString('vi-VN')} VNĐ`;
+    const numbers = feeStr.replace(/[^0-9]/g, '');
+    if (!numbers) return `${amount.toLocaleString('vi-VN')} VNĐ`;
+    const currentVal = parseInt(numbers, 10);
+    const newVal = currentVal + amount;
+    return `${newVal.toLocaleString('vi-VN')} VNĐ`;
+  },
+
   // Reschedule an appointment
   reschedule(appointmentId, newDate, newTime) {
     const appointments = this.getAll();
@@ -242,8 +315,21 @@ export const AppointmentModel = {
     }
 
     const apt = appointments[aptIdx];
-    if (!this.canCancel(apt)) {
-      throw new Error('Không thể tự đổi lịch hẹn trực tuyến sát giờ khám (dưới 24 giờ). Vui lòng liên hệ Hotline phòng khám để được hỗ trợ.');
+
+    // Rule 1: Max 2 reschedules check
+    const currentCount = apt.rescheduleCount || 0;
+    if (currentCount >= 2) {
+      throw new Error('Bạn đã đổi lịch tối đa 2 lần cho cuộc hẹn này. Theo quy định, không thể đổi lịch tiếp. Vui lòng Hủy lịch hoặc liên hệ Lễ tân.');
+    }
+
+    // Rule 2: 24h check (Warning & surcharge instead of blocking)
+    const isCloseToTime = !this.canCancel(apt);
+    let surchargeMessage = '';
+    let updatedFee = apt.fee;
+    
+    if (isCloseToTime) {
+      updatedFee = this.applySurcharge(apt.fee, 50000);
+      surchargeMessage = ' (Tính thêm phụ phí 50.000 VNĐ đổi lịch sát giờ)';
     }
 
     // 1. Date must be tomorrow or later
@@ -263,12 +349,12 @@ export const AppointmentModel = {
     const dayOfWeek = this.getLocalDayOfWeek(newDate);
     const workingDays = this.getDoctorWorkingDays(apt.doctorId);
     if (workingDays.length > 0 && !workingDays.includes(dayOfWeek)) {
-      const doc = doctors.find(d => d.id === apt.doctorId);
+      const doc = DoctorModel.getDoctorById(apt.doctorId);
       const scheduleStr = doc ? doc.schedule.map(s => s.day).join(', ') : '';
       throw new Error(`Bác sĩ không có lịch trực vào ngày này. Lịch làm việc của bác sĩ: ${scheduleStr}.`);
     }
 
-    // 3. Prevent double booking
+    // 3. Prevent doctor double booking
     const isBooked = appointments.some(
       a =>
         a.id !== appointmentId &&
@@ -279,6 +365,20 @@ export const AppointmentModel = {
     );
     if (isBooked) {
       throw new Error('Khung giờ này đã được đặt trước cho bác sĩ này. Vui lòng chọn khung giờ khác.');
+    }
+
+    // 3.5. Room & Equipment availability check
+    // If another appointment with the same service on the same slot exists, equipment is occupied
+    const isEquipOccupied = appointments.some(
+      a =>
+        a.id !== appointmentId &&
+        a.service === apt.service &&
+        a.date === newDate &&
+        a.time === newTime &&
+        a.status !== 'Đã hủy'
+    );
+    if (isEquipOccupied) {
+      throw new Error('Phòng điều trị hoặc thiết bị/máy móc cho dịch vụ này đã kẹt vào khung giờ đã chọn. Vui lòng chọn khung giờ khác.');
     }
 
     // 4. Prevent patient double-booking themselves
@@ -298,15 +398,58 @@ export const AppointmentModel = {
       throw new Error(`Bạn đã có một lịch hẹn khác vào khung giờ ${newTime} ngày ${newDate}.`);
     }
 
+    // Rule 5: Audit log in appointment history
+    const history = apt.history || [];
+    const logDetails = `Đổi lịch khám từ [${apt.date} ${apt.time}] sang [${newDate} ${newTime}]. Số lần đổi: ${currentCount + 1}/2.${surchargeMessage}`;
+    history.push({
+      action: 'RESCHEDULE',
+      timestamp: new Date().toISOString(),
+      details: logDetails,
+      feeUpdated: updatedFee !== apt.fee,
+    });
+
     // Update appointment
     appointments[aptIdx] = {
       ...apt,
       date: newDate,
       time: newTime,
+      fee: updatedFee,
+      rescheduleCount: currentCount + 1,
+      history,
       status: 'Chờ xác nhận', // Rescheduled appointment goes back to Pending Approval
     };
     
     this.save(appointments);
+
+    // Rule 6: Audit log in SystemLogModel
+    SystemLogModel.addLog(
+      `Bệnh nhân (${apt.patientName})`,
+      'RESCHEDULE_APPOINTMENT',
+      appointmentId,
+      `Đã đổi lịch hẹn ${appointmentId} sang ${newDate} ${newTime}. Số lần đổi: ${currentCount + 1}/2.${surchargeMessage}`,
+      'Info'
+    );
+
+    // Rule 7: Dispatch notifications
+    NotificationModel.sendNotification(
+      'PATIENT',
+      apt.patientId,
+      'Đổi lịch hẹn thành công',
+      `Lịch hẹn của bạn với bác sĩ ${apt.doctorName} đã được đổi sang ngày ${newDate} lúc ${newTime}. Số lần đổi: ${currentCount + 1}/2.${surchargeMessage}`
+    );
+    NotificationModel.sendNotification(
+      'DOCTOR',
+      apt.doctorId,
+      'Bệnh nhân đổi lịch khám',
+      `Bệnh nhân ${apt.patientName} đã đổi lịch khám sang ngày ${newDate} lúc ${newTime}.`
+    );
+    NotificationModel.sendNotification(
+      'RECEPTIONIST',
+      'all',
+      'Yêu cầu đổi lịch mới',
+      `Bệnh nhân ${apt.patientName} yêu cầu đổi lịch hẹn ${appointmentId} sang ngày ${newDate} lúc ${newTime}.`
+    );
+
     return appointments[aptIdx];
   },
 

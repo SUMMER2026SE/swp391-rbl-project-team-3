@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { AppointmentModel } from '../models/AppointmentModel';
-import { doctors } from '../mockData';
 
 export function useAppointmentController(patientId = null) {
   const [appointments, setAppointments] = useState(() => {

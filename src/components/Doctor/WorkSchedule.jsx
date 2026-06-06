@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Calendar, Check, Clock } from 'lucide-react';
-import { doctors } from '../../mockData';
+import { DoctorModel } from '../../models/DoctorModel';
 
 export default function WorkSchedule({ doctorId }) {
-  const doctor = doctors?.find(doc => doc?.id === doctorId) || doctors[0];
+  const doctor = DoctorModel.getDoctorById(doctorId) || DoctorModel.getAllDoctors()[0];
   const [confirmedShifts, setConfirmedShifts] = useState({});
 
   const handleConfirmShift = (day) => {

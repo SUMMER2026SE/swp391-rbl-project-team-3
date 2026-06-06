@@ -1,9 +1,20 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp, Users, Ticket, Activity, ChevronRight, Zap, Shield } from 'lucide-react';
-import { mockEmployees, mockVouchers, mockSystemLogs } from '../../mockData';
+import { mockEmployees, mockVouchers } from '../../mockData';
+import { SystemLogModel } from '../../models/SystemLogModel';
 
 const AdminOverview = () => {
+  const [logs, setLogs] = useState(() => SystemLogModel.getAll());
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setLogs(SystemLogModel.getAll());
+    };
+    window.addEventListener('system-logs-updated', handleUpdate);
+    return () => window.removeEventListener('system-logs-updated', handleUpdate);
+  }, []);
+
   const containerVariants = {
     hidden: { opacity: 0 },
     show: {
@@ -105,7 +116,7 @@ const AdminOverview = () => {
           </div>
           
           <div className="space-y-5">
-            {mockSystemLogs?.map((log) => (
+            {logs?.map((log) => (
               <div key={log.id} className="flex items-start p-5 rounded-2xl bg-white/80 border border-slate-100 shadow-sm hover:shadow-md transition-shadow group">
                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mr-5 ${log.severity === 'Success' ? 'bg-emerald-100 text-emerald-600' : 'bg-sky-100 text-sky-600'}`}>
                   {log.severity === 'Success' ? <Activity className="w-6 h-6" /> : <Users className="w-6 h-6" />}

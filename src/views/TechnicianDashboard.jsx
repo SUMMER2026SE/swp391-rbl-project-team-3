@@ -10,13 +10,15 @@ import {
   Search, 
   Bell, 
   Settings, 
-  User 
+  User,
+  Star,
 } from 'lucide-react';
 
 import TechnicianOverview from '../components/Technician/Overview/TechnicianOverview';
 import AssignedTasksList from '../components/Technician/AssignedTasks/AssignedTasksList';
 import TechnicianSchedule from '../components/Technician/WorkSchedule/TechnicianSchedule';
 import ProcedureWorkspace from '../components/Technician/ProcedureWorkspace/ProcedureWorkspace';
+import TechnicianFeedbackView from '../components/Technician/TechnicianFeedbackView';
 import { mockAssignedTasks } from '../mockData';
 
 export default function TechnicianDashboard() {
@@ -40,6 +42,7 @@ export default function TechnicianDashboard() {
         { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard },
         { id: 'tasks', label: 'Danh sách Chỉ định', icon: ClipboardList },
         { id: 'schedule', label: 'Lịch làm việc', icon: Calendar },
+        { id: 'feedback', label: 'Đánh giá bệnh nhân', icon: Star },
     ];
 
     const handleExecuteTask = (task) => {
@@ -222,6 +225,7 @@ export default function TechnicianDashboard() {
                                 {activeTab === 'overview' && <TechnicianOverview tasks={tasks} />}
                                 {activeTab === 'tasks' && <AssignedTasksList tasks={tasks} onExecuteTask={handleExecuteTask} />}
                                 {activeTab === 'schedule' && <TechnicianSchedule />}
+                                {activeTab === 'feedback' && <TechnicianFeedbackView technicianId={user?.id || 'doc-03'} />}
                             </motion.div>
                         )}
                     </AnimatePresence>

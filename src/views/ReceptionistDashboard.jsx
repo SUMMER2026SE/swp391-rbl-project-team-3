@@ -29,7 +29,8 @@ import {
   Clock,
   CalendarDays,
   CreditCard,
-  Stethoscope
+  Stethoscope,
+  Star,
 } from 'lucide-react';
 import { 
   mockAppointments, 
@@ -40,7 +41,9 @@ import {
   mockTimeSlots 
 } from '../mockData';
 import LiveChatDrawer from '../components/Receptionist/LiveChatDrawer';
+import ReceptionistFeedbackView from '../components/Receptionist/ReceptionistFeedbackView';
 import { useAppointmentController } from '../controllers/useAppointmentController';
+import { NotificationModel } from '../models/NotificationModel';
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 30 },
@@ -76,6 +79,27 @@ export default function ReceptionistDashboard() {
   const [chatMessages, setChatMessages] = useState(mockChatMessages);
   const [toast, setToast] = useState(null);
   
+  const [notifications, setNotifications] = useState(() => NotificationModel.getAll());
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setNotifications(NotificationModel.getAll());
+    };
+    window.addEventListener('notifications-updated', handleUpdate);
+    return () => window.removeEventListener('notifications-updated', handleUpdate);
+  }, []);
+
+  const receptionistId = user?.id || 'staff-01';
+  const myNotifications = notifications.filter(n => 
+    n.recipientRole === 'RECEPTIONIST' && (n.recipientId === receptionistId || n.recipientId === 'all')
+  );
+  const unreadCount = myNotifications.filter(n => !n.isRead).length;
+
+  const handleMarkAllRead = () => {
+    NotificationModel.markAllAsRead('RECEPTIONIST', receptionistId);
+  };
+
   // Manual Appointment Modal State
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [newApt, setNewApt] = useState({
@@ -324,6 +348,7 @@ export default function ReceptionistDashboard() {
               { id: 'appointments', label: 'Quản lý Lịch hẹn', icon: CalendarDays },
               { id: 'payments', label: 'Thanh toán & Hóa đơn', icon: CreditCard },
               { id: 'doctor_schedules', label: 'Lịch Bác sĩ', icon: Stethoscope },
+              { id: 'feedback', label: 'Đánh giá bệnh nhân', icon: Star },
             ].map(tab => (
               <button
                 key={tab.id}
@@ -421,10 +446,63 @@ export default function ReceptionistDashboard() {
                 <MessageSquare className="w-5 h-5 text-slate-600" />
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
               </button>
-              <button className="hover:bg-slate-100 hover:text-teal-600 transition-all p-2 rounded-full relative active:scale-95 border-none cursor-pointer bg-transparent flex items-center justify-center">
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full"></span>
-              </button>
+              <div className="relative">
+                <button 
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="hover:bg-slate-100 hover:text-teal-600 transition-all p-2 rounded-full relative active:scale-95 border-none cursor-pointer bg-transparent flex items-center justify-center"
+                >
+                  <Bell className="w-5 h-5" />
+                  {unreadCount > 0 && (
+                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full"></span>
+                  )}
+                </button>
+                
+                <AnimatePresence>
+                  {showNotifications && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      className="absolute right-0 mt-2 w-80 bg-white/95 backdrop-blur-md border border-slate-200 shadow-2xl rounded-2xl p-4 z-50 max-h-[350px] overflow-y-auto"
+                    >
+                      <div className="flex justify-between items-center pb-2 border-b border-slate-100 mb-2">
+                        <span className="text-sm font-extrabold text-slate-800">Thông báo của bạn</span>
+                        {unreadCount > 0 && (
+                          <button 
+                            onClick={handleMarkAllRead}
+                            className="text-[10px] text-teal-600 hover:text-teal-700 font-bold border-none bg-transparent cursor-pointer"
+                          >
+                            Đọc tất cả
+                          </button>
+                        )}
+                      </div>
+                      <div className="space-y-2.5">
+                        {myNotifications.length === 0 ? (
+                          <p className="text-xs text-slate-400 italic text-center py-4">Chưa có thông báo nào.</p>
+                        ) : (
+                          myNotifications.map((notif) => (
+                            <div 
+                              key={notif.id}
+                              onClick={() => {
+                                NotificationModel.markAsRead(notif.id);
+                              }}
+                              className={`p-2.5 rounded-xl transition-all border cursor-pointer text-left ${
+                                notif.isRead 
+                                  ? 'bg-transparent border-slate-100 hover:bg-slate-50' 
+                                  : 'bg-teal-50/50 border-teal-100/50 hover:bg-teal-50'
+                              }`}
+                            >
+                              <p className="text-xs font-bold text-slate-800">{notif.title}</p>
+                              <p className="text-[10px] text-slate-500 mt-0.5 leading-snug">{notif.content}</p>
+                              <span className="text-[8px] text-slate-400 block mt-1.5">{new Date(notif.timestamp).toLocaleString('vi-VN')}</span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
               <button className="hover:bg-slate-100 hover:text-teal-600 transition-all p-2 rounded-full active:scale-95 border-none cursor-pointer bg-transparent flex items-center justify-center">
                 <Settings className="w-5 h-5" />
               </button>
@@ -756,6 +834,12 @@ export default function ReceptionistDashboard() {
                 <div className="p-8 backdrop-blur-xl bg-white/40 border border-white/60 shadow-sm rounded-[2rem] text-center text-slate-500 font-medium">
                   Tính năng đang được phát triển...
                 </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'feedback' && (
+              <motion.div key="feedback" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+                <ReceptionistFeedbackView />
               </motion.div>
             )}
           </AnimatePresence>

@@ -226,7 +226,7 @@ export default function LiveChatDrawer({ patient, isOpen, onClose, messages, onS
 
                     {/* Message Bubble */}
                     <div
-                      className={`max-w-[80%] px-3.5 py-2.5 rounded-2xl text-xs leading-relaxed ${
+                      className={`max-w-[80%] px-3.5 py-2.5 rounded-xl text-xs leading-relaxed ${
                         isPatient
                           ? 'bg-white border border-slate-200/80 text-slate-800 rounded-bl-sm shadow-sm'
                           : isAI

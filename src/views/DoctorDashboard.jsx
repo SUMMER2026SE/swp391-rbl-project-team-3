@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { NotificationModel } from '../models/NotificationModel';
 import { 
   LayoutDashboard, 
   Users, 
@@ -10,7 +11,8 @@ import {
   Search, 
   Bell, 
   Settings, 
-  User 
+  User,
+  Star,
 } from 'lucide-react';
 
 // Import Tab Components
@@ -18,17 +20,37 @@ import DashboardOverview from '../components/Doctor/DashboardOverview';
 import ScheduleWaitingList from '../components/Doctor/ScheduleWaitingList';
 import WorkSchedule from '../components/Doctor/WorkSchedule';
 import VirtualClinicWorkspace from '../components/Doctor/VirtualClinic/VirtualClinicWorkspace';
+import DoctorFeedbackView from '../components/Doctor/DoctorFeedbackView';
 
 export default function DoctorDashboard() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [isScrolled, setIsScrolled] = useState(false);
-  
+  const [notifications, setNotifications] = useState(() => NotificationModel.getAll());
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setNotifications(NotificationModel.getAll());
+    };
+    window.addEventListener('notifications-updated', handleUpdate);
+    return () => window.removeEventListener('notifications-updated', handleUpdate);
+  }, []);
+
+  const doctorId = user?.id || 'doc-01'; // Fallback to mock doctor 1
+
+  const myNotifications = notifications.filter(n => 
+    n.recipientRole === 'DOCTOR' && (n.recipientId === doctorId || n.recipientId === 'all')
+  );
+  const unreadCount = myNotifications.filter(n => !n.isRead).length;
+
+  const handleMarkAllRead = () => {
+    NotificationModel.markAllAsRead('DOCTOR', doctorId);
+  };
+
   // State-based routing
   const [activeTab, setActiveTab] = useState('overview');
   const [activeAppointment, setActiveAppointment] = useState(null);
-
-  const doctorId = user?.id || 'doc-01'; // Fallback to mock doctor 1
 
   const handleScroll = (e) => {
     if (e.target.scrollTop > 10) {
@@ -42,6 +64,7 @@ export default function DoctorDashboard() {
     { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard },
     { id: 'waiting_list', label: 'Hàng chờ & Lịch khám', icon: Users },
     { id: 'schedule', label: 'Lịch làm việc', icon: Calendar },
+    { id: 'feedback', label: 'Đánh giá bệnh nhân', icon: Star },
   ];
 
   return (
@@ -165,10 +188,63 @@ export default function DoctorDashboard() {
               <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Doctor Portal</span>
             </div>
             <div className="flex items-center gap-3 text-slate-500">
-              <button className="hover:bg-slate-100 hover:text-teal-600 transition-all p-2 rounded-full relative active:scale-95">
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full"></span>
-              </button>
+              <div className="relative">
+                <button 
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="hover:bg-slate-100 hover:text-teal-600 transition-all p-2 rounded-full relative active:scale-95 border-none cursor-pointer bg-transparent flex items-center justify-center"
+                >
+                  <Bell className="w-5 h-5" />
+                  {unreadCount > 0 && (
+                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full"></span>
+                  )}
+                </button>
+                
+                <AnimatePresence>
+                  {showNotifications && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      className="absolute right-0 mt-2 w-80 bg-white/95 backdrop-blur-md border border-slate-200 shadow-2xl rounded-2xl p-4 z-50 max-h-[350px] overflow-y-auto"
+                    >
+                      <div className="flex justify-between items-center pb-2 border-b border-slate-100 mb-2">
+                        <span className="text-sm font-extrabold text-slate-800">Thông báo của bạn</span>
+                        {unreadCount > 0 && (
+                          <button 
+                            onClick={handleMarkAllRead}
+                            className="text-[10px] text-teal-600 hover:text-teal-700 font-bold border-none bg-transparent cursor-pointer"
+                          >
+                            Đọc tất cả
+                          </button>
+                        )}
+                      </div>
+                      <div className="space-y-2.5">
+                        {myNotifications.length === 0 ? (
+                          <p className="text-xs text-slate-400 italic text-center py-4">Chưa có thông báo nào.</p>
+                        ) : (
+                          myNotifications.map((notif) => (
+                            <div 
+                              key={notif.id}
+                              onClick={() => {
+                                NotificationModel.markAsRead(notif.id);
+                              }}
+                              className={`p-2.5 rounded-xl transition-all border cursor-pointer text-left ${
+                                notif.isRead 
+                                  ? 'bg-transparent border-slate-100 hover:bg-slate-50' 
+                                  : 'bg-teal-50/50 border-teal-100/50 hover:bg-teal-50'
+                              }`}
+                            >
+                              <p className="text-xs font-bold text-slate-800">{notif.title}</p>
+                              <p className="text-[10px] text-slate-500 mt-0.5 leading-snug">{notif.content}</p>
+                              <span className="text-[8px] text-slate-400 block mt-1.5">{new Date(notif.timestamp).toLocaleString('vi-VN')}</span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
               <button className="hover:bg-slate-100 hover:text-teal-600 transition-all p-2 rounded-full active:scale-95">
                 <Settings className="w-5 h-5" />
               </button>
@@ -199,6 +275,7 @@ export default function DoctorDashboard() {
               {activeTab === 'overview' && <DashboardOverview doctorId={doctorId} />}
               {activeTab === 'waiting_list' && <ScheduleWaitingList doctorId={doctorId} onStartExam={setActiveAppointment} />}
               {activeTab === 'schedule' && <WorkSchedule doctorId={doctorId} />}
+              {activeTab === 'feedback' && <DoctorFeedbackView doctorId={doctorId} />}
             </motion.div>
           )}
         </main>

@@ -10,10 +10,12 @@ import {
   LogOut,
   Search,
   Bell,
-  ChevronDown
+  ChevronDown,
+  Star,
 } from 'lucide-react';
 import AdminOverview from '../components/Admin/AdminOverview';
 import EmployeeManagement from '../components/Admin/EmployeeManagement';
+import FeedbackDashboard from '../components/Admin/FeedbackDashboard';
 
 // Placeholder components for other tabs
 const PlaceholderTab = ({ title }) => (
@@ -32,6 +34,7 @@ const AdminDashboard = () => {
     { id: 'employees', label: 'Quản lý Nhân sự', icon: Users },
     { id: 'services', label: 'Quản lý Dịch vụ', icon: Stethoscope },
     { id: 'vouchers', label: 'Quản lý Voucher', icon: Ticket },
+    { id: 'feedback', label: 'Đánh giá', icon: Star },
     { id: 'reports', label: 'Hệ thống & Báo cáo', icon: FileText },
   ];
 
@@ -45,6 +48,8 @@ const AdminDashboard = () => {
         return <PlaceholderTab title="Quản lý Dịch vụ" />;
       case 'vouchers':
         return <PlaceholderTab title="Quản lý Voucher" />;
+      case 'feedback':
+        return <FeedbackDashboard />;
       case 'reports':
         return <PlaceholderTab title="Hệ thống & Báo cáo" />;
       default:
