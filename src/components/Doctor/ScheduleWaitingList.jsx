@@ -11,9 +11,10 @@ export default function ScheduleWaitingList({ doctorId, onStartExam }) {
   useEffect(() => {
     const fetchAppointments = () => {
       const all = AppointmentModel.getAll();
-      // Lọc theo đúng bác sĩ và loại bỏ lịch đã hủy để hiển thị danh sách chờ khám thực tế
-      const filtered = all.filter(apt => apt?.doctorId === doctorId && apt?.status !== 'Đã hủy');
-      setTodayAppointments(filtered.sort((a, b) => a?.time.localeCompare(b?.time)));
+      const filtered = all.filter(
+        (apt) => apt?.doctorId === doctorId && apt?.status === 'Đang chờ'
+      );
+      setTodayAppointments([...filtered].sort((a, b) => a?.time.localeCompare(b?.time)));
     };
 
     fetchAppointments();

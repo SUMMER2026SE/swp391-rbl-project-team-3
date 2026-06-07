@@ -10,6 +10,7 @@ import ReceptionistDashboard from './views/ReceptionistDashboard';
 import TechnicianDashboard from './views/TechnicianDashboard';
 import UserProfilePage from './views/UserProfilePage';
 import ProtectedRoute from './components/ProtectedRoute';
+import LiquidGlassFilter from './components/common/LiquidGlassFilter';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import './index.css';
 
@@ -108,6 +109,8 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
+      {/* App-wide SVG refraction filters for the liquid-glass system */}
+      <LiquidGlassFilter />
       <AppContent />
     </AuthProvider>
   );
