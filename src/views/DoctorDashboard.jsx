@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { NotificationModel } from '../models/NotificationModel';
+import { DoctorModel } from '../models/DoctorModel';
 import {
   motion,
   AnimatePresence,
@@ -39,7 +40,7 @@ export default function DoctorDashboard() {
   const [notifications, setNotifications] = useState(() => NotificationModel.getAll());
   const [showNotifications, setShowNotifications] = useState(false);
 
-  const doctorId = user?.id || 'doc-01'; // Fallback to mock doctor 1
+  const doctorId = DoctorModel.getDoctorById(user?.id) ? user.id : 'doc-01';
 
   useEffect(() => {
     const handleUpdate = () => {

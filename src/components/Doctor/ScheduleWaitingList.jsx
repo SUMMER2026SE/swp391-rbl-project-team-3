@@ -12,7 +12,7 @@ export default function ScheduleWaitingList({ doctorId, onStartExam }) {
     const fetchAppointments = () => {
       const all = AppointmentModel.getAll();
       const filtered = all.filter(
-        (apt) => apt?.doctorId === doctorId && apt?.status === 'Đang chờ'
+        (apt) => apt?.doctorId === doctorId && ['Đã xác nhận', 'Đang chờ'].includes(apt?.status)
       );
       setTodayAppointments([...filtered].sort((a, b) => a?.time.localeCompare(b?.time)));
     };
