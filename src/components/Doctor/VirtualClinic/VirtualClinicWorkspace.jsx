@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { ArrowLeft, CheckCircle2, Check, ChevronRight, TestTube2, FileText, Pill } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ArrowLeft, CheckCircle2, Check, ChevronRight, TestTube2, FileText, Pill, XCircle } from 'lucide-react';
 import { motion, AnimatePresence, useMotionValue, useMotionTemplate, animate } from 'framer-motion';
 
 // Left Panel Components
@@ -13,12 +13,31 @@ import TreatmentPlanForm from './RightPanel/TreatmentPlanForm';
 import PrescriptionForm from './RightPanel/PrescriptionForm';
 import ServiceSelectionForm from './RightPanel/ServiceSelectionForm';
 
-import { mockAppointments, mockAssignedTasks, mockPatients } from '../../../mockData';
-
 export default function VirtualClinicWorkspace({ appointment, onBack, handleCompleteExamination }) {
   const [clinicalStep, setClinicalStep] = useState(1);
   const [selectedServices, setSelectedServices] = useState([]);
   const [isPressing, setIsPressing] = useState(false);
+
+  // Form states
+  const [diagnosis, setDiagnosis] = useState('');
+  const [selectedPlanServices, setSelectedPlanServices] = useState([]);
+  const [doctorNotes, setDoctorNotes] = useState('');
+  const [prescriptionData, setPrescriptionData] = useState({
+    medications: [],
+    generalInstructions: '',
+    followUpDate: '',
+    followUpNotes: ''
+  });
+
+  const isReviewMode = appointment?.status === 'Đã khám';
+
+  useEffect(() => {
+    if (isReviewMode && appointment?.examRecord) {
+      setDiagnosis(appointment.examRecord.diagnosis || '');
+      setSelectedPlanServices(appointment.examRecord.services || []);
+      setDoctorNotes(appointment.examRecord.doctorNotes || '');
+    }
+  }, [isReviewMode, appointment]);
 
   /* --------------------------------------------------------------
      Interactive Spread & Blur (Part 1).
@@ -62,16 +81,16 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
         <div className="flex items-center gap-4">
           <button
             onClick={onBack}
-            className="p-2.5 glass-inner hover:bg-white rounded-full transition-all active:scale-95 text-slate-600"
+            className="p-2.5 glass-inner hover:bg-white rounded-full transition-all active:scale-95 text-slate-600 cursor-pointer"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
             <h1 className="font-bold text-2xl md:text-3xl text-gradient-emerald tracking-tight leading-none">
-              Phòng khám ảo
+              {isReviewMode ? 'Xem lại hồ sơ bệnh án' : 'Phòng khám ảo'}
             </h1>
             <p className="text-sm text-slate-500 font-medium mt-1.5">
-              Đang khám: <span className="font-bold text-slate-800">{appointment?.patientName}</span>
+              Bệnh nhân: <span className="font-bold text-slate-800">{appointment?.patientName}</span>
               <span className="mx-2 text-slate-300">•</span>
               Dịch vụ: <span className="font-medium text-slate-700">{appointment?.service}</span>
             </p>
@@ -106,7 +125,7 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
                     whileTap={{ scale: 0.97 }}
                     animate={{ scale: isActive ? 1 : 0.97 }}
                     transition={stepTransition}
-                    className={`relative flex-1 min-w-0 flex items-center gap-2.5 rounded-2xl px-3 sm:px-4 py-3 border text-left transition-colors duration-300 ${
+                    className={`relative flex-1 min-w-0 flex items-center gap-2.5 rounded-2xl px-3 sm:px-4 py-3 border text-left transition-colors duration-300 cursor-pointer ${
                       isActive
                         ? 'stepper-active bg-gradient-to-br from-emerald-500 to-teal-600 text-white border-emerald-300/60'
                         : isPast
@@ -167,7 +186,7 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
 
                   <button
                     onClick={() => setClinicalStep(2)}
-                    className="w-full bg-gradient-to-br from-slate-800 to-slate-900 text-white py-4 px-6 rounded-2xl font-bold tracking-tight hover:from-slate-700 hover:to-slate-800 transition-all active:scale-[0.98] flex justify-center items-center gap-2 flex-shrink-0 shadow-lg shadow-slate-900/10"
+                    className="w-full bg-gradient-to-br from-slate-800 to-slate-900 text-white py-4 px-6 rounded-2xl font-bold tracking-tight hover:from-slate-700 hover:to-slate-800 transition-all active:scale-[0.98] flex justify-center items-center gap-2 flex-shrink-0 shadow-lg shadow-slate-900/10 cursor-pointer"
                   >
                     Tiếp tục: Chẩn đoán &amp; Phác đồ <ChevronRight className="w-5 h-5" />
                   </button>
@@ -184,19 +203,25 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
                   transition={stepTransition}
                   className="space-y-6"
                 >
-                  <DiagnosisForm />
-                  <TreatmentPlanForm />
+                  <DiagnosisForm value={diagnosis} onChange={setDiagnosis} isReviewMode={isReviewMode} />
+                  <TreatmentPlanForm 
+                    selectedServices={selectedPlanServices} 
+                    onServicesChange={setSelectedPlanServices} 
+                    doctorNotes={doctorNotes} 
+                    onNotesChange={setDoctorNotes} 
+                    isReviewMode={isReviewMode} 
+                  />
 
                   <div className="flex gap-4">
                     <button
                       onClick={() => setClinicalStep(1)}
-                      className="flex-1 glass-inner text-slate-700 py-4 px-6 rounded-2xl font-bold tracking-tight hover:bg-white transition-all active:scale-[0.98] flex justify-center items-center gap-2"
+                      className="flex-1 glass-inner text-slate-700 py-4 px-6 rounded-2xl font-bold tracking-tight hover:bg-white transition-all active:scale-[0.98] flex justify-center items-center gap-2 cursor-pointer"
                     >
                       Quay lại
                     </button>
                     <button
                       onClick={() => setClinicalStep(3)}
-                      className="flex-1 bg-gradient-to-br from-slate-800 to-slate-900 text-white py-4 px-6 rounded-2xl font-bold tracking-tight hover:from-slate-700 hover:to-slate-800 transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-lg shadow-slate-900/10"
+                      className="flex-1 bg-gradient-to-br from-slate-800 to-slate-900 text-white py-4 px-6 rounded-2xl font-bold tracking-tight hover:from-slate-700 hover:to-slate-800 transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-lg shadow-slate-900/10 cursor-pointer"
                     >
                       Tiếp tục: Kê đơn &amp; Hoàn tất <ChevronRight className="w-5 h-5" />
                     </button>
@@ -214,24 +239,44 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
                   transition={stepTransition}
                   className="h-full flex flex-col space-y-6"
                 >
-                  <PrescriptionForm appointmentId={appointment?.id} />
+                  <PrescriptionForm 
+                    appointmentId={appointment?.id} 
+                    isReviewMode={isReviewMode} 
+                    examRecord={appointment?.examRecord} 
+                    onChange={setPrescriptionData} 
+                  />
 
                   {/* Final Action Area */}
                   <div className="pt-6 border-t border-slate-200/50 flex flex-col gap-3 flex-shrink-0">
                     <div className="flex gap-4">
                       <button
                         onClick={() => setClinicalStep(2)}
-                        className="flex-1 glass-inner text-slate-700 py-4 px-6 rounded-2xl font-bold tracking-tight hover:bg-white transition-all active:scale-[0.98] flex justify-center items-center gap-2"
+                        className="flex-1 glass-inner text-slate-700 py-4 px-6 rounded-2xl font-bold tracking-tight hover:bg-white transition-all active:scale-[0.98] flex justify-center items-center gap-2 cursor-pointer"
                       >
                         Quay lại
                       </button>
-                      <button
-                        onClick={() => handleCompleteExamination(appointment.id, selectedServices)}
-                        className="flex-[2] bg-gradient-to-r from-emerald-500 to-teal-600 text-white py-4 px-6 rounded-2xl font-bold tracking-tight shadow-lg shadow-emerald-500/20 hover:shadow-xl hover:shadow-emerald-500/30 active:scale-[0.98] transition-all flex justify-center items-center gap-2.5"
-                      >
-                        <CheckCircle2 className="w-5 h-5" />
-                        Hoàn tất khám &amp; Lưu hồ sơ
-                      </button>
+                      {isReviewMode ? (
+                        <button
+                          onClick={onBack}
+                          className="flex-[2] bg-gradient-to-br from-slate-800 to-slate-900 text-white py-4 px-6 rounded-2xl font-bold tracking-tight hover:from-slate-700 hover:to-slate-800 transition-all active:scale-[0.98] flex justify-center items-center gap-2.5 cursor-pointer shadow-lg shadow-slate-900/10"
+                        >
+                          <XCircle className="w-5 h-5 mr-1" />
+                          Đóng hồ sơ bệnh án
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleCompleteExamination(appointment.id, selectedServices, {
+                            diagnosis,
+                            services: selectedPlanServices,
+                            doctorNotes,
+                            ...prescriptionData
+                          })}
+                          className="flex-[2] bg-gradient-to-r from-emerald-500 to-teal-600 text-white py-4 px-6 rounded-2xl font-bold tracking-tight shadow-lg shadow-emerald-500/20 hover:shadow-xl hover:shadow-emerald-500/30 active:scale-[0.98] transition-all flex justify-center items-center gap-2.5 cursor-pointer"
+                        >
+                          <CheckCircle2 className="w-5 h-5" />
+                          Hoàn tất khám &amp; Lưu hồ sơ
+                        </button>
+                      )}
                     </div>
                   </div>
                 </motion.div>

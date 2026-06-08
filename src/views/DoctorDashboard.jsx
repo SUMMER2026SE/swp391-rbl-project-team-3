@@ -48,16 +48,17 @@ export default function DoctorDashboard() {
   const [appointments, setAppointments] = useState(mockAppointments);
   const [showToast, setShowToast] = useState(false);
 
-  const handleCompleteExamination = (appointmentId, selectedServices = []) => {
+  const handleCompleteExamination = (appointmentId, selectedServices = [], clinicalData = null) => {
     // 1. Update local React state
     setAppointments((prev) =>
-      prev.map((app) => (app.id === appointmentId ? { ...app, status: 'Đã khám' } : app))
+      prev.map((app) => (app.id === appointmentId ? { ...app, status: 'Đã khám', examRecord: clinicalData } : app))
     );
 
     // 2. Update global mock data to persist across tab switches
     const foundApt = mockAppointments?.find((a) => a.id === appointmentId);
     if (foundApt) {
       foundApt.status = 'Đã khám';
+      foundApt.examRecord = clinicalData;
     }
 
     // 3. Create assigned tasks in mockAssignedTasks

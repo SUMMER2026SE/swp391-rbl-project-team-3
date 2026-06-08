@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Pill, Plus, Trash2, Calendar, ClipboardList } from 'lucide-react';
+import { Pill, Plus, Trash2, Calendar } from 'lucide-react';
 import { mockPrescriptions } from '../../../../mockData';
 
-export default function PrescriptionForm({ appointmentId }) {
+export default function PrescriptionForm({ appointmentId, isReviewMode = false, examRecord = null, onChange }) {
   // Find prescription or initialize with defaults
   const existingPrescription = mockPrescriptions?.find(p => p.appointmentId === appointmentId);
 
@@ -11,9 +11,14 @@ export default function PrescriptionForm({ appointmentId }) {
   const [followUpDate, setFollowUpDate] = useState('');
   const [followUpNotes, setFollowUpNotes] = useState('');
 
-  // Load existing data if available
+  // Load existing data if available or if in review mode
   useEffect(() => {
-    if (existingPrescription) {
+    if (isReviewMode && examRecord) {
+      setMedications(examRecord.medications || []);
+      setGeneralInstructions(examRecord.generalInstructions || '');
+      setFollowUpDate(examRecord.followUpDate || '');
+      setFollowUpNotes(examRecord.followUpNotes || '');
+    } else if (existingPrescription) {
       setMedications(existingPrescription.medications || []);
       setGeneralInstructions(existingPrescription.generalInstructions || '');
     } else {
@@ -27,31 +32,27 @@ export default function PrescriptionForm({ appointmentId }) {
         }
       ]);
     }
-  }, [existingPrescription]);
+  }, [existingPrescription, isReviewMode, examRecord]);
 
-  const handleAddMedication = () => {
-    setMedications([
-      ...medications,
-      { name: '', dosage: '', frequency: '', instructions: '' }
-    ]);
-  };
-
-  const handleRemoveMedication = (index) => {
-    const updated = medications.filter((_, idx) => idx !== index);
-    setMedications(updated);
-  };
-
-  const handleMedicationChange = (index, field, value) => {
-    const updated = medications.map((med, idx) => {
-      if (idx === index) {
-        return { ...med, [field]: value };
-      }
-      return med;
-    });
-    setMedications(updated);
-  };
+  // Bubble changes up to parent component
+  useEffect(() => {
+    if (onChange && !isReviewMode) {
+      onChange({
+        medications,
+        generalInstructions,
+        followUpDate,
+        followUpNotes
+      });
+    }
+  }, [medications, generalInstructions, followUpDate, followUpNotes, onChange, isReviewMode]);
 
   const premiumInputClass = "w-full p-3 bg-white/60 border border-slate-200/80 rounded-xl focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all text-slate-800 text-sm font-semibold";
+
+  const getInputClass = (readOnly) => `${premiumInputClass} ${
+    readOnly 
+      ? 'bg-slate-100/50 text-slate-900 font-medium cursor-not-allowed border-slate-200/60 focus:ring-0 focus:border-slate-200/80' 
+      : ''
+  }`;
 
   return (
     <div className="space-y-6">
@@ -92,13 +93,15 @@ export default function PrescriptionForm({ appointmentId }) {
             <span className="text-xs font-black text-slate-400 tracking-wider uppercase">
               Chỉ định Thuốc & Liều dùng
             </span>
-            <button
-              onClick={handleAddMedication}
-              type="button"
-              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all active:scale-95"
-            >
-              <Plus className="w-3.5 h-3.5 stroke-[3]" /> Thêm thuốc
-            </button>
+            {!isReviewMode && (
+              <button
+                onClick={handleAddMedication}
+                type="button"
+                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all active:scale-95"
+              >
+                <Plus className="w-3.5 h-3.5 stroke-[3]" /> Thêm thuốc
+              </button>
+            )}
           </div>
 
           <div className="space-y-5">
@@ -108,14 +111,16 @@ export default function PrescriptionForm({ appointmentId }) {
                 className="group relative p-5 bg-slate-50/50 hover:bg-slate-50 border border-slate-200/50 hover:border-slate-300/80 rounded-2xl transition-all duration-200"
               >
                 {/* Delete button */}
-                <button
-                  onClick={() => handleRemoveMedication(idx)}
-                  type="button"
-                  className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
-                  title="Xóa thuốc này"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                {!isReviewMode && (
+                  <button
+                    onClick={() => handleRemoveMedication(idx)}
+                    type="button"
+                    className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
+                    title="Xóa thuốc này"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* Medicine Name */}
@@ -128,7 +133,8 @@ export default function PrescriptionForm({ appointmentId }) {
                       value={med.name}
                       onChange={(e) => handleMedicationChange(idx, 'name', e.target.value)}
                       placeholder="Nhập tên thuốc (ví dụ: Isotretinoin 20mg)"
-                      className={premiumInputClass}
+                      className={getInputClass(isReviewMode)}
+                      readOnly={isReviewMode}
                     />
                   </div>
 
@@ -142,7 +148,8 @@ export default function PrescriptionForm({ appointmentId }) {
                       value={med.dosage}
                       onChange={(e) => handleMedicationChange(idx, 'dosage', e.target.value)}
                       placeholder="ví dụ: 1 viên"
-                      className={premiumInputClass}
+                      className={getInputClass(isReviewMode)}
+                      readOnly={isReviewMode}
                     />
                   </div>
 
@@ -156,7 +163,8 @@ export default function PrescriptionForm({ appointmentId }) {
                       value={med.frequency}
                       onChange={(e) => handleMedicationChange(idx, 'frequency', e.target.value)}
                       placeholder="ví dụ: 1 lần/ngày (sau ăn)"
-                      className={premiumInputClass}
+                      className={getInputClass(isReviewMode)}
+                      readOnly={isReviewMode}
                     />
                   </div>
 
@@ -170,7 +178,8 @@ export default function PrescriptionForm({ appointmentId }) {
                       onChange={(e) => handleMedicationChange(idx, 'instructions', e.target.value)}
                       placeholder="ví dụ: Thoa một lớp mỏng lên nốt mụn viêm buổi tối trước khi đi ngủ."
                       rows="2"
-                      className={`${premiumInputClass} resize-none`}
+                      className={`${getInputClass(isReviewMode)} resize-none`}
+                      readOnly={isReviewMode}
                     />
                   </div>
                 </div>
@@ -182,13 +191,15 @@ export default function PrescriptionForm({ appointmentId }) {
                 <p className="text-sm font-semibold text-slate-400">
                   Chưa có thuốc nào được thêm vào đơn.
                 </p>
-                <button
-                  onClick={handleAddMedication}
-                  type="button"
-                  className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md shadow-emerald-500/10 active:scale-95 transition-all"
-                >
-                  <Plus className="w-4 h-4" /> Kê thuốc đầu tiên
-                </button>
+                {!isReviewMode && (
+                  <button
+                    onClick={handleAddMedication}
+                    type="button"
+                    className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md shadow-emerald-500/10 active:scale-95 transition-all"
+                  >
+                    <Plus className="w-4 h-4" /> Kê thuốc đầu tiên
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -204,7 +215,8 @@ export default function PrescriptionForm({ appointmentId }) {
             onChange={(e) => setGeneralInstructions(e.target.value)}
             placeholder="Nhập hướng dẫn chế độ ăn uống, chống nắng, dưỡng ẩm thêm..."
             rows="2"
-            className={`${premiumInputClass} resize-none`}
+            className={`${getInputClass(isReviewMode)} resize-none`}
+            readOnly={isReviewMode}
           />
         </div>
       </div>
@@ -226,7 +238,8 @@ export default function PrescriptionForm({ appointmentId }) {
               type="date"
               value={followUpDate}
               onChange={(e) => setFollowUpDate(e.target.value)}
-              className={premiumInputClass}
+              className={getInputClass(isReviewMode)}
+              readOnly={isReviewMode}
             />
           </div>
 
@@ -240,7 +253,8 @@ export default function PrescriptionForm({ appointmentId }) {
               value={followUpNotes}
               onChange={(e) => setFollowUpNotes(e.target.value)}
               placeholder="VD: Mang theo kết quả xét nghiệm máu lần kế tiếp"
-              className={premiumInputClass}
+              className={getInputClass(isReviewMode)}
+              readOnly={isReviewMode}
             />
           </div>
         </div>

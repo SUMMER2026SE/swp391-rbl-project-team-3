@@ -1,12 +1,12 @@
 import React from 'react';
-import { Clock, PlayCircle } from 'lucide-react';
+import { Clock, PlayCircle, Eye } from 'lucide-react';
 
 export default function ScheduleWaitingList({ doctorId, onStartExam, appointments = [] }) {
   // Mock today's date
   const today = "2026-06-05";
 
   const todayAppointments = [...appointments]
-    .filter((apt) => apt?.doctorId === doctorId && apt?.status === 'Đang chờ')
+    .filter((apt) => apt?.doctorId === doctorId && ['Đang chờ', 'Đã khám', 'Đã xác nhận'].includes(apt?.status))
     .sort((a, b) => a?.time.localeCompare(b?.time));
 
   const handleStartExam = (apt) => {
@@ -21,7 +21,7 @@ export default function ScheduleWaitingList({ doctorId, onStartExam, appointment
       case 'Đang chờ':
         return <span className="bg-amber-50 text-amber-600 px-3 py-1 rounded-full text-xs font-bold border border-amber-200/50">Đang chờ</span>;
       case 'Đã khám':
-        return <span className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-xs font-bold border border-emerald-200/50">Đã khám</span>;
+        return <span className="bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 font-bold px-3 py-1 rounded-full backdrop-blur-md text-xs">Đã khám</span>;
       case 'Chờ xác nhận':
         return <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-xs font-bold border border-slate-200/50">Chưa xác nhận</span>;
       default:
@@ -49,36 +49,56 @@ export default function ScheduleWaitingList({ doctorId, onStartExam, appointment
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100/50">
-              {todayAppointments.map((apt) => (
-                <tr key={apt?.id} className="hover:bg-white/60 transition-colors">
-                  <td className="py-4 px-6">
-                    <div className="flex items-center gap-2 text-slate-700 font-bold">
-                      <Clock className="w-4 h-4 text-teal-500" />
-                      {apt?.time}
-                    </div>
-                  </td>
-                  <td className="py-4 px-6 font-bold text-slate-900">
-                    {apt?.patientName}
-                  </td>
-                  <td className="py-4 px-6 text-slate-600 text-sm font-medium">
-                    {apt?.service}
-                  </td>
-                  <td className="py-4 px-6">
-                    {getStatusBadge(apt?.status)}
-                  </td>
-                  <td className="py-4 px-6 text-right">
-                    {apt?.status !== 'Đã hủy' && (
-                      <button 
-                        onClick={() => handleStartExam(apt)}
-                        className="inline-flex items-center gap-2 bg-gradient-to-r from-teal-500 to-emerald-500 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md shadow-teal-500/20 hover:shadow-lg hover:shadow-teal-500/30 active:scale-95 transition-all"
-                      >
-                        <PlayCircle className="w-4 h-4" />
-                        Bắt đầu khám
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
+              {todayAppointments.map((apt) => {
+                const isCompleted = apt?.status === 'Đã khám';
+                return (
+                  <tr 
+                    key={apt?.id} 
+                    className={`transition-colors ${
+                      isCompleted 
+                        ? 'bg-slate-50/30 opacity-70 hover:bg-slate-50/50' 
+                        : 'hover:bg-white/60'
+                    }`}
+                  >
+                    <td className="py-4 px-6">
+                      <div className="flex items-center gap-2 text-slate-700 font-bold">
+                        <Clock className="w-4 h-4 text-teal-500" />
+                        {apt?.time}
+                      </div>
+                    </td>
+                    <td className="py-4 px-6 font-bold text-slate-900">
+                      {apt?.patientName}
+                    </td>
+                    <td className="py-4 px-6 text-slate-600 text-sm font-medium">
+                      {apt?.service}
+                    </td>
+                    <td className="py-4 px-6">
+                      {getStatusBadge(apt?.status)}
+                    </td>
+                    <td className="py-4 px-6 text-right">
+                      {isCompleted ? (
+                        <button 
+                          onClick={() => handleStartExam(apt)}
+                          className="inline-flex items-center justify-center gap-2 bg-white/40 hover:bg-white/80 border border-slate-200/50 text-slate-700 px-4 py-2 rounded-xl text-sm font-bold shadow-sm hover:shadow active:scale-95 transition-all cursor-pointer backdrop-blur-md"
+                        >
+                          <Eye className="w-4 h-4 text-emerald-500" />
+                          Xem lại hồ sơ
+                        </button>
+                      ) : (
+                        apt?.status !== 'Đã hủy' && (
+                          <button 
+                            onClick={() => handleStartExam(apt)}
+                            className="inline-flex items-center gap-2 bg-gradient-to-r from-teal-500 to-emerald-500 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md shadow-teal-500/20 hover:shadow-lg hover:shadow-teal-500/30 active:scale-95 transition-all"
+                          >
+                            <PlayCircle className="w-4 h-4" />
+                            Bắt đầu khám
+                          </button>
+                        )
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
               {todayAppointments.length === 0 && (
                 <tr>
                   <td colSpan="5" className="py-8 text-center text-slate-500 font-medium">
