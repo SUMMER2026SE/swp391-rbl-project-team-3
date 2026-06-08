@@ -21,7 +21,12 @@ import {
   Settings, 
   User,
   Star,
+  ChevronRight,
+  CheckCircle2,
 } from 'lucide-react';
+
+// Import Mock Data
+import { mockAppointments, mockAssignedTasks, mockPatients } from '../mockData';
 
 // Import Tab Components
 import DashboardOverview from '../components/Doctor/DashboardOverview';
@@ -39,6 +44,63 @@ export default function DoctorDashboard() {
   const [activeAppointment, setActiveAppointment] = useState(null);
   const [notifications, setNotifications] = useState(() => NotificationModel.getAll());
   const [showNotifications, setShowNotifications] = useState(false);
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
+  const [appointments, setAppointments] = useState(mockAppointments);
+  const [showToast, setShowToast] = useState(false);
+
+  const handleCompleteExamination = (appointmentId, selectedServices = []) => {
+    // 1. Update local React state
+    setAppointments((prev) =>
+      prev.map((app) => (app.id === appointmentId ? { ...app, status: 'Đã khám' } : app))
+    );
+
+    // 2. Update global mock data to persist across tab switches
+    const foundApt = mockAppointments?.find((a) => a.id === appointmentId);
+    if (foundApt) {
+      foundApt.status = 'Đã khám';
+    }
+
+    // 3. Create assigned tasks in mockAssignedTasks
+    if (selectedServices.length > 0 && foundApt) {
+      const patient = mockPatients?.find((p) => p.id === foundApt.patientId);
+      selectedServices.forEach((serviceId, index) => {
+        let procedureType = '';
+        if (serviceId === 'soi-da') procedureType = 'Soi da cắt lớp AI';
+        else if (serviceId === 'xet-nghiem-mau') procedureType = 'Xét nghiệm máu (Gan/Thận)';
+        else if (serviceId === 'lay-nhan-mun') procedureType = 'Lấy nhân mụn chuẩn y khoa';
+        else if (serviceId === 'dien-di') procedureType = 'Điện di Vitamin C';
+        else if (serviceId === 'peel-da') procedureType = 'Peel da điều trị mụn';
+        else if (serviceId === 'chieu-den') procedureType = 'Chiếu đèn sinh học Omega Light';
+        else procedureType = serviceId;
+
+        const newTask = {
+          id: `TASK-${Date.now()}-${index}`,
+          patientId: foundApt.patientId || 'pat-unknown',
+          patientName: foundApt.patientName || 'Bệnh nhân',
+          age: patient?.dob ? new Date().getFullYear() - new Date(patient.dob).getFullYear() : 30,
+          gender: patient?.gender || 'Nữ',
+          procedureType,
+          assignedBy: foundApt.doctorName || 'Bác sĩ điều trị',
+          status: 'Chờ thực hiện',
+          requestTime: new Date().toISOString(),
+          notes: 'Chỉ định từ phòng khám ảo (Khám lâm sàng)',
+          procedureDetails: {
+            type: serviceId === 'soi-da' ? 'Imaging' : 'LabTest',
+          },
+        };
+        mockAssignedTasks.push(newTask);
+      });
+    }
+
+    // 4. Close the Virtual Clinic
+    setActiveAppointment(null);
+
+    // 5. Trigger success toast
+    setShowToast(true);
+    setTimeout(() => {
+      setShowToast(false);
+    }, 3000);
+  };
 
   const doctorId = DoctorModel.getDoctorById(user?.id) ? user.id : 'doc-01';
 
@@ -62,16 +124,11 @@ export default function DoctorDashboard() {
 
   /* --------------------------------------------------------------
      Continuous scroll-linked navbar morph (Part 2).
-     We track the scroll position of the inner content container and
-     interpolate every geometric property smoothly. Each value is wrapped
-     in a spring so the bar "breathes" into its pill shape instead of
-     snapping between two discrete states.
      -------------------------------------------------------------- */
   const scrollRef = useRef(null);
   const { scrollY } = useScroll({ container: scrollRef });
 
   const spring = { stiffness: 220, damping: 32, mass: 0.9 };
-  // raw interpolations across the first 120px of scroll
   const widthRaw = useTransform(scrollY, [0, 120], [100, 90]);
   const maxWRaw = useTransform(scrollY, [0, 120], [1600, 1140]);
   const radiusRaw = useTransform(scrollY, [0, 120], [0, 32]);
@@ -81,7 +138,6 @@ export default function DoctorDashboard() {
   const shadowRaw = useTransform(scrollY, [0, 120], [0, 0.12]);
   const ringRaw = useTransform(scrollY, [0, 120], [0, 0.7]);
 
-  // springy motion values
   const widthMV = useSpring(widthRaw, spring);
   const maxWMV = useSpring(maxWRaw, spring);
   const radiusMV = useSpring(radiusRaw, spring);
@@ -91,7 +147,6 @@ export default function DoctorDashboard() {
   const shadowMV = useSpring(shadowRaw, spring);
   const ringMV = useSpring(ringRaw, spring);
 
-  // composed CSS strings
   const navWidth = useMotionTemplate`${widthMV}%`;
   const navMaxWidth = useMotionTemplate`${maxWMV}px`;
   const navRadius = useMotionTemplate`${radiusMV}px`;
@@ -104,7 +159,7 @@ export default function DoctorDashboard() {
     { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard },
     { id: 'waiting_list', label: 'Hàng chờ & Lịch khám', icon: Users },
     { id: 'schedule', label: 'Lịch làm việc', icon: Calendar },
-    { id: 'feedback', label: 'Đánh giá bệnh nhân', icon: Star },
+    { id: 'feedback', label: 'Đánh giá', icon: Star },
   ];
 
   return (
@@ -132,18 +187,47 @@ export default function DoctorDashboard() {
         <div className="absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] rounded-full bg-sky-300/15 blur-[120px] bg-mesh-blob-2"></div>
       </div>
 
-      {/* Unified Glass Sidebar */}
-      <aside className="hidden md:flex backdrop-blur-2xl bg-white/60 border-r border-white/60 w-64 fixed h-full z-40 flex-col py-8 px-4 justify-between shadow-[4px_0_24px_rgba(0,0,0,0.03),inset_-1px_0_2px_rgba(255,255,255,0.7)]">
-        <div>
+      {/* Compact Glass Sidebar — icon-only by default, expands on hover */}
+      <motion.aside
+        animate={{ width: isSidebarExpanded ? 256 : 80 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+        className="hidden md:flex backdrop-blur-2xl bg-white/30 border-r border-white/40 fixed h-full z-40 flex-col py-8 px-3 justify-between shadow-[4px_0_24px_rgba(0,0,0,0.03),inset_-1px_0_2px_rgba(255,255,255,0.7)] overflow-hidden"
+      >
+        <div className="flex flex-col gap-6">
           {/* Logo Brand */}
-          <div className="px-4 mb-8 flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-black text-lg shadow-lg shadow-teal-500/25">
+          <div className="flex items-center gap-3 px-1 min-h-[44px]">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-black text-lg shadow-lg shadow-teal-500/25 flex-shrink-0">
               DS
             </div>
-            <div>
-              <h1 className="font-black text-xl text-gradient-emerald tracking-tight leading-none">DermaSmart</h1>
-              <span className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider">Doctor Portal</span>
-            </div>
+            <AnimatePresence>
+              {isSidebarExpanded && (
+                <motion.div
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -8 }}
+                  transition={{ duration: 0.15 }}
+                  className="overflow-hidden whitespace-nowrap"
+                >
+                  <h1 className="font-black text-xl text-gradient-emerald tracking-tight leading-none">DermaSmart</h1>
+                  <span className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider">Doctor Portal</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Toggle Button */}
+          <div className={`flex ${isSidebarExpanded ? 'justify-end px-2' : 'justify-center'} min-h-[32px] items-center relative group`}>
+            <button
+              onClick={() => setIsSidebarExpanded(!isSidebarExpanded)}
+              className="w-8 h-8 rounded-full bg-white/60 hover:bg-white/90 border border-slate-200/50 shadow-sm text-slate-500 hover:text-teal-600 flex items-center justify-center transition-all cursor-pointer active:scale-95"
+            >
+              <ChevronRight className={`w-4 h-4 transition-transform duration-300 ${isSidebarExpanded ? 'rotate-180' : 'rotate-0'}`} />
+            </button>
+            {!isSidebarExpanded && (
+              <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                Mở rộng
+              </div>
+            )}
           </div>
 
           {/* Navigation Links */}
@@ -153,51 +237,118 @@ export default function DoctorDashboard() {
               const isActive = activeTab === item.id;
 
               return (
-                <button
-                  key={item.id}
-                  onClick={() => setActiveTab(item.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all active:scale-[0.98] ${
-                    isActive
-                      ? 'font-extrabold bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/25'
-                      : 'font-semibold text-slate-600 hover:text-teal-700 hover:bg-teal-50/60'
-                  }`}
-                >
-                  <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-400'}`} />
-                  <span className="text-[15px]">{item.label}</span>
-                </button>
+                <div key={item.id} className="relative group">
+                  <button
+                    onClick={() => {
+                      setActiveTab(item.id);
+                      setActiveAppointment(null);
+                    }}
+                    className={`w-full flex items-center gap-3 rounded-2xl transition-all active:scale-[0.98] overflow-hidden ${
+                      isSidebarExpanded ? 'px-4 py-3' : 'px-0 py-3 justify-center'
+                    } ${
+                      isActive
+                        ? 'font-semibold bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/25'
+                        : 'font-medium text-slate-600 hover:text-teal-700 hover:bg-teal-50/60'
+                    }`}
+                  >
+                    <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                    <AnimatePresence>
+                      {isSidebarExpanded && (
+                        <motion.span
+                          initial={{ opacity: 0, width: 0 }}
+                          animate={{ opacity: 1, width: 'auto' }}
+                          exit={{ opacity: 0, width: 0 }}
+                          transition={{ duration: 0.15 }}
+                          className="text-[14px] whitespace-nowrap overflow-hidden"
+                        >
+                          {item.label}
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
+                  </button>
+                  {/* Tooltip for collapsed state */}
+                  {!isSidebarExpanded && (
+                    <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                      {item.label}
+                      <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-slate-800"></div>
+                    </div>
+                  )}
+                </div>
               );
             })}
           </nav>
         </div>
 
         {/* Footer actions */}
-        <div className="border-t border-slate-100 pt-4 space-y-1">
-          <button
-            onClick={() => navigate('/profile')}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-slate-600 hover:text-teal-600 hover:bg-teal-50/40 transition-all"
-          >
-            <User className="w-5 h-5 text-slate-400" />
-            <span className="text-sm">Hồ sơ cá nhân</span>
-          </button>
-          <button
-            onClick={async () => {
-              await logout();
-              navigate('/login');
-            }}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-slate-600 hover:text-rose-600 hover:bg-rose-50/40 transition-all"
-          >
-            <LogOut className="w-5 h-5 text-slate-400" />
-            <span className="text-sm">Đăng xuất</span>
-          </button>
+        <div className="border-t border-slate-100/60 pt-4 space-y-1">
+          <div className="relative group">
+            <button
+              onClick={() => navigate('/profile')}
+              className={`w-full flex items-center gap-3 rounded-xl font-medium text-slate-600 hover:text-teal-600 hover:bg-teal-50/40 transition-all ${
+                isSidebarExpanded ? 'px-4 py-3' : 'px-0 py-3 justify-center'
+              }`}
+            >
+              <User className="w-5 h-5 text-slate-400 flex-shrink-0" />
+              <AnimatePresence>
+                {isSidebarExpanded && (
+                  <motion.span
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="text-sm whitespace-nowrap"
+                  >
+                    Hồ sơ cá nhân
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </button>
+            {!isSidebarExpanded && (
+              <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                Hồ sơ cá nhân
+              </div>
+            )}
+          </div>
+          <div className="relative group">
+            <button
+              onClick={async () => {
+                await logout();
+                navigate('/login');
+              }}
+              className={`w-full flex items-center gap-3 rounded-xl font-medium text-slate-600 hover:text-rose-600 hover:bg-rose-50/40 transition-all ${
+                isSidebarExpanded ? 'px-4 py-3' : 'px-0 py-3 justify-center'
+              }`}
+            >
+              <LogOut className="w-5 h-5 text-slate-400 flex-shrink-0" />
+              <AnimatePresence>
+                {isSidebarExpanded && (
+                  <motion.span
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="text-sm whitespace-nowrap"
+                  >
+                    Đăng xuất
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </button>
+            {!isSidebarExpanded && (
+              <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                Đăng xuất
+              </div>
+            )}
+          </div>
         </div>
-      </aside>
+      </motion.aside>
 
-      {/* Main Content Area */}
+      {/* Main Content Area — margin adapts to compact sidebar */}
       <div
         ref={scrollRef}
-        className="flex-1 md:ml-64 flex flex-col h-screen overflow-y-auto z-10"
+        className={`flex-1 flex flex-col h-screen overflow-y-auto z-10 transition-all duration-300 ${
+          isSidebarExpanded ? 'md:ml-64' : 'md:ml-20'
+        }`}
       >
-        {/* Continuous Morphing Pill Topbar (scroll-linked, no snapping) */}
+        {/* Continuous Morphing Pill Topbar */}
         <motion.header
           style={{
             position: 'sticky',
@@ -230,7 +381,7 @@ export default function DoctorDashboard() {
 
           <div className="flex items-center gap-5">
             <div className="text-right hidden md:block">
-              <p className="font-extrabold text-[15px] text-slate-900 leading-tight tracking-tight">{user?.name || 'BS. CKII. Trần Văn A'}</p>
+              <p className="font-bold text-[15px] text-slate-900 leading-tight tracking-tight">{user?.name || 'BS. CKII. Trần Văn A'}</p>
               <span className="text-[11px] text-teal-600 font-bold uppercase tracking-wider">Doctor Portal</span>
             </div>
             <div className="flex items-center gap-2.5 text-slate-500">
@@ -254,7 +405,7 @@ export default function DoctorDashboard() {
                       className="absolute right-0 mt-2 w-80 bg-white/95 backdrop-blur-md border border-slate-200 shadow-2xl rounded-2xl p-4 z-50 max-h-[350px] overflow-y-auto"
                     >
                       <div className="flex justify-between items-center pb-2 border-b border-slate-100 mb-2">
-                        <span className="text-sm font-extrabold text-slate-800">Thông báo của bạn</span>
+                        <span className="text-sm font-bold text-slate-800">Thông báo của bạn</span>
                         {unreadCount > 0 && (
                           <button
                             onClick={handleMarkAllRead}
@@ -311,6 +462,7 @@ export default function DoctorDashboard() {
             <VirtualClinicWorkspace 
               appointment={activeAppointment} 
               onBack={() => setActiveAppointment(null)} 
+              handleCompleteExamination={handleCompleteExamination}
             />
           ) : (
             <motion.div
@@ -321,13 +473,33 @@ export default function DoctorDashboard() {
               transition={{ duration: 0.2 }}
             >
               {activeTab === 'overview' && <DashboardOverview doctorId={doctorId} />}
-              {activeTab === 'waiting_list' && <ScheduleWaitingList doctorId={doctorId} onStartExam={setActiveAppointment} />}
+              {activeTab === 'waiting_list' && (
+                <ScheduleWaitingList 
+                  doctorId={doctorId} 
+                  onStartExam={setActiveAppointment} 
+                  appointments={appointments}
+                />
+              )}
               {activeTab === 'schedule' && <WorkSchedule doctorId={doctorId} />}
               {activeTab === 'feedback' && <DoctorFeedbackView doctorId={doctorId} />}
             </motion.div>
           )}
         </main>
       </div>
+
+      <AnimatePresence>
+        {showToast && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            className="fixed bottom-8 right-8 z-50 flex items-center gap-3 backdrop-blur-2xl bg-emerald-500/90 text-white px-6 py-4 rounded-2xl shadow-lg shadow-emerald-500/20 border border-emerald-400/50"
+          >
+            <CheckCircle2 className="w-5 h-5 text-white" />
+            <span className="font-bold text-sm">Hồ sơ bệnh án đã lưu thành công!</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

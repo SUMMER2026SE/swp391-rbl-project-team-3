@@ -1,28 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { AppointmentModel } from '../../models/AppointmentModel';
+import React from 'react';
 import { Clock, PlayCircle } from 'lucide-react';
 
-export default function ScheduleWaitingList({ doctorId, onStartExam }) {
+export default function ScheduleWaitingList({ doctorId, onStartExam, appointments = [] }) {
   // Mock today's date
   const today = "2026-06-05";
 
-  const [todayAppointments, setTodayAppointments] = useState([]);
-
-  useEffect(() => {
-    const fetchAppointments = () => {
-      const all = AppointmentModel.getAll();
-      const filtered = all.filter(
-        (apt) => apt?.doctorId === doctorId && ['Đã xác nhận', 'Đang chờ'].includes(apt?.status)
-      );
-      setTodayAppointments([...filtered].sort((a, b) => a?.time.localeCompare(b?.time)));
-    };
-
-    fetchAppointments();
-    window.addEventListener('appointments-updated', fetchAppointments);
-    return () => {
-      window.removeEventListener('appointments-updated', fetchAppointments);
-    };
-  }, [doctorId]);
+  const todayAppointments = [...appointments]
+    .filter((apt) => apt?.doctorId === doctorId && apt?.status === 'Đang chờ')
+    .sort((a, b) => a?.time.localeCompare(b?.time));
 
   const handleStartExam = (apt) => {
     if (onStartExam) {

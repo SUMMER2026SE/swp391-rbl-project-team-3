@@ -15,17 +15,13 @@ import ServiceSelectionForm from './RightPanel/ServiceSelectionForm';
 
 import { mockAppointments, mockAssignedTasks, mockPatients } from '../../../mockData';
 
-export default function VirtualClinicWorkspace({ appointment, onBack }) {
+export default function VirtualClinicWorkspace({ appointment, onBack, handleCompleteExamination }) {
   const [clinicalStep, setClinicalStep] = useState(1);
   const [selectedServices, setSelectedServices] = useState([]);
-  const [showToast, setShowToast] = useState(false);
   const [isPressing, setIsPressing] = useState(false);
 
   /* --------------------------------------------------------------
      Interactive Spread & Blur (Part 1).
-     The clinical work surface thickens its backdrop blur and flattens its
-     border radius — like a water drop spreading — while the doctor is
-     actively pressing / dragging inside it, then springs back on release.
      -------------------------------------------------------------- */
   const surfaceBlur = useMotionValue(12);
   const surfaceRadius = useMotionValue(28);
@@ -51,55 +47,6 @@ export default function VirtualClinicWorkspace({ appointment, onBack }) {
     exit: { opacity: 0, scale: 0.95, y: -10 },
   };
 
-  const handleCompleteExamination = () => {
-    // Action 1: Find active appointment and mutate status to 'Đã khám'
-    const foundApt = mockAppointments?.find(apt => apt.id === appointment.id);
-    if (foundApt) {
-      foundApt.status = 'Đã khám';
-    }
-
-    // Action 2: Task Creation
-    if (selectedServices.length > 0) {
-      const patient = mockPatients?.find(p => p.id === appointment.patientId);
-      selectedServices.forEach((serviceId, index) => {
-        let procedureType = '';
-        if (serviceId === 'soi-da') procedureType = 'Soi da cắt lớp AI';
-        else if (serviceId === 'xet-nghiem-mau') procedureType = 'Xét nghiệm máu (Gan/Thận)';
-        else if (serviceId === 'lay-nhan-mun') procedureType = 'Lấy nhân mụn chuẩn y khoa';
-        else if (serviceId === 'dien-di') procedureType = 'Điện di Vitamin C';
-        else if (serviceId === 'peel-da') procedureType = 'Peel da điều trị mụn';
-        else if (serviceId === 'chieu-den') procedureType = 'Chiếu đèn sinh học Omega Light';
-        else procedureType = serviceId;
-
-        const newTask = {
-          id: `TASK-${Date.now()}-${index}`,
-          patientId: appointment.patientId || 'pat-unknown',
-          patientName: appointment.patientName || 'Bệnh nhân',
-          age: patient?.dob ? (new Date().getFullYear() - new Date(patient.dob).getFullYear()) : 30,
-          gender: patient?.gender || 'Nữ',
-          procedureType,
-          assignedBy: appointment.doctorName || 'Bác sĩ điều trị',
-          status: 'Chờ thực hiện',
-          requestTime: new Date().toISOString(),
-          notes: 'Chỉ định từ phòng khám ảo (Khám lâm sàng)',
-          procedureDetails: {
-            type: serviceId === 'soi-da' ? 'Imaging' : 'LabTest'
-          }
-        };
-        mockAssignedTasks.push(newTask);
-      });
-    }
-
-    // Action 3: Toast Notification
-    setShowToast(true);
-
-    // Action 4: Timeout to call onBack()
-    setTimeout(() => {
-      setShowToast(false);
-      onBack();
-    }, 1000);
-  };
-
   if (!appointment) return null;
 
   const steps = [
@@ -120,13 +67,13 @@ export default function VirtualClinicWorkspace({ appointment, onBack }) {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="font-black text-3xl md:text-4xl text-gradient-emerald tracking-tight leading-none">
+            <h1 className="font-bold text-2xl md:text-3xl text-gradient-emerald tracking-tight leading-none">
               Phòng khám ảo
             </h1>
-            <p className="text-[15px] text-slate-500 font-medium mt-1.5">
-              Đang khám: <span className="font-extrabold text-slate-800">{appointment?.patientName}</span>
+            <p className="text-sm text-slate-500 font-medium mt-1.5">
+              Đang khám: <span className="font-bold text-slate-800">{appointment?.patientName}</span>
               <span className="mx-2 text-slate-300">•</span>
-              Dịch vụ: <span className="font-semibold text-slate-700">{appointment?.service}</span>
+              Dịch vụ: <span className="font-medium text-slate-700">{appointment?.service}</span>
             </p>
           </div>
         </div>
@@ -135,7 +82,7 @@ export default function VirtualClinicWorkspace({ appointment, onBack }) {
       {/* Massive Split-Screen Layout */}
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8 overflow-hidden min-h-0">
 
-        {/* Left Panel: Information — separated by a subtle vertical divider */}
+        {/* Left Panel: Information */}
         <div className="lg:col-span-5 xl:col-span-6 h-full overflow-y-auto pr-2 lg:pr-8 lg:border-r lg:border-white/50 custom-scrollbar pb-12 space-y-6">
           <PatientVitals patientId={appointment?.patientId} />
           <AISkinAnalysis patientId={appointment?.patientId} />
@@ -145,8 +92,8 @@ export default function VirtualClinicWorkspace({ appointment, onBack }) {
         {/* Right Panel: Actions — Clinical Stepper Area */}
         <div className="lg:col-span-7 xl:col-span-6 h-full flex flex-col min-h-0">
 
-          {/* Enlarged Clinical Stepper — active step is visually dominant */}
-          <div className="glass-3d rounded-[1.75rem] p-3 mb-8 flex items-stretch gap-1.5 sm:gap-2.5">
+          {/* Clinical Stepper — responsive horizontal scroll to prevent cutoff */}
+          <div className="glass-3d-soft rounded-[1.75rem] p-2.5 mb-8 flex items-stretch gap-1.5 overflow-x-auto hide-scrollbar flex-shrink-0">
             {steps.map((step, index) => {
               const Icon = step.icon;
               const isActive = clinicalStep === step.id;
@@ -159,7 +106,7 @@ export default function VirtualClinicWorkspace({ appointment, onBack }) {
                     whileTap={{ scale: 0.97 }}
                     animate={{ scale: isActive ? 1 : 0.97 }}
                     transition={stepTransition}
-                    className={`relative flex-1 flex items-center gap-3 rounded-2xl px-3 sm:px-4 py-3.5 border text-left transition-colors duration-300 ${
+                    className={`relative flex-1 min-w-0 flex items-center gap-2.5 rounded-2xl px-3 sm:px-4 py-3 border text-left transition-colors duration-300 ${
                       isActive
                         ? 'stepper-active bg-gradient-to-br from-emerald-500 to-teal-600 text-white border-emerald-300/60'
                         : isPast
@@ -167,22 +114,22 @@ export default function VirtualClinicWorkspace({ appointment, onBack }) {
                           : 'bg-white/30 text-slate-400 border-white/50 grayscale opacity-60 hover:opacity-100 hover:grayscale-0'
                     }`}
                   >
-                    <span className={`flex items-center justify-center w-11 h-11 rounded-xl flex-shrink-0 transition-colors ${
+                    <span className={`flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0 transition-colors ${
                       isActive ? 'bg-white/25 text-white'
                         : isPast ? 'bg-emerald-50 text-emerald-600'
                         : 'bg-slate-100 text-slate-400'
                     }`}>
-                      {isPast ? <Check className="w-5 h-5 stroke-[3]" /> : <Icon className="w-5 h-5" />}
+                      {isPast ? <Check className="w-4 h-4 stroke-[3]" /> : <Icon className="w-4 h-4" />}
                     </span>
                     <div className="hidden sm:block min-w-0">
-                      <span className={`block text-[10px] font-extrabold uppercase tracking-wider ${isActive ? 'text-white/80' : 'opacity-70'}`}>
+                      <span className={`block text-[10px] font-bold uppercase tracking-wider ${isActive ? 'text-white/80' : 'opacity-70'}`}>
                         Bước {step.id}
                       </span>
-                      <span className="block text-sm font-extrabold leading-tight truncate">{step.label}</span>
+                      <span className="block text-sm font-semibold leading-tight truncate">{step.label}</span>
                     </div>
                   </motion.button>
                   {index < steps.length - 1 && (
-                    <ChevronRight className={`self-center w-5 h-5 flex-shrink-0 transition-colors ${
+                    <ChevronRight className={`self-center w-4 h-4 flex-shrink-0 transition-colors ${
                       clinicalStep > step.id ? 'text-emerald-400' : 'text-slate-300'
                     }`} />
                   )}
@@ -220,7 +167,7 @@ export default function VirtualClinicWorkspace({ appointment, onBack }) {
 
                   <button
                     onClick={() => setClinicalStep(2)}
-                    className="w-full bg-gradient-to-br from-slate-800 to-slate-900 text-white py-4 px-6 rounded-2xl font-extrabold tracking-tight hover:from-slate-700 hover:to-slate-800 transition-all active:scale-[0.98] flex justify-center items-center gap-2 flex-shrink-0 shadow-lg shadow-slate-900/10"
+                    className="w-full bg-gradient-to-br from-slate-800 to-slate-900 text-white py-4 px-6 rounded-2xl font-bold tracking-tight hover:from-slate-700 hover:to-slate-800 transition-all active:scale-[0.98] flex justify-center items-center gap-2 flex-shrink-0 shadow-lg shadow-slate-900/10"
                   >
                     Tiếp tục: Chẩn đoán &amp; Phác đồ <ChevronRight className="w-5 h-5" />
                   </button>
@@ -243,13 +190,13 @@ export default function VirtualClinicWorkspace({ appointment, onBack }) {
                   <div className="flex gap-4">
                     <button
                       onClick={() => setClinicalStep(1)}
-                      className="flex-1 glass-inner text-slate-700 py-4 px-6 rounded-2xl font-extrabold tracking-tight hover:bg-white transition-all active:scale-[0.98] flex justify-center items-center gap-2"
+                      className="flex-1 glass-inner text-slate-700 py-4 px-6 rounded-2xl font-bold tracking-tight hover:bg-white transition-all active:scale-[0.98] flex justify-center items-center gap-2"
                     >
                       Quay lại
                     </button>
                     <button
                       onClick={() => setClinicalStep(3)}
-                      className="flex-1 bg-gradient-to-br from-slate-800 to-slate-900 text-white py-4 px-6 rounded-2xl font-extrabold tracking-tight hover:from-slate-700 hover:to-slate-800 transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-lg shadow-slate-900/10"
+                      className="flex-1 bg-gradient-to-br from-slate-800 to-slate-900 text-white py-4 px-6 rounded-2xl font-bold tracking-tight hover:from-slate-700 hover:to-slate-800 transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-lg shadow-slate-900/10"
                     >
                       Tiếp tục: Kê đơn &amp; Hoàn tất <ChevronRight className="w-5 h-5" />
                     </button>
@@ -274,15 +221,15 @@ export default function VirtualClinicWorkspace({ appointment, onBack }) {
                     <div className="flex gap-4">
                       <button
                         onClick={() => setClinicalStep(2)}
-                        className="flex-1 glass-inner text-slate-700 py-4 px-6 rounded-2xl font-extrabold tracking-tight hover:bg-white transition-all active:scale-[0.98] flex justify-center items-center gap-2"
+                        className="flex-1 glass-inner text-slate-700 py-4 px-6 rounded-2xl font-bold tracking-tight hover:bg-white transition-all active:scale-[0.98] flex justify-center items-center gap-2"
                       >
                         Quay lại
                       </button>
                       <button
-                        onClick={handleCompleteExamination}
-                        className="flex-[2] bg-gradient-to-r from-emerald-500 to-teal-600 text-white py-4 px-6 rounded-2xl font-extrabold tracking-tight shadow-lg shadow-emerald-500/20 hover:shadow-xl hover:shadow-emerald-500/30 active:scale-[0.98] transition-all flex justify-center items-center gap-2.5"
+                        onClick={() => handleCompleteExamination(appointment.id, selectedServices)}
+                        className="flex-[2] bg-gradient-to-r from-emerald-500 to-teal-600 text-white py-4 px-6 rounded-2xl font-bold tracking-tight shadow-lg shadow-emerald-500/20 hover:shadow-xl hover:shadow-emerald-500/30 active:scale-[0.98] transition-all flex justify-center items-center gap-2.5"
                       >
-                        <CheckCircle2 className="w-5 h-5 animate-bounce" />
+                        <CheckCircle2 className="w-5 h-5" />
                         Hoàn tất khám &amp; Lưu hồ sơ
                       </button>
                     </div>
@@ -294,13 +241,6 @@ export default function VirtualClinicWorkspace({ appointment, onBack }) {
         </div>
 
       </div>
-
-      {showToast && (
-        <div className="fixed bottom-8 right-8 z-50 flex items-center gap-3 backdrop-blur-xl bg-emerald-500/90 text-white px-6 py-4 rounded-2xl shadow-lg shadow-emerald-500/20 border border-emerald-400/50 animate-bounce">
-          <CheckCircle2 className="w-5 h-5 text-white animate-pulse" />
-          <span className="font-extrabold text-sm">Hồ sơ bệnh án đã lưu thành công!</span>
-        </div>
-      )}
 
       <style>{`
         .custom-scrollbar::-webkit-scrollbar {
@@ -315,6 +255,13 @@ export default function VirtualClinicWorkspace({ appointment, onBack }) {
         }
         .custom-scrollbar:hover::-webkit-scrollbar-thumb {
           background-color: rgba(148, 163, 184, 0.8);
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .hide-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
         }
       `}</style>
     </div>
