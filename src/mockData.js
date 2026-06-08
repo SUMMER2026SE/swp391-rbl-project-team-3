@@ -1313,32 +1313,7 @@ export const mockEmployees = [
 ];
 
 // ————— Mock Vouchers ————————————————————————————————————————————————————————————
-export const mockVouchers = [
-    {
-        id: "VOUCH-NEW10",
-        code: "WELCOME10",
-        discountType: "Percentage",
-        discountValue: 10,
-        maxDiscountAmount: 500000,
-        validFrom: "2024-01-01",
-        validTo: "2024-12-31",
-        status: "Hoạt động",
-        usageCount: 45,
-        maxUsage: 100
-    },
-    {
-        id: "VOUCH-ACNE20",
-        code: "ACNECLEAR",
-        discountType: "Fixed",
-        discountValue: 200000,
-        maxDiscountAmount: 200000,
-        validFrom: "2024-05-01",
-        validTo: "2024-08-31",
-        status: "Hết hạn",
-        usageCount: 150,
-        maxUsage: 150
-    }
-];
+export const mockVouchers = [];
 
 // ————— Mock System Logs —————————————————————————————————————————————————————————
 export const mockSystemLogs = [

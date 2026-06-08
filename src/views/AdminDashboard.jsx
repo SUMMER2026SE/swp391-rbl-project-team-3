@@ -21,6 +21,8 @@ import FeedbackDashboard from '../components/Admin/FeedbackDashboard';
 import ServiceManagement from '../components/Admin/ServiceManagement';
 import DoctorScheduleManagement from '../components/Admin/DoctorScheduleManagement';
 import ConsultationTimeManagement from '../components/Admin/ConsultationTimeManagement';
+import RevenueStatistics from '../components/Admin/RevenueStatistics';
+import VoucherManagement from '../components/Admin/VoucherManagement';
 
 // Placeholder components for other tabs
 const PlaceholderTab = ({ title }) => (
@@ -58,11 +60,11 @@ const AdminDashboard = () => {
       case 'consultationTime':
         return <ConsultationTimeManagement />;
       case 'vouchers':
-        return <PlaceholderTab title="Quản lý Voucher" />;
+        return <VoucherManagement />;
       case 'feedback':
         return <FeedbackDashboard />;
       case 'reports':
-        return <PlaceholderTab title="Hệ thống & Báo cáo" />;
+        return <RevenueStatistics />;
       default:
         return <AdminOverview />;
     }

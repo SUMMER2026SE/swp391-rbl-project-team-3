@@ -853,7 +853,6 @@ export default function ReceptionistDashboard() {
             {activeTab === 'doctor_schedules' && (
               <motion.div key="doctor_schedules" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
                 <h2 className="text-2xl font-bold text-slate-800 mb-6">Cập nhật Lịch Bác sĩ</h2>
-                {/* Future: Inject a mock view of Doctor schedules */}
                 <div className="p-8 backdrop-blur-xl bg-white/40 border border-white/60 shadow-sm rounded-[2rem] text-center text-slate-500 font-medium">
                   Tính năng đang được phát triển...
                 </div>

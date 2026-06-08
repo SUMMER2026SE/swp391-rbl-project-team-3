@@ -80,7 +80,7 @@ function AppointmentCard({ apt, index, isUpcoming, onCancel, onReschedule, onVie
       </div>
 
       <div className="flex items-center gap-3 mb-4">
-        <span className="text-xs text-slate-500 flex items-center gap-1.5">
+        <span className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
           <CreditCard className="w-3.5 h-3.5 text-sky-500" />
           {apt.fee}
         </span>
@@ -91,6 +91,12 @@ function AppointmentCard({ apt, index, isUpcoming, onCancel, onReschedule, onVie
             {[1,2,3,4,5].map(s => (
               <Star key={s} className={`w-3 h-3 ${s <= existingFeedback.overallRating ? 'fill-amber-400 text-amber-400' : 'fill-slate-200 text-slate-200'}`} />
             ))}
+          </span>
+        )}
+        {/* Voucher badge — chỉ hiện tên ưu đãi, không hiện mã */}
+        {apt.voucherId && apt.discount > 0 && (
+          <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+            🏷️ Ưu đãi -{Number(apt.discount).toLocaleString('vi-VN')}đ
           </span>
         )}
       </div>
