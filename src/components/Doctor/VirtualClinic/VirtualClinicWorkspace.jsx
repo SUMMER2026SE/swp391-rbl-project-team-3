@@ -12,6 +12,8 @@ import DiagnosisForm from './RightPanel/DiagnosisForm';
 import TreatmentPlanForm from './RightPanel/TreatmentPlanForm';
 import PrescriptionForm from './RightPanel/PrescriptionForm';
 import ServiceSelectionForm from './RightPanel/ServiceSelectionForm';
+import TreatmentProgressTracker from './RightPanel/TreatmentProgressTracker';
+import FollowUpAppointmentForm from './RightPanel/FollowUpAppointmentForm';
 
 export default function VirtualClinicWorkspace({ appointment, onBack, handleCompleteExamination }) {
   const [clinicalStep, setClinicalStep] = useState(1);
@@ -211,6 +213,7 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
                     onNotesChange={setDoctorNotes} 
                     isReviewMode={isReviewMode} 
                   />
+                  <TreatmentProgressTracker appointment={appointment} />
 
                   <div className="flex gap-4">
                     <button
@@ -245,6 +248,7 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
                     examRecord={appointment?.examRecord} 
                     onChange={setPrescriptionData} 
                   />
+                  <FollowUpAppointmentForm appointment={appointment} />
 
                   {/* Final Action Area */}
                   <div className="pt-6 border-t border-slate-200/50 flex flex-col gap-3 flex-shrink-0">
@@ -285,15 +289,9 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
           </motion.div>
         </div>
 
-      </div>
-
-      <style>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
-        }
+        <style>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb {
           background-color: rgba(203, 213, 225, 0.5);
           border-radius: 20px;
@@ -309,6 +307,7 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
           scrollbar-width: none;
         }
       `}</style>
+      </div>
     </div>
   );
 }

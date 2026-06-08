@@ -10,6 +10,7 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
   const { bookAppointment, getAvailableSlots } = useAppointmentController(user?.id);
 
   const [selectedService, setSelectedService] = useState('');
+  const [servicesList, setServicesList] = useState([]);
   const [selectedDoctor, setSelectedDoctor] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
@@ -34,13 +35,28 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
       setGuestEmail('');
       setErrorMessage('');
       setIsSubmitted(false);
+
+      // Load services dynamically from Admin's localStorage
+      const saved = localStorage.getItem('admin-services');
+      if (saved) {
+        const parsed = JSON.parse(saved).map(s => ({
+          id: s.id,
+          name: s.name,
+          price: typeof s.price === 'number' ? `${s.price.toLocaleString('vi-VN')} VNĐ` : s.price,
+          description: s.description,
+          status: s.status
+        })).filter(s => s.status === 'Hoạt động');
+        setServicesList(parsed);
+      } else {
+        setServicesList(mockServices);
+      }
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
 
   const selectedDoctorData = doctors.find((d) => d.id === selectedDoctor);
-  const selectedServiceData = mockServices.find((s) => s.id === selectedService);
+  const selectedServiceData = servicesList.find((s) => s.id === selectedService);
 
   // Get tomorrow's date as min date
   const tomorrow = new Date();
@@ -196,7 +212,7 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
                     className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-emerald-500 text-slate-800 transition-colors appearance-none cursor-pointer text-sm pr-10"
                   >
                     <option value="">-- Chọn dịch vụ --</option>
-                    {mockServices.map((svc) => (
+                    {servicesList.map((svc) => (
                       <option key={svc.id} value={svc.id}>
                         {svc.name} — {svc.price}
                       </option>

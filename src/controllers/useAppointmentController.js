@@ -65,8 +65,26 @@ export function useAppointmentController(patientId = null) {
       return [];
     }
 
-    // In a real clinic, time slots would be dynamic.
-    // For this mock, we use the standard mockTimeSlots and filter out booked ones.
+    // Find doctor's name
+    const doc = doctors.find(d => d.id === docId);
+    const docName = doc ? doc.name : '';
+
+    // Read Admin consultation slots
+    const savedSlots = localStorage.getItem('admin-consultation-slots');
+    const adminSlots = savedSlots ? JSON.parse(savedSlots) : [];
+
+    // Filter slots for this doctor and date
+    const dailySlots = adminSlots.filter(s => s.doctorName === docName && s.date === date);
+
+    if (dailySlots.length > 0) {
+      // Map admin slots to { time: s.startTime, isBooked: s.status !== 'Trống' || isSlotBooked(docId, date, s.startTime) }
+      return dailySlots.map(s => ({
+        time: s.startTime,
+        isBooked: s.status === 'Đã đặt' || s.status === 'Đã hủy' || isSlotBooked(docId, date, s.startTime)
+      }));
+    }
+
+    // Fallback: Default standard slots if Admin hasn't generated specific slots
     const standardSlots = [
       "08:00", "08:30", "09:00", "09:30", "10:00", "10:30",
       "11:00", "11:30", "13:30", "14:00", "14:30", "15:00",

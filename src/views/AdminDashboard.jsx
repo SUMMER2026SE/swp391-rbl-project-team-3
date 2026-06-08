@@ -1,21 +1,26 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  LayoutDashboard, 
-  Users, 
-  Stethoscope, 
-  Ticket, 
-  FileText, 
+import {
+  LayoutDashboard,
+  Users,
+  Stethoscope,
+  Ticket,
+  FileText,
   LogOut,
   Search,
   Bell,
   ChevronDown,
+  Calendar,
+  Clock,
   Star,
 } from 'lucide-react';
 import AdminOverview from '../components/Admin/AdminOverview';
 import EmployeeManagement from '../components/Admin/EmployeeManagement';
 import FeedbackDashboard from '../components/Admin/FeedbackDashboard';
+import ServiceManagement from '../components/Admin/ServiceManagement';
+import DoctorScheduleManagement from '../components/Admin/DoctorScheduleManagement';
+import ConsultationTimeManagement from '../components/Admin/ConsultationTimeManagement';
 
 // Placeholder components for other tabs
 const PlaceholderTab = ({ title }) => (
@@ -33,6 +38,8 @@ const AdminDashboard = () => {
     { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard },
     { id: 'employees', label: 'Quản lý Nhân sự', icon: Users },
     { id: 'services', label: 'Quản lý Dịch vụ', icon: Stethoscope },
+    { id: 'doctorSchedule', label: 'Lịch bác sĩ', icon: Calendar },
+    { id: 'consultationTime', label: 'Khung giờ khám', icon: Clock },
     { id: 'vouchers', label: 'Quản lý Voucher', icon: Ticket },
     { id: 'feedback', label: 'Đánh giá', icon: Star },
     { id: 'reports', label: 'Hệ thống & Báo cáo', icon: FileText },
@@ -45,7 +52,11 @@ const AdminDashboard = () => {
       case 'employees':
         return <EmployeeManagement />;
       case 'services':
-        return <PlaceholderTab title="Quản lý Dịch vụ" />;
+        return <ServiceManagement />;
+      case 'doctorSchedule':
+        return <DoctorScheduleManagement />;
+      case 'consultationTime':
+        return <ConsultationTimeManagement />;
       case 'vouchers':
         return <PlaceholderTab title="Quản lý Voucher" />;
       case 'feedback':

@@ -261,4 +261,5 @@ export default function PrescriptionForm({ appointmentId, isReviewMode = false, 
       </div>
     </div>
   );
+
 }

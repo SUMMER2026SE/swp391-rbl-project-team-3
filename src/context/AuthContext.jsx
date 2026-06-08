@@ -73,9 +73,9 @@ export function AuthProvider({ children }) {
     },
   };
 
-  const login = (role) => {
+  const login = (role, customUserData = null) => {
     const profile = MOCK_PROFILES[role] || {};
-    const newUser = {
+    const newUser = customUserData || {
       id: profile.id || `mock-${role.toLowerCase()}-${Date.now()}`,
       name: profile.name || ROLE_DISPLAY_NAMES[role] || role,
       role,

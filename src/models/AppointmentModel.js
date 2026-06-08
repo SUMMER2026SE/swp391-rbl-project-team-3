@@ -128,7 +128,18 @@ export const AppointmentModel = {
   // Get days of the week a doctor is scheduled to work
   getDoctorWorkingDays(doctorId) {
     const doc = DoctorModel.getDoctorById(doctorId);
-    if (!doc || !doc.schedule) return [];
+    if (!doc) return [];
+    
+    // Look up in admin-doctor-schedules from Admin
+    const savedAdmin = localStorage.getItem('admin-doctor-schedules');
+    const adminSchedules = savedAdmin ? JSON.parse(savedAdmin) : [];
+    const assignedSchedules = adminSchedules.filter(s => s.doctorName === doc.name && s.status !== 'Đã hủy');
+    
+    if (assignedSchedules.length > 0) {
+      return assignedSchedules.map(s => DAY_MAP[s.day] !== undefined ? DAY_MAP[s.day] : -1).filter(d => d !== -1);
+    }
+    
+    if (!doc.schedule) return [];
     
     // Map schedule days like "Thứ Hai" to numeric day index (1)
     return doc.schedule.map(s => DAY_MAP[s.day] !== undefined ? DAY_MAP[s.day] : -1).filter(d => d !== -1);

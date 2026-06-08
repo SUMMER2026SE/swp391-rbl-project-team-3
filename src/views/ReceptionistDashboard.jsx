@@ -115,6 +115,29 @@ export default function ReceptionistDashboard() {
   // Chat Drawer State
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [activeChatPatient, setActiveChatPatient] = useState(null);
+  
+  const [servicesList, setServicesList] = useState([]);
+
+  useEffect(() => {
+    if (isAddOpen) {
+      const saved = localStorage.getItem('admin-services');
+      if (saved) {
+        const parsed = JSON.parse(saved).map(s => ({
+          id: s.id,
+          name: s.name,
+          price: typeof s.price === 'number' ? `${s.price.toLocaleString('vi-VN')} VNĐ` : s.price,
+          description: s.description,
+          status: s.status
+        })).filter(s => s.status === 'Hoạt động');
+        setServicesList(parsed);
+        if (parsed.length > 0 && !parsed.some(s => s.name === newApt.service)) {
+          setNewApt(prev => ({ ...prev, service: parsed[0].name }));
+        }
+      } else {
+        setServicesList(mockServices);
+      }
+    }
+  }, [isAddOpen]);
 
   // ─── INITIALIZATION (Adjust Dates to Coordinate with Today's Date) ───────
   const todayStr = "2026-06-01"; // Timeline current date
@@ -961,7 +984,7 @@ export default function ReceptionistDashboard() {
                     onChange={(e) => setNewApt(prev => ({ ...prev, service: e.target.value }))}
                     className="bg-slate-50/60 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 text-xs font-medium text-slate-800 cursor-pointer"
                   >
-                    {(mockServices || []).map(svc => (
+                    {(servicesList || []).map(svc => (
                       <option key={svc.id} value={svc.name}>{svc.name} - ({svc.price})</option>
                     ))}
                   </select>
