@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import BookingModal from '../components/BookingModal';
+import PaymentModal from '../components/PaymentModal';
+import { useAppointmentController } from '../controllers/useAppointmentController';
 import {
   User,
   Settings,
@@ -37,6 +40,7 @@ import MedicalRecordDetailModal from '../components/PatientPortal/MedicalRecordD
 import { useMedicalRecordController } from '../controllers/useMedicalRecordController';
 import PatientFeedbackTab from '../components/PatientPortal/PatientFeedbackTab';
 import { NotificationModel } from '../models/NotificationModel';
+
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -545,6 +549,8 @@ function MedicalRecordsTab({ user }) {
   );
 }
 
+
+
 // ─── Main UserProfilePage Component ──────────────────────────────────────────
 
 export default function UserProfilePage() {
@@ -579,7 +585,7 @@ export default function UserProfilePage() {
     { id: 'settings', label: 'Cài đặt tài khoản', icon: <Settings className="w-4 h-4" /> },
     ...(role === 'PATIENT'
       ? [
-          { id: 'appointments', label: 'Lịch hẹn', icon: <CalendarCheck className="w-4 h-4" /> },
+          { id: 'appointments', label: 'Lịch hẹn của tôi', icon: <Calendar className="w-4 h-4" /> },
           { id: 'records', label: 'Hồ sơ bệnh án', icon: <FileText className="w-4 h-4" /> },
           { id: 'feedback', label: 'Đánh giá của tôi', icon: <Star className="w-4 h-4" /> },
         ]

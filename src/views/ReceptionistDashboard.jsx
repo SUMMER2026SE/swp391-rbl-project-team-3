@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAppointmentController } from '../controllers/useAppointmentController';
 import { 
   LayoutDashboard, 
   Users, 
@@ -72,9 +73,16 @@ export default function ReceptionistDashboard() {
 
   // ─── STATE MANAGEMENT ───────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState('overview');
-  
-  const { appointments, updateAppointmentStatus, addDirectAppointment } = useAppointmentController();
-  
+  const { 
+    appointments, 
+    updateAppointmentStatus, 
+    addDirectAppointment, 
+    approveAppointment, 
+    checkinAppointment, 
+    bookAppointment, 
+    cancelAppointment 
+  } = useAppointmentController();
+
   const [patients, setPatients] = useState(mockPatients);
   const [chatMessages, setChatMessages] = useState(mockChatMessages);
   const [toast, setToast] = useState(null);
@@ -159,32 +167,35 @@ export default function ReceptionistDashboard() {
   };
 
   // ─── DYNAMIC STATISTICS CALCULATIONS ────────────────────────────────────
-  // "Bệnh nhân đang chờ" (Checked-in but not completed)
-  const waitingCount = (appointments || []).filter(a => a.status === 'Đang chờ' && a.date === todayStr).length;
+  // "Bệnh nhân đang chờ" (Paid but not checked in yet)
+  const waitingCount = (appointments || []).filter(a => a.status === 'Paid').length;
   
-  // "Lịch hẹn hôm nay" (Total appointments for the current date)
-  const todayAppointmentsCount = (appointments || []).filter(a => a.date === todayStr && a.status !== 'Đã hủy').length;
+  // "Lịch hẹn hôm nay" (Total non-cancelled appointments)
+  const todayAppointmentsCount = (appointments || []).filter(a => a.status !== 'Cancelled').length;
   
-  // "Thanh toán chờ xử lý" (Appointments with 'Unpaid' or 'Pending' status)
-  const pendingPaymentsCount = (appointments || []).filter(a => a.paymentStatus === 'Chưa thanh toán' || a.paymentStatus === 'Chờ xác nhận').length;
+  // "Thanh toán chờ xử lý" (Pending appointments)
+  const pendingPaymentsCount = (appointments || []).filter(a => a.status === 'Pending').length;
 
   // ─── INTERACTIVE ACTIONS ────────────────────────────────────────────────
   
   // 1. Check-in Button Action
   const handleCheckIn = (aptId, patientName) => {
-    updateAppointmentStatus(aptId, 'Đang chờ');
+    checkinAppointment(aptId);
+
     showToast(`Check-in thành công cho bệnh nhân ${patientName}!`, 'success');
   };
 
   // 2. Approve Button Action
   const handleApprove = (aptId, patientName) => {
-    updateAppointmentStatus(aptId, 'Đã xác nhận');
+    approveAppointment(aptId, 'rec-01');
+
     showToast(`Đã phê duyệt lịch hẹn khám của ${patientName}!`, 'success');
   };
 
   // 3. Reject/Cancel Button Action
   const handleReject = (aptId, patientName) => {
-    updateAppointmentStatus(aptId, 'Đã hủy');
+    cancelAppointment(aptId);
+
     showToast(`Đã từ chối/hủy lịch hẹn khám của ${patientName}.`, 'error');
   };
 
@@ -209,37 +220,44 @@ export default function ReceptionistDashboard() {
     };
 
     // Create a new appointment
-    const createdAppointment = {
-      id: `apt-${Date.now()}`,
-      patientId: patientId,
-      patientName: newApt.patientName,
-      doctorId: doctor.id,
-      doctorName: doctor.name,
-      date: newApt.date,
-      time: newApt.time,
-      status: 'Đã xác nhận', // Directly confirmed
-      service: newApt.service,
-      paymentStatus: 'Chưa thanh toán',
-      fee: '300,000 VNĐ',
-      notes: newApt.notes
+    const payload = {
+      patient_id: patientId,
+      patient_name: newApt.patientName,
+      doctor_id: doctor.id,
+      doctor_name: doctor.name,
+      doctor_title: doctor.title,
+      doctor_image: doctor.image,
+      service_id: 'srv-01',
+      service_name: newApt.service,
+      slot_id: 'slot-01',
+      appointment_date: newApt.date,
+      start_time: newApt.time,
+      end_time: '10:00',
+      reason: newApt.notes,
+      status: 'Paid' // Directly confirmed/paid
     };
 
-    setPatients(prev => [...prev, createdPatient]);
-    addDirectAppointment(createdAppointment);
-    setIsAddOpen(false);
-    
-    // Reset Form
-    setNewApt({
-      patientName: '',
-      phone: '',
-      date: '2026-06-01',
-      time: '09:00',
-      service: 'Khám Da Liễu Tổng Quát',
-      doctorName: 'BS. CKII. Trần Văn A',
-      notes: ''
-    });
+    try {
+      bookAppointment(payload);
+      setPatients(prev => [...prev, createdPatient]);
+      setIsAddOpen(false);
+      
+      // Reset Form
+      setNewApt({
+        patientName: '',
+        phone: '',
+        date: '2026-06-01',
+        time: '09:00',
+        service: 'Khám Da Liễu Tổng Quát',
+        doctorName: 'BS. CKII. Trần Văn A',
+        notes: ''
+      });
 
-    showToast(`Đã tạo lịch khám trực tiếp cho ${newApt.patientName}!`, 'success');
+      showToast(`Đã tạo lịch khám trực tiếp cho ${newApt.patientName}!`, 'success');
+    } catch (err) {
+      showToast(err.message || 'Có lỗi xảy ra', 'error');
+    }
+
   };
 
   // 5. Open Live Chat for a Patient
@@ -294,23 +312,22 @@ export default function ReceptionistDashboard() {
   };
 
   // ─── FILTER DATA BASED ON SEARCH ────────────────────────────────────────
-  // Today's waiting list (status: 'Đã xác nhận' or 'Đang chờ')
+  // Today's waiting list (status: 'Paid' or 'Completed')
   const todayAppointments = (appointments || []).filter(a => 
-    a.date === todayStr && 
-    (a.status === 'Đã xác nhận' || a.status === 'Đang chờ')
+    a.status === 'Paid' || a.status === 'Completed'
   );
 
   const filteredWaiting = (todayAppointments || []).filter(a => 
-    a.patientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    a.service?.toLowerCase().includes(searchTerm.toLowerCase())
+    a.patient_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    a.service_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Pending booking requests (status: 'Chờ xác nhận')
-  const bookingRequests = (appointments || []).filter(a => a.status === 'Chờ xác nhận');
+  // Pending booking requests (status: 'Pending')
+  const bookingRequests = (appointments || []).filter(a => a.status === 'Pending');
   
   const filteredRequests = (bookingRequests || []).filter(a => 
-    a.patientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    a.service?.toLowerCase().includes(searchTerm.toLowerCase())
+    a.patient_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    a.service_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -570,9 +587,6 @@ export default function ReceptionistDashboard() {
             <div className="backdrop-blur-xl bg-white/40 border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.05)] rounded-[2rem] p-6 relative overflow-hidden group hover:scale-[1.02] transition-all duration-300">
               <div className="absolute -right-4 -top-4 w-24 h-24 bg-sky-500/5 rounded-full blur-xl group-hover:bg-sky-500/10 transition-all"></div>
               <div className="flex justify-between items-start mb-4">
-                <div className="p-3 bg-sky-50 rounded-xl text-sky-600 border border-sky-100 shadow-inner">
-                  <Hourglass className="w-6 h-6" />
-                </div>
                 {waitingCount > 0 && (
                   <span className="bg-sky-50 text-sky-700 px-2.5 py-1 rounded-full text-xs font-bold border border-sky-200/20 animate-pulse">
                     Đang chờ khám
@@ -602,7 +616,7 @@ export default function ReceptionistDashboard() {
               <div className="mt-4 w-full bg-slate-200/50 rounded-full h-1.5 overflow-hidden">
                 <div 
                   className="bg-emerald-500 h-full rounded-full transition-all duration-500" 
-                  style={{ width: todayAppointmentsCount > 0 ? `${(waitingCount / todayAppointmentsCount) * 100}%` : '0%' }}
+                  style={{ width: `${Math.min(100, ((appointments || []).filter(a => a.status === 'Completed').length / (todayAppointmentsCount || 1)) * 100)}%` }}
                 ></div>
               </div>
             </div>
@@ -658,11 +672,11 @@ export default function ReceptionistDashboard() {
                   </div>
                 ) : (
                   (filteredWaiting || []).map((apt, index) => {
-                    const isCheckedIn = apt.status === 'Đang chờ';
+                    const isCheckedIn = apt.status === 'Completed';
                     
                     return (
                       <div 
-                        key={apt.id}
+                        key={apt.appointment_id}
                         className={`p-5 border-b border-slate-200/40 hover:bg-white/60 transition-colors flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${isCheckedIn ? 'opacity-85' : ''}`}
                       >
                         <div className="flex items-center gap-4">
@@ -671,7 +685,7 @@ export default function ReceptionistDashboard() {
                               ? 'bg-slate-100 text-slate-500 border-slate-200' 
                               : 'bg-gradient-to-tr from-sky-50 to-teal-50 text-teal-700 border-sky-100 shadow-sm'
                           }`}>
-                            {apt.patientName.charAt(0)}
+                            {(apt.patient_name || 'B').charAt(0).toUpperCase()}
                             {!isCheckedIn && (
                               <span className="absolute -top-1 -right-1 w-4 h-4 bg-teal-600 text-white text-[9px] rounded-full flex items-center justify-center border border-white font-extrabold shadow-sm">
                                 {index + 1}
@@ -680,17 +694,17 @@ export default function ReceptionistDashboard() {
                           </div>
                           <div>
                             <h4 className={`font-bold text-sm transition-colors ${isCheckedIn ? 'text-slate-500 line-through' : 'text-slate-800'}`}>
-                              {apt.patientName}
+                              {apt.patient_name}
                             </h4>
                             <p className="text-xs text-slate-400 font-medium flex items-center gap-1.5 mt-1">
                               <Clock className="w-3.5 h-3.5 text-slate-400" />
-                              <span className="font-bold text-slate-500">{apt.time}</span>
+                              <span className="font-bold text-slate-500">{apt.start_time}</span>
                               <span>•</span>
-                              <span>{apt.service}</span>
-                              {apt.doctorName && (
+                              <span>{apt.service_name}</span>
+                              {apt.doctor_name && (
                                 <>
                                   <span>•</span>
-                                  <span className="text-teal-600 font-semibold">{apt.doctorName}</span>
+                                  <span className="text-teal-600 font-semibold">{apt.doctor_name}</span>
                                 </>
                               )}
                             </p>
@@ -699,7 +713,7 @@ export default function ReceptionistDashboard() {
                         
                         <div className="flex gap-2 w-full sm:w-auto">
                           <button 
-                            onClick={() => handleOpenChat(apt.patientId, apt.patientName)}
+                            onClick={() => handleOpenChat(apt.patient_id, apt.patient_name)}
                             className="flex-1 sm:flex-none px-3.5 py-2 rounded-xl border border-slate-200 text-slate-500 text-xs font-bold hover:bg-slate-50 hover:text-teal-600 transition-colors cursor-pointer bg-white"
                           >
                             Hồ sơ & Chat
@@ -711,7 +725,7 @@ export default function ReceptionistDashboard() {
                             </span>
                           ) : (
                             <button 
-                              onClick={() => handleCheckIn(apt.id, apt.patientName)}
+                              onClick={() => handleCheckIn(apt.appointment_id, apt.patient_name)}
                               className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-500 hover:to-sky-600 text-white text-xs font-bold transition-all shadow-sm shadow-sky-600/10 cursor-pointer border-none"
                             >
                               Check-in
@@ -750,12 +764,12 @@ export default function ReceptionistDashboard() {
                 ) : (
                   (filteredRequests || []).map((apt) => (
                     <div 
-                      key={apt.id}
+                      key={apt.appointment_id}
                       className="backdrop-blur-xl bg-white/50 border border-white/70 shadow-[0_4px_20px_rgba(0,0,0,0.02)] rounded-2xl p-4 hover:shadow-md transition-all border-l-4 border-l-sky-500 relative flex flex-col"
                     >
                       {/* Close button to reject request */}
                       <button 
-                        onClick={() => handleReject(apt.id, apt.patientName)}
+                        onClick={() => handleReject(apt.appointment_id, apt.patient_name)}
                         title="Từ chối yêu cầu lịch hẹn"
                         className="absolute right-3 top-3 w-6 h-6 rounded-full hover:bg-rose-50 text-slate-400 hover:text-rose-500 flex items-center justify-center cursor-pointer border-none bg-transparent"
                       >
@@ -763,42 +777,42 @@ export default function ReceptionistDashboard() {
                       </button>
 
                       <div className="flex justify-between items-start mb-2 pr-6">
-                        <h4 className="font-bold text-slate-800 text-xs tracking-tight">{apt.patientName}</h4>
+                        <h4 className="font-bold text-slate-800 text-xs tracking-tight">{apt.patient_name}</h4>
                       </div>
                       
                       <div className="text-xs text-slate-500 font-medium space-y-1.5 flex-1">
                         <p className="flex items-center gap-2">
                           <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span className="font-bold text-slate-600">{apt.date}</span>
+                          <span className="font-bold text-slate-600">{apt.appointment_date}</span>
                           <span>-</span>
-                          <span className="font-bold text-teal-600 bg-teal-50 px-1 rounded">{apt.time}</span>
+                          <span className="font-bold text-teal-600 bg-teal-50 px-1 rounded">{apt.start_time}</span>
                         </p>
                         <p className="flex items-center gap-2">
                           <Sparkles className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span>{apt.service}</span>
+                          <span>{apt.service_name}</span>
                         </p>
-                        {apt.doctorName && (
+                        {apt.doctor_name && (
                           <p className="text-[10px] text-slate-400 flex items-center gap-2">
                             <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                            <span>Bác sĩ chỉ định: <strong className="text-slate-600">{apt.doctorName}</strong></span>
+                            <span>Bác sĩ chỉ định: <strong className="text-slate-600">{apt.doctor_name}</strong></span>
                           </p>
                         )}
-                        {apt.notes && (
+                        {apt.reason && (
                           <p className="text-[10px] bg-slate-50 p-2 rounded-xl border border-slate-200/50 italic text-slate-400 font-normal">
-                            "{apt.notes}"
+                            "{apt.reason}"
                           </p>
                         )}
                       </div>
                       
                       <div className="flex gap-2 mt-4">
                         <button 
-                          onClick={() => handleApprove(apt.id, apt.patientName)}
+                          onClick={() => handleApprove(apt.appointment_id, apt.patient_name)}
                           className="flex-1 py-2 rounded-xl bg-teal-50 text-teal-700 text-[11px] font-bold hover:bg-teal-100/50 border border-teal-200/10 transition-colors cursor-pointer"
                         >
                           Phê duyệt
                         </button>
                         <button 
-                          onClick={() => handleOpenChat(apt.patientId, apt.patientName)}
+                          onClick={() => handleOpenChat(apt.patient_id, apt.patient_name)}
                           className="flex-1 py-2 rounded-xl bg-slate-100 text-slate-600 text-[11px] font-bold hover:bg-slate-200/60 border border-slate-200/10 transition-colors cursor-pointer"
                         >
                           Liên hệ
