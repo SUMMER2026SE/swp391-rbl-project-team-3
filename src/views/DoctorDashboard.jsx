@@ -23,6 +23,8 @@ import {
   Star,
   ChevronRight,
   CheckCircle2,
+  MessageSquare,
+
 } from 'lucide-react';
 
 // Import Mock Data
@@ -34,6 +36,9 @@ import ScheduleWaitingList from '../components/Doctor/ScheduleWaitingList';
 import WorkSchedule from '../components/Doctor/WorkSchedule';
 import VirtualClinicWorkspace from '../components/Doctor/VirtualClinic/VirtualClinicWorkspace';
 import DoctorFeedbackView from '../components/Doctor/DoctorFeedbackView';
+import DoctorChatTab from '../components/Doctor/DoctorChatTab';
+import { doctors } from '../mockData';
+
 
 export default function DoctorDashboard() {
   const { user, logout } = useAuth();
@@ -47,6 +52,11 @@ export default function DoctorDashboard() {
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [appointments, setAppointments] = useState(mockAppointments);
   const [showToast, setShowToast] = useState(false);
+  const [currentDoctorId, setCurrentDoctorId] = useState(
+    (user?.id && typeof user.id === 'string' && user.id.startsWith('doc-')) ? user.id : 'doc-01'
+  );
+  const activeDoctor = doctors.find(d => d.id === currentDoctorId) || doctors[0];
+
 
   const handleCompleteExamination = (appointmentId, selectedServices = [], clinicalData = null) => {
     // 1. Update local React state
@@ -73,6 +83,7 @@ export default function DoctorDashboard() {
         else if (serviceId === 'peel-da') procedureType = 'Peel da điều trị mụn';
         else if (serviceId === 'chieu-den') procedureType = 'Chiếu đèn sinh học Omega Light';
         else procedureType = serviceId;
+
 
         const newTask = {
           id: `TASK-${Date.now()}-${index}`,
@@ -161,6 +172,8 @@ export default function DoctorDashboard() {
     { id: 'waiting_list', label: 'Hàng chờ & Lịch khám', icon: Users },
     { id: 'schedule', label: 'Lịch làm việc', icon: Calendar },
     { id: 'feedback', label: 'Đánh giá', icon: Star },
+    { id: 'chat', label: 'Trò chuyện & Hỗ trợ', icon: MessageSquare },
+
   ];
 
   return (
@@ -382,8 +395,26 @@ export default function DoctorDashboard() {
 
           <div className="flex items-center gap-5">
             <div className="text-right hidden md:block">
-              <p className="font-bold text-[15px] text-slate-900 leading-tight tracking-tight">{user?.name || 'BS. CKII. Trần Văn A'}</p>
-              <span className="text-[11px] text-teal-600 font-bold uppercase tracking-wider">Doctor Portal</span>
+              {!user?.isSupabase ? (
+                <div className="flex flex-col items-end">
+                  <select
+                    value={currentDoctorId}
+                    onChange={(e) => setCurrentDoctorId(e.target.value)}
+                    className="font-bold text-sm text-slate-900 bg-white/80 border border-slate-200 rounded-xl px-3 py-1.5 outline-none focus:border-teal-500 transition-all text-right shadow-sm cursor-pointer"
+                  >
+                    {doctors.map(d => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                  </select>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Doctor Portal (Demo)</span>
+                </div>
+              ) : (
+                <>
+                  <p className="font-bold text-sm text-slate-900 leading-none">{user?.name || 'BS. CKII. Trần Văn A'}</p>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Doctor Portal</span>
+                </>
+              )}
+
             </div>
             <div className="flex items-center gap-2.5 text-slate-500">
               <div className="relative">
@@ -448,10 +479,15 @@ export default function DoctorDashboard() {
               <button className="hover:bg-white/70 hover:text-teal-600 transition-all p-2.5 rounded-full active:scale-95">
                 <Settings className="w-[22px] h-[22px]" />
               </button>
-              <button className="w-11 h-11 rounded-full overflow-hidden ring-2 ring-white shadow-md shadow-teal-500/10 active:scale-95 transition-transform">
-                <div className="w-full h-full bg-gradient-to-br from-teal-500 to-sky-500 flex items-center justify-center text-white">
-                  <User className="w-5 h-5" />
-                </div>
+              <button className="w-8 h-8 rounded-full overflow-hidden border border-slate-200 active:scale-95 transition-transform flex items-center justify-center">
+                {activeDoctor?.image ? (
+                  <img src={activeDoctor.image} alt={activeDoctor.name} className="w-full h-full object-cover object-top" />
+                ) : (
+                  <div className="w-full h-full bg-teal-50 flex items-center justify-center text-teal-600 font-bold text-xs">
+                    <User className="w-4 h-4" />
+                  </div>
+                )}
+
               </button>
             </div>
           </div>
@@ -473,16 +509,18 @@ export default function DoctorDashboard() {
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
             >
-              {activeTab === 'overview' && <DashboardOverview doctorId={doctorId} />}
+              {activeTab === 'overview' && <DashboardOverview doctorId={currentDoctorId} />}
               {activeTab === 'waiting_list' && (
                 <ScheduleWaitingList 
-                  doctorId={doctorId} 
+                  doctorId={currentDoctorId} 
                   onStartExam={setActiveAppointment} 
                   appointments={appointments}
                 />
               )}
-              {activeTab === 'schedule' && <WorkSchedule doctorId={doctorId} />}
-              {activeTab === 'feedback' && <DoctorFeedbackView doctorId={doctorId} />}
+              {activeTab === 'schedule' && <WorkSchedule doctorId={currentDoctorId} />}
+              {activeTab === 'feedback' && <DoctorFeedbackView doctorId={currentDoctorId} />}
+              {activeTab === 'chat' && <DoctorChatTab doctorId={currentDoctorId} />}
+
             </motion.div>
           )}
         </main>

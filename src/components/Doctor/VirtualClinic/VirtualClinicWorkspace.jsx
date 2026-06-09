@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { ArrowLeft, CheckCircle2, Check, ChevronRight, TestTube2, FileText, Pill, XCircle } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ArrowLeft, CheckCircle2, Check, ChevronRight, TestTube2, FileText, Pill, XCircle, MessageSquare, X, Send } from 'lucide-react';
 import { motion, AnimatePresence, useMotionValue, useMotionTemplate, animate } from 'framer-motion';
 
 // Left Panel Components
@@ -14,6 +14,9 @@ import PrescriptionForm from './RightPanel/PrescriptionForm';
 import ServiceSelectionForm from './RightPanel/ServiceSelectionForm';
 import TreatmentProgressTracker from './RightPanel/TreatmentProgressTracker';
 import FollowUpAppointmentForm from './RightPanel/FollowUpAppointmentForm';
+
+import { ChatModel } from '../../../models/ChatModel';
+import { doctors } from '../../../mockData';
 
 export default function VirtualClinicWorkspace({ appointment, onBack, handleCompleteExamination }) {
   const [clinicalStep, setClinicalStep] = useState(1);
@@ -31,6 +34,17 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
     followUpNotes: ''
   });
 
+  // Chat states (from restrict-doctor-chat)
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [conversation, setConversation] = useState([]);
+  const [inputValue, setInputValue] = useState('');
+  const messagesEndRef = useRef(null);
+
+  const doctorId = appointment?.doctorId || 'doc-01';
+  const patientId = appointment?.patientId || 'pat-01';
+  const patientName = appointment?.patientName || 'Bệnh nhân';
+  const activeDoctor = doctors.find(d => d.id === doctorId) || doctors[0];
+
   const isReviewMode = appointment?.status === 'Đã khám';
 
   useEffect(() => {
@@ -40,6 +54,54 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
       setDoctorNotes(appointment.examRecord.doctorNotes || '');
     }
   }, [isReviewMode, appointment]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    if (isChatOpen) {
+      scrollToBottom();
+    }
+  }, [conversation, isChatOpen]);
+
+  // Polling for messages between doctor and current patient
+  useEffect(() => {
+    if (!isChatOpen || !appointment) return;
+
+    const fetchMsgs = () => {
+      const msgs = ChatModel.getMessagesBetween(patientId, doctorId);
+      setConversation(msgs);
+    };
+
+    fetchMsgs();
+    const interval = setInterval(fetchMsgs, 2000);
+    return () => clearInterval(interval);
+  }, [isChatOpen, patientId, doctorId, appointment]);
+
+  const handleSend = (e) => {
+    if (e) e.preventDefault();
+    if (!inputValue.trim()) return;
+
+    const newMsg = ChatModel.addMessage({
+      senderId: doctorId,
+      senderName: activeDoctor.name,
+      senderRole: 'DOCTOR',
+      receiverId: patientId,
+      receiverName: patientName,
+      text: inputValue.trim()
+    });
+
+    setConversation(prev => [...prev, newMsg]);
+    setInputValue('');
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
 
   /* --------------------------------------------------------------
      Interactive Spread & Blur (Part 1).
@@ -77,7 +139,7 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
   ];
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden relative">
       {/* Workspace Header */}
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-4">
@@ -288,10 +350,15 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
             </AnimatePresence>
           </motion.div>
         </div>
+      </div>
 
-        <style>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
         .custom-scrollbar::-webkit-scrollbar-thumb {
           background-color: rgba(203, 213, 225, 0.5);
           border-radius: 20px;
@@ -307,7 +374,6 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
           scrollbar-width: none;
         }
       `}</style>
-      </div>
     </div>
   );
 }
