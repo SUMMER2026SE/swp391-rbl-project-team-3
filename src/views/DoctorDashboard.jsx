@@ -39,7 +39,6 @@ import ScheduleWaitingList from '../components/Doctor/ScheduleWaitingList';
 import WorkSchedule from '../components/Doctor/WorkSchedule';
 import VirtualClinicWorkspace from '../components/Doctor/VirtualClinic/VirtualClinicWorkspace';
 import DoctorFeedbackView from '../components/Doctor/DoctorFeedbackView';
-import DoctorChatTab from '../components/Doctor/DoctorChatTab';
 import { doctors } from '../mockData';
 
 
@@ -189,8 +188,6 @@ export default function DoctorDashboard() {
     { id: 'waiting_list', label: 'Hàng chờ & Lịch khám', icon: Users },
     { id: 'schedule', label: 'Lịch làm việc', icon: Calendar },
     { id: 'feedback', label: 'Đánh giá', icon: Star },
-    { id: 'chat', label: 'Trò chuyện & Hỗ trợ', icon: MessageSquare },
-
   ];
 
   return (
@@ -539,8 +536,6 @@ export default function DoctorDashboard() {
               )}
               {activeTab === 'schedule' && <WorkSchedule doctorId={currentDoctorId} />}
               {activeTab === 'feedback' && <DoctorFeedbackView doctorId={currentDoctorId} />}
-              {activeTab === 'chat' && <DoctorChatTab doctorId={currentDoctorId} />}
-
             </motion.div>
           )}
         </main>

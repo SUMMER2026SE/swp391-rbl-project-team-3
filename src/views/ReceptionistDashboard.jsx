@@ -43,7 +43,6 @@ import {
 } from '../mockData';
 import LiveChatDrawer from '../components/Receptionist/LiveChatDrawer';
 import ReceptionistFeedbackView from '../components/Receptionist/ReceptionistFeedbackView';
-import { useAppointmentController } from '../controllers/useAppointmentController';
 import { NotificationModel } from '../models/NotificationModel';
 import ReceptionistChatTab from '../components/Receptionist/ReceptionistChatTab';
 import { ReceptionistChatModel } from '../models/ChatModel';
