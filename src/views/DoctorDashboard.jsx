@@ -21,7 +21,10 @@ import {
   Settings, 
   User,
   Star,
+  ChevronLeft,
   ChevronRight,
+  PanelLeftClose,
+  PanelLeftOpen,
   CheckCircle2,
 } from 'lucide-react';
 
@@ -47,6 +50,20 @@ export default function DoctorDashboard() {
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [appointments, setAppointments] = useState(mockAppointments);
   const [showToast, setShowToast] = useState(false);
+
+  // Dynamic Page Title
+  const getPageTitle = () => {
+    if (activeAppointment) {
+      return `Phòng khám ảo: ${activeAppointment.patientName}`;
+    }
+    const tabNames = {
+      overview: 'Tổng quan',
+      waiting_list: 'Hàng chờ & Lịch khám',
+      schedule: 'Lịch làm việc',
+      feedback: 'Đánh giá',
+    };
+    return tabNames[activeTab] || 'Tổng quan';
+  };
 
   const handleCompleteExamination = (appointmentId, selectedServices = [], clinicalData = null) => {
     // 1. Update local React state
@@ -195,39 +212,39 @@ export default function DoctorDashboard() {
         className="hidden md:flex backdrop-blur-2xl bg-white/30 border-r border-white/40 fixed h-full z-40 flex-col py-8 px-3 justify-between shadow-[4px_0_24px_rgba(0,0,0,0.03),inset_-1px_0_2px_rgba(255,255,255,0.7)] overflow-hidden"
       >
         <div className="flex flex-col gap-6">
-          {/* Logo Brand */}
-          <div className="flex items-center gap-3 px-1 min-h-[44px]">
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-black text-lg shadow-lg shadow-teal-500/25 flex-shrink-0">
-              DS
-            </div>
-            <AnimatePresence>
-              {isSidebarExpanded && (
-                <motion.div
-                  initial={{ opacity: 0, x: -8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -8 }}
-                  transition={{ duration: 0.15 }}
-                  className="overflow-hidden whitespace-nowrap"
+          {/* Logo & Toggle Header */}
+          <div className={`flex items-center ${isSidebarExpanded ? 'justify-between px-1' : 'justify-center'} min-h-[44px]`}>
+            {isSidebarExpanded ? (
+              <>
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-black text-lg shadow-lg shadow-teal-500/25 flex-shrink-0">
+                    DS
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-sm font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent whitespace-nowrap font-black animate-fadeIn">
+                      DermaSmart
+                    </span>
+                    <span className="text-[10px] text-slate-400 whitespace-nowrap animate-fadeIn">
+                      Doctor Portal
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsSidebarExpanded(false)}
+                  className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-emerald-600 transition-colors cursor-pointer"
+                  title="Thu gọn"
                 >
-                  <h1 className="font-black text-xl text-gradient-emerald tracking-tight leading-none">DermaSmart</h1>
-                  <span className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider">Doctor Portal</span>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          {/* Toggle Button */}
-          <div className={`flex ${isSidebarExpanded ? 'justify-end px-2' : 'justify-center'} min-h-[32px] items-center relative group`}>
-            <button
-              onClick={() => setIsSidebarExpanded(!isSidebarExpanded)}
-              className="w-8 h-8 rounded-full bg-white/60 hover:bg-white/90 border border-slate-200/50 shadow-sm text-slate-500 hover:text-teal-600 flex items-center justify-center transition-all cursor-pointer active:scale-95"
-            >
-              <ChevronRight className={`w-4 h-4 transition-transform duration-300 ${isSidebarExpanded ? 'rotate-180' : 'rotate-0'}`} />
-            </button>
-            {!isSidebarExpanded && (
-              <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
-                Mở rộng
-              </div>
+                  <PanelLeftClose className="w-5 h-5" />
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => setIsSidebarExpanded(true)}
+                className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-emerald-600 transition-colors cursor-pointer"
+                title="Mở rộng"
+              >
+                <PanelLeftOpen className="w-5 h-5" />
+              </button>
             )}
           </div>
 
@@ -370,6 +387,9 @@ export default function DoctorDashboard() {
         >
           <div className="flex items-center gap-4">
             <span className="font-black text-2xl text-gradient-emerald md:hidden tracking-tight">DermaSmart</span>
+            <h1 className="text-xl md:text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-800 to-teal-500 tracking-tight whitespace-nowrap mr-6">
+              {getPageTitle()}
+            </h1>
             <div className="hidden md:flex items-center glass-inner rounded-full pl-4 pr-5 py-2.5 focus-within:ring-2 focus-within:ring-teal-500/30 focus-within:border-teal-400 transition-all">
               <Search className="w-[18px] h-[18px] text-slate-400 mr-2.5" />
               <input
