@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useDoctorController } from '../controllers/useDoctorController';
 import { useVoucherController } from '../controllers/useVoucherController';
 import ChangePasswordModal from './ChangePasswordModal';
-import BookingModal from '../components/BookingModal';
 import FreeSkinScanModal from '../components/FreeSkinScanModal';
 import FloatingChatbot from '../components/PatientPortal/FloatingChatbot';
 import BookAppointmentForm from '../components/PatientPortal/BookAppointmentForm';
@@ -941,11 +940,10 @@ function LandingPage({ user, onLogout }) {
         )}
       </AnimatePresence>
 
-      <BookingModal
+      <BookAppointmentForm
         isOpen={isBookingOpen}
         onClose={() => setIsBookingOpen(false)}
         preselectedDoctorId={bookingDocId}
-        onSuccess={() => navigate('/profile')}
       />
     </>
   );

@@ -138,14 +138,14 @@ function PriceSummary({ originalAmount, bestVoucher }) {
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-export default function BookAppointmentForm({ isOpen, onClose }) {
+export default function BookAppointmentForm({ isOpen, onClose, preselectedDoctorId = null }) {
   const { user } = useAuth();
   const { bookAppointment, getAvailableSlots } = useAppointmentController(user?.id);
   const { getAutoApplicable, incrementUsage } = useVoucherController();
 
   const [selectedService, setSelectedService]   = useState('');
   const [servicesList, setServicesList]         = useState([]);
-  const [selectedDoctor, setSelectedDoctor]     = useState('');
+  const [selectedDoctor, setSelectedDoctor]     = useState(preselectedDoctorId || '');
   const [selectedDate, setSelectedDate]         = useState('');
   const [selectedTime, setSelectedTime]         = useState('');
   const [guestName, setGuestName]               = useState('');
@@ -158,7 +158,7 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
   useEffect(() => {
     if (isOpen) {
       setSelectedService('');
-      setSelectedDoctor('');
+      setSelectedDoctor(preselectedDoctorId || '');
       setSelectedDate('');
       setSelectedTime('');
       setGuestName('');

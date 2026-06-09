@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDoctorController } from '../controllers/useDoctorController';
 import { useAuth } from '../context/AuthContext';
-import BookingModal from '../components/BookingModal';
+import BookAppointmentForm from '../components/PatientPortal/BookAppointmentForm';
 import '../index.css';
 
 function DoctorProfilePage() {
@@ -179,11 +179,10 @@ function DoctorProfilePage() {
                     </div>
                 </div>
             </div>
-            <BookingModal
+            <BookAppointmentForm
                 isOpen={isBookingOpen}
                 onClose={() => setIsBookingOpen(false)}
                 preselectedDoctorId={doctor.id}
-                onSuccess={() => navigate('/profile')}
             />
         </div>
     );
