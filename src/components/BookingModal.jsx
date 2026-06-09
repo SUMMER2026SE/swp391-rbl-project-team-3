@@ -66,6 +66,20 @@ export default function BookingModal({ isOpen, onClose, preselectedDoctorId = nu
   const selectedService = SERVICES.find(s => s.id === selectedServiceId) || SERVICES[0];
   const selectedSlot = TIME_SLOTS.find(slot => slot.id === selectedSlotId) || TIME_SLOTS[0];
 
+  const parseFee = (feeStr) => {
+    if (!feeStr) return 500000;
+    const cleanStr = feeStr.replace(/[^0-9]/g, '');
+    return parseInt(cleanStr, 10) || 500000;
+  };
+  
+  const totalFeeVal = parseFee(selectedDoctor?.consultationFee);
+  const depositVal = 50000;
+  const remainingVal = totalFeeVal - depositVal;
+
+  const formatMoney = (val) => {
+    return val.toLocaleString('vi-VN') + ' VNĐ';
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!user) {
@@ -181,27 +195,7 @@ export default function BookingModal({ isOpen, onClose, preselectedDoctorId = nu
               </div>
             </div>
 
-            {/* Service Selection */}
-            <div>
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
-                <Stethoscope size={14} className="text-sky-500" /> Chọn dịch vụ y tế
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {SERVICES.map((srv) => (
-                  <div
-                    key={srv.id}
-                    onClick={() => setSelectedServiceId(srv.id)}
-                    className={`p-4 rounded-2xl border text-center transition-all cursor-pointer font-bold text-xs ${
-                      selectedServiceId === srv.id
-                        ? 'bg-sky-50 border-sky-400 text-sky-700 ring-2 ring-sky-500/10'
-                        : 'bg-white/60 border-slate-200 text-slate-600 hover:border-slate-300'
-                    }`}
-                  >
-                    {srv.name}
-                  </div>
-                ))}
-              </div>
-            </div>
+
 
             {/* Date and Time selectors */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -221,10 +215,19 @@ export default function BookingModal({ isOpen, onClose, preselectedDoctorId = nu
               </div>
 
               {/* Consultation Fee Card */}
-              <div className="bg-slate-50/80 border border-slate-200/50 rounded-2xl p-4 flex flex-col justify-center">
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Phí khám ban đầu</span>
-                <span className="text-2xl font-black text-slate-800 mt-1">{selectedDoctor?.consultationFee || '500,000 VNĐ'}</span>
-                <span className="text-[10px] text-slate-400 mt-0.5">Thanh toán trực tuyến hoặc trực tiếp tại quầy</span>
+              <div className="bg-slate-50/80 border border-slate-200/50 rounded-2xl p-4 flex flex-col gap-2.5">
+                <div className="flex justify-between items-center text-xs font-bold text-slate-500">
+                  <span>PHÍ KHÁM BAN ĐẦU:</span>
+                  <span className="text-slate-800 font-extrabold">{selectedDoctor?.consultationFee || '500,000 VNĐ'}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs font-bold text-emerald-600 bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-100/50">
+                  <span>TIỀN ĐẶT CỌC (ONLINE):</span>
+                  <span className="font-extrabold">{formatMoney(depositVal)}</span>
+                </div>
+                <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  <span>CÒN LẠI (TẠI PHÒNG KHÁM):</span>
+                  <span className="text-slate-700 font-extrabold">{formatMoney(remainingVal)}</span>
+                </div>
               </div>
             </div>
 
