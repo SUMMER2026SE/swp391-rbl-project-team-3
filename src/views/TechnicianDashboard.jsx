@@ -151,7 +151,7 @@ export default function TechnicianDashboard() {
         return (
           <AssignedTasksList
             tasks={tasks}
-            onSelectTask={handleSelectTask}
+            onExecuteTask={handleSelectTask}
             onReviewTask={handleReviewTask}
           />
         );
