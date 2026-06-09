@@ -187,8 +187,6 @@ export default function BookAppointmentForm({ isOpen, onClose, preselectedDoctor
     }
   }, [isOpen]);
 
-  if (!isOpen) return null;
-
   const selectedDoctorData = doctors.find(d => d.id === selectedDoctor);
   const selectedServiceData = servicesList.find(s => s.id === selectedService);
 
@@ -228,6 +226,8 @@ export default function BookAppointmentForm({ isOpen, onClose, preselectedDoctor
   const finalFee = bestVoucher
     ? formatVND(bestVoucher.finalAmount)
     : selectedServiceData?.price || '300,000 VNĐ';
+
+  if (!isOpen) return null;
 
   // ── Form completion ─────────────────────────────────────────────────────────
   const isContactInfoComplete = user
