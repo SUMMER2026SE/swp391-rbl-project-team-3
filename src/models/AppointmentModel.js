@@ -94,10 +94,31 @@ const MOCK_PAYMENTS_INITIAL = [
   }
 ];
 
+const VERSION_KEY = 'dermasmart_appointments_version';
+const CURRENT_VERSION = 'v3';
+
 export const AppointmentModel = {
-  // Initialize appointments in localStorage if not exists
+  // Initialize appointments — reset nếu version cũ hoặc data tiếng Anh
   init() {
-    if (!localStorage.getItem(STORAGE_KEY)) {
+    const storedVersion = localStorage.getItem(VERSION_KEY);
+    const stored = localStorage.getItem(STORAGE_KEY);
+
+    // Force reset if version mismatch OR data has English status
+    let needReset = !stored || storedVersion !== CURRENT_VERSION;
+    if (!needReset && stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        // Check if first item has English status (legacy data)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const firstStatus = parsed[0]?.status || '';
+          if (['Pending','Completed','Cancelled','Confirmed'].includes(firstStatus)) {
+            needReset = true;
+          }
+        }
+      } catch { needReset = true; }
+    }
+
+    if (needReset) {
       const initialized = (mockAppointments || []).map((apt, index) => {
         if (index === 0) return { ...apt, date: "2026-06-01", status: "Đã xác nhận" };
         if (index === 1) return { ...apt, date: "2026-06-01", status: "Chờ xác nhận" };
@@ -106,6 +127,7 @@ export const AppointmentModel = {
         return apt;
       });
       localStorage.setItem(STORAGE_KEY, JSON.stringify(initialized));
+      localStorage.setItem(VERSION_KEY, CURRENT_VERSION);
     }
   },
 
