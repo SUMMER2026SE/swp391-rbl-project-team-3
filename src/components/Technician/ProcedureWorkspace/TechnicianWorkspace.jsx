@@ -308,7 +308,7 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
     const patientId = task?.patientId || task?.id || '—';
     const doctorName = task?.assignedBy || task?.doctorName || '—';
     const doctorNotes = task?.notes || task?.doctorNotes || '';
-    
+
     const fallbackNotes = "Ưu tiên làm nhanh, bệnh nhân đang đợi kết quả để kê đơn.";
     const displayNotes = doctorNotes || fallbackNotes;
 
@@ -338,7 +338,7 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
               <p className="text-sm text-slate-500 mt-1 font-medium">Mã BN: {patientId}</p>
             </div>
           </div>
-          
+
           <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-200/50">
             <div>
               <p className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Giới tính</p>
@@ -723,7 +723,7 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
   // ═══════════════════════════════════════════════════════════════════════════
   const renderFallbackForm = () => {
     const fallbackText = isReviewMode ? (task?.resultRecord?.metrics?.fallbackResult || metricValues.fallbackResult) : metricValues.fallbackResult;
-    
+
     return (
       <motion.div
         className="flex flex-col gap-4 min-h-[400px] border-2 border-dashed border-emerald-400 bg-emerald-50/50 p-6 rounded-2xl"
