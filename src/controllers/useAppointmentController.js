@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AppointmentModel } from '../models/AppointmentModel';
 import { DoctorModel } from '../models/DoctorModel';
+import { NotificationModel } from '../models/NotificationModel';
 
 export function useAppointmentController(patientId = null) {
   // Read state initially
@@ -81,9 +82,9 @@ export function useAppointmentController(patientId = null) {
       refreshState();
       return { success: true, appointment: updatedApt };
     } catch (e) {
-      // Fallback: update status to Cancelled or check if it throws
+      // Fallback: update status to Đã hủy or check if it throws
       try {
-        const cancelledApt = AppointmentModel.updateAppointmentStatus(appointmentId, 'Cancelled');
+        const cancelledApt = AppointmentModel.updateAppointmentStatus(appointmentId, 'Đã hủy');
         refreshState();
         return cancelledApt;
       } catch (err) {
@@ -115,16 +116,46 @@ export function useAppointmentController(patientId = null) {
   }, [refreshState]);
 
   const approveAppointment = useCallback((appointmentId, receptionistId) => {
+    const apt = AppointmentModel.getAppointmentById(appointmentId);
+    if (!apt) {
+      throw new Error('Không tìm thấy lịch hẹn cần phê duyệt.');
+    }
+
+    // Kiểm tra trùng lịch của bác sĩ
+    const list = AppointmentModel.getAllAppointments();
+    const isDoubleBooked = list.some(a => 
+      a.doctor_id === apt.doctor_id && 
+      a.appointment_date === apt.appointment_date && 
+      a.start_time === apt.start_time && 
+      a.appointment_id !== appointmentId && 
+      (a.status === 'Đã xác nhận' || a.status === 'Đang chờ' || a.status === 'Đã khám')
+    );
+    if (isDoubleBooked) {
+      throw new Error('Bác sĩ đã có lịch hẹn được xác nhận/check-in vào khung giờ này. Không thể phê duyệt.');
+    }
+
     const approvedApt = AppointmentModel.updateAppointment(appointmentId, {
-      status: 'Pending',
+      status: 'Đã xác nhận',
       receptionist_id: receptionistId
     });
+
+    try {
+      NotificationModel.sendNotification(
+        'PATIENT',
+        apt.patient_id,
+        'Lịch hẹn khám đã được phê duyệt',
+        `Lịch hẹn khám dịch vụ ${apt.service_name} với ${apt.doctor_name} vào lúc ${apt.start_time} ngày ${apt.appointment_date} đã được phê duyệt thành công. Vui lòng đến phòng khám đúng giờ.`
+      );
+    } catch (err) {
+      console.warn("Failed to send notification upon approval", err);
+    }
+
     refreshState();
     return approvedApt;
   }, [refreshState]);
 
   const checkinAppointment = useCallback((appointmentId) => {
-    const completedApt = AppointmentModel.updateAppointmentStatus(appointmentId, 'Completed');
+    const completedApt = AppointmentModel.updateAppointmentStatus(appointmentId, 'Đang chờ');
     refreshState();
     return completedApt;
   }, [refreshState]);

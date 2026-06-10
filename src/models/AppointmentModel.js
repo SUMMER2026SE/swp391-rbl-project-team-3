@@ -97,6 +97,31 @@ const MOCK_PAYMENTS_INITIAL = [
 const VERSION_KEY = 'dermasmart_appointments_version';
 const CURRENT_VERSION = 'v3';
 
+function normalizeAppointmentsList(list) {
+  if (!Array.isArray(list)) return [];
+  return list.map(a => {
+    const normalized = { ...a };
+    
+    // Normalize snake_case to camelCase
+    if (a.appointment_id && !a.id) normalized.id = a.appointment_id;
+    if (a.patient_id && !a.patientId) normalized.patientId = a.patient_id;
+    if (a.patient_name && !a.patientName) normalized.patientName = a.patient_name;
+    if (a.appointment_date && !a.date) normalized.date = a.appointment_date;
+    if (a.start_time && !a.time) normalized.time = a.start_time;
+    if (a.service_name && !a.service) normalized.service = a.service_name;
+
+    // Normalize camelCase to snake_case
+    if (a.id && !a.appointment_id) normalized.appointment_id = a.id;
+    if (a.patientId && !a.patient_id) normalized.patient_id = a.patientId;
+    if (a.patientName && !a.patient_name) normalized.patient_name = a.patientName;
+    if (a.date && !a.appointment_date) normalized.appointment_date = a.date;
+    if (a.time && !a.start_time) normalized.start_time = a.time;
+    if (a.service && !a.service_name) normalized.service_name = a.service;
+
+    return normalized;
+  });
+}
+
 export const AppointmentModel = {
   // Initialize appointments — reset nếu version cũ hoặc data tiếng Anh
   init() {
@@ -126,7 +151,7 @@ export const AppointmentModel = {
         if (index === 3) return { ...apt, date: "2026-06-01", status: "Chờ xác nhận" };
         return apt;
       });
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(initialized));
+      this.save(initialized);
       localStorage.setItem(VERSION_KEY, CURRENT_VERSION);
     }
   },
@@ -134,15 +159,17 @@ export const AppointmentModel = {
   getAll() {
     this.init();
     try {
-      return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+      const list = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+      return normalizeAppointmentsList(list);
     } catch (e) {
       console.error('Error reading appointments from localStorage', e);
-      return mockAppointments;
+      return normalizeAppointmentsList(mockAppointments);
     }
   },
 
   save(appointments) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(appointments));
+    const normalized = normalizeAppointmentsList(appointments);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
     // Dispatch a custom event to notify other components in real-time
     window.dispatchEvent(new CustomEvent('appointments-updated'));
   },
@@ -590,13 +617,14 @@ export const AppointmentModel = {
     try {
       const data = localStorage.getItem(APPOINTMENTS_KEY);
       if (!data) {
-        localStorage.setItem(APPOINTMENTS_KEY, JSON.stringify(MOCK_APPOINTMENTS_INITIAL));
-        return MOCK_APPOINTMENTS_INITIAL;
+        this.save(MOCK_APPOINTMENTS_INITIAL);
+        return normalizeAppointmentsList(MOCK_APPOINTMENTS_INITIAL);
       }
-      return JSON.parse(data);
+      const list = JSON.parse(data);
+      return normalizeAppointmentsList(list);
     } catch (e) {
       console.error("Failed to load appointments from localStorage", e);
-      return MOCK_APPOINTMENTS_INITIAL;
+      return normalizeAppointmentsList(MOCK_APPOINTMENTS_INITIAL);
     }
   },
 
@@ -729,5 +757,20 @@ export const AppointmentModel = {
     }
 
     return newPayment;
+  },
+
+  updatePatientName(patientId, newName) {
+    const list = this.getAll();
+    let changed = false;
+    const updatedList = list.map(apt => {
+      if (apt.patient_id === patientId && apt.patient_name !== newName) {
+        changed = true;
+        return { ...apt, patient_name: newName };
+      }
+      return apt;
+    });
+    if (changed) {
+      this.save(updatedList);
+    }
   }
 };

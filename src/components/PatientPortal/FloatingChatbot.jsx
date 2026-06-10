@@ -8,9 +8,7 @@ import { doctors } from '../../mockData';
 
 export default function FloatingChatbot({ onBookAppointment, onAIScan }) {
   const { user } = useAuth();
-  const patientId = user?.id 
-    ? (String(user.id).startsWith('pat-') ? String(user.id) : `pat-${user.id}`) 
-    : 'pat-guest';
+  const patientId = user?.id || 'pat-guest';
   const patientName = user?.name || 'Khách';
 
   const [isOpen, setIsOpen] = useState(false);
@@ -87,23 +85,6 @@ export default function FloatingChatbot({ onBookAppointment, onAIScan }) {
         });
         setMessages(ReceptionistChatModel.getMessagesForPatient(patientId));
       }, 1000);
-    } else if (mode === 'Live') {
-      setTimeout(() => {
-        // Only auto-reply if the receptionist hasn't replied yet to avoid double auto-replies
-        const currentMsgs = ReceptionistChatModel.getMessagesForPatient(patientId);
-        const lastMsg = currentMsgs[currentMsgs.length - 1];
-        if (lastMsg && lastMsg.senderRole === 'PATIENT') {
-          ReceptionistChatModel.addMessage({
-            senderId: 'staff-01',
-            senderName: 'Lễ tân Hoàng Anh',
-            senderRole: 'RECEPTIONIST',
-            text: 'Dạ em đã nhận được tin nhắn của anh/chị. Em sẽ kiểm tra và phản hồi ngay ạ!',
-            mode: 'Live',
-            patientId: patientId
-          });
-          setMessages(ReceptionistChatModel.getMessagesForPatient(patientId));
-        }
-      }, 2000);
     }
   };
 
