@@ -73,10 +73,11 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 relative overflow-hidden flex font-sans text-slate-800">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-slate-100 to-sky-200 relative overflow-hidden flex font-sans text-slate-800">
       {/* Ambient background glowing blobs */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40rem] h-[40rem] bg-indigo-400/20 rounded-full blur-[120px] pointer-events-none animate-pulse"></div>
-      <div className="absolute bottom-[-10%] right-[-5%] w-[35rem] h-[35rem] bg-sky-400/20 rounded-full blur-[120px] pointer-events-none animate-pulse" style={{ animationDelay: '2s' }}></div>
+      <div className="absolute top-[-10%] left-[-10%] w-[40rem] h-[40rem] bg-indigo-500/40 rounded-full blur-[100px] pointer-events-none animate-pulse"></div>
+      <div className="absolute bottom-[-10%] right-[-5%] w-[35rem] h-[35rem] bg-sky-500/40 rounded-full blur-[100px] pointer-events-none animate-pulse" style={{ animationDelay: '2s' }}></div>
+      <div className="absolute top-[35%] left-[35%] w-[30rem] h-[30rem] bg-blue-600/50 rounded-full blur-[100px] pointer-events-none animate-pulse" style={{ animationDelay: '4s' }}></div>
 
       {/* Sidebar */}
       <aside className="w-72 backdrop-blur-2xl bg-white/70 border-r border-white/60 shadow-[4px_0_24px_rgba(0,0,0,0.02)] flex flex-col justify-between z-20">

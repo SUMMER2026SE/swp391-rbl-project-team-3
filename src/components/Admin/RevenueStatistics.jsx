@@ -1,598 +1,575 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  TrendingUp, TrendingDown, DollarSign, Calendar, Users,
-  Stethoscope, CreditCard, BarChart3, PieChart, ArrowUpRight,
-  ArrowDownRight, Filter, Download, RefreshCw, Pill,
-  Package, Wifi, Banknote, ChevronDown,
+  TrendingUp, TrendingDown, Banknote, Monitor, FileText, Package,
+  Download, ChevronDown, Landmark, CreditCard, ListFilter, BarChart2,
+  Check
 } from 'lucide-react';
-import { mockAppointments, doctors, mockServices } from '../../mockData';
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-// Parse "X,000,000 VNĐ" → number
-function parseFee(fee) {
-  if (!fee) return 0;
-  return parseInt(fee.replace(/[^0-9]/g, ''), 10) || 0;
-}
-
-function formatVND(amount) {
-  if (amount >= 1_000_000_000) return `${(amount / 1_000_000_000).toFixed(1)}B`;
-  if (amount >= 1_000_000)     return `${(amount / 1_000_000).toFixed(1)}M`;
-  if (amount >= 1_000)         return `${(amount / 1_000).toFixed(0)}K`;
-  return amount.toLocaleString('vi-VN');
-}
-
-function formatVNDFull(amount) {
-  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
-}
-
-// Seed mock revenue data extending mockAppointments
-const MOCK_EXTRA_REVENUE = [
-  // Offline cash payments (walk-in)
-  { id: 'rev-01', date: '2026-05-02', type: 'service', source: 'Peel Da Sinh Học', amount: 800000, doctorId: 'doc-02', method: 'Tiền mặt', category: 'Dịch vụ' },
-  { id: 'rev-02', date: '2026-05-05', type: 'medicine', source: 'Retinol Serum + Sunscreen', amount: 450000, doctorId: 'doc-01', method: 'Tiền mặt', category: 'Thuốc & Sản phẩm' },
-  { id: 'rev-03', date: '2026-05-08', type: 'package', source: 'Gói điều trị nám 6 buổi', amount: 9600000, doctorId: 'doc-02', method: 'Chuyển khoản', category: 'Gói dịch vụ' },
-  { id: 'rev-04', date: '2026-05-12', type: 'service', source: 'Tiêm Filler & Botox', amount: 3000000, doctorId: 'doc-01', method: 'Online (VNPay)', category: 'Dịch vụ' },
-  { id: 'rev-05', date: '2026-05-15', type: 'medicine', source: 'Hydrocortisone + Cetirizine', amount: 180000, doctorId: 'doc-01', method: 'Tiền mặt', category: 'Thuốc & Sản phẩm' },
-  { id: 'rev-06', date: '2026-05-18', type: 'service', source: 'Trị Liệu Laser Fractional CO2', amount: 2500000, doctorId: 'doc-01', method: 'Chuyển khoản', category: 'Dịch vụ' },
-  { id: 'rev-07', date: '2026-05-20', type: 'service', source: 'Khám Da Liễu Tổng Quát', amount: 300000, doctorId: 'doc-01', method: 'Tiền mặt', category: 'Dịch vụ' },
-  { id: 'rev-08', date: '2026-05-22', type: 'package', source: 'Gói chăm sóc da AI 3 tháng', amount: 1500000, doctorId: 'doc-03', method: 'Online (Momo)', category: 'Gói dịch vụ' },
-  { id: 'rev-09', date: '2026-05-25', type: 'medicine', source: 'Ketoconazole + Clindamycin', amount: 220000, doctorId: 'doc-01', method: 'Tiền mặt', category: 'Thuốc & Sản phẩm' },
-  { id: 'rev-10', date: '2026-05-27', type: 'service', source: 'Soi Da AI Chuyên Sâu', amount: 500000, doctorId: 'doc-03', method: 'Online (VNPay)', category: 'Dịch vụ' },
-  { id: 'rev-11', date: '2026-06-01', type: 'service', source: 'Trị Mụn Chuyên Sâu', amount: 600000, doctorId: 'doc-02', method: 'Tiền mặt', category: 'Dịch vụ' },
-  { id: 'rev-12', date: '2026-06-02', type: 'package', source: 'Gói trị nám Premium 12 buổi', amount: 18000000, doctorId: 'doc-02', method: 'Chuyển khoản', category: 'Gói dịch vụ' },
-  { id: 'rev-13', date: '2026-06-03', type: 'medicine', source: 'Tretinoin + Arbutin Serum', amount: 560000, doctorId: 'doc-02', method: 'Online (Momo)', category: 'Thuốc & Sản phẩm' },
-  { id: 'rev-14', date: '2026-06-04', type: 'service', source: 'Peel Da Sinh Học', amount: 800000, doctorId: 'doc-01', method: 'Tiền mặt', category: 'Dịch vụ' },
-  { id: 'rev-15', date: '2026-06-05', type: 'service', source: 'Khám Da Liễu Tổng Quát', amount: 300000, doctorId: 'doc-01', method: 'Tiền mặt', category: 'Dịch vụ' },
+const mockTransactions = [
+  { id: 1, date: '11/06/2026', time: '09:30', service: 'Gói Trẻ hóa da Meso 5 buổi', doctor: 'BS. CKII. Trần Văn A', type: 'GÓI LIỆU TRÌNH', method: 'Chuyển khoản', amount: 12500000 },
+  { id: 2, date: '11/06/2026', time: '10:15', service: 'Xét nghiệm máu tổng quát', doctor: '—', type: 'XÉT NGHIỆM', method: 'Thẻ ngân hàng', amount: 850000 },
+  { id: 3, date: '11/06/2026', time: '11:00', service: 'Khám da liễu tổng quát', doctor: 'ThS. BS. Nguyễn Thị B', type: 'KHÁM BỆNH', method: 'Tiền mặt', amount: 500000 },
+  { id: 4, date: '11/06/2026', time: '13:45', service: 'Gói trị mụn chuyên sâu', doctor: 'BS. CKI. Trần Thanh T', type: 'GÓI LIỆU TRÌNH', method: 'Chuyển khoản', amount: 4200000 },
+  { id: 5, date: '11/06/2026', time: '14:30', service: 'Khám và soi da', doctor: 'ThS. BS. Nguyễn Thị B', type: 'KHÁM BỆNH', method: 'Thẻ ngân hàng', amount: 800000 },
+  { id: 6, date: '10/06/2026', time: '09:00', service: 'Xét nghiệm nội tiết', doctor: '—', type: 'XÉT NGHIỆM', method: 'Chuyển khoản', amount: 650000 },
+  { id: 7, date: '10/06/2026', time: '15:15', service: 'Gói Tiêm Filler vùng má', doctor: 'BS. CKII. Trần Văn A', type: 'GÓI LIỆU TRÌNH', method: 'Chuyển khoản', amount: 8000000 },
+  { id: 8, date: '09/06/2026', time: '10:00', service: 'Khám tư vấn mụn', doctor: 'BS. Lê Văn M', type: 'KHÁM BỆNH', method: 'Tiền mặt', amount: 300000 },
+  { id: 9, date: '09/06/2026', time: '16:00', service: 'Gói trị nám 3 buổi', doctor: 'ThS. BS. Nguyễn Thị B', type: 'GÓI LIỆU TRÌNH', method: 'Chuyển khoản', amount: 6000000 },
+  { id: 10, date: '08/06/2026', time: '14:00', service: 'Sinh thiết da', doctor: '—', type: 'XÉT NGHIỆM', method: 'Thẻ ngân hàng', amount: 1200000 },
+  // Dữ liệu tháng trước & quý trước (số tiền lớn để biểu đồ biến động)
+  { id: 11, date: '15/05/2026', time: '09:00', service: 'Gói Điều trị Nám Laser', doctor: 'ThS. BS. Nguyễn Thị B', type: 'GÓI LIỆU TRÌNH', method: 'Chuyển khoản', amount: 48500000 },
+  { id: 12, date: '10/04/2026', time: '14:00', service: 'Khám phục hồi da', doctor: 'BS. CKII. Trần Văn A', type: 'KHÁM BỆNH', method: 'Tiền mặt', amount: 32000000 },
+  { id: 13, date: '20/12/2025', time: '10:00', service: 'Khám da liễu', doctor: 'BS. Lê Văn M', type: 'KHÁM BỆNH', method: 'Thẻ ngân hàng', amount: 185000000 },
+  { id: 14, date: '10/01/2026', time: '10:00', service: 'Khám mụn', doctor: 'BS. Lê Văn M', type: 'KHÁM BỆNH', method: 'Tiền mặt', amount: 42000000 },
+  { id: 15, date: '14/02/2026', time: '09:30', service: 'Gói Chăm sóc da', doctor: 'ThS. BS. Nguyễn Thị B', type: 'GÓI LIỆU TRÌNH', method: 'Chuyển khoản', amount: 28000000 },
+  { id: 16, date: '25/03/2026', time: '15:00', service: 'Xét nghiệm dị ứng', doctor: '—', type: 'XÉT NGHIỆM', method: 'Thẻ ngân hàng', amount: 55000000 },
+  { id: 17, date: '20/08/2025', time: '11:00', service: 'Gói Trị mụn Laser', doctor: 'BS. CKII. Trần Văn A', type: 'GÓI LIỆU TRÌNH', method: 'Chuyển khoản', amount: 145000000 },
+  { id: 18, date: '15/08/2024', time: '14:00', service: 'Khám theo dõi bệnh lý', doctor: 'BS. CKI. Trần Thanh T', type: 'KHÁM BỆNH', method: 'Thẻ ngân hàng', amount: 350000000 },
+  { id: 19, date: '10/05/2023', time: '09:00', service: 'Xét nghiệm vi nấm', doctor: '—', type: 'XÉT NGHIỆM', method: 'Tiền mặt', amount: 280000000 },
 ];
 
-// Build full revenue list from appointments + extra
-function buildRevenueData() {
-  const fromApts = mockAppointments
-    .filter(a => a.paymentStatus === 'Đã thanh toán' && a.fee)
-    .map(a => ({
-      id: a.id,
-      date: a.date,
-      type: 'appointment',
-      source: a.service,
-      amount: parseFee(a.fee),
-      doctorId: a.doctorId,
-      doctorName: a.doctorName,
-      method: ['Tiền mặt', 'Chuyển khoản', 'Online (VNPay)', 'Online (Momo)'][Math.floor(Math.random() * 4)],
-      category: 'Dịch vụ',
-      patientName: a.patientName,
-    }));
+const formatCurrency = (value) => {
+  return new Intl.NumberFormat('vi-VN').format(value);
+};
 
-  const extra = MOCK_EXTRA_REVENUE.map(r => ({
-    ...r,
-    doctorName: doctors.find(d => d.id === r.doctorId)?.name || '—',
-    patientName: '—',
-  }));
+const formatNumber = (value) => {
+  return new Intl.NumberFormat('en-US').format(value);
+};
 
-  return [...fromApts, ...extra].sort((a, b) => b.date.localeCompare(a.date));
-}
+const formatCompactCurrency = (value) => {
+  if (value >= 1000000) {
+    return (value / 1000000).toFixed(1) + 'M VNĐ';
+  }
+  return formatCurrency(value) + ' VNĐ';
+};
 
-// ─── Bar Chart (simple CSS) ───────────────────────────────────────────────────
-function BarChart({ data, color = 'indigo', height = 120 }) {
-  const max = Math.max(...data.map(d => d.value), 1);
+const FilterDropdown = ({ label, icon: Icon, options, value, onChange, placeholder }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) setIsOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   return (
-    <div className="flex items-end gap-1.5 w-full" style={{ height }}>
-      {data.map((d, i) => (
-        <div key={i} className="flex-1 flex flex-col items-center gap-1 group">
-          <div className="relative w-full flex items-end justify-center" style={{ height: height - 20 }}>
-            <motion.div
-              initial={{ height: 0 }}
-              animate={{ height: `${(d.value / max) * 100}%` }}
-              transition={{ duration: 0.6, delay: i * 0.04, ease: 'easeOut' }}
-              className={`w-full rounded-t-lg bg-${color}-500 opacity-80 group-hover:opacity-100 transition-opacity cursor-pointer relative`}
-              title={`${d.label}: ${formatVNDFull(d.value)}`}
-            >
-              <div className="absolute -top-8 left-1/2 -translate-x-1/2 hidden group-hover:block bg-slate-800 text-white text-[10px] font-bold px-2 py-1 rounded-lg whitespace-nowrap z-10 shadow-lg">
-                {formatVND(d.value)}
-              </div>
-            </motion.div>
-          </div>
-          <span className="text-[9px] font-semibold text-slate-400 truncate w-full text-center">{d.label}</span>
+    <div className="relative z-40" ref={dropdownRef}>
+      <button 
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center justify-between w-40 px-3 py-2 bg-white border border-slate-200 rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.04)] text-xs font-semibold text-slate-700 cursor-pointer hover:bg-slate-50 transition-all"
+      >
+        <div className="flex items-center gap-1.5 truncate">
+          {Icon && <Icon className="w-3.5 h-3.5 text-slate-500 shrink-0" />}
+          <span className="truncate">{value === 'all' ? placeholder : value}</span>
         </div>
-      ))}
-    </div>
-  );
-}
-
-// ─── Donut Chart (SVG) ────────────────────────────────────────────────────────
-function DonutChart({ segments, size = 120 }) {
-  const total = segments.reduce((s, seg) => s + seg.value, 0);
-  let offset = 0;
-  const r = 45, cx = 60, cy = 60;
-  const circumference = 2 * Math.PI * r;
-  const COLORS = ['#6366f1','#0ea5e9','#10b981','#f59e0b','#ec4899','#8b5cf6'];
-
-  return (
-    <div className="flex flex-col items-center gap-3">
-      <svg width={size} height={size} viewBox="0 0 120 120">
-        <circle cx={cx} cy={cy} r={r} fill="none" stroke="#f1f5f9" strokeWidth="18" />
-        {segments.map((seg, i) => {
-          const pct = seg.value / total;
-          const dash = pct * circumference;
-          const gap  = circumference - dash;
-          const el = (
-            <circle
-              key={i}
-              cx={cx} cy={cy} r={r}
-              fill="none"
-              stroke={COLORS[i % COLORS.length]}
-              strokeWidth="18"
-              strokeDasharray={`${dash} ${gap}`}
-              strokeDashoffset={-offset * circumference}
-              transform="rotate(-90 60 60)"
-              strokeLinecap="butt"
-            />
-          );
-          offset += pct;
-          return el;
-        })}
-        <text x={cx} y={cy - 6} textAnchor="middle" className="text-xs font-bold" fill="#1e293b" fontSize="11" fontWeight="700">
-          {total > 0 ? formatVND(total) : '0'}
-        </text>
-        <text x={cx} y={cy + 10} textAnchor="middle" fill="#94a3b8" fontSize="8">
-          Tổng
-        </text>
-      </svg>
-      <div className="grid grid-cols-2 gap-x-4 gap-y-1 w-full">
-        {segments.map((seg, i) => (
-          <div key={i} className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full shrink-0" style={{ background: COLORS[i % COLORS.length] }} />
-            <span className="text-[10px] font-semibold text-slate-500 truncate">{seg.label}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ─── Stat Card ────────────────────────────────────────────────────────────────
-function StatCard({ label, value, sub, icon: Icon, color, trend, trendValue }) {
-  const up = trend === 'up';
-  const colorMap = {
-    indigo:  { bg: 'bg-indigo-50',  icon: 'text-indigo-600',  border: 'border-indigo-100'  },
-    emerald: { bg: 'bg-emerald-50', icon: 'text-emerald-600', border: 'border-emerald-100' },
-    amber:   { bg: 'bg-amber-50',   icon: 'text-amber-600',   border: 'border-amber-100'   },
-    sky:     { bg: 'bg-sky-50',     icon: 'text-sky-600',     border: 'border-sky-100'     },
-    violet:  { bg: 'bg-violet-50',  icon: 'text-violet-600',  border: 'border-violet-100'  },
-    rose:    { bg: 'bg-rose-50',    icon: 'text-rose-600',    border: 'border-rose-100'    },
-  }[color] || colorMap.indigo;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={`bg-white border ${colorMap.border} rounded-2xl p-5 shadow-sm hover:shadow-md transition-all`}
-    >
-      <div className="flex items-start justify-between mb-3">
-        <div className={`p-2.5 ${colorMap.bg} rounded-xl`}>
-          <Icon className={`w-5 h-5 ${colorMap.icon}`} />
-        </div>
-        {trendValue !== undefined && (
-          <div className={`flex items-center gap-1 text-xs font-bold ${up ? 'text-emerald-600' : 'text-rose-600'}`}>
-            {up ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
-            {trendValue}%
-          </div>
+        <ChevronDown className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div 
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 5 }}
+            transition={{ duration: 0.15 }}
+            className="absolute top-full left-0 mt-1.5 w-full bg-white border border-slate-100 rounded-3xl shadow-lg overflow-hidden"
+          >
+            <div className="max-h-48 overflow-y-auto custom-scrollbar">
+              <button 
+                onClick={() => { onChange('all'); setIsOpen(false); }}
+                className={`w-full text-left px-3 py-2 text-xs font-medium transition-colors hover:bg-slate-50 flex justify-between items-center ${value === 'all' ? 'text-indigo-600 bg-indigo-50/50' : 'text-slate-700'}`}
+              >
+                {placeholder}
+                {value === 'all' && <Check className="w-3.5 h-3.5" />}
+              </button>
+              {options.map(opt => (
+                <button 
+                  key={opt}
+                  onClick={() => { onChange(opt); setIsOpen(false); }}
+                  className={`w-full text-left px-3 py-2 text-xs font-medium transition-colors hover:bg-slate-50 flex justify-between items-center ${value === opt ? 'text-indigo-600 bg-indigo-50/50' : 'text-slate-700'}`}
+                >
+                  <span className="truncate">{opt}</span>
+                  {value === opt && <Check className="w-3.5 h-3.5" />}
+                </button>
+              ))}
+            </div>
+          </motion.div>
         )}
-      </div>
-      <p className="text-2xl font-black text-slate-800 leading-none">{value}</p>
-      <p className="text-xs font-bold text-slate-500 mt-1">{label}</p>
-      {sub && <p className="text-[10px] text-slate-400 mt-0.5">{sub}</p>}
-    </motion.div>
+      </AnimatePresence>
+    </div>
   );
-}
+};
 
-// ─── Main Component ───────────────────────────────────────────────────────────
 export default function RevenueStatistics() {
-  const allRevenue = useMemo(() => buildRevenueData(), []);
+  const [period, setPeriod] = useState('Tháng');
+  const [doctor, setDoctor] = useState('all');
+  const [method, setMethod] = useState('all');
+  const [type, setType] = useState('all');
+  const [showAll, setShowAll] = useState(false);
 
-  const [period, setPeriod]   = useState('month'); // 'week' | 'month' | 'year'
-  const [filterCat, setFilterCat] = useState('all');
-  const [filterDoc, setFilterDoc] = useState('all');
-  const [filterMethod, setFilterMethod] = useState('all');
-  const [showTable, setShowTable] = useState(false);
+  const doctors = useMemo(() => [...new Set(mockTransactions.map(t => t.doctor).filter(d => d !== '—'))], []);
+  const methods = useMemo(() => [...new Set(mockTransactions.map(t => t.method))], []);
+  const types = useMemo(() => [...new Set(mockTransactions.map(t => t.type))], []);
 
-  // ── Filtered data ──
-  const filtered = useMemo(() => {
-    return allRevenue.filter(r => {
-      const catOk  = filterCat    === 'all' || r.category === filterCat;
-      const docOk  = filterDoc    === 'all' || r.doctorId  === filterDoc;
-      const methOk = filterMethod === 'all' || r.method    === filterMethod;
-      return catOk && docOk && methOk;
+  const filteredData = useMemo(() => {
+    const currentMonth = 5; // 0-indexed (June)
+    const currentYear = 2026;
+    const currentQuarter = Math.floor(currentMonth / 3);
+
+    return mockTransactions.filter(t => {
+      if (doctor !== 'all' && t.doctor !== doctor) return false;
+      if (method !== 'all' && t.method !== method) return false;
+      if (type !== 'all' && t.type !== type) return false;
+
+      const [dd, mm, yyyy] = t.date.split('/');
+      const txMonth = parseInt(mm, 10) - 1;
+      const txYear = parseInt(yyyy, 10);
+      const txQuarter = Math.floor(txMonth / 3);
+
+      if (period === 'Tháng' && (txMonth !== currentMonth || txYear !== currentYear)) return false;
+      if (period === 'Quý' && (txQuarter !== currentQuarter || txYear !== currentYear)) return false;
+      if (period === 'Năm' && txYear !== currentYear) return false;
+
+      return true;
     });
-  }, [allRevenue, filterCat, filterDoc, filterMethod]);
+  }, [doctor, method, type, period]);
 
-  // ── Totals ──
-  const totalRevenue  = filtered.reduce((s, r) => s + r.amount, 0);
-  const prevRevenue   = totalRevenue * 0.82; // simulated prev period
-  const growthPct     = prevRevenue > 0 ? Math.round(((totalRevenue - prevRevenue) / prevRevenue) * 100) : 0;
-  const totalTx       = filtered.length;
-  const avgTx         = totalTx > 0 ? Math.round(totalRevenue / totalTx) : 0;
+  const totalRevenue = filteredData.reduce((sum, t) => sum + t.amount, 0);
+  const totalTransactions = filteredData.length;
+  const avgRevenue = totalTransactions > 0 ? totalRevenue / totalTransactions : 0;
+  
+  const treatmentRevenue = filteredData.filter(t => t.type === 'GÓI LIỆU TRÌNH').reduce((sum, t) => sum + t.amount, 0);
+  const consultRevenue = filteredData.filter(t => t.type === 'KHÁM BỆNH').reduce((sum, t) => sum + t.amount, 0);
+  const testRevenue = filteredData.filter(t => t.type === 'XÉT NGHIỆM').reduce((sum, t) => sum + t.amount, 0);
 
-  // ── By category ──
-  const byCategory = useMemo(() => {
-    const map = {};
-    filtered.forEach(r => { map[r.category] = (map[r.category] || 0) + r.amount; });
-    return Object.entries(map).map(([label, value]) => ({ label, value })).sort((a,b) => b.value - a.value);
-  }, [filtered]);
+  const pctTreatment = totalRevenue > 0 ? Math.round((treatmentRevenue / totalRevenue) * 100) : 0;
+  const pctConsult = totalRevenue > 0 ? Math.round((consultRevenue / totalRevenue) * 100) : 0;
+  const pctTest = totalRevenue > 0 ? 100 - pctTreatment - pctConsult : 0;
 
-  // ── By doctor ──
-  const byDoctor = useMemo(() => {
-    const map = {};
-    filtered.forEach(r => {
-      const key = r.doctorName || r.doctorId || '—';
-      map[key] = (map[key] || 0) + r.amount;
+  const c = 251.2;
+  const treatmentStroke = (pctTreatment / 100) * c;
+  const testStroke = (pctTest / 100) * c;
+  const consultStroke = (pctConsult / 100) * c;
+  
+  const treatmentOffset = 0;
+  const consultOffset = -treatmentStroke;
+  const testOffset = consultOffset - consultStroke;
+
+  const doctorStats = useMemo(() => {
+    const stats = {};
+    doctors.forEach(d => { stats[d] = 0; });
+    filteredData.forEach(t => {
+      if (t.doctor !== '—') stats[t.doctor] = (stats[t.doctor] || 0) + t.amount;
     });
-    return Object.entries(map).map(([label, value]) => ({ label, value })).sort((a,b) => b.value - a.value);
-  }, [filtered]);
+    return Object.entries(stats)
+      .map(([name, amount]) => ({ name, amount, pct: totalRevenue > 0 ? (amount / totalRevenue) * 100 : 0 }))
+      .sort((a, b) => b.amount - a.amount);
+  }, [filteredData, totalRevenue, doctors]);
 
-  // ── By payment method ──
-  const byMethod = useMemo(() => {
-    const map = {};
-    filtered.forEach(r => { map[r.method] = (map[r.method] || 0) + r.amount; });
-    return Object.entries(map).map(([label, value]) => ({ label, value })).sort((a,b) => b.value - a.value);
-  }, [filtered]);
+  const methodStats = useMemo(() => {
+    const stats = {};
+    methods.forEach(m => { stats[m] = 0; });
+    filteredData.forEach(t => {
+      stats[t.method] = (stats[t.method] || 0) + t.amount;
+    });
+    return Object.entries(stats)
+      .map(([name, amount]) => ({ name, amount, pct: totalRevenue > 0 ? (amount / totalRevenue) * 100 : 0 }))
+      .sort((a, b) => b.amount - a.amount);
+  }, [filteredData, totalRevenue, methods]);
 
-  // ── Monthly trend (last 6 months) ──
-  const monthlyTrend = useMemo(() => {
-    const months = [];
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(2026, 5 - i, 1); // June 2026 is index 5
-      const yyyy = d.getFullYear();
-      const mm   = String(d.getMonth() + 1).padStart(2, '0');
-      const prefix = `${yyyy}-${mm}`;
-      const total = filtered.filter(r => r.date.startsWith(prefix)).reduce((s,r) => s + r.amount, 0);
-      months.push({ label: `T${d.getMonth() + 1}`, value: total });
+  const chartData = useMemo(() => {
+    const rawFiltered = mockTransactions.filter(t => {
+      if (doctor !== 'all' && t.doctor !== doctor) return false;
+      if (method !== 'all' && t.method !== method) return false;
+      if (type !== 'all' && t.type !== type) return false;
+      return true;
+    });
+
+    let rawData = [];
+    const currentYear = 2026;
+
+    if (period === 'Tháng') {
+      const months = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+      rawFiltered.forEach(t => {
+        const [dd, mm, yyyy] = t.date.split('/');
+        const txMonth = parseInt(mm, 10);
+        const txYear = parseInt(yyyy, 10);
+        if (txYear === currentYear && txMonth >= 1 && txMonth <= 6) {
+          months[txMonth] += t.amount;
+        }
+      });
+      rawData = Object.keys(months).map(m => ({ label: `Tháng ${m}`, value: months[m] }));
+    } else if (period === 'Quý') {
+      const quarters = { 'Q3/25': 0, 'Q4/25': 0, 'Q1/26': 0, 'Q2/26': 0 };
+      rawFiltered.forEach(t => {
+        const [dd, mm, yyyy] = t.date.split('/');
+        const txMonth = parseInt(mm, 10) - 1;
+        const txYear = parseInt(yyyy, 10);
+        const txQuarter = Math.floor(txMonth / 3) + 1;
+        const qLabel = `Q${txQuarter}/${txYear.toString().slice(2)}`;
+        if (quarters[qLabel] !== undefined) quarters[qLabel] += t.amount;
+      });
+      rawData = Object.keys(quarters).map(q => ({ label: q, value: quarters[q] }));
+    } else {
+      const years = { '2023': 0, '2024': 0, '2025': 0, '2026': 0 };
+      rawFiltered.forEach(t => {
+        const txYear = parseInt(t.date.split('/')[2], 10);
+        const yLabel = txYear.toString();
+        if (years[yLabel] !== undefined) years[yLabel] += t.amount;
+      });
+      rawData = Object.keys(years).map(y => ({ label: y, value: years[y] }));
     }
-    return months;
-  }, [filtered]);
 
-  // ── Service ranking ──
-  const serviceRanking = useMemo(() => {
-    const map = {};
-    filtered.forEach(r => { map[r.source] = (map[r.source] || 0) + r.amount; });
-    return Object.entries(map)
-      .map(([label, value]) => ({ label, value }))
-      .sort((a,b) => b.value - a.value)
-      .slice(0, 8);
-  }, [filtered]);
+    const maxVal = Math.max(...rawData.map(d => d.value), 1);
+    return rawData.map(d => ({
+      label: d.label,
+      height: d.value === 0 ? 0 : Math.max((d.value / maxVal) * 100, 12),
+      highlight: d.value > 0
+    }));
+  }, [doctor, method, type, period]);
 
-  const METHODS = ['all', 'Tiền mặt', 'Chuyển khoản', 'Online (VNPay)', 'Online (Momo)'];
-  const CATEGORIES = ['all', 'Dịch vụ', 'Thuốc & Sản phẩm', 'Gói dịch vụ'];
-  const METHOD_ICONS = {
-    'Tiền mặt': Banknote,
-    'Chuyển khoản': CreditCard,
-    'Online (VNPay)': Wifi,
-    'Online (Momo)': Wifi,
+  const getMethodIcon = (name) => {
+    if (name.toLowerCase().includes('chuyển khoản')) return Landmark;
+    if (name.toLowerCase().includes('thẻ')) return CreditCard;
+    return Banknote;
   };
 
-  return (
-    <div className="space-y-6">
-      {/* ── Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900">Thống kê Doanh thu</h2>
-          <p className="text-sm text-slate-500 mt-1">
-            Tổng quan thu nhập từ dịch vụ, thuốc, gói điều trị và thanh toán
-          </p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Period toggle */}
-          <div className="flex bg-slate-100 rounded-xl p-1 gap-1">
-            {[
-              { id: 'week',  label: 'Tuần' },
-              { id: 'month', label: 'Tháng' },
-              { id: 'year',  label: 'Năm' },
-            ].map(p => (
-              <button
-                key={p.id}
-                onClick={() => setPeriod(p.id)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border-none cursor-pointer ${
-                  period === p.id
-                    ? 'bg-white text-indigo-700 shadow-sm'
-                    : 'bg-transparent text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-          <button className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-600 text-xs font-semibold hover:bg-slate-50 transition-all cursor-pointer">
-            <Download className="w-3.5 h-3.5" /> Xuất CSV
-          </button>
-        </div>
-      </div>
+  const getMethodColor = (name) => {
+    if (name.toLowerCase().includes('chuyển khoản')) return 'bg-emerald-600';
+    if (name.toLowerCase().includes('thẻ')) return 'bg-sky-500';
+    return 'bg-amber-500';
+  };
 
-      {/* ── KPI Cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          label="Tổng doanh thu"
-          value={formatVNDFull(totalRevenue)}
-          sub="Từ tất cả nguồn"
-          icon={DollarSign}
-          color="indigo"
-          trend="up"
-          trendValue={growthPct}
-        />
-        <StatCard
-          label="Số giao dịch"
-          value={totalTx}
-          sub="Lượt thanh toán"
-          icon={CreditCard}
-          color="sky"
-          trend="up"
-          trendValue={12}
-        />
-        <StatCard
-          label="Doanh thu TB/giao dịch"
-          value={formatVND(avgTx) + ' VNĐ'}
-          sub="Trung bình mỗi lần"
-          icon={BarChart3}
-          color="emerald"
-        />
-        <StatCard
-          label="Gói dịch vụ"
-          value={formatVND(byCategory.find(c => c.label === 'Gói dịch vụ')?.value || 0) + ' VNĐ'}
-          sub="Doanh thu từ packages"
-          icon={Package}
-          color="violet"
-          trend="up"
-          trendValue={28}
-        />
+  const exportToCSV = () => {
+    if (filteredData.length === 0) return alert("Không có dữ liệu để xuất!");
+    const headers = ["Ngay", "Gio", "Dich vu/San pham", "Bac si", "Loai", "Phuong thuc", "So tien (VND)"];
+    const csvContent = [
+      headers.join(","),
+      ...filteredData.map(t => `"${t.date}","${t.time}","${t.service}","${t.doctor}","${t.type}","${t.method}",${t.amount}`)
+    ].join("\n");
+
+    const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `doanh_thu_${new Date().getTime()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const displayedTransactions = showAll ? filteredData : filteredData.slice(0, 4);
+
+  // Dynamic Trends
+  const getTrend = (metric) => {
+    const trends = {
+      'Tháng': { revenue: 12.5, tx: -2.1, avg: 15.0, pkg: -5.4 },
+      'Quý': { revenue: -4.2, tx: 5.3, avg: -8.1, pkg: 12.0 },
+      'Năm': { revenue: 22.4, tx: 18.5, avg: 4.2, pkg: 25.1 }
+    };
+    const val = trends[period][metric];
+    return {
+      value: Math.abs(val),
+      isUp: val >= 0
+    };
+  };
+
+  const revTrend = getTrend('revenue');
+  const txTrend = getTrend('tx');
+  const avgTrend = getTrend('avg');
+  const pkgTrend = getTrend('pkg');
+
+  return (
+    <div className="space-y-4 bg-transparent pb-6 relative">
+      {/* ── Header ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-bold text-slate-900">Thống kê Doanh thu</h2>
+          <p className="text-[11px] text-slate-500 mt-1">Tổng quan thu nhập từ khám bệnh, xét nghiệm và gói liệu trình điều trị</p>
+        </div>
+        <div className="flex bg-slate-50 border border-slate-200 rounded-full p-1 gap-1">
+          {['Tháng', 'Quý', 'Năm'].map(p => (
+            <button
+              key={p}
+              onClick={() => setPeriod(p)}
+              className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all border-none outline-none cursor-pointer ${
+                period === p ? 'bg-white text-indigo-600 shadow-sm' : 'bg-transparent text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              {p}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* ── Filters ── */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-wrap gap-3 items-center">
-        <Filter className="w-4 h-4 text-slate-400 shrink-0" />
-        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Lọc:</span>
+      <div className="flex flex-wrap gap-2.5 items-center relative z-40">
+        <FilterDropdown icon={ListFilter} options={doctors} value={doctor} onChange={setDoctor} placeholder="Tất cả bác sĩ" />
+        <FilterDropdown options={methods} value={method} onChange={setMethod} placeholder="Mọi phương thức" />
+        <FilterDropdown options={types} value={type} onChange={setType} placeholder="Mọi loại hình" />
+        <button onClick={exportToCSV} className="flex items-center gap-1.5 px-4 py-2 bg-white border border-slate-200 rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.04)] text-xs font-bold text-slate-900 cursor-pointer hover:bg-slate-50 transition-all ml-auto">
+          <Download className="w-3.5 h-3.5" /> Xuất báo cáo CSV
+        </button>
+      </div>
 
-        {/* Category */}
-        <select
-          value={filterCat}
-          onChange={e => setFilterCat(e.target.value)}
-          className="px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-400 cursor-pointer"
-        >
-          {CATEGORIES.map(c => <option key={c} value={c}>{c === 'all' ? 'Tất cả loại' : c}</option>)}
-        </select>
+      {/* ── KPI Cards ── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mt-1 relative z-30">
+        <div className="border border-slate-200 rounded-3xl p-4 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex flex-col hover:shadow-md transition-shadow min-h-[130px]">
+          <div className="flex items-start justify-between mb-4">
+            <div className="p-2 bg-[#4F46E5] rounded-2xl text-white shadow-md shadow-indigo-500/20">
+              <Banknote className="w-4 h-4" />
+            </div>
+            <div className={`flex items-center gap-1 text-[11px] font-black ${revTrend.isUp ? 'text-emerald-600' : 'text-rose-600'}`}>
+              {revTrend.isUp ? <TrendingUp className="w-3 h-3 stroke-[3]" /> : <TrendingDown className="w-3 h-3 stroke-[3]" />} {revTrend.isUp ? '+' : '-'}{revTrend.value}%
+            </div>
+          </div>
+          <div className="mt-auto">
+            <p className="text-[10px] font-semibold text-slate-500 mb-0.5">Tổng doanh thu</p>
+            <p className="text-lg font-black text-slate-900 leading-tight mb-1 tracking-tight truncate">{formatCurrency(totalRevenue)} VNĐ</p>
+            <p className="text-[9px] text-slate-400 font-medium uppercase tracking-wider">Lọc theo {period.toLowerCase()}</p>
+          </div>
+        </div>
 
-        {/* Doctor */}
-        <select
-          value={filterDoc}
-          onChange={e => setFilterDoc(e.target.value)}
-          className="px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-400 cursor-pointer"
-        >
-          <option value="all">Tất cả bác sĩ</option>
-          {doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-        </select>
+        <div className="border border-slate-200 rounded-3xl p-4 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex flex-col hover:shadow-md transition-shadow min-h-[130px]">
+          <div className="flex items-start justify-between mb-4">
+            <div className="p-2 bg-[#059669] rounded-2xl text-white shadow-md shadow-emerald-700/20">
+              <FileText className="w-4 h-4" />
+            </div>
+            <div className={`flex items-center gap-1 text-[11px] font-black ${txTrend.isUp ? 'text-emerald-600' : 'text-rose-600'}`}>
+              {txTrend.isUp ? <TrendingUp className="w-3 h-3 stroke-[3]" /> : <TrendingDown className="w-3 h-3 stroke-[3]" />} {txTrend.isUp ? '+' : '-'}{txTrend.value}%
+            </div>
+          </div>
+          <div className="mt-auto">
+            <p className="text-[10px] font-semibold text-slate-500 mb-0.5">Số giao dịch</p>
+            <p className="text-lg font-black text-slate-900 leading-tight mb-1 tracking-tight">{formatNumber(totalTransactions)}</p>
+            <p className="text-[9px] text-slate-400 font-medium uppercase tracking-wider">Thanh toán hoàn tất</p>
+          </div>
+        </div>
 
-        {/* Payment method */}
-        <select
-          value={filterMethod}
-          onChange={e => setFilterMethod(e.target.value)}
-          className="px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-400 cursor-pointer"
-        >
-          {METHODS.map(m => <option key={m} value={m}>{m === 'all' ? 'Tất cả phương thức' : m}</option>)}
-        </select>
+        <div className="border border-slate-200 rounded-3xl p-4 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex flex-col hover:shadow-md transition-shadow min-h-[130px]">
+          <div className="flex items-start justify-between mb-4">
+            <div className="p-2 bg-[#9A5B1C] rounded-2xl text-white shadow-md shadow-[#9A5B1C]/20">
+              <BarChart2 className="w-4 h-4" />
+            </div>
+            <div className={`flex items-center gap-1 text-[11px] font-black ${avgTrend.isUp ? 'text-emerald-600' : 'text-rose-600'}`}>
+              {avgTrend.isUp ? <TrendingUp className="w-3 h-3 stroke-[3]" /> : <TrendingDown className="w-3 h-3 stroke-[3]" />} {avgTrend.isUp ? '+' : '-'}{avgTrend.value}%
+            </div>
+          </div>
+          <div className="mt-auto">
+            <p className="text-[10px] font-semibold text-slate-500 mb-0.5">Doanh thu TB</p>
+            <p className="text-lg font-black text-slate-900 leading-tight mb-1 tracking-tight">{formatCompactCurrency(avgRevenue)}</p>
+            <p className="text-[9px] text-slate-400 font-medium uppercase tracking-wider">TB mỗi lượt thu</p>
+          </div>
+        </div>
 
-        <span className="text-xs text-slate-400 font-medium ml-auto">
-          {filtered.length} giao dịch • {formatVNDFull(totalRevenue)}
-        </span>
+        <div className="border border-slate-200 rounded-3xl p-4 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex flex-col hover:shadow-md transition-shadow min-h-[130px]">
+          <div className="flex items-start justify-between mb-4">
+            <div className="p-2 bg-[#6366F1] rounded-2xl text-white shadow-md shadow-indigo-500/20">
+              <Package className="w-4 h-4" />
+            </div>
+            <div className={`flex items-center gap-1 text-[11px] font-black ${pkgTrend.isUp ? 'text-emerald-600' : 'text-rose-600'}`}>
+              {pkgTrend.isUp ? <TrendingUp className="w-3 h-3 stroke-[3]" /> : <TrendingDown className="w-3 h-3 stroke-[3]" />} {pkgTrend.isUp ? '+' : '-'}{pkgTrend.value}%
+            </div>
+          </div>
+          <div className="mt-auto">
+            <p className="text-[10px] font-semibold text-slate-500 mb-0.5">Gói liệu trình</p>
+            <p className="text-lg font-black text-slate-900 leading-tight mb-1 tracking-tight">{formatCompactCurrency(treatmentRevenue)}</p>
+            <p className="text-[9px] text-slate-400 font-medium uppercase tracking-wider">Từ các gói điều trị</p>
+          </div>
+        </div>
       </div>
 
       {/* ── Charts Row ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Monthly trend bar chart */}
-        <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-          <div className="flex items-center justify-between mb-5">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 relative z-20">
+        <div className="lg:col-span-2 border border-slate-200 rounded-3xl p-4 bg-white shadow-sm flex flex-col">
+          <div className="flex items-start justify-between mb-4">
             <div>
-              <h4 className="text-sm font-bold text-slate-800">Xu hướng doanh thu 6 tháng</h4>
-              <p className="text-xs text-slate-400 mt-0.5">Tổng thu theo từng tháng</p>
+              <h3 className="text-[13px] font-bold text-slate-900">Xu hướng doanh thu</h3>
+              <p className="text-[11px] font-medium text-slate-500 mt-0.5">
+                {period === 'Tháng' ? 'Doanh thu 6 tháng gần nhất (Đến Tháng 6/2026)' : 
+                 period === 'Quý' ? 'Doanh thu 4 quý gần nhất (Đến Quý 2/2026)' : 
+                 'Doanh thu 4 năm gần nhất (Đến năm 2026)'}
+              </p>
             </div>
-            <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">
-              <TrendingUp className="w-3.5 h-3.5" /> +{growthPct}% so với kỳ trước
+            <div className={`flex items-center gap-1 px-2 py-1 ${revTrend.isUp ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'} text-[10px] font-bold rounded-full`}>
+              {revTrend.isUp ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />} {revTrend.isUp ? '+' : '-'}{revTrend.value}% so với kỳ trước
             </div>
           </div>
-          <BarChart data={monthlyTrend} color="indigo" height={160} />
+          <div className="flex-1 flex items-end justify-between gap-2 mt-auto pt-4">
+            {chartData.map((d) => (
+              <div key={d.label} className="flex-1 flex flex-col items-center gap-1.5">
+                <div className={`w-6 md:w-8 ${d.highlight ? 'bg-indigo-600' : 'bg-slate-200'} rounded-t-full transition-all duration-500`} style={{ height: `${d.height}px` }}></div>
+                <span className={`text-[10px] font-bold ${d.highlight ? 'text-indigo-600' : 'text-slate-400'}`}>{d.label}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* Category donut */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-          <h4 className="text-sm font-bold text-slate-800 mb-1">Cơ cấu nguồn thu</h4>
-          <p className="text-xs text-slate-400 mb-4">Phân bổ theo loại</p>
-          <DonutChart segments={byCategory} size={140} />
+        <div className="border border-slate-200 rounded-3xl p-4 bg-white shadow-sm flex flex-col">
+          <div>
+            <h3 className="text-[13px] font-bold text-slate-900">Cơ cấu nguồn thu</h3>
+            <p className="text-[11px] text-slate-500 mt-0.5 mb-4">Phân bổ theo loại hình doanh thu</p>
+          </div>
+          <div className="flex-1 flex flex-col justify-center">
+            <div className="flex justify-center mb-4">
+              <div className="relative w-32 h-32">
+                <svg width="100%" height="100%" viewBox="0 0 100 100" className="transform -rotate-90">
+                  <circle cx="50" cy="50" r="40" fill="transparent" stroke="#f1f5f9" strokeWidth="16" />
+                  <circle cx="50" cy="50" r="40" fill="transparent" stroke="#15803d" strokeWidth="16" strokeDasharray={`${treatmentStroke} 251.2`} strokeDashoffset={treatmentOffset} className="transition-all duration-700" />
+                  <circle cx="50" cy="50" r="40" fill="transparent" stroke="#eab308" strokeWidth="16" strokeDasharray={`${consultStroke} 251.2`} strokeDashoffset={consultOffset} className="transition-all duration-700" />
+                  <circle cx="50" cy="50" r="40" fill="transparent" stroke="#ef4444" strokeWidth="16" strokeDasharray={`${testStroke} 251.2`} strokeDashoffset={testOffset} className="transition-all duration-700" />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-[8px] font-bold text-slate-400">TỔNG THU</span>
+                  <span className="text-lg font-black text-slate-900 leading-none mt-0.5">100%</span>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-2 px-1">
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-full bg-green-700"></div><span className="font-semibold text-slate-700">Gói liệu trình</span>
+                </div>
+                <span className="font-bold text-slate-900">{pctTreatment}%</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-full bg-yellow-500"></div><span className="font-semibold text-slate-700">Khám bệnh</span>
+                </div>
+                <span className="font-bold text-slate-900">{pctConsult}%</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-full bg-red-500"></div><span className="font-semibold text-slate-700">Xét nghiệm</span>
+                </div>
+                <span className="font-bold text-slate-900">{pctTest}%</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* ── By Doctor + By Method ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* By doctor */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-          <h4 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
-            <Stethoscope className="w-4 h-4 text-emerald-500" /> Doanh thu theo bác sĩ
-          </h4>
-          <div className="space-y-3">
-            {byDoctor.map((d, i) => {
-              const pct = totalRevenue > 0 ? (d.value / totalRevenue) * 100 : 0;
-              const COLORS = ['bg-indigo-500', 'bg-sky-500', 'bg-emerald-500', 'bg-violet-500'];
-              return (
-                <div key={i}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-semibold text-slate-700 truncate max-w-[180px]">{d.label}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-slate-400">{pct.toFixed(1)}%</span>
-                      <span className="text-xs font-bold text-slate-800">{formatVNDFull(d.value)}</span>
-                    </div>
-                  </div>
-                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${pct}%` }}
-                      transition={{ duration: 0.8, delay: i * 0.1 }}
-                      className={`h-full ${COLORS[i % COLORS.length]} rounded-full`}
-                    />
+      {/* ── Middle Row ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 relative z-10">
+        <div className="border border-slate-200 rounded-3xl p-4 bg-white shadow-sm flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-[13px] font-bold text-slate-900">Doanh thu theo bác sĩ</h3>
+          </div>
+          <div className="space-y-4">
+            {doctorStats.length > 0 ? doctorStats.map((ds, i) => (
+              <div key={ds.name}>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs font-bold text-slate-800">{ds.name}</span>
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <span className="font-bold text-slate-900">{formatCurrency(ds.amount)} VNĐ</span>
+                    <span className="text-slate-500 font-medium">{ds.pct.toFixed(1)}%</span>
                   </div>
                 </div>
-              );
-            })}
+                <div className="h-2 w-full bg-indigo-50 rounded-full overflow-hidden">
+                  <div className={`h-full ${['bg-indigo-600', 'bg-indigo-500', 'bg-indigo-400', 'bg-indigo-300', 'bg-indigo-200'][i] || 'bg-indigo-100'} rounded-full transition-all duration-700`} style={{ width: `${ds.pct}%` }}></div>
+                </div>
+              </div>
+            )) : <p className="text-xs text-slate-500 text-center py-2">Không có dữ liệu bác sĩ</p>}
           </div>
         </div>
 
-        {/* By payment method */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-          <h4 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
-            <CreditCard className="w-4 h-4 text-sky-500" /> Phương thức thanh toán
-          </h4>
+        <div className="border border-slate-200 rounded-3xl p-4 bg-white shadow-sm flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-[13px] font-bold text-slate-900">Phương thức thanh toán</h3>
+          </div>
           <div className="space-y-3">
-            {byMethod.map((m, i) => {
-              const pct = totalRevenue > 0 ? (m.value / totalRevenue) * 100 : 0;
-              const Icon = METHOD_ICONS[m.label] || CreditCard;
-              const COLORS_M = ['bg-amber-500', 'bg-teal-500', 'bg-violet-500', 'bg-rose-500'];
+            {methodStats.length > 0 ? methodStats.map(ms => {
+              const Icon = getMethodIcon(ms.name);
+              const color = getMethodColor(ms.name);
               return (
-                <div key={i} className="flex items-center gap-3">
-                  <div className={`p-2 rounded-xl bg-slate-50 border border-slate-100 shrink-0`}>
-                    <Icon className="w-4 h-4 text-slate-500" />
+                <div key={ms.name} className="flex items-center gap-2.5">
+                  <div className="p-2 bg-slate-50 rounded-2xl text-slate-600 shrink-0 border border-slate-100">
+                    <Icon className="w-4 h-4" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-semibold text-slate-700">{m.label}</span>
-                      <span className="text-xs font-bold text-slate-800">{formatVNDFull(m.value)}</span>
+                    <div className="flex items-center justify-between mb-1.5 text-xs">
+                      <span className="font-bold text-slate-800">{ms.name}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-500 font-medium">{formatCurrency(ms.amount)} VNĐ</span>
+                        <span className="font-semibold text-slate-900 w-6 text-right">{Math.round(ms.pct)}%</span>
+                      </div>
                     </div>
-                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${pct}%` }}
-                        transition={{ duration: 0.8, delay: i * 0.1 }}
-                        className={`h-full ${COLORS_M[i % COLORS_M.length]} rounded-full`}
-                      />
+                    <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                      <div className={`h-full ${color} rounded-full transition-all duration-700`} style={{ width: `${ms.pct}%` }}></div>
                     </div>
                   </div>
-                  <span className="text-[10px] text-slate-400 w-10 text-right shrink-0">{pct.toFixed(0)}%</span>
                 </div>
               );
-            })}
+            }) : <p className="text-xs text-slate-500 text-center py-2">Không có dữ liệu phương thức</p>}
           </div>
         </div>
       </div>
 
-      {/* ── Top Services ── */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-        <h4 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
-          <TrendingUp className="w-4 h-4 text-violet-500" /> Dịch vụ & Sản phẩm doanh thu cao nhất
-        </h4>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
-          {serviceRanking.map((s, i) => {
-            const pct = serviceRanking[0]?.value > 0 ? (s.value / serviceRanking[0].value) * 100 : 0;
-            return (
-              <div key={i} className="flex items-center gap-3">
-                <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-black shrink-0 ${
-                  i === 0 ? 'bg-amber-400 text-white' :
-                  i === 1 ? 'bg-slate-300 text-white' :
-                  i === 2 ? 'bg-orange-400 text-white' : 'bg-slate-100 text-slate-500'
-                }`}>
-                  {i + 1}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-slate-700 truncate">{s.label}</p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${pct}%` }}
-                        transition={{ duration: 0.7, delay: i * 0.05 }}
-                        className="h-full bg-violet-500 rounded-full"
-                      />
-                    </div>
-                    <span className="text-[10px] font-bold text-slate-600 shrink-0 w-20 text-right">
-                      {formatVNDFull(s.value)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── Transaction Table (expandable) ── */}
-      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-        <button
-          onClick={() => setShowTable(!showTable)}
-          className="w-full flex items-center justify-between px-5 py-4 border-none bg-transparent cursor-pointer hover:bg-slate-50 transition-colors"
-        >
-          <span className="text-sm font-bold text-slate-800 flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-indigo-500" />
-            Chi tiết giao dịch ({filtered.length})
+      {/* ── Table Chi tiết giao dịch ── */}
+      <div className="border border-slate-200 rounded-3xl bg-white overflow-hidden shadow-sm relative z-0">
+        <div className="px-4 py-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
+          <h3 className="text-[13px] font-bold text-slate-900">Chi tiết giao dịch</h3>
+          <span className="text-xs font-semibold text-slate-500">
+            {totalTransactions} giao dịch <span className="mx-1.5 text-slate-300">•</span> <span className="text-indigo-600 font-bold">{formatCurrency(totalRevenue)} VNĐ</span>
           </span>
-          <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showTable ? 'rotate-180' : ''}`} />
-        </button>
-
-        <AnimatePresence>
-          {showTable && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="overflow-hidden border-t border-slate-100"
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-slate-100 bg-slate-50/50">
+                <th className="px-4 py-2.5 text-left font-bold text-slate-500 text-[10px] uppercase tracking-wider whitespace-nowrap">Ngày/Giờ</th>
+                <th className="px-4 py-2.5 text-left font-bold text-slate-500 text-[10px] uppercase tracking-wider">Dịch vụ/Xét nghiệm</th>
+                <th className="px-4 py-2.5 text-left font-bold text-slate-500 text-[10px] uppercase tracking-wider whitespace-nowrap">Bác sĩ</th>
+                <th className="px-4 py-2.5 text-left font-bold text-slate-500 text-[10px] uppercase tracking-wider">Loại</th>
+                <th className="px-4 py-2.5 text-left font-bold text-slate-500 text-[10px] uppercase tracking-wider">Phương thức</th>
+                <th className="px-4 py-2.5 text-right font-bold text-slate-500 text-[10px] uppercase tracking-wider whitespace-nowrap">Số tiền</th>
+              </tr>
+            </thead>
+            <tbody>
+              {displayedTransactions.length > 0 ? displayedTransactions.map((tx, i) => {
+                const Icon = getMethodIcon(tx.method);
+                return (
+                  <tr key={i} className="border-b border-slate-50 last:border-b-0 hover:bg-slate-50/80 transition-colors">
+                    <td className="px-4 py-2.5 text-slate-500 whitespace-pre-line text-[11px] font-medium leading-relaxed">{`${tx.date}\n${tx.time}`}</td>
+                    <td className="px-4 py-2.5 font-bold text-slate-800">{tx.service}</td>
+                    <td className="px-4 py-2.5 text-slate-500 font-medium">{tx.doctor}</td>
+                    <td className="px-4 py-2.5">
+                      <span className={`px-2 py-0.5 text-[9px] font-bold rounded-full whitespace-nowrap tracking-wide ${
+                        tx.type === 'GÓI LIỆU TRÌNH' ? 'bg-green-50 text-green-700' :
+                        tx.type === 'XÉT NGHIỆM' ? 'bg-red-50 text-red-700' :
+                        'bg-yellow-50 text-yellow-700'
+                      }`}>
+                        {tx.type}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 text-slate-600 font-medium flex items-center gap-1.5">
+                      <Icon className="w-3 h-3 text-slate-400" />
+                      {tx.method}
+                    </td>
+                    <td className="px-4 py-2.5 text-right font-bold text-slate-900 whitespace-nowrap">{formatCurrency(tx.amount)} VNĐ</td>
+                  </tr>
+                );
+              }) : (
+                <tr>
+                  <td colSpan="6" className="px-4 py-5 text-center text-slate-500 font-medium">Không tìm thấy giao dịch nào phù hợp với bộ lọc hiện tại.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        {filteredData.length > 4 && (
+          <div className="border-t border-slate-100 p-2.5 flex justify-center bg-slate-50/30">
+            <button 
+              onClick={() => setShowAll(!showAll)}
+              className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 bg-transparent border-none cursor-pointer"
             >
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="bg-slate-50 border-b border-slate-100">
-                      {['Ngày', 'Dịch vụ / Sản phẩm', 'Bác sĩ', 'Loại', 'Phương thức', 'Số tiền'].map(h => (
-                        <th key={h} className="px-4 py-3 text-left font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtered.slice(0, 20).map((r, i) => (
-                      <motion.tr
-                        key={r.id}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: i * 0.02 }}
-                        className="border-b border-slate-50 hover:bg-slate-50/80 transition-colors"
-                      >
-                        <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{r.date}</td>
-                        <td className="px-4 py-3 font-semibold text-slate-800 max-w-[200px] truncate">{r.source}</td>
-                        <td className="px-4 py-3 text-slate-500 whitespace-nowrap max-w-[140px] truncate">{r.doctorName}</td>
-                        <td className="px-4 py-3">
-                          <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] whitespace-nowrap ${
-                            r.category === 'Dịch vụ'         ? 'bg-sky-50 text-sky-700 border border-sky-200' :
-                            r.category === 'Gói dịch vụ'     ? 'bg-violet-50 text-violet-700 border border-violet-200' :
-                            'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                          }`}>
-                            {r.category}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{r.method}</td>
-                        <td className="px-4 py-3 font-black text-indigo-700 whitespace-nowrap text-right">
-                          {formatVNDFull(r.amount)}
-                        </td>
-                      </motion.tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr className="bg-indigo-50 border-t border-indigo-100">
-                      <td colSpan={5} className="px-4 py-3 font-black text-indigo-700 text-right uppercase tracking-wider text-xs">
-                        Tổng cộng ({filtered.length > 20 ? `20/${filtered.length} hiển thị` : filtered.length})
-                      </td>
-                      <td className="px-4 py-3 font-black text-indigo-700 text-right text-sm">
-                        {formatVNDFull(totalRevenue)}
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              {showAll ? 'Thu gọn danh sách' : 'Xem tất cả giao dịch'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

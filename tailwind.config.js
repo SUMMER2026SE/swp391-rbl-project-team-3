@@ -71,6 +71,7 @@ export default {
         "margin-mobile": "16px",
       },
       fontFamily: {
+        sans: ["Plus Jakarta Sans", "sans-serif"],
         "headline-md": ["Plus Jakarta Sans"],
         "body-lg": ["Plus Jakarta Sans"],
         "headline-lg": ["Plus Jakarta Sans"],
