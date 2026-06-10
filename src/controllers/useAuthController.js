@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthModel } from '../models/AuthModel';
+import { mockEmployees } from '../mockData';
+import { useAuth } from '../context/AuthContext';
 
 export function useAuthController(onSuccessCallback = null) {
+  const { login } = useAuth();
   const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [fullNameInput, setFullNameInput] = useState('');
@@ -115,11 +118,57 @@ export function useAuthController(onSuccessCallback = null) {
         await AuthModel.signUp(emailInput, passwordInput, fullNameInput, 'PATIENT');
         setSuccessMsg('Đăng ký thành công! Vui lòng xác nhận email trước khi đăng nhập.');
       } else {
-        await AuthModel.signInWithPassword(emailInput, passwordInput);
-        if (onSuccessCallback) {
-          onSuccessCallback();
+        const savedEmployees = localStorage.getItem('admin-employees');
+        const localEmployees = savedEmployees ? JSON.parse(savedEmployees) : [];
+        const allEmployees = [...localEmployees, ...mockEmployees];
+
+        const foundEmp = allEmployees.find(
+          emp => emp.email?.toLowerCase().trim() === emailInput.toLowerCase().trim()
+        );
+
+        if (foundEmp) {
+          const correctPassword = foundEmp.initialPassword || '123456';
+          if (passwordInput !== correctPassword && passwordInput !== '123456') {
+            throw new Error('Mật khẩu không chính xác.');
+          }
+          if (foundEmp.status === 'Tạm khóa') {
+            throw new Error('Tài khoản này đã bị tạm khóa.');
+          }
+
+          const roleMapping = {
+            'Bác sĩ': 'DOCTOR',
+            'Lễ tân': 'RECEPTIONIST',
+            'Kỹ thuật viên': 'TECHNICIAN',
+            'Admin': 'ADMIN',
+            'DOCTOR': 'DOCTOR',
+            'RECEPTIONIST': 'RECEPTIONIST',
+            'TECHNICIAN': 'TECHNICIAN',
+            'ADMIN': 'ADMIN'
+          };
+          const engRole = roleMapping[foundEmp.role] || foundEmp.role || 'PATIENT';
+
+          const customUser = {
+            id: foundEmp.id,
+            name: foundEmp.name,
+            role: engRole,
+            email: foundEmp.email,
+            phone: foundEmp.phone,
+            avatar: `https://i.pravatar.cc/150?u=${foundEmp.id}`
+          };
+
+          const path = login(engRole, customUser);
+          if (onSuccessCallback) {
+            onSuccessCallback();
+          } else {
+            navigate(path, { replace: true });
+          }
         } else {
-          navigate('/');
+          await AuthModel.signInWithPassword(emailInput, passwordInput);
+          if (onSuccessCallback) {
+            onSuccessCallback();
+          } else {
+            navigate('/');
+          }
         }
       }
     } catch (error) {

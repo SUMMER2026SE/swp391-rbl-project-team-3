@@ -30,7 +30,8 @@ import {
   Clock,
   CalendarDays,
   CreditCard,
-  Stethoscope
+  Stethoscope,
+  Star,
 } from 'lucide-react';
 import { 
   mockAppointments, 
@@ -41,6 +42,11 @@ import {
   mockTimeSlots 
 } from '../mockData';
 import LiveChatDrawer from '../components/Receptionist/LiveChatDrawer';
+import ReceptionistFeedbackView from '../components/Receptionist/ReceptionistFeedbackView';
+import { NotificationModel } from '../models/NotificationModel';
+import ReceptionistChatTab from '../components/Receptionist/ReceptionistChatTab';
+import { ReceptionistChatModel } from '../models/ChatModel';
+
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 30 },
@@ -69,11 +75,52 @@ export default function ReceptionistDashboard() {
 
   // ─── STATE MANAGEMENT ───────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState('overview');
-  const { appointments, approveAppointment, checkinAppointment, bookAppointment, cancelAppointment } = useAppointmentController();
+  const { 
+    appointments, 
+    updateAppointmentStatus, 
+    addDirectAppointment, 
+    approveAppointment, 
+    checkinAppointment, 
+    bookAppointment, 
+    cancelAppointment 
+  } = useAppointmentController();
+
   const [patients, setPatients] = useState(mockPatients);
-  const [chatMessages, setChatMessages] = useState(mockChatMessages);
+  const [chatMessages, setChatMessages] = useState([]);
   const [toast, setToast] = useState(null);
+
+  // Poll receptionist messages from ReceptionistChatModel to keep state synchronized
+  useEffect(() => {
+    const fetchMsgs = () => {
+      const msgs = ReceptionistChatModel.getAllMessages();
+      setChatMessages(msgs);
+    };
+    fetchMsgs();
+    const interval = setInterval(fetchMsgs, 2000);
+    return () => clearInterval(interval);
+  }, []);
   
+  const [notifications, setNotifications] = useState(() => NotificationModel.getAll());
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setNotifications(NotificationModel.getAll());
+    };
+    window.addEventListener('notifications-updated', handleUpdate);
+    return () => window.removeEventListener('notifications-updated', handleUpdate);
+  }, []);
+
+  const receptionistId = user?.id || 'staff-01';
+  const myNotifications = notifications.filter(n => 
+    n.recipientRole === 'RECEPTIONIST' && (n.recipientId === receptionistId || n.recipientId === 'all')
+  );
+  const unreadCount = myNotifications.filter(n => !n.isRead).length;
+
+  const handleMarkAllRead = () => {
+    NotificationModel.markAllAsRead('RECEPTIONIST', receptionistId);
+  };
+
   // Manual Appointment Modal State
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [newApt, setNewApt] = useState({
@@ -89,6 +136,32 @@ export default function ReceptionistDashboard() {
   // Chat Drawer State
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [activeChatPatient, setActiveChatPatient] = useState(null);
+  
+  const [servicesList, setServicesList] = useState([]);
+
+  useEffect(() => {
+    if (isAddOpen) {
+      const saved = localStorage.getItem('admin-services');
+      if (saved) {
+        const parsed = JSON.parse(saved).map(s => ({
+          id: s.id,
+          name: s.name,
+          price: typeof s.price === 'number' ? `${s.price.toLocaleString('vi-VN')} VNĐ` : s.price,
+          description: s.description,
+          status: s.status
+        })).filter(s => s.status === 'Hoạt động');
+        setServicesList(parsed);
+        if (parsed.length > 0 && !parsed.some(s => s.name === newApt.service)) {
+          setNewApt(prev => ({ ...prev, service: parsed[0].name }));
+        }
+      } else {
+        setServicesList(mockServices);
+      }
+    }
+  }, [isAddOpen]);
+
+  // ─── INITIALIZATION (Adjust Dates to Coordinate with Today's Date) ───────
+  const todayStr = "2026-06-01"; // Timeline current date
 
   const handleScroll = (e) => {
     if (e.target.scrollTop > 10) {
@@ -121,18 +194,21 @@ export default function ReceptionistDashboard() {
   // 1. Check-in Button Action
   const handleCheckIn = (aptId, patientName) => {
     checkinAppointment(aptId);
+
     showToast(`Check-in thành công cho bệnh nhân ${patientName}!`, 'success');
   };
 
   // 2. Approve Button Action
   const handleApprove = (aptId, patientName) => {
     approveAppointment(aptId, 'rec-01');
+
     showToast(`Đã phê duyệt lịch hẹn khám của ${patientName}!`, 'success');
   };
 
   // 3. Reject/Cancel Button Action
   const handleReject = (aptId, patientName) => {
     cancelAppointment(aptId);
+
     showToast(`Đã từ chối/hủy lịch hẹn khám của ${patientName}.`, 'error');
   };
 
@@ -194,6 +270,7 @@ export default function ReceptionistDashboard() {
     } catch (err) {
       showToast(err.message || 'Có lỗi xảy ra', 'error');
     }
+
   };
 
   // 5. Open Live Chat for a Patient
@@ -216,32 +293,28 @@ export default function ReceptionistDashboard() {
 
   // 6. Handle sending message from receptionist
   const handleSendMessage = (patientId, text) => {
-    const newMsg = {
-      id: `msg-${Date.now()}`,
+    const newMsg = ReceptionistChatModel.addMessage({
       senderId: 'staff-01', // Receptionist ID
       senderName: 'Lễ tân Hoàng Anh',
       senderRole: 'RECEPTIONIST',
       text: text,
-      timestamp: new Date().toISOString(),
       mode: 'Live',
       patientId: patientId
-    };
+    });
     
     setChatMessages(prev => [...prev, newMsg]);
 
     // Simulate patient response after 1.5s to show rich interactivity
     setTimeout(() => {
       const activePatient = (patients || []).find(p => p.id === patientId);
-      const replyMsg = {
-        id: `msg-${Date.now() + 1}`,
+      const replyMsg = ReceptionistChatModel.addMessage({
         senderId: patientId,
         senderName: activePatient ? activePatient.fullName : 'Bệnh nhân',
         senderRole: 'PATIENT',
         text: `Dạ vâng ạ, cảm ơn lễ tân đã hỗ trợ nhiệt tình!`,
-        timestamp: new Date().toISOString(),
         mode: 'Live',
         patientId: patientId
-      };
+      });
       setChatMessages(prev => [...prev, replyMsg]);
       showToast(`Tin nhắn mới từ bệnh nhân ${activePatient ? activePatient.fullName : 'Bệnh nhân'}`, 'info');
     }, 1500);
@@ -324,6 +397,9 @@ export default function ReceptionistDashboard() {
               { id: 'appointments', label: 'Quản lý Lịch hẹn', icon: CalendarDays },
               { id: 'payments', label: 'Thanh toán & Hóa đơn', icon: CreditCard },
               { id: 'doctor_schedules', label: 'Lịch Bác sĩ', icon: Stethoscope },
+              { id: 'feedback', label: 'Đánh giá bệnh nhân', icon: Star },
+              { id: 'chat', label: 'Trò chuyện & Hỗ trợ', icon: MessageSquare },
+
             ].map(tab => (
               <button
                 key={tab.id}
@@ -421,10 +497,64 @@ export default function ReceptionistDashboard() {
                 <MessageSquare className="w-5 h-5 text-slate-600" />
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
               </button>
-              <button className="hover:bg-slate-100 hover:text-teal-600 transition-all p-2 rounded-full relative active:scale-95 border-none cursor-pointer bg-transparent flex items-center justify-center">
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full"></span>
-              </button>
+              <div className="relative">
+                <button 
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="hover:bg-slate-100 hover:text-teal-600 transition-all p-2 rounded-full relative active:scale-95 border-none cursor-pointer bg-transparent flex items-center justify-center"
+                >
+                  <Bell className="w-5 h-5" />
+                  {unreadCount > 0 && (
+                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full"></span>
+                  )}
+                </button>
+                
+                <AnimatePresence>
+                  {showNotifications && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      className="absolute right-0 mt-2 w-80 bg-white/95 backdrop-blur-md border border-slate-200 shadow-2xl rounded-2xl p-4 z-50 max-h-[350px] overflow-y-auto"
+                    >
+                      <div className="flex justify-between items-center pb-2 border-b border-slate-100 mb-2">
+                        <span className="text-sm font-extrabold text-slate-800">Thông báo của bạn</span>
+                        {unreadCount > 0 && (
+                          <button 
+                            onClick={handleMarkAllRead}
+                            className="text-[10px] text-teal-600 hover:text-teal-700 font-bold border-none bg-transparent cursor-pointer"
+                          >
+                            Đọc tất cả
+                          </button>
+                        )}
+                      </div>
+                      <div className="space-y-2.5">
+                        {myNotifications.length === 0 ? (
+                          <p className="text-xs text-slate-400 italic text-center py-4">Chưa có thông báo nào.</p>
+                        ) : (
+                          myNotifications.map((notif) => (
+                            <div 
+                              key={notif.id}
+                              onClick={() => {
+                                NotificationModel.markAsRead(notif.id);
+                              }}
+                              className={`p-2.5 rounded-xl transition-all border cursor-pointer text-left ${
+                                notif.isRead 
+                                  ? 'bg-transparent border-slate-100 hover:bg-slate-50' 
+                                  : 'bg-teal-50/50 border-teal-100/50 hover:bg-teal-50'
+                              }`}
+                            >
+                              <p className="text-xs font-bold text-slate-800">{notif.title}</p>
+                              <p className="text-[10px] text-slate-500 mt-0.5 leading-snug">{notif.content}</p>
+                              <span className="text-[8px] text-slate-400 block mt-1.5">{new Date(notif.timestamp).toLocaleString('vi-VN')}</span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
               <button className="hover:bg-slate-100 hover:text-teal-600 transition-all p-2 rounded-full active:scale-95 border-none cursor-pointer bg-transparent flex items-center justify-center">
                 <Settings className="w-5 h-5" />
               </button>
@@ -590,6 +720,24 @@ export default function ReceptionistDashboard() {
                                 </>
                               )}
                             </p>
+                            
+                            {/* Payment Deposit & Collection Status */}
+                            {apt.status === 'Paid' && (
+                              <div className="text-[10px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-200/20 font-bold mt-1 inline-block">
+                                💳 Đã cọc: 50,000 VNĐ — Thu thêm: <strong className="text-slate-700">{(() => {
+                                  const parseFeeStr = (f) => f ? (parseInt(f.replace(/[^0-9]/g, ''), 10) || 500000) : 500000;
+                                  const doc = doctors.find(d => d.id === apt.doctor_id);
+                                  const feeStr = doc?.consultationFee || '500,000 VNĐ';
+                                  const remaining = parseFeeStr(feeStr) - 50000;
+                                  return remaining.toLocaleString('vi-VN') + ' VNĐ';
+                                })()}</strong> (Tại quầy)
+                              </div>
+                            )}
+                            {apt.status === 'Completed' && (
+                              <div className="text-[10px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/20 font-bold mt-1 inline-block">
+                                ✓ Đã khám xong &amp; Đã thu đủ tiền
+                              </div>
+                            )}
                           </div>
                         </div>
                         
@@ -749,12 +897,25 @@ export default function ReceptionistDashboard() {
             {activeTab === 'doctor_schedules' && (
               <motion.div key="doctor_schedules" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
                 <h2 className="text-2xl font-bold text-slate-800 mb-6">Cập nhật Lịch Bác sĩ</h2>
-                {/* Future: Inject a mock view of Doctor schedules */}
                 <div className="p-8 backdrop-blur-xl bg-white/40 border border-white/60 shadow-sm rounded-[2rem] text-center text-slate-500 font-medium">
                   Tính năng đang được phát triển...
                 </div>
               </motion.div>
             )}
+
+            {activeTab === 'feedback' && (
+              <motion.div key="feedback" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+                <ReceptionistFeedbackView />
+              </motion.div>
+            )}
+
+            {activeTab === 'chat' && (
+              <motion.div key="chat" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+                <h2 className="text-2xl font-bold text-slate-800 mb-6">Trò chuyện &amp; Hỗ trợ trực tuyến</h2>
+                <ReceptionistChatTab />
+              </motion.div>
+            )}
+
           </AnimatePresence>
         </main>
       </div>
@@ -874,7 +1035,7 @@ export default function ReceptionistDashboard() {
                     onChange={(e) => setNewApt(prev => ({ ...prev, service: e.target.value }))}
                     className="bg-slate-50/60 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 text-xs font-medium text-slate-800 cursor-pointer"
                   >
-                    {(mockServices || []).map(svc => (
+                    {(servicesList || []).map(svc => (
                       <option key={svc.id} value={svc.name}>{svc.name} - ({svc.price})</option>
                     ))}
                   </select>

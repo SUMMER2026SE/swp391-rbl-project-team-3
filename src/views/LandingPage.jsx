@@ -1,11 +1,21 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDoctorController } from '../controllers/useDoctorController';
+import { useVoucherController } from '../controllers/useVoucherController';
 import ChangePasswordModal from './ChangePasswordModal';
-import BookingModal from '../components/BookingModal';
+import FreeSkinScanModal from '../components/FreeSkinScanModal';
 import FloatingChatbot from '../components/PatientPortal/FloatingChatbot';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Key, LogOut, User } from 'lucide-react';
+import BookAppointmentForm from '../components/PatientPortal/BookAppointmentForm';
+import {
+  motion,
+  AnimatePresence,
+  useScroll,
+  useTransform,
+  useSpring,
+  useMotionTemplate,
+} from 'framer-motion';
+import { Key, LogOut, User, Ticket, Tag, Calendar, ArrowRight } from 'lucide-react';
+
 import '../index.css';
 
 
@@ -39,13 +49,51 @@ function LandingPage({ user, onLogout }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const [isAIScanOpen, setIsAIScanOpen] = useState(false);
   const [selectedDoctor, setSelectedDoctor] = useState(null);
   const [bookingDocId, setBookingDocId] = useState(null);
   
   const navigate = useNavigate();
   const { getDoctors } = useDoctorController();
+  const { vouchers } = useVoucherController();
   const doctorsList = getDoctors();
   const mobileMenuRef = useRef(null);
+
+  // Vouchers đang hoạt động trong ngày hôm nay
+  const today = new Date().toISOString().split('T')[0];
+  const activeVouchers = vouchers.filter(v =>
+    v.status === 'Hoạt động' &&
+    v.validFrom <= today &&
+    v.validTo >= today &&
+    v.usageCount < v.maxUsage
+  );
+
+  /* --------------------------------------------------------------
+     Continuous scroll-linked navbar morph (Part 2).
+     `scrolled` (set in the effect below) only drives discrete text-color
+     swaps; ALL geometry is interpolated smoothly from these springs so
+     the bar gradually breathes into a floating pill — never snapping.
+     -------------------------------------------------------------- */
+  const { scrollY } = useScroll();
+  const navSpring = { stiffness: 220, damping: 32, mass: 0.9 };
+  const navWidthMV = useSpring(useTransform(scrollY, [0, 120], [100, 82]), navSpring);
+  const navMaxWMV = useSpring(useTransform(scrollY, [0, 120], [2200, 1080]), navSpring);
+  const navRadiusMV = useSpring(useTransform(scrollY, [0, 120], [0, 34]), navSpring);
+  const navTopMV = useSpring(useTransform(scrollY, [0, 120], [0, 16]), navSpring);
+  const navHeightMV = useSpring(useTransform(scrollY, [0, 120], [86, 70]), navSpring);
+  const navPadMV = useSpring(useTransform(scrollY, [0, 120], [24, 34]), navSpring);
+  const navBgMV = useSpring(useTransform(scrollY, [0, 120], [0.04, 0.72]), navSpring);
+  const navShadowMV = useSpring(useTransform(scrollY, [0, 120], [0, 0.1]), navSpring);
+  const navRingMV = useSpring(useTransform(scrollY, [0, 120], [0.1, 0.65]), navSpring);
+
+  const navWidth = useMotionTemplate`${navWidthMV}%`;
+  const navMaxWidth = useMotionTemplate`${navMaxWMV}px`;
+  const navRadius = useMotionTemplate`${navRadiusMV}px`;
+  const navTop = useMotionTemplate`${navTopMV}px`;
+  const navHeight = useMotionTemplate`${navHeightMV}px`;
+  const navPad = useMotionTemplate`${navPadMV}px`;
+  const navBg = useMotionTemplate`rgba(255, 255, 255, ${navBgMV})`;
+  const navShadow = useMotionTemplate`0 14px 40px rgba(2, 32, 29, ${navShadowMV}), inset 0 1px 2px rgba(255,255,255,0.85), inset 0 0 0 1px rgba(255,255,255,${navRingMV})`;
 
   const handleBookFromHero = () => {
     if (!user) {
@@ -66,6 +114,7 @@ function LandingPage({ user, onLogout }) {
       setIsBookingOpen(true);
     }
   };
+
 
   // Close user dropdown on outside click
   useEffect(() => {
@@ -165,34 +214,26 @@ function LandingPage({ user, onLogout }) {
         <div className="absolute top-[30%] left-[50%] w-[40vw] h-[40vw] rounded-full bg-primary-fixed-dim/20 blur-[100px] animate-[float_18s_ease-in-out_infinite_3s]" />
       </div>
 
-      {/* TopNavBar */}
+      {/* TopNavBar — continuous scroll-linked morph (no snapping) */}
       <motion.nav
-        className={`fixed top-0 left-1/2 -translate-x-1/2 z-50 flex items-center justify-between backdrop-blur-xl ${
-          scrolled
-            ? 'bg-white/70 border border-white/50 shadow-[0_10px_30px_rgba(0,0,0,0.08)]'
-            : 'bg-white/5 border-b border-white/10'
-        }`}
-        animate={{
-          width: scrolled ? "80%" : "100%",
-          maxWidth: scrolled ? "1024px" : "100vw",
-          top: scrolled ? "16px" : "0px",
-          borderRadius: scrolled ? "9999px" : "0px",
-          paddingLeft: scrolled ? "2rem" : "1.5rem",
-          paddingRight: scrolled ? "2rem" : "1.5rem",
-          height: scrolled ? "70px" : "80px",
-        }}
-        transition={{
-          type: "spring",
-          stiffness: 200,
-          damping: 30,
-          mass: 0.8,
+        className="fixed left-1/2 -translate-x-1/2 z-50 flex items-center justify-between backdrop-blur-2xl border border-white/30"
+        style={{
+          top: navTop,
+          width: navWidth,
+          maxWidth: navMaxWidth,
+          height: navHeight,
+          borderRadius: navRadius,
+          paddingLeft: navPad,
+          paddingRight: navPad,
+          backgroundColor: navBg,
+          boxShadow: navShadow,
         }}
       >
         <a
           className="flex items-center gap-2 transition-transform hover:scale-105"
           href="#"
         >
-          <span className="font-bold text-2xl bg-clip-text text-transparent bg-gradient-to-r from-emerald-600 to-sky-500">
+          <span className="font-black text-[26px] bg-clip-text text-transparent bg-gradient-to-r from-emerald-600 to-sky-500 tracking-tight">
             DermaSmart
           </span>
         </a>
@@ -400,13 +441,20 @@ function LandingPage({ user, onLogout }) {
               Đặt lịch khám ngay
             </button>
             <button
+              onClick={() => setIsAIScanOpen(true)}
+              className="w-full sm:w-auto bg-gradient-to-r from-sky-400 to-emerald-400 hover:from-sky-500 hover:to-emerald-500 text-white font-bold shadow-lg shadow-sky-500/25 px-8 py-4 rounded-2xl transition-all cursor-pointer border-none text-base flex items-center justify-center gap-2"
+            >
+              ✨ Soi da AI miễn phí
+            </button>
+            <button
               onClick={() => {
                 const featuresEl = document.getElementById('features');
                 if (featuresEl) featuresEl.scrollIntoView({ behavior: 'smooth' });
               }}
-              className="w-full sm:w-auto border border-sky-400 hover:bg-sky-50 text-sky-600 font-semibold px-8 py-4 rounded-2xl transition-all cursor-pointer bg-transparent text-base"
+              className="w-full sm:w-auto border border-sky-300 hover:bg-white/50 text-sky-600 font-semibold px-8 py-4 rounded-2xl transition-all cursor-pointer bg-transparent text-base"
             >
               Xem tính năng AI
+
             </button>
           </motion.div>
         </motion.div>
@@ -624,6 +672,133 @@ function LandingPage({ user, onLogout }) {
         </section>
       </main>
 
+      {/* ── Promotions / Active Vouchers Section ── */}
+      {activeVouchers.length > 0 && (
+        <section id="pricing" className="w-full max-w-[1280px] mx-auto px-4 md:px-10 pb-20">
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, type: 'spring' }}
+            viewport={{ once: false, amount: 0.15 }}
+          >
+            {/* Section header */}
+            <div className="text-center mb-12">
+              <div className="inline-flex items-center gap-2 bg-amber-100/60 backdrop-blur-md rounded-full px-4 py-1.5 border border-amber-200 text-amber-800 text-sm font-semibold mb-4">
+                <Ticket className="w-4 h-4" />
+                Ưu đãi đang áp dụng
+              </div>
+              <h2 className="font-bold text-[32px] leading-[1.3] tracking-[-0.01em] text-on-surface">
+                Khuyến Mãi Hôm Nay
+              </h2>
+              <p className="text-on-surface-variant mt-2 max-w-xl mx-auto">
+                Các ưu đãi bên dưới được tự động áp dụng khi bạn đặt lịch — không cần nhập mã.
+              </p>
+            </div>
+
+            {/* Voucher grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {activeVouchers.map((v, i) => {
+                const pct = Math.round((v.usageCount / v.maxUsage) * 100);
+                const isEvent = !!v.eventTag;
+                return (
+                  <motion.div
+                    key={v.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.07, type: 'spring' }}
+                    viewport={{ once: false, amount: 0.2 }}
+                    className="glass-panel liquid-glass rounded-2xl overflow-hidden group hover:-translate-y-1 transition-transform duration-300"
+                  >
+                    {/* Gradient top bar */}
+                    <div className={`h-1.5 ${isEvent ? 'bg-gradient-to-r from-amber-400 via-orange-400 to-rose-400' : 'bg-gradient-to-r from-emerald-400 to-sky-400'}`} />
+
+                    <div className="p-5">
+                      {/* Event badge */}
+                      {v.eventTag && (
+                        <div className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-100/80 text-amber-800 border border-amber-200/60 mb-3">
+                          <span>{v.eventEmoji || '🎉'}</span> {v.eventTag}
+                        </div>
+                      )}
+
+                      {/* Discount badge + name */}
+                      <div className="flex items-start justify-between gap-3 mb-3">                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-on-surface leading-snug">{v.name}</p>
+                          {v.description && (
+                            <p className="text-[11px] text-on-surface-variant mt-1 line-clamp-2 leading-relaxed">{v.description}</p>
+                          )}
+                        </div>
+                        <span className={`shrink-0 text-xl font-black px-3 py-1.5 rounded-xl ${
+                          isEvent
+                            ? 'bg-amber-100 text-amber-700 border-2 border-amber-300'
+                            : 'bg-emerald-100 text-emerald-700 border-2 border-emerald-300'
+                        }`}>
+                          {v.discountType === 'Percentage' ? `-${v.discountValue}%` : `-${Number(v.discountValue).toLocaleString('vi-VN')}đ`}
+                        </span>
+                      </div>
+
+                      {/* Info pills */}
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        <span className="flex items-center gap-1 text-[10px] font-semibold bg-surface-container/60 text-on-surface-variant rounded-full px-2.5 py-1 border border-white/40">
+                          <Calendar className="w-3 h-3" />
+                          HSD: {v.validTo}
+                        </span>
+                        {v.minOrderAmount > 0 && (
+                          <span className="flex items-center gap-1 text-[10px] font-semibold bg-surface-container/60 text-on-surface-variant rounded-full px-2.5 py-1 border border-white/40">
+                            <Tag className="w-3 h-3" />
+                            Từ {Number(v.minOrderAmount).toLocaleString('vi-VN')}đ
+                          </span>
+                        )}
+                        {v.applicableServices.length === 0 && (
+                          <span className="text-[10px] font-semibold bg-emerald-100/60 text-emerald-700 rounded-full px-2.5 py-1 border border-emerald-200/60">
+                            Tất cả dịch vụ
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Usage bar */}
+                      <div className="mb-4">
+                        <div className="flex justify-between text-[10px] text-on-surface-variant font-medium mb-1">
+                          <span>Còn lại: {v.maxUsage - v.usageCount} lượt</span>
+                          <span className={pct > 80 ? 'text-rose-500 font-bold' : ''}>{pct}% đã dùng</span>
+                        </div>
+                        <div className="h-1.5 bg-surface-container/40 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all ${pct > 80 ? 'bg-rose-400' : isEvent ? 'bg-gradient-to-r from-amber-400 to-orange-400' : 'bg-gradient-to-r from-emerald-400 to-sky-400'}`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* CTA */}
+                      <button
+                        onClick={() => setIsBookingOpen(true)}
+                        className={`w-full py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 border-none cursor-pointer transition-all group-hover:gap-3 ${
+                          isEvent
+                            ? 'bg-gradient-to-r from-amber-400 to-orange-400 text-white shadow-md shadow-amber-400/25 hover:shadow-lg'
+                            : 'bg-gradient-to-r from-emerald-500 to-sky-500 text-white shadow-md shadow-emerald-500/20 hover:shadow-lg'
+                        }`}
+                      >
+                        Đặt lịch ngay <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                      </button>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+
+            {/* Bottom note */}
+            <motion.p
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              className="text-center text-xs text-on-surface-variant mt-6 flex items-center justify-center gap-1.5"
+            >
+              <Ticket className="w-3.5 h-3.5 text-emerald-500" />
+              Ưu đãi tự động áp dụng khi đặt lịch — bạn không cần nhập bất kỳ mã nào.
+            </motion.p>
+          </motion.div>
+        </section>
+      )}
+
       {/* Frosted Glass Showcase */}
       <section
         className="w-full min-h-[600px] relative bg-fixed bg-center bg-cover flex items-center justify-center px-4 mt-12"
@@ -660,7 +835,8 @@ function LandingPage({ user, onLogout }) {
       </motion.footer>
 
       <ChangePasswordModal isOpen={isChangePasswordOpen} onClose={() => setIsChangePasswordOpen(false)} />
-      <FloatingChatbot onBookAppointment={() => setIsBookingOpen(true)} />
+      <FloatingChatbot onBookAppointment={() => setIsBookingOpen(true)} onAIScan={() => setIsAIScanOpen(true)} />
+      <FreeSkinScanModal isOpen={isAIScanOpen} onClose={() => setIsAIScanOpen(false)} onBookAppointment={() => setIsBookingOpen(true)} />
 
       {/* Doctor Profile Modal (Liquid Glass) */}
       <AnimatePresence>
@@ -764,11 +940,10 @@ function LandingPage({ user, onLogout }) {
         )}
       </AnimatePresence>
 
-      <BookingModal
+      <BookAppointmentForm
         isOpen={isBookingOpen}
         onClose={() => setIsBookingOpen(false)}
         preselectedDoctorId={bookingDocId}
-        onSuccess={() => navigate('/profile')}
       />
     </>
   );

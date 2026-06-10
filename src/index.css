@@ -939,3 +939,192 @@ button:active { transform: scale(0.95); }
     border-radius: 20px;
 }
 
+/* =================================================================
+   3D LIQUID GLASS SYSTEM  (Part 1 — core aesthetic)
+   Multi-layered shadows simulate physical glass thickness:
+   - outer drop shadow  -> the panel floats above the page
+   - inset top highlight -> light catching the top bevel (specular)
+   - inset bottom shade  -> the thickness of the glass underside
+   ================================================================= */
+.glass-3d {
+    position: relative;
+    background-color: rgba(255, 255, 255, 0.42);
+    -webkit-backdrop-filter: blur(28px) saturate(140%);
+    backdrop-filter: blur(28px) saturate(140%);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.08),
+        inset 0 2px 4px rgba(255, 255, 255, 0.85),
+        inset 0 -1px 2px rgba(0, 0, 0, 0.10);
+    transition:
+        box-shadow 0.5s cubic-bezier(0.25, 1, 0.5, 1),
+        transform 0.5s cubic-bezier(0.25, 1, 0.5, 1),
+        border-color 0.5s ease,
+        backdrop-filter 0.5s ease;
+}
+
+/* Softer variant for Doctor workspace — realistic liquid drop feel */
+.glass-3d-soft {
+    position: relative;
+    background-color: rgba(255, 255, 255, 0.30);
+    -webkit-backdrop-filter: blur(32px) saturate(130%);
+    backdrop-filter: blur(32px) saturate(130%);
+    border: 1px solid rgba(255, 255, 255, 0.40);
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.04),
+        inset 0 1px 2px rgba(255, 255, 255, 0.6);
+    transition:
+        box-shadow 0.5s cubic-bezier(0.25, 1, 0.5, 1),
+        transform 0.5s cubic-bezier(0.25, 1, 0.5, 1),
+        border-color 0.5s ease,
+        backdrop-filter 0.5s ease;
+}
+
+.glass-3d-soft:hover {
+    box-shadow:
+        0 12px 40px rgba(0, 0, 0, 0.06),
+        inset 0 1px 3px rgba(255, 255, 255, 0.7);
+    border-color: rgba(255, 255, 255, 0.55);
+}
+
+/* Heavier variant for Navbar / Modals / hero containers */
+.glass-3d-strong {
+    position: relative;
+    background-color: rgba(255, 255, 255, 0.55);
+    -webkit-backdrop-filter: blur(40px) saturate(160%);
+    backdrop-filter: blur(40px) saturate(160%);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    box-shadow:
+        0 16px 48px rgba(2, 32, 29, 0.14),
+        0 4px 12px rgba(2, 32, 29, 0.06),
+        inset 0 2px 6px rgba(255, 255, 255, 0.9),
+        inset 0 -2px 4px rgba(0, 0, 0, 0.12);
+}
+
+.glass-3d:hover {
+    box-shadow:
+        0 20px 50px rgba(2, 32, 29, 0.14),
+        inset 0 2px 5px rgba(255, 255, 255, 0.95),
+        inset 0 -1px 3px rgba(0, 0, 0, 0.12);
+    border-color: rgba(255, 255, 255, 0.85);
+}
+
+/* High-contrast inner surface — makes form fields / rows POP out of the
+   translucent parent so the UI never looks "washed out". (Part 3) */
+.glass-inner {
+    background-color: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.9);
+    box-shadow:
+        0 1px 2px rgba(15, 23, 42, 0.04),
+        0 2px 6px rgba(15, 23, 42, 0.03);
+    border-radius: 0.75rem;
+}
+
+/* =================================================================
+   WATER REFRACTION  (Part 1 — SVG <feDisplacementMap> driven)
+   A decorative sheen sheet ( ::after ) is displaced by the SVG noise
+   field on hover so the surface literally ripples like a liquid drop.
+   We ALSO request the url() backdrop-filter: browsers that support it
+   (Firefox) bend the real background; the rest fall back gracefully to
+   the visible ::after sheen so the effect is never lost.
+   ================================================================= */
+.water-refract {
+    position: relative;
+    isolation: isolate;
+}
+.water-refract::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: inherit;
+    background: radial-gradient(120% 120% at 28% 18%,
+        rgba(255, 255, 255, 0.55) 0%,
+        rgba(255, 255, 255, 0.12) 35%,
+        rgba(255, 255, 255, 0) 60%);
+    filter: url(#liquid-distortion);
+    mix-blend-mode: screen;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 0;
+    transition: opacity 0.55s ease;
+}
+.water-refract > * {
+    position: relative;
+    z-index: 1;
+}
+.water-refract:hover::after {
+    opacity: 1;
+}
+.water-refract:hover {
+    /* Deepen the blur on hover. The visible liquid *refraction* comes from
+       the displaced ::after sheen (standard `filter: url()`, supported
+       everywhere) so we keep backdrop-filter to guaranteed-valid functions
+       — adding a url() token here would invalidate the whole rule in
+       Chromium and drop the blur. */
+    -webkit-backdrop-filter: blur(34px) saturate(160%);
+    backdrop-filter: blur(34px) saturate(160%);
+}
+.water-refract:active::after,
+.water-refract.is-pressing::after {
+    filter: url(#liquid-distortion-strong);
+    opacity: 1;
+}
+
+/* =================================================================
+   TYPOGRAPHY, CONTRAST & HIERARCHY  (Part 3)
+   ================================================================= */
+body {
+    font-size: 16.5px;
+    letter-spacing: -0.005em;
+}
+
+.section-title {
+    font-weight: 800;
+    letter-spacing: -0.025em;
+    color: #0f172a; /* slate-900 */
+    line-height: 1.12;
+}
+.section-subtitle {
+    color: #64748b; /* slate-500 */
+    font-weight: 500;
+}
+
+/* Vibrant gradient text for key headings / highlighted data */
+.text-gradient-emerald {
+    background-image: linear-gradient(120deg, #10b981 0%, #0d9488 55%, #0284c7 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+.text-gradient-emerald-strong {
+    background-image: linear-gradient(120deg, #059669 0%, #0f766e 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+/* Pulsing 3D shadow for the active clinical stepper node (Part 4) */
+@keyframes stepper-pulse {
+    0%, 100% {
+        box-shadow:
+            0 10px 24px rgba(16, 185, 129, 0.35),
+            inset 0 2px 4px rgba(255, 255, 255, 0.45),
+            inset 0 -2px 5px rgba(4, 120, 87, 0.6);
+    }
+    50% {
+        box-shadow:
+            0 14px 34px rgba(16, 185, 129, 0.55),
+            inset 0 2px 4px rgba(255, 255, 255, 0.55),
+            inset 0 -2px 5px rgba(4, 120, 87, 0.7);
+    }
+}
+.stepper-active {
+    animation: stepper-pulse 2.4s ease-in-out infinite;
+}
+
+/* Respect reduced-motion preferences */
+@media (prefers-reduced-motion: reduce) {
+    .stepper-active { animation: none; }
+    .water-refract::after { transition: none; }
+}
+

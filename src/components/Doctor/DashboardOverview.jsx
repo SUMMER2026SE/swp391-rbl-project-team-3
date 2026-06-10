@@ -1,19 +1,32 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Users, Brain, CheckCircle2, AlertCircle } from 'lucide-react';
-import { mockAppointments } from '../../mockData';
+import { AppointmentModel } from '../../models/AppointmentModel';
 
 export default function DashboardOverview({ doctorId }) {
   // Mock today's date based on mock data
   const today = "2026-06-05";
   
-  const todayAppointments = mockAppointments?.filter(
-    apt => apt?.doctorId === doctorId && apt?.date === today
-  ) || [];
+  const [todayAppointments, setTodayAppointments] = useState([]);
+
+  useEffect(() => {
+    const fetchAppointments = () => {
+      const all = AppointmentModel.getAll();
+      setTodayAppointments(
+        all.filter(apt => apt?.doctorId === doctorId && apt?.date === today)
+      );
+    };
+
+    fetchAppointments();
+    window.addEventListener('appointments-updated', fetchAppointments);
+    return () => {
+      window.removeEventListener('appointments-updated', fetchAppointments);
+    };
+  }, [doctorId]);
 
   const totalPatientsToday = todayAppointments.length;
   
   const waitingPatients = todayAppointments.filter(
-    apt => apt?.status === 'Đã xác nhận' || apt?.status === 'Chờ xác nhận'
+    apt => apt?.status === 'Đã xác nhận' || apt?.status === 'Chờ xác nhận' || apt?.status === 'Đang chờ'
   ).length;
 
   const completedPatients = todayAppointments.filter(
