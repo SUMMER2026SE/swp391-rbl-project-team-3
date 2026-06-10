@@ -193,6 +193,14 @@ export default function ReceptionistDashboard() {
   const [chatMessages, setChatMessages] = useState([]);
   const [toast, setToast] = useState(null);
 
+  // Payment Confirmation States
+  const [selectedPayApt, setSelectedPayApt] = useState(null);
+  const [paymentMethod, setPaymentMethod] = useState('Tiền mặt'); // 'Tiền mặt' | 'Chuyển khoản' | 'Thẻ ngân hàng'
+  const [paymentFilter, setPaymentFilter] = useState('Tất cả'); // 'Tất cả' | 'Chưa thanh toán' | 'Chờ xác nhận' | 'Đã thanh toán'
+  const [isReceiptOpen, setIsReceiptOpen] = useState(false);
+  const [receiptData, setReceiptData] = useState(null);
+  const [paymentSearch, setPaymentSearch] = useState('');
+
   // Poll receptionist messages from ReceptionistChatModel to keep state synchronized
   useEffect(() => {
     const fetchMsgs = () => {
@@ -1591,6 +1599,18 @@ export default function ReceptionistDashboard() {
                                 </div>
 
                                 <div className="flex items-center gap-2 justify-end shrink-0">
+                                  {apt.paymentStatus !== 'Đã thanh toán' ? (
+                                    <button 
+                                      onClick={() => setSelectedPayApt(apt)}
+                                      className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:from-emerald-600 hover:to-teal-700 transition-all font-bold text-xs flex items-center gap-1.5 cursor-pointer border-none shadow-sm shadow-emerald-500/10 active:scale-95"
+                                    >
+                                      <CreditCard className="w-3.5 h-3.5" /> Thu tiền &amp; Xác nhận
+                                    </button>
+                                  ) : (
+                                    <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-[10px] font-bold">
+                                      ✓ Đã thanh toán
+                                    </span>
+                                  )}
                                   <button 
                                     onClick={() => handlePrintQueueTicket(apt)}
                                     className="px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all font-bold text-xs flex items-center gap-1.5 cursor-pointer"
@@ -1986,11 +2006,232 @@ export default function ReceptionistDashboard() {
             )}
 
             {activeTab === 'payments' && (
-              <motion.div key="payments" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-                <h2 className="text-2xl font-bold text-slate-800 mb-6">Thanh toán & Hóa đơn</h2>
-                {/* Future: Inject Payment management table here */}
-                <div className="p-8 backdrop-blur-xl bg-white/40 border border-white/60 shadow-sm rounded-[2rem] text-center text-slate-500 font-medium">
-                  Tính năng đang được phát triển...
+              <motion.div key="payments" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
+                <div className="text-left">
+                  <h2 className="text-2xl font-black text-slate-800 mb-1">Thanh toán &amp; Hóa đơn</h2>
+                  <p className="text-xs text-slate-500 font-medium">Quản lý hóa đơn khám, thu tiền mặt/chuyển khoản và in biên lai xác nhận</p>
+                </div>
+
+                {/* ─── PAYMENT STATISTICS ─────────────────────────────────────────── */}
+                {(() => {
+                  const todayApts = (appointments || []).filter(a => a.appointment_date === todayStr && a.status !== 'Đã hủy');
+                  
+                  const parseFeeLocal = (feeStr) => {
+                    if (!feeStr) return 0;
+                    const cleanStr = feeStr.replace(/[^0-9]/g, '');
+                    return parseInt(cleanStr, 10) || 0;
+                  };
+
+                  const totalRevenueToday = todayApts
+                    .filter(a => a.paymentStatus === 'Đã thanh toán')
+                    .reduce((sum, a) => sum + parseFeeLocal(a.fee), 0);
+
+                  const paidCountToday = todayApts.filter(a => a.paymentStatus === 'Đã thanh toán').length;
+                  const pendingCountToday = todayApts.filter(a => a.paymentStatus === 'Chờ xác nhận').length;
+                  const unpaidCountToday = todayApts.filter(a => a.paymentStatus === 'Chưa thanh toán' || !a.paymentStatus).length;
+
+                  return (
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      {/* Stat 1: Total Revenue */}
+                      <div className="backdrop-blur-xl bg-white/60 border border-white/80 p-5 rounded-[2rem] shadow-sm flex items-center justify-between">
+                        <div className="text-left">
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">Doanh thu hôm nay</span>
+                          <strong className="text-2xl font-black text-emerald-600 block">{totalRevenueToday.toLocaleString('vi-VN')} đ</strong>
+                          <span className="text-[9px] text-slate-400 font-semibold mt-0.5 block">Tổng tiền thực thu từ hóa đơn</span>
+                        </div>
+                        <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-500 border border-emerald-100 flex items-center justify-center shrink-0">
+                          <DollarSign className="w-6 h-6" />
+                        </div>
+                      </div>
+
+                      {/* Stat 2: Paid Invoices */}
+                      <div className="backdrop-blur-xl bg-white/60 border border-white/80 p-5 rounded-[2rem] shadow-sm flex items-center justify-between">
+                        <div className="text-left">
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">Đã thanh toán</span>
+                          <strong className="text-2xl font-black text-slate-800 block">{paidCountToday}</strong>
+                          <span className="text-[9px] text-slate-400 font-semibold mt-0.5 block">Hóa đơn hoàn tất thu tiền</span>
+                        </div>
+                        <div className="w-12 h-12 rounded-2xl bg-teal-50 text-teal-500 border border-teal-100 flex items-center justify-center shrink-0">
+                          <CheckCircle2 className="w-6 h-6" />
+                        </div>
+                      </div>
+
+                      {/* Stat 3: Pending Confirmation */}
+                      <div className="backdrop-blur-xl bg-white/60 border border-white/80 p-5 rounded-[2rem] shadow-sm flex items-center justify-between">
+                        <div className="text-left">
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">Chờ xác nhận online</span>
+                          <strong className="text-2xl font-black text-sky-600 block">{pendingCountToday}</strong>
+                          <span className="text-[9px] text-slate-400 font-semibold mt-0.5 block">Chờ đối soát chuyển khoản</span>
+                        </div>
+                        <div className="w-12 h-12 rounded-2xl bg-sky-50 text-sky-500 border border-sky-100 flex items-center justify-center shrink-0">
+                          <Hourglass className="w-6 h-6" />
+                        </div>
+                      </div>
+
+                      {/* Stat 4: Unpaid */}
+                      <div className="backdrop-blur-xl bg-white/60 border border-white/80 p-5 rounded-[2rem] shadow-sm flex items-center justify-between">
+                        <div className="text-left">
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">Chưa thanh toán</span>
+                          <strong className="text-2xl font-black text-amber-600 block">{unpaidCountToday}</strong>
+                          <span className="text-[9px] text-slate-400 font-semibold mt-0.5 block">Chưa thanh toán dịch vụ</span>
+                        </div>
+                        <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-500 border border-amber-100 flex items-center justify-center shrink-0">
+                          <AlertCircle className="w-6 h-6" />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* ─── SEARCH & FILTER PANEL ────────────────────────────────────────── */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  {/* Status Filters */}
+                  <div className="flex bg-slate-100/80 p-1 rounded-2xl gap-1 w-fit border border-slate-200/20 shadow-sm">
+                    {['Tất cả', 'Chưa thanh toán', 'Chờ xác nhận', 'Đã thanh toán'].map((status) => (
+                      <button
+                        key={status}
+                        onClick={() => setPaymentFilter(status)}
+                        className={`py-2 px-4 rounded-xl border-none font-bold text-xs cursor-pointer transition-all ${
+                          paymentFilter === status
+                            ? 'bg-white text-slate-800 shadow-sm'
+                            : 'bg-transparent text-slate-500 hover:text-slate-700'
+                        }`}
+                      >
+                        {status}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Search Input */}
+                  <div className="backdrop-blur-xl bg-white/40 border border-slate-200/50 shadow-inner rounded-3xl px-4 py-2.5 flex items-center max-w-sm w-full">
+                    <Search className="w-4 h-4 text-slate-400 mr-2 shrink-0" />
+                    <input
+                      type="text"
+                      placeholder="Tìm theo tên bệnh nhân hoặc ID..."
+                      className="bg-transparent border-none outline-none text-xs font-semibold w-full text-slate-800 focus:ring-0 p-0 focus:outline-none"
+                      value={paymentSearch}
+                      onChange={(e) => setPaymentSearch(e.target.value)}
+                    />
+                    {paymentSearch && (
+                      <button onClick={() => setPaymentSearch('')} className="bg-transparent border-none cursor-pointer text-slate-400 hover:text-slate-600">
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* ─── INVOICES TABLE ────────────────────────────────────────────────── */}
+                <div className="backdrop-blur-xl bg-white/30 border border-slate-200/40 rounded-[2rem] shadow-sm overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="border-b border-slate-200/30 text-slate-400 text-[10px] uppercase font-bold tracking-wider">
+                          <th className="py-4 px-6">Mã lượt khám</th>
+                          <th className="py-4 px-6">Bệnh nhân</th>
+                          <th className="py-4 px-6">Bác sĩ &amp; Dịch vụ</th>
+                          <th className="py-4 px-6">Ngày &amp; Giờ</th>
+                          <th className="py-4 px-6">Chi phí</th>
+                          <th className="py-4 px-6">Trạng thái</th>
+                          <th className="py-4 px-6 text-right">Thao tác</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200/20 text-xs font-semibold text-slate-700">
+                        {(() => {
+                          const paymentFilteredApts = (appointments || [])
+                            .filter(a => a.status !== 'Đã hủy')
+                            .filter(a => {
+                              // Filter by search term
+                              if (!paymentSearch) return true;
+                              const term = paymentSearch.toLowerCase();
+                              return (
+                                a.patient_name?.toLowerCase().includes(term) ||
+                                a.patient_id?.toLowerCase().includes(term) ||
+                                a.appointment_id?.toLowerCase().includes(term)
+                              );
+                            })
+                            .filter(a => {
+                              // Filter by status tab
+                              if (paymentFilter === 'Tất cả') return true;
+                              if (paymentFilter === 'Đã thanh toán') return a.paymentStatus === 'Đã thanh toán';
+                              if (paymentFilter === 'Chờ xác nhận') return a.paymentStatus === 'Chờ xác nhận';
+                              if (paymentFilter === 'Chưa thanh toán') return a.paymentStatus === 'Chưa thanh toán' || !a.paymentStatus;
+                              return true;
+                            })
+                            // Sort so that todayStr appointments come first, then others descending
+                            .sort((a, b) => {
+                              if (a.appointment_date === todayStr && b.appointment_date !== todayStr) return -1;
+                              if (a.appointment_date !== todayStr && b.appointment_date === todayStr) return 1;
+                              return b.appointment_date.localeCompare(a.appointment_date);
+                            });
+
+                          if (paymentFilteredApts.length === 0) {
+                            return (
+                              <tr>
+                                <td colSpan="7" className="py-12 text-center text-slate-400 italic">
+                                  Không tìm thấy hóa đơn nào phù hợp.
+                                </td>
+                              </tr>
+                            );
+                          }
+
+                          return paymentFilteredApts.map((apt) => {
+                            const pStatus = apt.paymentStatus || 'Chưa thanh toán';
+                            return (
+                              <tr key={apt.appointment_id} className="hover:bg-white/20 transition-colors">
+                                <td className="py-4 px-6 font-mono text-slate-500 font-bold">{apt.appointment_id}</td>
+                                <td className="py-4 px-6 text-left">
+                                  <div className="font-extrabold text-slate-800">{apt.patient_name}</div>
+                                  <div className="text-[10px] text-slate-400 mt-0.5">{apt.patient_id}</div>
+                                </td>
+                                <td className="py-4 px-6 text-left">
+                                  <div className="text-slate-800 font-bold">{apt.doctor_name}</div>
+                                  <div className="text-[10px] text-slate-500 mt-0.5">{apt.service_name}</div>
+                                </td>
+                                <td className="py-4 px-6 text-left">
+                                  <div className="text-slate-800">{apt.appointment_date}</div>
+                                  <div className="text-[10px] text-sky-600 font-bold mt-0.5">{apt.start_time}</div>
+                                </td>
+                                <td className="py-4 px-6 font-extrabold text-slate-900">{apt.fee || '300,000 VNĐ'}</td>
+                                <td className="py-4 px-6">
+                                  <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black tracking-wider uppercase border inline-block ${
+                                    pStatus === 'Đã thanh toán'
+                                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                      : pStatus === 'Chờ xác nhận'
+                                      ? 'bg-sky-50 text-sky-700 border-sky-200'
+                                      : 'bg-amber-50 text-amber-700 border-amber-200'
+                                  }`}>
+                                    {pStatus}
+                                  </span>
+                                </td>
+                                <td className="py-4 px-6 text-right">
+                                  <div className="flex items-center justify-end gap-2">
+                                    {pStatus !== 'Đã thanh toán' ? (
+                                      <button
+                                        onClick={() => setSelectedPayApt(apt)}
+                                        className="py-1.5 px-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold text-[10px] hover:from-emerald-600 hover:to-teal-700 transition-all border-none cursor-pointer shadow-sm shadow-emerald-500/10 active:scale-95"
+                                      >
+                                        Xác nhận
+                                      </button>
+                                    ) : (
+                                      <button
+                                        onClick={() => {
+                                          setReceiptData(apt);
+                                          setIsReceiptOpen(true);
+                                        }}
+                                        className="py-1.5 px-3 rounded-xl bg-white border border-slate-200 text-slate-600 font-bold text-[10px] hover:bg-slate-50 transition-all cursor-pointer flex items-center gap-1"
+                                      >
+                                        <Printer className="w-3 h-3" /> In biên lai
+                                      </button>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          });
+                        })()}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </motion.div>
             )}
@@ -3653,6 +3894,326 @@ export default function ReceptionistDashboard() {
                   className="flex-1 py-3 rounded-xl bg-gradient-to-r from-teal-600 to-sky-600 text-white text-xs font-bold hover:shadow-lg hover:shadow-teal-600/10 active:scale-95 transition-all cursor-pointer border-none flex justify-center items-center gap-1"
                 >
                   <Printer className="w-4 h-4" /> In phiếu nhận
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ─── PAYMENT CHECKOUT MODAL ────────────────────────────────────────── */}
+      <AnimatePresence>
+        {selectedPayApt && (
+          <>
+            {/* Backdrop */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedPayApt(null)}
+              className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100]"
+            />
+
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 20, x: "-50%" }}
+              animate={{ scale: 1, opacity: 1, y: 0, x: "-50%" }}
+              exit={{ scale: 0.95, opacity: 0, y: 20, x: "-50%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 250 }}
+              className="fixed top-1/2 left-1/2 -translate-y-1/2 w-[90vw] max-w-lg bg-white/90 backdrop-blur-2xl border border-white/60 shadow-[0_20px_50px_rgba(0,0,0,0.15)] rounded-[2.5rem] overflow-hidden flex flex-col p-8 z-[101]"
+              style={{ transform: "translate(-50%, -50%)" }}
+            >
+              {/* Close Button */}
+              <button 
+                onClick={() => setSelectedPayApt(null)}
+                className="absolute top-6 right-6 p-2.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition-colors border-none cursor-pointer z-50 shadow-sm"
+              >
+                <X size={16} />
+              </button>
+
+              {/* Header */}
+              <div className="mb-6 text-left">
+                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200/50 rounded-full px-3 py-1 uppercase tracking-wider">
+                  Thu ngân &amp; Lập hóa đơn
+                </span>
+                <h3 className="text-xl font-black text-slate-800 tracking-tight mt-2">
+                  Xác nhận thu tiền khám
+                </h3>
+                <p className="text-slate-400 text-xs mt-1">Vui lòng kiểm tra chi tiết hóa đơn trước khi xác nhận.</p>
+              </div>
+
+              {/* Invoice Information */}
+              <div className="bg-slate-50/70 border border-slate-200/40 rounded-2xl p-4 space-y-2 mb-6 text-left text-xs font-semibold text-slate-600">
+                <p className="flex justify-between">
+                  <span className="text-slate-400 font-bold">Mã lịch hẹn:</span>
+                  <span className="font-mono text-slate-800">{selectedPayApt.appointment_id}</span>
+                </p>
+                <p className="flex justify-between">
+                  <span className="text-slate-400 font-bold">Bệnh nhân:</span>
+                  <strong className="text-slate-800">{selectedPayApt.patient_name}</strong>
+                </p>
+                <p className="flex justify-between">
+                  <span className="text-slate-400 font-bold">Dịch vụ:</span>
+                  <span className="text-slate-800">{selectedPayApt.service_name}</span>
+                </p>
+                <p className="flex justify-between">
+                  <span className="text-slate-400 font-bold">Bác sĩ khám:</span>
+                  <span className="text-slate-800">{selectedPayApt.doctor_name}</span>
+                </p>
+              </div>
+
+              {/* Fee Breakdown */}
+              {(() => {
+                const parseFeeLocal = (feeStr) => {
+                  if (!feeStr) return 300000;
+                  const cleanStr = feeStr.replace(/[^0-9]/g, '');
+                  return parseInt(cleanStr, 10) || 300000;
+                };
+
+                const totalCost = parseFeeLocal(selectedPayApt.fee);
+                // Deduct deposit (normally 50k for checked in appointments, unless already paid full upfront)
+                const hasDeposit = selectedPayApt.paymentStatus === 'Chờ xác nhận' || selectedPayApt.checkin_time;
+                const depositPaid = hasDeposit ? 50000 : 0;
+                const discount = selectedPayApt.discount ? Number(selectedPayApt.discount) : 0;
+                const netPayable = Math.max(0, totalCost - depositPaid - discount);
+
+                return (
+                  <div className="space-y-4 mb-6">
+                    <div className="border-t border-b border-dashed border-slate-200 py-3 space-y-2 text-xs font-semibold text-slate-600 text-left">
+                      <p className="flex justify-between">
+                        <span>Chi phí dịch vụ:</span>
+                        <span className="text-slate-800">{totalCost.toLocaleString('vi-VN')} đ</span>
+                      </p>
+                      {depositPaid > 0 && (
+                        <p className="flex justify-between text-teal-600">
+                          <span>Đã đặt cọc online:</span>
+                          <span>-{depositPaid.toLocaleString('vi-VN')} đ</span>
+                        </p>
+                      )}
+                      {discount > 0 && (
+                        <p className="flex justify-between text-emerald-600">
+                          <span>Giảm giá (Voucher):</span>
+                          <span>-{discount.toLocaleString('vi-VN')} đ</span>
+                        </p>
+                      )}
+                      <div className="border-t border-slate-100 pt-2 flex justify-between items-center text-sm font-black">
+                        <span className="text-slate-800">Thực thu còn lại:</span>
+                        <span className="text-lg text-emerald-600 font-black">{netPayable.toLocaleString('vi-VN')} VNĐ</span>
+                      </div>
+                    </div>
+
+                    {/* Payment Method Selector */}
+                    <div className="text-left">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Phương thức thanh toán</label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {['Tiền mặt', 'Chuyển khoản', 'Thẻ ngân hàng'].map((method) => (
+                          <button
+                            key={method}
+                            type="button"
+                            onClick={() => setPaymentMethod(method)}
+                            className={`py-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                              paymentMethod === method
+                                ? 'bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-500/20'
+                                : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                            }`}
+                          >
+                            {method}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex gap-3 pt-4">
+                      <button
+                        onClick={() => setSelectedPayApt(null)}
+                        className="flex-1 py-3.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 active:scale-95 transition-all cursor-pointer bg-white"
+                      >
+                        Đóng lại
+                      </button>
+                      <button
+                        onClick={() => {
+                          const payload = {
+                            appointment_id: selectedPayApt.appointment_id,
+                            patient_id: selectedPayApt.patient_id,
+                            receptionist_id: receptionistId,
+                            voucher_id: selectedPayApt.voucherId || null,
+                            total_amount: totalCost,
+                            discount_amount: discount,
+                            final_amount: netPayable,
+                            payment_method: paymentMethod,
+                            payment_status: 'Paid'
+                          };
+
+                          payAppointment(payload);
+                          showToast(`Xác nhận thanh toán thành công qua ${paymentMethod}!`, 'success');
+                          
+                          // Set receipt data and trigger print modal
+                          const updatedApt = {
+                            ...selectedPayApt,
+                            paymentStatus: 'Đã thanh toán',
+                            paymentMethod: paymentMethod,
+                            finalAmount: netPayable,
+                            paidAt: new Date().toISOString()
+                          };
+                          setReceiptData(updatedApt);
+                          setSelectedPayApt(null);
+                          setIsReceiptOpen(true);
+                        }}
+                        className="flex-1 py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-xs font-bold hover:shadow-lg hover:shadow-emerald-600/10 active:scale-95 transition-all cursor-pointer border-none"
+                      >
+                        Xác nhận &amp; In hóa đơn
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ─── PRINT RECEIPT INVOICE MODAL ────────────────────────────────────── */}
+      <AnimatePresence>
+        {isReceiptOpen && receiptData && (
+          <>
+            {/* Backdrop */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                setIsReceiptOpen(false);
+                setReceiptData(null);
+              }}
+              className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100]"
+            />
+
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 20, x: "-50%" }}
+              animate={{ scale: 1, opacity: 1, y: 0, x: "-50%" }}
+              exit={{ scale: 0.95, opacity: 0, y: 20, x: "-50%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 250 }}
+              className="fixed top-1/2 left-1/2 -translate-y-1/2 w-[90vw] max-w-md bg-white border border-slate-300 shadow-2xl rounded-3xl p-6 z-[101]"
+              style={{ transform: "translate(-50%, -50%)" }}
+            >
+              {/* Receipt Area to Simulate Printing */}
+              <div id="print-receipt" className="bg-white p-4 text-xs font-mono text-slate-800 text-left space-y-4 border border-slate-100 rounded-2xl shadow-inner">
+                {/* Header */}
+                <div className="text-center space-y-1">
+                  <h4 className="font-extrabold text-sm uppercase tracking-wider text-slate-900">PHÒNG KHÁM DA LIỄU DERMASMART</h4>
+                  <p className="text-[10px] text-slate-500 font-semibold">Địa chỉ: 123 Đường Ba Tháng Hai, Quận 10, TP.HCM</p>
+                  <p className="text-[10px] text-slate-500 font-semibold">SĐT: (028) 3899 9999 • Website: dermasmart.vn</p>
+                  <div className="border-b-2 border-double border-slate-300 my-2 pt-1"></div>
+                  <h5 className="font-extrabold text-xs text-slate-800 uppercase tracking-widest py-1">HÓA ĐƠN THANH TOÁN</h5>
+                  <p className="text-[9px] text-slate-400 font-semibold">Mã HĐ: HD-{receiptData.appointment_id?.substring(4) || '1001'}</p>
+                </div>
+
+                {/* Metadata */}
+                <div className="space-y-1 text-[10px] text-slate-600 font-semibold">
+                  <p className="flex justify-between">
+                    <span>Thời gian in:</span>
+                    <span>{new Date().toLocaleString('vi-VN')}</span>
+                  </p>
+                  <p className="flex justify-between">
+                    <span>Thu ngân:</span>
+                    <span>Lễ tân ({receptionistId})</span>
+                  </p>
+                  <p className="flex justify-between">
+                    <span>Hình thức:</span>
+                    <span>{receiptData.paymentMethod || 'Tiền mặt'}</span>
+                  </p>
+                </div>
+                <div className="border-b border-dashed border-slate-200"></div>
+
+                {/* Patient Details */}
+                <div className="space-y-1 text-[10px] text-slate-700 font-semibold">
+                  <p><span className="text-slate-400 font-bold">Khách hàng:</span> <strong className="text-slate-800">{receiptData.patient_name}</strong></p>
+                  <p><span className="text-slate-400 font-bold">Mã BN:</span> {receiptData.patient_id}</p>
+                  <p><span className="text-slate-400 font-bold">Bác sĩ phụ trách:</span> {receiptData.doctor_name}</p>
+                </div>
+                <div className="border-b-2 border-double border-slate-300"></div>
+
+                {/* Bill Items */}
+                <div className="space-y-1.5 text-[10px] font-semibold">
+                  <div className="flex justify-between font-bold text-slate-800 pb-1">
+                    <span>Tên dịch vụ</span>
+                    <span>Thành tiền</span>
+                  </div>
+                  <div className="flex justify-between text-slate-700">
+                    <span>{receiptData.service_name}</span>
+                    <span>{receiptData.fee || '300,000 VNĐ'}</span>
+                  </div>
+                </div>
+                <div className="border-b border-dashed border-slate-200"></div>
+
+                {/* Calculations */}
+                {(() => {
+                  const parseFeeLocal = (feeStr) => {
+                    if (!feeStr) return 300000;
+                    const cleanStr = feeStr.replace(/[^0-9]/g, '');
+                    return parseInt(cleanStr, 10) || 300000;
+                  };
+                  const total = parseFeeLocal(receiptData.fee);
+                  const isCompletedCheckin = receiptData.paymentStatus === 'Đã thanh toán' && (receiptData.checkin_time || receiptData.finalAmount !== undefined);
+                  const hasDepositVal = receiptData.finalAmount !== undefined ? (total - Number(receiptData.finalAmount) > 0) : true;
+                  const deposit = (isCompletedCheckin && hasDepositVal) ? 50000 : 0;
+                  const discount = receiptData.discount ? Number(receiptData.discount) : 0;
+                  const finalPaid = receiptData.finalAmount !== undefined ? receiptData.finalAmount : (total - deposit - discount);
+
+                  return (
+                    <div className="space-y-1 text-[10px] font-semibold text-slate-600">
+                      <p className="flex justify-between">
+                        <span>Cộng tiền dịch vụ:</span>
+                        <span>{total.toLocaleString('vi-VN')} đ</span>
+                      </p>
+                      {deposit > 0 && (
+                        <p className="flex justify-between text-teal-600">
+                          <span>Đã khấu trừ cọc online:</span>
+                          <span>-{deposit.toLocaleString('vi-VN')} đ</span>
+                        </p>
+                      )}
+                      {discount > 0 && (
+                        <p className="flex justify-between text-emerald-600">
+                          <span>Chiết khấu ưu đãi:</span>
+                          <span>-{discount.toLocaleString('vi-VN')} đ</span>
+                        </p>
+                      )}
+                      <div className="border-t border-slate-200 pt-1.5 flex justify-between items-center text-xs font-black text-slate-800">
+                        <span>TỔNG TIỀN ĐÃ THU:</span>
+                        <span className="text-sm font-black text-slate-900">{finalPaid.toLocaleString('vi-VN')} VNĐ</span>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Barcode representation */}
+                <div className="pt-2 flex flex-col items-center justify-center space-y-1">
+                  <div className="w-40 h-8 bg-slate-100 flex items-center justify-center border border-slate-200 overflow-hidden select-none">
+                    <span className="text-[10px] text-slate-400 tracking-[6px] font-bold">||| | | |||| | || || |</span>
+                  </div>
+                  <span className="text-[8px] text-slate-400 tracking-wider">Cảm ơn quý khách đã tin tưởng và lựa chọn!</span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-4">
+                <button 
+                  onClick={() => {
+                    setIsReceiptOpen(false);
+                    setReceiptData(null);
+                  }}
+                  className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 active:scale-95 transition-all cursor-pointer bg-white"
+                >
+                  Đóng lại
+                </button>
+                <button 
+                  onClick={() => {
+                    showToast('Đang gửi lệnh in hóa đơn...', 'success');
+                    console.log('Printing Receipt:', document.getElementById('print-receipt').innerHTML);
+                  }}
+                  className="flex-1 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-xs font-bold hover:shadow-lg hover:shadow-emerald-600/10 active:scale-95 transition-all cursor-pointer border-none flex justify-center items-center gap-1.5"
+                >
+                  <Printer className="w-4 h-4" /> In hóa đơn
                 </button>
               </div>
             </motion.div>

@@ -749,9 +749,12 @@ export const AppointmentModel = {
     list.unshift(newPayment);
     localStorage.setItem(PAYMENTS_KEY, JSON.stringify(list));
 
-    // Also update the linked appointment to "Paid"
+    // Also update the linked appointment to Paid
     try {
-      this.updateAppointmentStatus(payData.appointment_id, "Paid");
+      this.updateAppointment(payData.appointment_id, {
+        paymentStatus: 'Đã thanh toán',
+        payment_status: 'Paid'
+      });
     } catch (e) {
       console.warn("Linked appointment could not be updated to Paid", e);
     }
