@@ -1317,24 +1317,76 @@ export const mockVouchers = [];
 
 // ————— Mock System Logs —————————————————————————————————————————————————————————
 export const mockSystemLogs = [
-    {
-        id: "LOG-1029",
-        timestamp: "2024-06-01T08:30:00Z",
-        actor: "Admin (Admin01)",
-        action: "UPDATE_EMPLOYEE_ROLE",
-        target: "EMP-002",
-        details: "Thay đổi vai trò từ Lễ tân thành Lễ tân trưởng",
-        severity: "Info"
-    },
-    {
-        id: "LOG-1030",
-        timestamp: "2024-06-01T09:15:22Z",
-        actor: "Hệ thống",
-        action: "AUTO_BACKUP",
-        target: "Database",
-        details: "Sao lưu tự động hàng ngày thành công",
-        severity: "Success"
-    }
+    { id: "LOG-001", timestamp: "2026-06-09T08:30:00Z", actor: "Admin (Admin01)", action: "CREATE_VOUCHER",        target: "VOUCH-EV-008",  details: "Tạo voucher khuyến mãi mùa hè SUMMER26",                           severity: "Info" },
+    { id: "LOG-002", timestamp: "2026-06-09T08:15:00Z", actor: "Hệ thống",        action: "AUTO_BACKUP",           target: "Database",      details: "Sao lưu tự động hàng ngày thành công (124 MB)",                  severity: "Success" },
+    { id: "LOG-003", timestamp: "2026-06-08T17:45:00Z", actor: "BS. CKII. Trần Văn A", action: "COMPLETE_EXAM",   target: "apt-08",        details: "Hoàn thành ca khám — Phạm Đức Anh, Laser CO2",                   severity: "Info" },
+    { id: "LOG-004", timestamp: "2026-06-08T16:20:00Z", actor: "Lễ tân Hoàng Anh", action: "CHECKIN_PATIENT",     target: "apt-04",        details: "Check-in bệnh nhân Nguyễn Hoàng Mai",                             severity: "Info" },
+    { id: "LOG-005", timestamp: "2026-06-08T14:10:00Z", actor: "Admin (Admin01)", action: "UPDATE_SERVICE",        target: "svc-03",        details: "Cập nhật giá dịch vụ Laser Fractional CO2: 2.500.000 VNĐ",       severity: "Info" },
+    { id: "LOG-006", timestamp: "2026-06-08T11:00:00Z", actor: "Hệ thống",        action: "SEND_REMINDER",         target: "apt-01",        details: "Gửi nhắc lịch khám ngày 2026-06-09 cho Lê Minh Khôi",           severity: "Info" },
+    { id: "LOG-007", timestamp: "2026-06-07T16:00:00Z", actor: "ThS. BS. Nguyễn Thị B", action: "COMPLETE_EXAM",  target: "apt-03",        details: "Hoàn thành ca khám — Trần Thị Hồng Nhung, Điều trị nám",        severity: "Info" },
+    { id: "LOG-008", timestamp: "2026-06-07T10:30:00Z", actor: "Admin (Admin01)", action: "TOGGLE_VOUCHER",        target: "VOUCH-004",     details: "Tạm dừng voucher NAMTRI40 (đã hết hạn)",                         severity: "Warning" },
+    { id: "LOG-009", timestamp: "2026-06-06T15:50:00Z", actor: "Lê Minh Khôi",   action: "CANCEL_APPOINTMENT",    target: "apt-10",        details: "Bệnh nhân hủy lịch hẹn — Peel Da Sinh Học (lý do: bận công tác)", severity: "Warning" },
+    { id: "LOG-010", timestamp: "2026-06-06T09:00:00Z", actor: "Hệ thống",        action: "AUTO_BACKUP",           target: "Database",      details: "Sao lưu tự động hàng ngày thành công (118 MB)",                  severity: "Success" },
+    { id: "LOG-011", timestamp: "2026-06-05T13:45:00Z", actor: "Admin (Admin01)", action: "ADD_EMPLOYEE",          target: "EMP-003",       details: "Thêm nhân sự mới: KTV. Nguyễn Văn Khoa — Kỹ thuật viên",        severity: "Info" },
+    { id: "LOG-012", timestamp: "2026-06-05T08:00:00Z", actor: "Hệ thống",        action: "FAILED_BACKUP",         target: "Database",      details: "Sao lưu tự động thất bại — không đủ dung lượng disk",            severity: "Error" },
+    { id: "LOG-013", timestamp: "2026-06-04T17:20:00Z", actor: "Trần Thị Hồng Nhung", action: "SUBMIT_FEEDBACK",  target: "apt-07",        details: "Gửi đánh giá 5 sao — ThS. BS. Nguyễn Thị B",                    severity: "Info" },
+    { id: "LOG-014", timestamp: "2026-06-04T11:15:00Z", actor: "Admin (Admin01)", action: "DELETE_EMPLOYEE",       target: "EMP-004",       details: "Xóa hồ sơ nhân viên thử việc (kết thúc hợp đồng)",               severity: "Warning" },
+    { id: "LOG-015", timestamp: "2026-06-03T16:30:00Z", actor: "Hệ thống",        action: "SEND_FEEDBACK_REMIND",  target: "apt-05",        details: "Gửi nhắc nhở đánh giá sau khám cho Lê Minh Khôi",                severity: "Info" },
+    { id: "LOG-016", timestamp: "2026-06-02T09:30:00Z", actor: "Admin (Admin01)", action: "UPDATE_EMPLOYEE_ROLE",  target: "EMP-002",       details: "Thay đổi vai trò từ Lễ tân thành Lễ tân trưởng",                 severity: "Info" },
+    { id: "LOG-017", timestamp: "2026-06-01T18:00:00Z", actor: "Hệ thống",        action: "AUTO_BACKUP",           target: "Database",      details: "Sao lưu tự động hàng ngày thành công (121 MB)",                  severity: "Success" },
+    { id: "LOG-018", timestamp: "2026-06-01T14:00:00Z", actor: "Lễ tân Hoàng Anh", action: "CREATE_APPOINTMENT",  target: "apt-direct-01", details: "Tạo lịch hẹn trực tiếp — bệnh nhân vãng lai (walk-in)",          severity: "Info" },
+    { id: "LOG-019", timestamp: "2026-05-31T10:00:00Z", actor: "Admin (Admin01)", action: "CREATE_VOUCHER",        target: "VOUCH-005",     details: "Tạo voucher SOIDA200K — giảm 200K dịch vụ soi da AI",            severity: "Info" },
+    { id: "LOG-020", timestamp: "2026-05-30T08:45:00Z", actor: "Hệ thống",        action: "SECURITY_SCAN",         target: "System",        details: "Quét bảo mật định kỳ hoàn thành — không phát hiện nguy cơ",      severity: "Success" },
+];
+
+// ————— Mock User Activity Logs ——————————————————————————————————————————————————
+export const mockUserActivityLogs = [
+    // ── PATIENT activities (4 loại: đặt lịch, hủy/đổi lịch, thanh toán, AI Skin) ──
+    { id: "ACT-P01", timestamp: "2026-06-09T09:15:00Z", userId: "pat-01", userName: "Lê Minh Khôi",        role: "PATIENT", action: "BOOK_APPOINTMENT",    details: "Đặt lịch khám Trị Mụn Chuyên Sâu với BS. Nguyễn Thị B — 12/06/2026 14:00",          module: "Đặt lịch",          category: "booking" },
+    { id: "ACT-P02", timestamp: "2026-06-08T15:00:00Z", userId: "pat-02", userName: "Trần Thị Hồng Nhung", role: "PATIENT", action: "BOOK_APPOINTMENT",    details: "Đặt lịch Điều Trị Nám Chuyên Sâu với BS. Nguyễn Thị B — 07/06/2026 10:00. Ưu đãi SUMMER26 áp dụng.", module: "Đặt lịch", category: "booking" },
+    { id: "ACT-P03", timestamp: "2026-06-07T11:20:00Z", userId: "pat-04", userName: "Nguyễn Hoàng Mai",    role: "PATIENT", action: "BOOK_APPOINTMENT",    details: "Đặt lịch Soi Da AI Chuyên Sâu với BS. Trần Văn A — 08/06/2026 08:30",               module: "Đặt lịch",          category: "booking" },
+    { id: "ACT-P04", timestamp: "2026-06-06T10:00:00Z", userId: "pat-01", userName: "Lê Minh Khôi",        role: "PATIENT", action: "CANCEL_APPOINTMENT",  details: "Hủy lịch hẹn Peel Da Sinh Học (apt-10) — lý do: bận công tác",                       module: "Lịch hẹn",          category: "cancel" },
+    { id: "ACT-P05", timestamp: "2026-06-05T14:30:00Z", userId: "pat-03", userName: "Phạm Đức Anh",        role: "PATIENT", action: "RESCHEDULE_APPOINTMENT", details: "Đổi lịch apt-08 từ 2026-05-18 → 2026-05-20, khung 09:00",                           module: "Lịch hẹn",          category: "reschedule" },
+    { id: "ACT-P06", timestamp: "2026-06-04T09:45:00Z", userId: "pat-02", userName: "Trần Thị Hồng Nhung", role: "PATIENT", action: "RESCHEDULE_APPOINTMENT", details: "Đổi lịch Điều Trị Nám buổi 3 từ 06/06 → 09/06, khung 11:00",                        module: "Lịch hẹn",          category: "reschedule" },
+    { id: "ACT-P07", timestamp: "2026-06-03T16:00:00Z", userId: "pat-01", userName: "Lê Minh Khôi",        role: "PATIENT", action: "PAYMENT",             details: "Thanh toán 300.000 VNĐ cho Khám Da Liễu Tổng Quát (apt-05) — Online VNPay",         module: "Thanh toán",        category: "payment" },
+    { id: "ACT-P08", timestamp: "2026-06-02T11:00:00Z", userId: "pat-02", userName: "Trần Thị Hồng Nhung", role: "PATIENT", action: "PAYMENT",             details: "Thanh toán 1.800.000 VNĐ cho Điều Trị Nám Chuyên Sâu (apt-07) — Chuyển khoản",      module: "Thanh toán",        category: "payment" },
+    { id: "ACT-P09", timestamp: "2026-06-01T14:20:00Z", userId: "pat-05", userName: "Võ Thanh Tùng",       role: "PATIENT", action: "PAYMENT",             details: "Thanh toán 300.000 VNĐ cho Khám Da Liễu Tổng Quát (apt-09) — Tiền mặt",             module: "Thanh toán",        category: "payment" },
+    { id: "ACT-P10", timestamp: "2026-05-31T10:30:00Z", userId: "pat-04", userName: "Nguyễn Hoàng Mai",    role: "PATIENT", action: "PAYMENT",             details: "Thanh toán 500.000 VNĐ cho Soi Da AI Chuyên Sâu (apt-04) — Online Momo. Ưu đãi: -200.000 VNĐ.", module: "Thanh toán", category: "payment" },
+    { id: "ACT-P11", timestamp: "2026-06-08T09:00:00Z", userId: "pat-01", userName: "Lê Minh Khôi",        role: "PATIENT", action: "AI_SKIN_ANALYSIS",    details: "Thực hiện AI Skin Analysis — điểm tổng thể 62/100, da hỗn hợp thiên khô",           module: "AI Skin Analysis",  category: "ai_scan" },
+    { id: "ACT-P12", timestamp: "2026-06-05T15:00:00Z", userId: "pat-02", userName: "Trần Thị Hồng Nhung", role: "PATIENT", action: "AI_SKIN_ANALYSIS",    details: "Thực hiện AI Skin Analysis — điểm tổng thể 70/100, melanin cao vùng gò má",         module: "AI Skin Analysis",  category: "ai_scan" },
+    { id: "ACT-P13", timestamp: "2026-06-03T11:00:00Z", userId: "pat-04", userName: "Nguyễn Hoàng Mai",    role: "PATIENT", action: "AI_SKIN_ANALYSIS",    details: "Thực hiện AI Skin Analysis — điểm tổng thể 75/100, rosacea nhẹ vùng má",            module: "AI Skin Analysis",  category: "ai_scan" },
+    { id: "ACT-P14", timestamp: "2026-05-30T10:00:00Z", userId: "pat-01", userName: "Lê Minh Khôi",        role: "PATIENT", action: "AI_SKIN_ANALYSIS",    details: "Thực hiện AI Skin Analysis — điểm 78/100, độ ẩm cải thiện từ 38→52 so với lần trước", module: "AI Skin Analysis", category: "ai_scan" },
+    { id: "ACT-P15", timestamp: "2026-06-07T14:00:00Z", userId: "pat-01", userName: "Lê Minh Khôi",        role: "PATIENT", action: "SUBMIT_FEEDBACK",     details: "Gửi đánh giá 5 sao — BS. CKII. Trần Văn A, Khám Da Liễu Tổng Quát",                module: "Đánh giá",          category: "other" },
+    { id: "ACT-P16", timestamp: "2026-06-04T17:00:00Z", userId: "pat-02", userName: "Trần Thị Hồng Nhung", role: "PATIENT", action: "SUBMIT_FEEDBACK",     details: "Gửi đánh giá 5 sao — ThS. BS. Nguyễn Thị B, Điều Trị Nám Chuyên Sâu",             module: "Đánh giá",          category: "other" },
+
+    // ── DOCTOR activities: tạo/sửa hồ sơ bệnh án, kê đơn thuốc ──
+    { id: "ACT-D01", timestamp: "2026-06-09T10:15:00Z", userId: "doc-01", userName: "BS. CKII. Trần Văn A",  role: "DOCTOR", action: "CREATE_MEDICAL_RECORD",  details: "Tạo hồ sơ bệnh án mới cho Nguyễn Hoàng Mai — Viêm da cơ địa tái phát",          module: "Hồ sơ bệnh án",     category: "staff_record" },
+    { id: "ACT-D02", timestamp: "2026-06-08T17:30:00Z", userId: "doc-01", userName: "BS. CKII. Trần Văn A",  role: "DOCTOR", action: "PRESCRIBE_MEDICINE",     details: "Kê đơn thuốc apt-08 — Calcipotriol ointment 0.005%, Tacrolimus 0.1%",          module: "Đơn thuốc",         category: "staff_prescription" },
+    { id: "ACT-D03", timestamp: "2026-06-08T16:00:00Z", userId: "doc-01", userName: "BS. CKII. Trần Văn A",  role: "DOCTOR", action: "UPDATE_MEDICAL_RECORD",  details: "Cập nhật hồ sơ bệnh án rec-01 — bổ sung kết quả tái khám, điều chỉnh phác đồ", module: "Hồ sơ bệnh án",     category: "staff_record" },
+    { id: "ACT-D04", timestamp: "2026-06-07T16:20:00Z", userId: "doc-02", userName: "ThS. BS. Nguyễn Thị B", role: "DOCTOR", action: "PRESCRIBE_MEDICINE",     details: "Kê đơn apt-07 — Tretinoin 0.05%, Arbutin Serum 2%, SPF50+ PA++++",            module: "Đơn thuốc",         category: "staff_prescription" },
+    { id: "ACT-D05", timestamp: "2026-06-06T14:00:00Z", userId: "doc-02", userName: "ThS. BS. Nguyễn Thị B", role: "DOCTOR", action: "CREATE_MEDICAL_RECORD",  details: "Tạo hồ sơ bệnh án mới cho Trần Thị Hồng Nhung — Nám hỗn hợp buổi 3/6",       module: "Hồ sơ bệnh án",     category: "staff_record" },
+    { id: "ACT-D06", timestamp: "2026-06-05T09:30:00Z", userId: "doc-01", userName: "BS. CKII. Trần Văn A",  role: "DOCTOR", action: "UPDATE_MEDICAL_RECORD",  details: "Cập nhật hồ sơ Phạm Đức Anh — ghi nhận cải thiện 45% sau laser buổi 2",      module: "Hồ sơ bệnh án",     category: "staff_record" },
+    { id: "ACT-D07", timestamp: "2026-06-04T11:00:00Z", userId: "doc-01", userName: "BS. CKII. Trần Văn A",  role: "DOCTOR", action: "START_EXAM",             details: "Bắt đầu ca khám apt-04 — Nguyễn Hoàng Mai, Soi Da AI",                        module: "Virtual Clinic",    category: "other" },
+
+    // ── TECHNICIAN activities: cập nhật kết quả điều trị ──
+    { id: "ACT-T01", timestamp: "2026-06-09T09:30:00Z", userId: "tech-01", userName: "KTV. Lê Thị C",       role: "TECHNICIAN", action: "UPDATE_TREATMENT_RESULT", details: "Cập nhật kết quả điều trị apt-04 — độ ẩm cải thiện 52/100, melanin giảm rõ",  module: "Kết quả điều trị",  category: "staff_treatment" },
+    { id: "ACT-T02", timestamp: "2026-06-08T16:45:00Z", userId: "tech-01", userName: "KTV. Lê Thị C",       role: "TECHNICIAN", action: "UPDATE_TREATMENT_RESULT", details: "Cập nhật kết quả soi da quang phổ bệnh nhân — upload 3 ảnh lâm sàng",         module: "Kết quả điều trị",  category: "staff_treatment" },
+    { id: "ACT-T03", timestamp: "2026-06-07T15:00:00Z", userId: "tech-01", userName: "KTV. Lê Thị C",       role: "TECHNICIAN", action: "COMPLETE_TASK",           details: "Hoàn thành xét nghiệm máu tổng quát TASK-002 — kết quả trong giới hạn bình thường", module: "Procedure Workspace", category: "staff_treatment" },
+    { id: "ACT-T04", timestamp: "2026-06-05T14:00:00Z", userId: "tech-01", userName: "KTV. Lê Thị C",       role: "TECHNICIAN", action: "UPDATE_TREATMENT_RESULT", details: "Ghi nhận tiến triển liệu trình laser CO2 buổi 2 — cải thiện 45%",             module: "Kết quả điều trị",  category: "staff_treatment" },
+    { id: "ACT-T05", timestamp: "2026-06-01T09:00:00Z", userId: "tech-01", userName: "KTV. Lê Thị C",       role: "TECHNICIAN", action: "UPLOAD_SCAN_RESULT",      details: "Upload kết quả soi da AI — ẩm 38/100, dầu 72/100, melanin tăng T-zone",     module: "Procedure Workspace", category: "staff_treatment" },
+
+    // ── RECEPTIONIST activities: xác nhận lịch hẹn, chỉnh sửa thông tin bệnh nhân ──
+    { id: "ACT-R01", timestamp: "2026-06-09T08:40:00Z", userId: "staff-01", userName: "Lễ tân Hoàng Anh",   role: "RECEPTIONIST", action: "CONFIRM_APPOINTMENT",    details: "Xác nhận lịch hẹn apt-04 — Nguyễn Hoàng Mai, Soi Da AI 08/06 08:30",         module: "Quản lý lịch hẹn",  category: "staff_confirm" },
+    { id: "ACT-R02", timestamp: "2026-06-08T11:30:00Z", userId: "staff-01", userName: "Lễ tân Hoàng Anh",   role: "RECEPTIONIST", action: "CONFIRM_APPOINTMENT",    details: "Xác nhận lịch hẹn apt-03 — Trần Thị Hồng Nhung, Điều Trị Nám 07/06 10:00",  module: "Quản lý lịch hẹn",  category: "staff_confirm" },
+    { id: "ACT-R03", timestamp: "2026-06-07T10:00:00Z", userId: "staff-01", userName: "Lễ tân Hoàng Anh",   role: "RECEPTIONIST", action: "UPDATE_PATIENT_INFO",    details: "Cập nhật thông tin bệnh nhân Lê Minh Khôi — số điện thoại, địa chỉ liên hệ", module: "Thông tin bệnh nhân", category: "staff_patient_edit" },
+    { id: "ACT-R04", timestamp: "2026-06-06T14:30:00Z", userId: "staff-01", userName: "Lễ tân Hoàng Anh",   role: "RECEPTIONIST", action: "UPDATE_PATIENT_INFO",    details: "Bổ sung tiền sử bệnh cho Phạm Đức Anh — Vảy nến thể mảng, dị ứng Penicillin", module: "Thông tin bệnh nhân", category: "staff_patient_edit" },
+    { id: "ACT-R05", timestamp: "2026-06-05T09:00:00Z", userId: "staff-01", userName: "Lễ tân Hoàng Anh",   role: "RECEPTIONIST", action: "CONFIRM_APPOINTMENT",    details: "Xác nhận lịch hẹn apt-02 — Lê Minh Khôi, Trị Mụn 12/06 14:00",             module: "Quản lý lịch hẹn",  category: "staff_confirm" },
+    { id: "ACT-R06", timestamp: "2026-06-04T16:00:00Z", userId: "staff-01", userName: "Lễ tân Hoàng Anh",   role: "RECEPTIONIST", action: "CHECKIN",                details: "Check-in bệnh nhân Võ Thanh Tùng (apt-09) — đến đúng giờ",                    module: "Quản lý lịch hẹn",  category: "other" },
+
+    // ── ADMIN activities ──
+    { id: "ACT-A01", timestamp: "2026-06-08T14:20:00Z", userId: "admin-01", userName: "Quản trị viên",      role: "ADMIN", action: "UPDATE_SERVICE_PRICE",    details: "Cập nhật giá Laser Fractional CO2: 2.500.000 VNĐ",                            module: "Quản lý dịch vụ",   category: "other" },
+    { id: "ACT-A02", timestamp: "2026-06-05T13:00:00Z", userId: "admin-01", userName: "Quản trị viên",      role: "ADMIN", action: "ADD_EMPLOYEE",            details: "Thêm nhân sự mới: KTV. Nguyễn Văn Khoa — Kỹ thuật viên",                     module: "Quản lý nhân sự",   category: "other" },
+    { id: "ACT-A03", timestamp: "2026-05-31T14:00:00Z", userId: "admin-01", userName: "Quản trị viên",      role: "ADMIN", action: "CREATE_VOUCHER",          details: "Tạo voucher SOIDA200K — giảm 200K dịch vụ soi da AI",                        module: "Quản lý voucher",   category: "other" },
 ];
 
 

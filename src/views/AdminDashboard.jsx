@@ -14,6 +14,7 @@ import {
   Calendar,
   Clock,
   Star,
+  TrendingUp,
 } from 'lucide-react';
 import AdminOverview from '../components/Admin/AdminOverview';
 import EmployeeManagement from '../components/Admin/EmployeeManagement';
@@ -23,6 +24,7 @@ import DoctorScheduleManagement from '../components/Admin/DoctorScheduleManageme
 import ConsultationTimeManagement from '../components/Admin/ConsultationTimeManagement';
 import RevenueStatistics from '../components/Admin/RevenueStatistics';
 import VoucherManagement from '../components/Admin/VoucherManagement';
+import ReportsPage from '../components/Admin/ReportsPage';
 
 // Placeholder components for other tabs
 const PlaceholderTab = ({ title }) => (
@@ -44,7 +46,7 @@ const AdminDashboard = () => {
     { id: 'consultationTime', label: 'Khung giờ khám', icon: Clock },
     { id: 'vouchers', label: 'Quản lý Voucher', icon: Ticket },
     { id: 'feedback', label: 'Đánh giá', icon: Star },
-    { id: 'reports', label: 'Hệ thống & Báo cáo', icon: FileText },
+    { id: 'reports', label: 'Doanh thu & Báo cáo', icon: TrendingUp },
   ];
 
   const renderContent = () => {
@@ -64,7 +66,7 @@ const AdminDashboard = () => {
       case 'feedback':
         return <FeedbackDashboard />;
       case 'reports':
-        return <RevenueStatistics />;
+        return <ReportsPage />;
       default:
         return <AdminOverview />;
     }
