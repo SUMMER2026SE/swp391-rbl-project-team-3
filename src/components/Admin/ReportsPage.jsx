@@ -95,21 +95,21 @@ function ServiceReportTab() {
     return Object.values(map).sort((a, b) => b.total - a.total);
   }, [apts]);
 
-  // Monthly trend — last 6 months for top 3 services
+  // Monthly trend — last 6 months for top 3 services (uses filtered apts for consistency)
   const MONTHS = ['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6'];
   const top3 = serviceStats.slice(0, 3).map(s => s.name);
   const monthlyTrend = useMemo(() => {
     return MONTHS.map((label, mi) => {
       const row = { label };
       top3.forEach(svc => {
-        row[svc] = allApts.filter(a => {
+        row[svc] = apts.filter(a => {
           const m = new Date(a.date).getMonth();
           return m === mi && a.service === svc && a.status !== 'Đã hủy';
         }).length;
       });
       return row;
     });
-  }, [allApts, top3.join(',')]);
+  }, [apts, top3.join(',')]);
 
   const TREND_COLORS = ['#4f46e5','#10b981','#d97706'];
   const TREND_TEXT_COLORS = ['text-indigo-600', 'text-emerald-600', 'text-amber-600'];
@@ -128,7 +128,16 @@ function ServiceReportTab() {
   const maxTrendVal = Math.max(1, ...monthlyTrend.map(row => Math.max(...top3.map(n => row[n] || 0))));
 
   const syncedTop4 = useMemo(() => {
-    return serviceStats.slice(0, 4);
+    if (serviceStats.length <= 4) return serviceStats;
+    const top4 = serviceStats.slice(0, 4);
+    const others = serviceStats.slice(4);
+    const othersTotal = others.reduce((sum, s) => sum + s.total, 0);
+    const othersDone = others.reduce((sum, s) => sum + s.done, 0);
+    const othersRev = others.reduce((sum, s) => sum + s.revenue, 0);
+    if (othersTotal > 0) {
+      top4.push({ name: 'Các dịch vụ khác', total: othersTotal, done: othersDone, revenue: othersRev });
+    }
+    return top4;
   }, [serviceStats]);
 
   return (
@@ -191,27 +200,34 @@ function ServiceReportTab() {
             {syncedTop4.length === 0 ? (
                <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs pb-8">Chưa có dữ liệu</div>
             ) : (
-               syncedTop4.map((s, i) => {
-                 const maxTotal = Math.max(...syncedTop4.map(x => x.total), 1);
-                 const heightPct = (s.total / maxTotal) * 100;
-                 const barOpacity = i === 0 ? 1 : i === 1 ? 0.9 : i === 2 ? 0.8 : 0.4;
-                 return (
-                   <div key={s.name} className="flex flex-col items-center gap-2 w-1/4">
-                      <div className="w-full max-w-[38px] flex items-end justify-center h-[120px] sm:h-[150px]">
-                         <motion.div 
-                           initial={{ height: 0 }} 
-                           animate={{ height: `${heightPct}%` }} 
-                           transition={{ duration: 1, delay: i * 0.1 }}
-                           className="w-full bg-indigo-600 rounded-t-[6px]"
-                           style={{ opacity: barOpacity }}
-                         />
-                      </div>
-                      <span className="text-[8px] sm:text-[9px] font-bold text-slate-600 text-center leading-tight line-clamp-2 h-6 px-0.5">
-                        {s.name}
-                      </span>
-                   </div>
-                 );
-               })
+               (() => {
+                 const maxDone = Math.max(...syncedTop4.map(x => x.done), 1);
+                 return syncedTop4.map((s, i) => {
+                   const heightPct = (s.done / maxDone) * 100;
+                   const barOpacity = i === 0 ? 1 : i === 1 ? 0.85 : i === 2 ? 0.7 : 0.45;
+                   return (
+                     <div key={s.name} className="flex flex-col items-center gap-1 flex-1">
+                        {/* Completed count label */}
+                        <span className="text-[10px] sm:text-xs font-black text-indigo-700">{s.done}</span>
+                        {/* Total booked label — shows the gap */}
+                        <span className="text-[8px] text-slate-400 font-semibold -mt-0.5">/{s.total} đặt</span>
+                        {/* Bar container – fixed height, bar grows from bottom */}
+                        <div className="w-full flex items-end justify-center" style={{ height: '110px' }}>
+                           <motion.div
+                             initial={{ height: 0 }}
+                             animate={{ height: `${heightPct}%` }}
+                             transition={{ duration: 0.9, delay: i * 0.12, ease: 'easeOut' }}
+                             className="w-full max-w-[36px] rounded-t-[6px] bg-indigo-500"
+                             style={{ opacity: barOpacity }}
+                           />
+                        </div>
+                        <span className="text-[8px] sm:text-[9px] font-bold text-slate-600 text-center leading-tight line-clamp-2 h-6 px-0.5">
+                          {s.name}
+                        </span>
+                     </div>
+                   );
+                 });
+               })()
             )}
           </div>
         </div>

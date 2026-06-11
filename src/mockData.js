@@ -1475,8 +1475,24 @@ export const mockAppointments = [
       "paymentStatus": "Chưa thanh toán",
       "fee": "2,500,000 VNĐ",
       "notes": ""
-    }
+    },
+    { "id":"apt-e01","patientId":"pat-01","patientName":"Lê Minh Khôi","doctorId":"doc-02","doctorName":"ThS. BS. Nguyễn Thị B","date":"2026-05-03","time":"08:00","status":"Đã khám","service":"Điều Trị Nám Chuyên Sâu","paymentStatus":"Đã thanh toán","fee":"1,800,000 VNĐ","notes":"" },
+    { "id":"apt-e02","patientId":"pat-02","patientName":"Trần Thị Hồng Nhung","doctorId":"doc-02","doctorName":"ThS. BS. Nguyễn Thị B","date":"2026-05-05","time":"09:00","status":"Đã khám","service":"Điều Trị Nám Chuyên Sâu","paymentStatus":"Đã thanh toán","fee":"1,800,000 VNĐ","notes":"" },
+    { "id":"apt-e03","patientId":"pat-04","patientName":"Nguyễn Hoàng Mai","doctorId":"doc-02","doctorName":"ThS. BS. Nguyễn Thị B","date":"2026-05-07","time":"10:00","status":"Đã khám","service":"Điều Trị Nám Chuyên Sâu","paymentStatus":"Đã thanh toán","fee":"1,800,000 VNĐ","notes":"" },
+    { "id":"apt-e04","patientId":"pat-05","patientName":"Võ Thanh Tùng","doctorId":"doc-01","doctorName":"BS. CKII. Trần Văn A","date":"2026-05-09","time":"11:00","status":"Đã khám","service":"Điều Trị Nám Chuyên Sâu","paymentStatus":"Đã thanh toán","fee":"1,800,000 VNĐ","notes":"" },
+    { "id":"apt-e05","patientId":"pat-03","patientName":"Phạm Đức Anh","doctorId":"doc-02","doctorName":"ThS. BS. Nguyễn Thị B","date":"2026-05-11","time":"13:00","status":"Đã khám","service":"Điều Trị Nám Chuyên Sâu","paymentStatus":"Đã thanh toán","fee":"1,800,000 VNĐ","notes":"" },
+    { "id":"apt-e06","patientId":"pat-01","patientName":"Lê Minh Khôi","doctorId":"doc-01","doctorName":"BS. CKII. Trần Văn A","date":"2026-05-13","time":"08:00","status":"Đã khám","service":"Điều Trị Nám Chuyên Sâu","paymentStatus":"Đã thanh toán","fee":"1,800,000 VNĐ","notes":"" },
+    { "id":"apt-e07","patientId":"pat-02","patientName":"Trần Thị Hồng Nhung","doctorId":"doc-02","doctorName":"ThS. BS. Nguyễn Thị B","date":"2026-05-15","time":"09:00","status":"Đã khám","service":"Điều Trị Nám Chuyên Sâu","paymentStatus":"Đã thanh toán","fee":"1,800,000 VNĐ","notes":"" },
+    { "id":"apt-e08","patientId":"pat-04","patientName":"Nguyễn Hoàng Mai","doctorId":"doc-02","doctorName":"ThS. BS. Nguyễn Thị B","date":"2026-05-17","time":"10:00","status":"Đã khám","service":"Điều Trị Nám Chuyên Sâu","paymentStatus":"Đã thanh toán","fee":"1,800,000 VNĐ","notes":"" },
+    { "id":"apt-e09","patientId":"pat-05","patientName":"Võ Thanh Tùng","doctorId":"doc-01","doctorName":"BS. CKII. Trần Văn A","date":"2026-05-19","time":"11:00","status":"Đã khám","service":"Điều Trị Nám Chuyên Sâu","paymentStatus":"Đã thanh toán","fee":"1,800,000 VNĐ","notes":"" },
+    { "id":"apt-e10","patientId":"pat-03","patientName":"Phạm Đức Anh","doctorId":"doc-01","doctorName":"BS. CKII. Trần Văn A","date":"2026-05-21","time":"13:00","status":"Đã khám","service":"Điều Trị Nám Chuyên Sâu","paymentStatus":"Đã thanh toán","fee":"1,800,000 VNĐ","notes":"" },
+    { "id":"apt-e11","patientId":"pat-01","patientName":"Lê Minh Khôi","doctorId":"doc-01","doctorName":"BS. CKII. Trần Văn A","date":"2026-05-04","time":"08:30","status":"Đã khám","service":"Trị Mụn Chuyên Sâu","paymentStatus":"Đã thanh toán","fee":"600,000 VNĐ","notes":"" },
+    { "id":"apt-e12","patientId":"pat-03","patientName":"Phạm Đức Anh","doctorId":"doc-01","doctorName":"BS. CKII. Trần Văn A","date":"2026-05-06","time":"09:30","status":"Đã khám","service":"Trị Mụn Chuyên Sâu","paymentStatus":"Đã thanh toán","fee":"600,000 VNĐ","notes":"" },
+    { "id":"apt-e13","patientId":"pat-02","patientName":"Trần Thị Hồng Nhung","doctorId":"doc-02","doctorName":"ThS. BS. Nguyễn Thị B","date":"2026-05-08","time":"10:30","status":"Đã khám","service":"Trị Mụn Chuyên Sâu","paymentStatus":"Đã thanh toán","fee":"600,000 VNĐ","notes":"" },
+    { "id":"apt-e14","patientId":"pat-05","patientName":"Võ Thanh Tùng","doctorId":"doc-02","doctorName":"ThS. BS. Nguyễn Thị B","date":"2026-05-10","time":"11:30","status":"Đã khám","service":"Trị Mụn Chuyên Sâu","paymentStatus":"Đã thanh toán","fee":"600,000 VNĐ","notes":"" },
+    { "id":"apt-e15","patientId":"pat-04","patientName":"Nguyễn Hoàng Mai","doctorId":"doc-01","doctorName":"BS. CKII. Trần Văn A","date":"2026-05-12","time":"13:30","status":"Đã khám","service":"Trị Mụn Chuyên Sâu","paymentStatus":"Đã thanh toán","fee":"600,000 VNĐ","notes":"" }
 ];
+
 
 // ─── Mock Chat Messages ──────────────────────────────────────────────────────
 export const mockChatMessages = [
