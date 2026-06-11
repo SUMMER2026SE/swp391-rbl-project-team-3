@@ -22,7 +22,7 @@ const ROLE_DISPLAY_NAMES = {
 export function AuthProvider({ children }) {
   const [mockUser, setMockUser] = useState(() => {
     try {
-      const stored = localStorage.getItem('dermasmart_mock_user');
+      const stored = sessionStorage.getItem('dermasmart_mock_user');
       return stored ? JSON.parse(stored) : null;
     } catch {
       return null;
@@ -82,13 +82,13 @@ export function AuthProvider({ children }) {
       ...profile,
     };
     setMockUser(newUser);
-    localStorage.setItem('dermasmart_mock_user', JSON.stringify(newUser));
+    sessionStorage.setItem('dermasmart_mock_user', JSON.stringify(newUser));
     return ROLE_DASHBOARD_MAP[role] || '/';
   };
 
   const logout = async () => {
     setMockUser(null);
-    localStorage.removeItem('dermasmart_mock_user');
+    sessionStorage.removeItem('dermasmart_mock_user');
     try {
       await AuthModel.signOut();
     } catch (e) {

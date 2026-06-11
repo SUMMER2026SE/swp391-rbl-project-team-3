@@ -6,28 +6,70 @@ import {
   Check
 } from 'lucide-react';
 
-const mockTransactions = [
-  { id: 1, date: '11/06/2026', time: '09:30', service: 'Gói Trẻ hóa da Meso 5 buổi', doctor: 'BS. CKII. Trần Văn A', type: 'GÓI LIỆU TRÌNH', method: 'Chuyển khoản', amount: 12500000 },
-  { id: 2, date: '11/06/2026', time: '10:15', service: 'Xét nghiệm máu tổng quát', doctor: '—', type: 'XÉT NGHIỆM', method: 'Thẻ ngân hàng', amount: 850000 },
-  { id: 3, date: '11/06/2026', time: '11:00', service: 'Khám da liễu tổng quát', doctor: 'ThS. BS. Nguyễn Thị B', type: 'KHÁM BỆNH', method: 'Tiền mặt', amount: 500000 },
-  { id: 4, date: '11/06/2026', time: '13:45', service: 'Gói trị mụn chuyên sâu', doctor: 'BS. CKI. Trần Thanh T', type: 'GÓI LIỆU TRÌNH', method: 'Chuyển khoản', amount: 4200000 },
-  { id: 5, date: '11/06/2026', time: '14:30', service: 'Khám và soi da', doctor: 'ThS. BS. Nguyễn Thị B', type: 'KHÁM BỆNH', method: 'Thẻ ngân hàng', amount: 800000 },
-  { id: 6, date: '10/06/2026', time: '09:00', service: 'Xét nghiệm nội tiết', doctor: '—', type: 'XÉT NGHIỆM', method: 'Chuyển khoản', amount: 650000 },
-  { id: 7, date: '10/06/2026', time: '15:15', service: 'Gói Tiêm Filler vùng má', doctor: 'BS. CKII. Trần Văn A', type: 'GÓI LIỆU TRÌNH', method: 'Chuyển khoản', amount: 8000000 },
-  { id: 8, date: '09/06/2026', time: '10:00', service: 'Khám tư vấn mụn', doctor: 'BS. Lê Văn M', type: 'KHÁM BỆNH', method: 'Tiền mặt', amount: 300000 },
-  { id: 9, date: '09/06/2026', time: '16:00', service: 'Gói trị nám 3 buổi', doctor: 'ThS. BS. Nguyễn Thị B', type: 'GÓI LIỆU TRÌNH', method: 'Chuyển khoản', amount: 6000000 },
-  { id: 10, date: '08/06/2026', time: '14:00', service: 'Sinh thiết da', doctor: '—', type: 'XÉT NGHIỆM', method: 'Thẻ ngân hàng', amount: 1200000 },
-  // Dữ liệu tháng trước & quý trước (số tiền lớn để biểu đồ biến động)
-  { id: 11, date: '15/05/2026', time: '09:00', service: 'Gói Điều trị Nám Laser', doctor: 'ThS. BS. Nguyễn Thị B', type: 'GÓI LIỆU TRÌNH', method: 'Chuyển khoản', amount: 48500000 },
-  { id: 12, date: '10/04/2026', time: '14:00', service: 'Khám phục hồi da', doctor: 'BS. CKII. Trần Văn A', type: 'KHÁM BỆNH', method: 'Tiền mặt', amount: 32000000 },
-  { id: 13, date: '20/12/2025', time: '10:00', service: 'Khám da liễu', doctor: 'BS. Lê Văn M', type: 'KHÁM BỆNH', method: 'Thẻ ngân hàng', amount: 185000000 },
-  { id: 14, date: '10/01/2026', time: '10:00', service: 'Khám mụn', doctor: 'BS. Lê Văn M', type: 'KHÁM BỆNH', method: 'Tiền mặt', amount: 42000000 },
-  { id: 15, date: '14/02/2026', time: '09:30', service: 'Gói Chăm sóc da', doctor: 'ThS. BS. Nguyễn Thị B', type: 'GÓI LIỆU TRÌNH', method: 'Chuyển khoản', amount: 28000000 },
-  { id: 16, date: '25/03/2026', time: '15:00', service: 'Xét nghiệm dị ứng', doctor: '—', type: 'XÉT NGHIỆM', method: 'Thẻ ngân hàng', amount: 55000000 },
-  { id: 17, date: '20/08/2025', time: '11:00', service: 'Gói Trị mụn Laser', doctor: 'BS. CKII. Trần Văn A', type: 'GÓI LIỆU TRÌNH', method: 'Chuyển khoản', amount: 145000000 },
-  { id: 18, date: '15/08/2024', time: '14:00', service: 'Khám theo dõi bệnh lý', doctor: 'BS. CKI. Trần Thanh T', type: 'KHÁM BỆNH', method: 'Thẻ ngân hàng', amount: 350000000 },
-  { id: 19, date: '10/05/2023', time: '09:00', service: 'Xét nghiệm vi nấm', doctor: '—', type: 'XÉT NGHIỆM', method: 'Tiền mặt', amount: 280000000 },
-];
+const mockTransactions = (() => {
+  const base = [
+    { id: 1, date: '11/06/2026', time: '09:30', service: 'Gói Trẻ hóa da Meso 5 buổi', doctor: 'BS. CKII. Trần Văn A', type: 'GÓI LIỆU TRÌNH', method: 'Chuyển khoản', amount: 12500000 },
+    { id: 2, date: '11/06/2026', time: '10:15', service: 'Xét nghiệm máu tổng quát', doctor: 'KTV. Nguyễn Văn C', type: 'XÉT NGHIỆM', method: 'Thẻ ngân hàng', amount: 850000 },
+    { id: 3, date: '11/06/2026', time: '11:00', service: 'Khám da liễu tổng quát', doctor: 'ThS. BS. Nguyễn Thị B', type: 'KHÁM BỆNH', method: 'Tiền mặt', amount: 500000 },
+    { id: 4, date: '11/06/2026', time: '13:45', service: 'Gói trị mụn chuyên sâu', doctor: 'BS. CKI. Trần Thanh T', type: 'GÓI LIỆU TRÌNH', method: 'Chuyển khoản', amount: 4200000 },
+    { id: 5, date: '11/06/2026', time: '14:30', service: 'Khám và soi da', doctor: 'ThS. BS. Nguyễn Thị B', type: 'KHÁM BỆNH', method: 'Thẻ ngân hàng', amount: 800000 },
+    { id: 6, date: '10/06/2026', time: '09:00', service: 'Xét nghiệm nội tiết', doctor: 'KTV. Lê Thị D', type: 'XÉT NGHIỆM', method: 'Chuyển khoản', amount: 650000 },
+    { id: 7, date: '10/06/2026', time: '15:15', service: 'Gói Tiêm Filler vùng má', doctor: 'BS. CKII. Trần Văn A', type: 'GÓI LIỆU TRÌNH', method: 'Chuyển khoản', amount: 8000000 },
+    { id: 8, date: '09/06/2026', time: '10:00', service: 'Khám tư vấn mụn', doctor: 'BS. Lê Văn M', type: 'KHÁM BỆNH', method: 'Tiền mặt', amount: 300000 },
+    { id: 9, date: '09/06/2026', time: '16:00', service: 'Gói trị nám 3 buổi', doctor: 'ThS. BS. Nguyễn Thị B', type: 'GÓI LIỆU TRÌNH', method: 'Chuyển khoản', amount: 6000000 },
+    { id: 10, date: '08/06/2026', time: '14:00', service: 'Sinh thiết da', doctor: 'KTV. Nguyễn Văn C', type: 'XÉT NGHIỆM', method: 'Thẻ ngân hàng', amount: 1200000 },
+    { id: 11, date: '15/05/2026', time: '09:00', service: 'Gói Điều trị Nám Laser', doctor: 'ThS. BS. Nguyễn Thị B', type: 'GÓI LIỆU TRÌNH', method: 'Chuyển khoản', amount: 48500000 },
+    { id: 12, date: '10/04/2026', time: '14:00', service: 'Khám phục hồi da', doctor: 'BS. CKII. Trần Văn A', type: 'KHÁM BỆNH', method: 'Tiền mặt', amount: 32000000 },
+    { id: 13, date: '20/12/2025', time: '10:00', service: 'Khám da liễu', doctor: 'BS. Lê Văn M', type: 'KHÁM BỆNH', method: 'Thẻ ngân hàng', amount: 185000000 },
+    { id: 14, date: '10/01/2026', time: '10:00', service: 'Khám mụn', doctor: 'BS. Lê Văn M', type: 'KHÁM BỆNH', method: 'Tiền mặt', amount: 42000000 },
+    { id: 15, date: '14/02/2026', time: '09:30', service: 'Gói Chăm sóc da', doctor: 'ThS. BS. Nguyễn Thị B', type: 'GÓI LIỆU TRÌNH', method: 'Chuyển khoản', amount: 28000000 },
+    { id: 16, date: '25/03/2026', time: '15:00', service: 'Xét nghiệm dị ứng', doctor: 'KTV. Lê Thị D', type: 'XÉT NGHIỆM', method: 'Thẻ ngân hàng', amount: 55000000 },
+    { id: 17, date: '20/08/2025', time: '11:00', service: 'Gói Trị mụn Laser', doctor: 'BS. CKII. Trần Văn A', type: 'GÓI LIỆU TRÌNH', method: 'Chuyển khoản', amount: 145000000 },
+    { id: 18, date: '15/08/2024', time: '14:00', service: 'Khám theo dõi bệnh lý', doctor: 'BS. CKI. Trần Thanh T', type: 'KHÁM BỆNH', method: 'Thẻ ngân hàng', amount: 350000000 },
+    { id: 19, date: '10/05/2023', time: '09:00', service: 'Xét nghiệm vi nấm', doctor: 'KTV. Nguyễn Văn C', type: 'XÉT NGHIỆM', method: 'Tiền mặt', amount: 280000000 },
+  ];
+
+  const services = [
+    { service: 'Khám da liễu tổng quát', type: 'KHÁM BỆNH', amount: 500000 },
+    { service: 'Gói trị mụn chuyên sâu', type: 'GÓI LIỆU TRÌNH', amount: 4200000 },
+    { service: 'Xét nghiệm máu tổng quát', type: 'XÉT NGHIỆM', amount: 850000 },
+    { service: 'Khám tư vấn mụn', type: 'KHÁM BỆNH', amount: 300000 },
+    { service: 'Gói Tiêm Filler vùng má', type: 'GÓI LIỆU TRÌNH', amount: 8000000 },
+    { service: 'Khám phục hồi da', type: 'KHÁM BỆNH', amount: 1200000 },
+    { service: 'Gói Trẻ hóa da Meso 5 buổi', type: 'GÓI LIỆU TRÌNH', amount: 12500000 },
+    { service: 'Xét nghiệm nội tiết', type: 'XÉT NGHIỆM', amount: 650000 },
+    { service: 'Gói trị nám 3 buổi', type: 'GÓI LIỆU TRÌNH', amount: 6000000 },
+  ];
+  const doctors = ['BS. CKII. Trần Văn A', 'ThS. BS. Nguyễn Thị B', 'BS. CKI. Trần Thanh T', 'BS. Lê Văn M'];
+  const techs = ['KTV. Nguyễn Văn C', 'KTV. Lê Thị D'];
+  const methods = ['Chuyển khoản', 'Thẻ ngân hàng', 'Tiền mặt'];
+
+  for (let i = 20; i <= 50; i++) {
+    const srv = services[i % services.length];
+    const doc = srv.type === 'XÉT NGHIỆM' ? techs[i % techs.length] : doctors[i % doctors.length];
+    
+    // Sinh ngày ngẫu nhiên trong tháng 6 hoặc tháng 5 năm 2026
+    const m = i % 2 === 0 ? 6 : 5;
+    const d = (i % 28) + 1;
+    const dateStr = `${d.toString().padStart(2, '0')}/${m.toString().padStart(2, '0')}/2026`;
+    
+    const h = (i % 8) + 9;
+    const min = ['00', '15', '30', '45'][i % 4];
+    
+    base.push({
+      id: i,
+      date: dateStr,
+      time: `${h.toString().padStart(2, '0')}:${min}`,
+      service: srv.service,
+      doctor: doc,
+      type: srv.type,
+      method: methods[i % methods.length],
+      amount: srv.amount
+    });
+  }
+  
+  return base;
+})();
 
 const formatCurrency = (value) => {
   return new Intl.NumberFormat('vi-VN').format(value);
@@ -104,7 +146,7 @@ const FilterDropdown = ({ label, icon: Icon, options, value, onChange, placehold
 };
 
 export default function RevenueStatistics() {
-  const [period, setPeriod] = useState('Tháng');
+  const [period, setPeriod] = useState('Ngày');
   const [doctor, setDoctor] = useState('all');
   const [method, setMethod] = useState('all');
   const [type, setType] = useState('all');
@@ -115,6 +157,7 @@ export default function RevenueStatistics() {
   const types = useMemo(() => [...new Set(mockTransactions.map(t => t.type))], []);
 
   const filteredData = useMemo(() => {
+    const currentDay = 11;
     const currentMonth = 5; // 0-indexed (June)
     const currentYear = 2026;
     const currentQuarter = Math.floor(currentMonth / 3);
@@ -125,10 +168,18 @@ export default function RevenueStatistics() {
       if (type !== 'all' && t.type !== type) return false;
 
       const [dd, mm, yyyy] = t.date.split('/');
+      const txDay = parseInt(dd, 10);
       const txMonth = parseInt(mm, 10) - 1;
       const txYear = parseInt(yyyy, 10);
       const txQuarter = Math.floor(txMonth / 3);
 
+      if (period === 'Ngày' && (txDay !== currentDay || txMonth !== currentMonth || txYear !== currentYear)) return false;
+      if (period === 'Tuần') {
+        const txDate = new Date(txYear, txMonth, txDay);
+        const today = new Date(currentYear, currentMonth, currentDay);
+        const diffDays = (today - txDate) / (1000 * 60 * 60 * 24);
+        if (diffDays < 0 || diffDays > 6) return false;
+      }
       if (period === 'Tháng' && (txMonth !== currentMonth || txYear !== currentYear)) return false;
       if (period === 'Quý' && (txQuarter !== currentQuarter || txYear !== currentYear)) return false;
       if (period === 'Năm' && txYear !== currentYear) return false;
@@ -139,7 +190,10 @@ export default function RevenueStatistics() {
 
   const totalRevenue = filteredData.reduce((sum, t) => sum + t.amount, 0);
   const totalTransactions = filteredData.length;
-  const avgRevenue = totalTransactions > 0 ? totalRevenue / totalTransactions : 0;
+  const uniqueDaysCount = new Set(filteredData.map(t => t.date)).size;
+  const avgRevenue = period === 'Ngày' 
+    ? (totalTransactions > 0 ? totalRevenue / totalTransactions : 0)
+    : (uniqueDaysCount > 0 ? totalRevenue / uniqueDaysCount : 0);
   
   const treatmentRevenue = filteredData.filter(t => t.type === 'GÓI LIỆU TRÌNH').reduce((sum, t) => sum + t.amount, 0);
   const consultRevenue = filteredData.filter(t => t.type === 'KHÁM BỆNH').reduce((sum, t) => sum + t.amount, 0);
@@ -191,7 +245,24 @@ export default function RevenueStatistics() {
     let rawData = [];
     const currentYear = 2026;
 
-    if (period === 'Tháng') {
+    if (period === 'Ngày') {
+      const hours = { '09:00': 0, '10:00': 0, '11:00': 0, '12:00': 0, '13:00': 0, '14:00': 0, '15:00': 0, '16:00': 0 };
+      rawFiltered.forEach(t => {
+        if (t.date === '11/06/2026') {
+          const hour = t.time.split(':')[0] + ':00';
+          if (hours[hour] !== undefined) hours[hour] += t.amount;
+        }
+      });
+      rawData = Object.keys(hours).map(h => ({ label: h, value: hours[h] }));
+    } else if (period === 'Tuần') {
+      const days = { '05/06': 0, '06/06': 0, '07/06': 0, '08/06': 0, '09/06': 0, '10/06': 0, '11/06': 0 };
+      rawFiltered.forEach(t => {
+        const [dd, mm, yyyy] = t.date.split('/');
+        const dayLabel = `${dd}/${mm}`;
+        if (days[dayLabel] !== undefined) days[dayLabel] += t.amount;
+      });
+      rawData = Object.keys(days).map(d => ({ label: d, value: days[d] }));
+    } else if (period === 'Tháng') {
       const months = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
       rawFiltered.forEach(t => {
         const [dd, mm, yyyy] = t.date.split('/');
@@ -266,6 +337,8 @@ export default function RevenueStatistics() {
   // Dynamic Trends
   const getTrend = (metric) => {
     const trends = {
+      'Ngày': { revenue: 5.2, tx: 8.1, avg: -1.5, pkg: 4.2 },
+      'Tuần': { revenue: 10.4, tx: 12.0, avg: 3.5, pkg: 8.9 },
       'Tháng': { revenue: 12.5, tx: -2.1, avg: 15.0, pkg: -5.4 },
       'Quý': { revenue: -4.2, tx: 5.3, avg: -8.1, pkg: 12.0 },
       'Năm': { revenue: 22.4, tx: 18.5, avg: 4.2, pkg: 25.1 }
@@ -291,7 +364,7 @@ export default function RevenueStatistics() {
           <p className="text-[11px] text-slate-500 mt-1">Tổng quan thu nhập từ khám bệnh, xét nghiệm và gói liệu trình điều trị</p>
         </div>
         <div className="flex bg-slate-50 border border-slate-200 rounded-full p-1 gap-1">
-          {['Tháng', 'Quý', 'Năm'].map(p => (
+          {['Ngày', 'Tuần', 'Tháng', 'Quý', 'Năm'].map(p => (
             <button
               key={p}
               onClick={() => setPeriod(p)}
@@ -307,7 +380,7 @@ export default function RevenueStatistics() {
 
       {/* ── Filters ── */}
       <div className="flex flex-wrap gap-2.5 items-center relative z-40">
-        <FilterDropdown icon={ListFilter} options={doctors} value={doctor} onChange={setDoctor} placeholder="Tất cả bác sĩ" />
+        <FilterDropdown icon={ListFilter} options={doctors} value={doctor} onChange={setDoctor} placeholder="Tất cả BS / KTV" />
         <FilterDropdown options={methods} value={method} onChange={setMethod} placeholder="Mọi phương thức" />
         <FilterDropdown options={types} value={type} onChange={setType} placeholder="Mọi loại hình" />
         <button onClick={exportToCSV} className="flex items-center gap-1.5 px-4 py-2 bg-white border border-slate-200 rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.04)] text-xs font-bold text-slate-900 cursor-pointer hover:bg-slate-50 transition-all ml-auto">
@@ -322,9 +395,11 @@ export default function RevenueStatistics() {
             <div className="p-2 bg-[#4F46E5] rounded-2xl text-white shadow-md shadow-indigo-500/20">
               <Banknote className="w-4 h-4" />
             </div>
-            <div className={`flex items-center gap-1 text-[11px] font-black ${revTrend.isUp ? 'text-emerald-600' : 'text-rose-600'}`}>
-              {revTrend.isUp ? <TrendingUp className="w-3 h-3 stroke-[3]" /> : <TrendingDown className="w-3 h-3 stroke-[3]" />} {revTrend.isUp ? '+' : '-'}{revTrend.value}%
-            </div>
+            {period !== 'Ngày' && (
+              <div className={`flex items-center gap-1 text-[11px] font-black ${revTrend.isUp ? 'text-emerald-600' : 'text-rose-600'}`}>
+                {revTrend.isUp ? <TrendingUp className="w-3 h-3 stroke-[3]" /> : <TrendingDown className="w-3 h-3 stroke-[3]" />} {revTrend.isUp ? '+' : '-'}{revTrend.value}%
+              </div>
+            )}
           </div>
           <div className="mt-auto">
             <p className="text-[10px] font-semibold text-slate-500 mb-0.5">Tổng doanh thu</p>
@@ -338,9 +413,11 @@ export default function RevenueStatistics() {
             <div className="p-2 bg-[#059669] rounded-2xl text-white shadow-md shadow-emerald-700/20">
               <FileText className="w-4 h-4" />
             </div>
-            <div className={`flex items-center gap-1 text-[11px] font-black ${txTrend.isUp ? 'text-emerald-600' : 'text-rose-600'}`}>
-              {txTrend.isUp ? <TrendingUp className="w-3 h-3 stroke-[3]" /> : <TrendingDown className="w-3 h-3 stroke-[3]" />} {txTrend.isUp ? '+' : '-'}{txTrend.value}%
-            </div>
+            {period !== 'Ngày' && (
+              <div className={`flex items-center gap-1 text-[11px] font-black ${txTrend.isUp ? 'text-emerald-600' : 'text-rose-600'}`}>
+                {txTrend.isUp ? <TrendingUp className="w-3 h-3 stroke-[3]" /> : <TrendingDown className="w-3 h-3 stroke-[3]" />} {txTrend.isUp ? '+' : '-'}{txTrend.value}%
+              </div>
+            )}
           </div>
           <div className="mt-auto">
             <p className="text-[10px] font-semibold text-slate-500 mb-0.5">Số giao dịch</p>
@@ -354,14 +431,16 @@ export default function RevenueStatistics() {
             <div className="p-2 bg-[#9A5B1C] rounded-2xl text-white shadow-md shadow-[#9A5B1C]/20">
               <BarChart2 className="w-4 h-4" />
             </div>
-            <div className={`flex items-center gap-1 text-[11px] font-black ${avgTrend.isUp ? 'text-emerald-600' : 'text-rose-600'}`}>
-              {avgTrend.isUp ? <TrendingUp className="w-3 h-3 stroke-[3]" /> : <TrendingDown className="w-3 h-3 stroke-[3]" />} {avgTrend.isUp ? '+' : '-'}{avgTrend.value}%
-            </div>
+            {period !== 'Ngày' && (
+              <div className={`flex items-center gap-1 text-[11px] font-black ${avgTrend.isUp ? 'text-emerald-600' : 'text-rose-600'}`}>
+                {avgTrend.isUp ? <TrendingUp className="w-3 h-3 stroke-[3]" /> : <TrendingDown className="w-3 h-3 stroke-[3]" />} {avgTrend.isUp ? '+' : '-'}{avgTrend.value}%
+              </div>
+            )}
           </div>
           <div className="mt-auto">
             <p className="text-[10px] font-semibold text-slate-500 mb-0.5">Doanh thu TB</p>
             <p className="text-lg font-black text-slate-900 leading-tight mb-1 tracking-tight">{formatCompactCurrency(avgRevenue)}</p>
-            <p className="text-[9px] text-slate-400 font-medium uppercase tracking-wider">TB mỗi lượt thu</p>
+            <p className="text-[9px] text-slate-400 font-medium uppercase tracking-wider">{period === 'Ngày' ? 'TB mỗi giao dịch' : 'TB mỗi ngày'}</p>
           </div>
         </div>
 
@@ -370,9 +449,11 @@ export default function RevenueStatistics() {
             <div className="p-2 bg-[#6366F1] rounded-2xl text-white shadow-md shadow-indigo-500/20">
               <Package className="w-4 h-4" />
             </div>
-            <div className={`flex items-center gap-1 text-[11px] font-black ${pkgTrend.isUp ? 'text-emerald-600' : 'text-rose-600'}`}>
-              {pkgTrend.isUp ? <TrendingUp className="w-3 h-3 stroke-[3]" /> : <TrendingDown className="w-3 h-3 stroke-[3]" />} {pkgTrend.isUp ? '+' : '-'}{pkgTrend.value}%
-            </div>
+            {period !== 'Ngày' && (
+              <div className={`flex items-center gap-1 text-[11px] font-black ${pkgTrend.isUp ? 'text-emerald-600' : 'text-rose-600'}`}>
+                {pkgTrend.isUp ? <TrendingUp className="w-3 h-3 stroke-[3]" /> : <TrendingDown className="w-3 h-3 stroke-[3]" />} {pkgTrend.isUp ? '+' : '-'}{pkgTrend.value}%
+              </div>
+            )}
           </div>
           <div className="mt-auto">
             <p className="text-[10px] font-semibold text-slate-500 mb-0.5">Gói liệu trình</p>
@@ -387,16 +468,20 @@ export default function RevenueStatistics() {
         <div className="lg:col-span-2 border border-slate-200 rounded-3xl p-4 bg-white shadow-sm flex flex-col">
           <div className="flex items-start justify-between mb-4">
             <div>
-              <h3 className="text-[13px] font-bold text-slate-900">Xu hướng doanh thu</h3>
+              <h3 className="text-[13px] font-bold text-slate-900">{period === 'Ngày' ? 'Chi tiết doanh thu' : 'Xu hướng doanh thu'}</h3>
               <p className="text-[11px] font-medium text-slate-500 mt-0.5">
-                {period === 'Tháng' ? 'Doanh thu 6 tháng gần nhất (Đến Tháng 6/2026)' : 
+                {period === 'Ngày' ? 'Doanh thu theo giờ (Ngày 11/06/2026)' :
+                 period === 'Tuần' ? 'Doanh thu 7 ngày qua (Đến 11/06/2026)' :
+                 period === 'Tháng' ? 'Doanh thu 6 tháng gần nhất (Đến Tháng 6/2026)' : 
                  period === 'Quý' ? 'Doanh thu 4 quý gần nhất (Đến Quý 2/2026)' : 
                  'Doanh thu 4 năm gần nhất (Đến năm 2026)'}
               </p>
             </div>
-            <div className={`flex items-center gap-1 px-2 py-1 ${revTrend.isUp ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'} text-[10px] font-bold rounded-full`}>
-              {revTrend.isUp ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />} {revTrend.isUp ? '+' : '-'}{revTrend.value}% so với kỳ trước
-            </div>
+            {period !== 'Ngày' && (
+              <div className={`flex items-center gap-1 px-2 py-1 ${revTrend.isUp ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'} text-[10px] font-bold rounded-full`}>
+                {revTrend.isUp ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />} {revTrend.isUp ? '+' : '-'}{revTrend.value}% so với kỳ trước
+              </div>
+            )}
           </div>
           <div className="flex-1 flex items-end justify-between gap-2 mt-auto pt-4">
             {chartData.map((d) => (

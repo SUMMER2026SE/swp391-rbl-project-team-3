@@ -1,4 +1,4 @@
-﻿import React, { useState, useMemo, lazy, Suspense } from 'react';
+import React, { useState, useMemo, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   TrendingUp, Activity, Calendar, Search, Stethoscope,
@@ -48,25 +48,36 @@ function MiniBar({ pct, color = '#6366f1' }) {
 // TAB 1 — Báo cáo dịch vụ
 // ══════════════════════════════════════════════════════════════════════════════
 function ServiceReportTab() {
-  const [period, setPeriod] = useState('all');
+  const [period, setPeriod] = useState('Tất cả');
 
   // Load appointments once
   const allApts = useMemo(() => {
     try {
       const s = localStorage.getItem('dermasmart_appointments');
-      return s ? JSON.parse(s) : mockAppointments;
+      const parsed = s ? JSON.parse(s) : null;
+      // Force update if we added new mock data
+      if (parsed && parsed.length >= mockAppointments.length) return parsed;
+      if (parsed && parsed.length < mockAppointments.length) {
+          localStorage.setItem('dermasmart_appointments', JSON.stringify(mockAppointments));
+          return mockAppointments;
+      }
+      return mockAppointments;
     } catch { return mockAppointments; }
   }, []);
 
   // Filter by period
   const apts = useMemo(() => {
-    if (period === 'all') return allApts;
     const now = new Date('2026-06-09');
     return allApts.filter(a => {
+      if (period === 'Tất cả') return true;
       const d = new Date(a.date);
-      if (period === 'month') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-      if (period === 'q2')    return d.getMonth() >= 3 && d.getMonth() <= 5 && d.getFullYear() === 2026;
-      if (period === 'year')  return d.getFullYear() === 2026;
+      if (period === 'Tháng') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      if (period === 'Quý') {
+        const qNow = Math.floor(now.getMonth() / 3);
+        const qD = Math.floor(d.getMonth() / 3);
+        return qNow === qD && d.getFullYear() === now.getFullYear();
+      }
+      if (period === 'Năm') return d.getFullYear() === now.getFullYear();
       return true;
     });
   }, [allApts, period]);
@@ -85,7 +96,7 @@ function ServiceReportTab() {
   }, [apts]);
 
   // Monthly trend — last 6 months for top 3 services
-  const MONTHS = ['T1','T2','T3','T4','T5','T6'];
+  const MONTHS = ['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6'];
   const top3 = serviceStats.slice(0, 3).map(s => s.name);
   const monthlyTrend = useMemo(() => {
     return MONTHS.map((label, mi) => {
@@ -100,151 +111,250 @@ function ServiceReportTab() {
     });
   }, [allApts, top3.join(',')]);
 
-  const TREND_COLORS = ['#6366f1','#10b981','#f59e0b'];
+  const TREND_COLORS = ['#4f46e5','#10b981','#d97706'];
+  const TREND_TEXT_COLORS = ['text-indigo-600', 'text-emerald-600', 'text-amber-600'];
+
   const totalUsed   = serviceStats.reduce((s, x) => s + x.total, 0);
   const totalDone   = serviceStats.reduce((s, x) => s + x.done, 0);
   const totalRev    = serviceStats.reduce((s, x) => s + x.revenue, 0);
   const cancelRate  = totalUsed > 0 ? ((serviceStats.reduce((s,x)=>s+x.cancelled,0)/totalUsed)*100).toFixed(1) : 0;
 
+  const formatCompact = (val) => {
+    if (val >= 1000000) return (val / 1000000).toFixed(1) + 'M';
+    if (val >= 1000) return (val / 1000).toFixed(1) + 'K';
+    return val;
+  };
+
+  const maxTrendVal = Math.max(1, ...monthlyTrend.map(row => Math.max(...top3.map(n => row[n] || 0))));
+
+  const syncedTop4 = useMemo(() => {
+    return serviceStats.slice(0, 4);
+  }, [serviceStats]);
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 bg-transparent">
       {/* Header + period */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h3 className="text-lg font-bold text-slate-900">Báo cáo Dịch vụ</h3>
           <p className="text-xs text-slate-500 mt-0.5">Thống kê lượt sử dụng, doanh thu và xu hướng theo dịch vụ</p>
         </div>
-        <div className="flex bg-slate-100 rounded-xl p-1 gap-1">
-          {[['all','Tất cả'],['month','Tháng này'],['q2','Quý 2'],['year','Năm 2026']].map(([k,l]) => (
-            <button key={k} onClick={() => setPeriod(k)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border-none cursor-pointer ${
-                period === k ? 'bg-white text-indigo-700 shadow-sm' : 'bg-transparent text-slate-500 hover:text-slate-700'}`}>
-              {l}
+        <div className="flex bg-indigo-50/50 border border-indigo-100 rounded-full p-0.5 gap-0.5">
+          {['Tất cả', 'Tháng', 'Quý', 'Năm'].map(p => (
+            <button key={p} onClick={() => setPeriod(p)}
+              className={`px-3 py-1 rounded-full text-[10px] font-semibold transition-all border-none outline-none cursor-pointer ${
+                period === p ? 'bg-white text-indigo-700 shadow-sm' : 'bg-transparent text-slate-500 hover:text-slate-700'}`}>
+              {p}
             </button>
           ))}
         </div>
       </div>
 
       {/* KPI cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: 'Tổng lượt đặt',  value: totalUsed,            color: 'indigo',  icon: Calendar },
-          { label: 'Lượt hoàn thành',value: totalDone,             color: 'emerald', icon: CheckCircle2 },
-          { label: 'Tỷ lệ hủy',      value: `${cancelRate}%`,     color: 'rose',    icon: XCircle },
-          { label: 'Doanh thu DV',   value: fmtVND(totalRev),     color: 'amber',   icon: TrendingUp },
+          { label: 'TỔNG LƯỢT ĐẶT',  value: totalUsed,            color: '#4f46e5', lightColor: '#c7d2fe', iconColor: 'text-indigo-500',  iconBg: 'bg-indigo-100/50', icon: Calendar },
+          { label: 'LƯỢT HOÀN THÀNH',value: totalDone,             color: '#10b981', lightColor: '#a7f3d0', iconColor: 'text-emerald-500', iconBg: 'bg-emerald-100/50', icon: CheckCircle2 },
+          { label: 'TỶ LỆ HỦY',      value: `${cancelRate}%`,     color: '#ef4444', lightColor: '#fecaca', iconColor: 'text-rose-500', iconBg: 'bg-rose-100/50', icon: XCircle },
+          { label: 'DOANH THU DV',   value: fmtVND(totalRev),     color: '#b45309', lightColor: '#fde68a', iconColor: 'text-amber-600', iconBg: 'bg-amber-100/50', icon: TrendingUp },
         ].map((c, i) => (
           <motion.div key={c.label} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
-            className={`bg-${c.color}-50 border border-${c.color}-100 rounded-2xl p-4 shadow-sm`}>
-            <c.icon className={`w-5 h-5 text-${c.color}-500 mb-2`} />
-            <p className={`text-2xl font-black text-${c.color}-700`}>{c.value}</p>
-            <p className="text-xs font-semibold text-slate-500 mt-0.5">{c.label}</p>
+            className="bg-white rounded-[18px] p-3.5 shadow-sm relative flex flex-col justify-between min-h-[120px]"
+            style={{ 
+               borderStyle: 'solid',
+               borderWidth: '2px',
+               borderLeftColor: c.color,
+               borderBottomColor: c.color,
+               borderTopColor: c.lightColor,
+               borderRightColor: c.lightColor
+            }}>
+            <div className={`w-9 h-9 rounded-full flex items-center justify-center ${c.iconBg}`}>
+               {c.icon && <c.icon className={`w-4.5 h-4.5 ${c.iconColor}`} />}
+            </div>
+            <div className="mt-2">
+              <p className="text-[8px] sm:text-[9px] font-bold text-slate-500 tracking-wider mb-1 uppercase">{c.label}</p>
+              <p className="text-xl sm:text-2xl font-black text-slate-900 leading-tight break-all sm:break-normal">{c.value}</p>
+            </div>
           </motion.div>
         ))}
       </div>
 
-      {/* Top services table */}
-      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-        <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
-          <Award className="w-4 h-4 text-amber-500" />
-          <span className="text-sm font-bold text-slate-800">Top dịch vụ sử dụng nhiều nhất</span>
-        </div>
-        <div className="divide-y divide-slate-100">
-          {serviceStats.map((s, i) => {
-            const usePct   = totalUsed > 0 ? (s.total / totalUsed) * 100 : 0;
-            const cancelPct = s.total > 0 ? (s.cancelled / s.total) * 100 : 0;
-            const RANK_CLS  = i === 0 ? 'bg-amber-400 text-white' : i === 1 ? 'bg-slate-300 text-white' : i === 2 ? 'bg-orange-300 text-white' : 'bg-slate-100 text-slate-500';
-            return (
-              <motion.div key={s.name} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.04 }}
-                className="px-5 py-4 hover:bg-slate-50/60 transition-colors">
-                <div className="flex items-center gap-4">
-                  <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-black shrink-0 ${RANK_CLS}`}>{i+1}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-1.5 flex-wrap gap-2">
-                      <span className="text-sm font-bold text-slate-800 truncate">{s.name}</span>
-                      <div className="flex items-center gap-3 text-xs shrink-0">
-                        <span className="text-slate-500">{s.total} lượt</span>
-                        <span className="text-emerald-600 font-semibold">{s.done} hoàn thành</span>
-                        <span className="text-rose-500 font-semibold">{cancelPct.toFixed(0)}% hủy</span>
-                        <span className="text-indigo-700 font-black">{fmtVND(s.revenue)}</span>
+      {/* 2 Main Sections */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        {/* Top dịch vụ sử dụng nhiều nhất (Vertical Bar Chart) */}
+        <div className="bg-white rounded-[18px] p-4 shadow-sm flex flex-col min-h-[240px] lg:col-span-3" style={{ border: '1px solid #f1f5f9' }}>
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <Award className="w-4 h-4 text-amber-500" />
+            <span className="text-sm font-bold text-slate-800">Top dịch vụ sử dụng nhiều nhất</span>
+          </div>
+          <div className="flex-1 flex items-end justify-around gap-2 sm:gap-3 px-1.5 pb-3 pt-4">
+            {syncedTop4.length === 0 ? (
+               <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs pb-8">Chưa có dữ liệu</div>
+            ) : (
+               syncedTop4.map((s, i) => {
+                 const maxTotal = Math.max(...syncedTop4.map(x => x.total), 1);
+                 const heightPct = (s.total / maxTotal) * 100;
+                 const barOpacity = i === 0 ? 1 : i === 1 ? 0.9 : i === 2 ? 0.8 : 0.4;
+                 return (
+                   <div key={s.name} className="flex flex-col items-center gap-2 w-1/4">
+                      <div className="w-full max-w-[38px] flex items-end justify-center h-[120px] sm:h-[150px]">
+                         <motion.div 
+                           initial={{ height: 0 }} 
+                           animate={{ height: `${heightPct}%` }} 
+                           transition={{ duration: 1, delay: i * 0.1 }}
+                           className="w-full bg-indigo-600 rounded-t-[6px]"
+                           style={{ opacity: barOpacity }}
+                         />
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <MiniBar pct={usePct} color="#6366f1" />
-                      <span className="text-[10px] text-slate-400 w-8 text-right">{usePct.toFixed(0)}%</span>
-                    </div>
+                      <span className="text-[8px] sm:text-[9px] font-bold text-slate-600 text-center leading-tight line-clamp-2 h-6 px-0.5">
+                        {s.name}
+                      </span>
+                   </div>
+                 );
+               })
+            )}
+          </div>
+        </div>
+
+        {/* Doanh thu theo dịch vụ */}
+        <div className="bg-white rounded-[18px] p-4 shadow-sm lg:col-span-2" style={{ border: '1px solid #f1f5f9' }}>
+          <div className="flex items-center gap-1.5 mb-5">
+            <BarChart3 className="w-4 h-4 text-indigo-600" />
+            <span className="text-sm font-bold text-slate-800">Doanh thu theo dịch vụ</span>
+          </div>
+          <div className="space-y-4">
+            {syncedTop4.map((s, i) => {
+              const maxRev = Math.max(...syncedTop4.map(x => x.revenue), 1);
+              const pct = maxRev > 0 ? (s.revenue / maxRev) * 100 : 0;
+              return (
+                <div key={s.name}>
+                  <div className="flex justify-between text-[10px] mb-1.5">
+                    <span className="font-bold text-slate-700 truncate mr-2">{s.name}</span>
+                    <span className="font-black text-slate-900">{formatCompact(s.revenue)}</span>
+                  </div>
+                  <div className="h-2.5 bg-emerald-100 rounded-full overflow-hidden">
+                    <motion.div 
+                      initial={{ width: 0 }} 
+                      animate={{ width: `${pct}%` }} 
+                      transition={{ duration: 0.8, delay: i * 0.1 }} 
+                      className="h-full bg-emerald-700 rounded-full" 
+                    />
                   </div>
                 </div>
-              </motion.div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Revenue per service bar */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-        <div className="flex items-center gap-2 mb-4">
-          <BarChart3 className="w-4 h-4 text-indigo-500" />
-          <span className="text-sm font-bold text-slate-800">Doanh thu theo dịch vụ</span>
-        </div>
-        <div className="space-y-3">
-          {serviceStats.filter(s => s.revenue > 0).map((s, i) => {
-            const maxRev = Math.max(...serviceStats.map(x => x.revenue), 1);
-            return (
-              <div key={s.name} className="flex items-center gap-3">
-                <span className="text-xs font-semibold text-slate-600 w-44 truncate shrink-0">{s.name}</span>
-                <MiniBar pct={(s.revenue / maxRev) * 100} color="#10b981" />
-                <span className="text-xs font-bold text-emerald-700 w-28 text-right shrink-0">{fmtVND(s.revenue)}</span>
-              </div>
-            );
-          })}
-          {serviceStats.every(s => s.revenue === 0) && (
-            <p className="text-sm text-slate-400 text-center py-4">Chưa có dữ liệu doanh thu.</p>
-          )}
+              );
+            })}
+            {syncedTop4.every(s => s.revenue === 0) && (
+              <p className="text-xs text-slate-400 text-center py-3">Chưa có dữ liệu doanh thu.</p>
+            )}
+            <div className="text-center mt-4 pt-3 border-t border-slate-100">
+               <span className="text-[9px] text-slate-400 italic">Dữ liệu được cập nhật thời gian thực</span>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Monthly trend */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+      <div className="bg-white border border-slate-100 rounded-[18px] p-4 shadow-sm">
         <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-violet-500" />
+          <div className="flex items-center gap-1.5">
+            <TrendingUp className="w-4 h-4 text-indigo-600" />
             <span className="text-sm font-bold text-slate-800">Xu hướng sử dụng dịch vụ theo tháng</span>
           </div>
           <div className="flex items-center gap-3">
             {top3.map((name, i) => (
-              <span key={name} className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600">
-                <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: TREND_COLORS[i] }} />
-                {name.length > 20 ? name.slice(0,20)+'…' : name}
+              <span key={name} className="flex items-center gap-1 text-[10px] font-bold text-slate-700">
+                <span className="w-2 h-2 rounded-full inline-block" style={{ background: TREND_COLORS[i] }} />
+                {name}
               </span>
             ))}
           </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-slate-100">
-                <th className="py-2 px-3 text-left font-bold text-slate-500 uppercase tracking-wider">Tháng</th>
-                {top3.map((name, i) => (
-                  <th key={name} className="py-2 px-3 text-center font-bold" style={{ color: TREND_COLORS[i] }}>
-                    {name.length > 18 ? name.slice(0,18)+'…' : name}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {monthlyTrend.map((row, ri) => (
-                <tr key={row.label} className={`border-b border-slate-50 ${ri % 2 === 0 ? 'bg-slate-50/30' : ''}`}>
-                  <td className="py-2.5 px-3 font-bold text-slate-700">{row.label}</td>
-                  {top3.map((name, i) => (
-                    <td key={name} className="py-2.5 px-3 text-center font-semibold" style={{ color: row[name] > 0 ? TREND_COLORS[i] : '#94a3b8' }}>
-                      {row[name] || 0}
-                    </td>
-                  ))}
-                </tr>
+        {top3.length > 0 ? (
+          <div className="w-full h-[225px] mt-3">
+            <svg viewBox="0 0 800 300" className="w-full h-full drop-shadow-sm">
+              {/* Grid lines */}
+              {[0, 1, 2, 3, 4].map(step => {
+                const y = 240 - (step / 4) * 200;
+                return (
+                  <g key={step}>
+                    <line x1="60" y1={y} x2="760" y2={y} stroke="#f1f5f9" strokeWidth="1.5" strokeDasharray="4 4" />
+                    <text x="50" y={y + 4} fontSize="12" fill="#94a3b8" textAnchor="end" fontWeight="600">
+                      {Math.round((step / 4) * maxTrendVal)}
+                    </text>
+                  </g>
+                );
+              })}
+
+              {/* X Axis labels */}
+              {monthlyTrend.map((row, i) => (
+                <text key={i} x={80 + (i * 128)} y="270" fontSize="13" fill="#64748b" textAnchor="middle" fontWeight="bold">
+                  {row.label}
+                </text>
               ))}
-            </tbody>
-          </table>
-        </div>
+
+              {/* Lines */}
+              {top3.map((name, i) => {
+                const pts = monthlyTrend.map((row, index) => ({
+                  x: 80 + (index * 128),
+                  y: 240 - ((row[name] || 0) / maxTrendVal) * 200,
+                  val: row[name] || 0
+                }));
+                const d = `M ${pts.map(p => `${p.x},${p.y}`).join(' L ')}`;
+                return (
+                  <g key={name}>
+                    <motion.path
+                      initial={{ pathLength: 0 }}
+                      animate={{ pathLength: 1 }}
+                      transition={{ duration: 1.5, ease: "easeOut", delay: i * 0.2 }}
+                      d={d}
+                      fill="none"
+                      stroke={TREND_COLORS[i]}
+                      strokeWidth="4"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    {pts.map((p, j) => (
+                      <motion.circle
+                        key={j}
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ delay: 0.8 + (i * 0.2) + (j * 0.1) }}
+                        cx={p.x}
+                        cy={p.y}
+                        r="5"
+                        fill="white"
+                        stroke={TREND_COLORS[i]}
+                        strokeWidth="2.5"
+                      />
+                    ))}
+                    {/* Tooltip values above circles */}
+                    {pts.map((p, j) => (
+                      p.val > 0 && (
+                        <motion.text
+                          key={`txt-${j}`}
+                          initial={{ opacity: 0, y: p.y }}
+                          animate={{ opacity: 1, y: p.y - 12 }}
+                          transition={{ delay: 1.2 + (i * 0.2) + (j * 0.1) }}
+                          x={p.x}
+                          fontSize="12"
+                          fill={TREND_COLORS[i]}
+                          textAnchor="middle"
+                          fontWeight="bold"
+                        >
+                          {p.val}
+                        </motion.text>
+                      )
+                    ))}
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
+        ) : (
+          <div className="w-full h-[225px] flex items-center justify-center text-slate-400 text-sm">
+            Không có dữ liệu
+          </div>
+        )}
       </div>
     </div>
   );
