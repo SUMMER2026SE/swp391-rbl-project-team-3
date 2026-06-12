@@ -46,7 +46,17 @@ import ReceptionistFeedbackView from '../components/Receptionist/ReceptionistFee
 import { NotificationModel } from '../models/NotificationModel';
 import ReceptionistChatTab from '../components/Receptionist/ReceptionistChatTab';
 import { ReceptionistChatModel } from '../models/ChatModel';
+import LiquidSidebarMenu from '../components/ui/LiquidSidebarMenu';
 
+const navItems = [
+  { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard },
+  { id: 'waiting_list', label: 'Danh sách Hàng chờ', icon: Users },
+  { id: 'appointments', label: 'Quản lý Lịch hẹn', icon: CalendarDays },
+  { id: 'payments', label: 'Thanh toán & Hóa đơn', icon: CreditCard },
+  { id: 'doctor_schedules', label: 'Lịch Bác sĩ', icon: Stethoscope },
+  { id: 'feedback', label: 'Đánh giá bệnh nhân', icon: Star },
+  { id: 'chat', label: 'Trò chuyện & Hỗ trợ', icon: MessageSquare },
+];
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 30 },
@@ -390,31 +400,12 @@ export default function ReceptionistDashboard() {
           </div>
 
           {/* Navigation Links */}
-          <nav className="space-y-1">
-            {[
-              { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard },
-              { id: 'waiting_list', label: 'Danh sách Hàng chờ', icon: Users },
-              { id: 'appointments', label: 'Quản lý Lịch hẹn', icon: CalendarDays },
-              { id: 'payments', label: 'Thanh toán & Hóa đơn', icon: CreditCard },
-              { id: 'doctor_schedules', label: 'Lịch Bác sĩ', icon: Stethoscope },
-              { id: 'feedback', label: 'Đánh giá bệnh nhân', icon: Star },
-              { id: 'chat', label: 'Trò chuyện & Hỗ trợ', icon: MessageSquare },
-
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all border-none cursor-pointer bg-transparent text-left ${
-                  activeTab === tab.id
-                    ? 'font-bold bg-emerald-50 text-emerald-700 shadow-sm border border-emerald-100/50'
-                    : 'text-slate-500 hover:text-teal-600 hover:bg-slate-100'
-                }`}
-              >
-                <tab.icon className={`w-5 h-5 ${activeTab === tab.id ? 'text-emerald-600' : 'text-slate-400'}`} />
-                <span className="text-sm">{tab.label}</span>
-              </button>
-            ))}
-          </nav>
+          <LiquidSidebarMenu
+            items={navItems}
+            activeId={activeTab}
+            onChange={setActiveTab}
+            isSidebarExpanded={true}
+          />
         </div>
 
         {/* Footer actions */}

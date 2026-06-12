@@ -40,6 +40,7 @@ import WorkSchedule from '../components/Doctor/WorkSchedule';
 import VirtualClinicWorkspace from '../components/Doctor/VirtualClinic/VirtualClinicWorkspace';
 import DoctorFeedbackView from '../components/Doctor/DoctorFeedbackView';
 import { doctors } from '../mockData';
+import LiquidSidebarMenu from '../components/ui/LiquidSidebarMenu';
 
 
 export default function DoctorDashboard() {
@@ -191,7 +192,7 @@ export default function DoctorDashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 relative overflow-x-hidden flex w-full font-sans antialiased text-slate-800">
+    <div className="min-h-screen bg-transparent relative overflow-x-hidden flex w-full font-sans antialiased text-slate-800">
       <style>{`
         @keyframes float {
           0%, 100% { transform: translateY(0) translateX(0); }
@@ -219,7 +220,7 @@ export default function DoctorDashboard() {
       <motion.aside
         animate={{ width: isSidebarExpanded ? 256 : 80 }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        className="hidden md:flex backdrop-blur-2xl bg-white/30 border-r border-white/40 fixed h-full z-40 flex-col py-8 px-3 justify-between shadow-[4px_0_24px_rgba(0,0,0,0.03),inset_-1px_0_2px_rgba(255,255,255,0.7)] overflow-hidden"
+        className="hidden md:flex bg-white/40 backdrop-blur-2xl border-r border-white/60 shadow-[0_8px_32px_0_rgba(31,38,135,0.07),inset_0_0_20px_rgba(255,255,255,0.5)] dark:bg-slate-900/40 dark:border-slate-700/50 fixed h-full z-40 flex-col py-8 px-3 justify-between overflow-hidden transition-all duration-500 ease-out"
       >
         <div className="flex flex-col gap-6">
           {/* Logo & Toggle Header */}
@@ -259,52 +260,15 @@ export default function DoctorDashboard() {
           </div>
 
           {/* Navigation Links */}
-          <nav className="space-y-1.5">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
-
-              return (
-                <div key={item.id} className="relative group">
-                  <button
-                    onClick={() => {
-                      setActiveTab(item.id);
-                      setActiveAppointment(null);
-                    }}
-                    className={`w-full flex items-center gap-3 rounded-2xl transition-all active:scale-[0.98] overflow-hidden ${
-                      isSidebarExpanded ? 'px-4 py-3' : 'px-0 py-3 justify-center'
-                    } ${
-                      isActive
-                        ? 'font-semibold bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/25'
-                        : 'font-medium text-slate-600 hover:text-teal-700 hover:bg-teal-50/60'
-                    }`}
-                  >
-                    <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-white' : 'text-slate-400'}`} />
-                    <AnimatePresence>
-                      {isSidebarExpanded && (
-                        <motion.span
-                          initial={{ opacity: 0, width: 0 }}
-                          animate={{ opacity: 1, width: 'auto' }}
-                          exit={{ opacity: 0, width: 0 }}
-                          transition={{ duration: 0.15 }}
-                          className="text-[14px] whitespace-nowrap overflow-hidden"
-                        >
-                          {item.label}
-                        </motion.span>
-                      )}
-                    </AnimatePresence>
-                  </button>
-                  {/* Tooltip for collapsed state */}
-                  {!isSidebarExpanded && (
-                    <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
-                      {item.label}
-                      <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-slate-800"></div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </nav>
+          <LiquidSidebarMenu
+            items={navItems}
+            activeId={activeTab}
+            onChange={(id) => {
+              setActiveTab(id);
+              setActiveAppointment(null);
+            }}
+            isSidebarExpanded={isSidebarExpanded}
+          />
         </div>
 
         {/* Footer actions */}
@@ -393,7 +357,7 @@ export default function DoctorDashboard() {
             backgroundColor: navBg,
             boxShadow: navShadow,
           }}
-          className="backdrop-blur-2xl flex justify-between items-center h-20"
+          className="backdrop-blur-2xl flex justify-between items-center h-20 transition-all duration-500 ease-out"
         >
           <div className="flex items-center gap-4">
             <span className="font-black text-2xl text-gradient-emerald md:hidden tracking-tight">DermaSmart</span>
@@ -451,7 +415,7 @@ export default function DoctorDashboard() {
                       initial={{ opacity: 0, y: 10, scale: 0.95 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      className="absolute right-0 mt-2 w-80 bg-white/95 backdrop-blur-md border border-slate-200 shadow-2xl rounded-2xl p-4 z-50 max-h-[350px] overflow-y-auto"
+                      className="absolute right-0 mt-2 w-80 bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_32px_0_rgba(31,38,135,0.07),inset_0_0_20px_rgba(255,255,255,0.5)] dark:bg-slate-900/40 dark:border-slate-700/50 rounded-2xl p-4 z-50 max-h-[350px] overflow-y-auto transition-all duration-500 ease-out"
                     >
                       <div className="flex justify-between items-center pb-2 border-b border-slate-100 mb-2">
                         <span className="text-sm font-bold text-slate-800">Thông báo của bạn</span>

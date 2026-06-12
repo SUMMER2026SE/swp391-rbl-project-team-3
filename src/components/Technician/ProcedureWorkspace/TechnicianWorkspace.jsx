@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, CheckCircle2, Check, ChevronRight, UploadCloud, FlaskConical, FileCheck, XCircle, Image as ImageIcon, X } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Check, ChevronRight, UploadCloud, FlaskConical, FileCheck, XCircle, Image as ImageIcon, X, Stethoscope } from 'lucide-react';
 import { motion, AnimatePresence, useMotionValue, useMotionTemplate, animate } from 'framer-motion';
+import LiquidTabSwitcher from '../../ui/LiquidTabSwitcher';
 
 // ─── Animation Variants ──────────────────────────────────────────────────────
 const stepTransition = { type: 'spring', stiffness: 300, damping: 30, mass: 0.8 };
@@ -38,8 +39,8 @@ const pulseGlow = {
 
 // ─── Stepper Config ──────────────────────────────────────────────────────────
 const STEPS = [
-  { key: 'collection', label: 'Thực hiện', sublabel: 'Collection', icon: FlaskConical },
-  { key: 'confirmation', label: 'Xác nhận', sublabel: 'Confirmation', icon: FileCheck },
+  { id: 0, key: 'collection', label: 'Thực hiện', sublabel: 'Collection', icon: FlaskConical },
+  { id: 1, key: 'confirmation', label: 'Xác nhận', sublabel: 'Confirmation', icon: FileCheck },
 ];
 
 // ─── Main Component ──────────────────────────────────────────────────────────
@@ -456,61 +457,12 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
   //  RENDER: Stepper Navigation
   // ═══════════════════════════════════════════════════════════════════════════
   const renderStepper = () => (
-    <div className="flex items-center gap-2 px-1 mb-5">
-      {STEPS.map((step, index) => {
-        const StepIcon = step.icon;
-        const isActive = index === activeStep;
-        const isCompleted = index < activeStep;
-
-        return (
-          <React.Fragment key={step.key}>
-            <motion.button
-              onClick={() => goToStep(index)}
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              className={`
-                flex items-center gap-2.5 px-4 py-2.5 rounded-xl transition-all duration-300 flex-1
-                ${isActive
-                  ? 'stepper-active shadow-[0_8px_32px_rgba(0,0,0,0.04)]'
-                  : isCompleted
-                    ? 'bg-emerald-50 border border-emerald-200 text-emerald-700'
-                    : 'glass-inner text-slate-500 hover:text-slate-700 bg-white/40'
-                }
-              `}
-            >
-              <div
-                className={`
-                  w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors duration-300
-                  ${isActive
-                    ? 'bg-white/30 text-emerald-900'
-                    : isCompleted
-                      ? 'bg-emerald-100 text-emerald-600'
-                      : 'bg-slate-100 text-slate-400'
-                  }
-                `}
-              >
-                {isCompleted ? (
-                  <Check className="w-4 h-4" />
-                ) : (
-                  <StepIcon className="w-4 h-4" />
-                )}
-              </div>
-              <div className="text-left min-w-0">
-                <p className={`text-sm leading-tight ${isActive ? 'text-emerald-900 font-bold' : isCompleted ? 'text-emerald-700 font-semibold' : 'text-slate-500 font-semibold'}`}>
-                  {step.label}
-                </p>
-                <p className={`text-[10px] leading-tight mt-0.5 ${isActive ? 'text-emerald-700/80 font-medium' : isCompleted ? 'text-emerald-600/80' : 'text-slate-400'}`}>
-                  {step.sublabel}
-                </p>
-              </div>
-            </motion.button>
-
-            {index < STEPS.length - 1 && (
-              <ChevronRight className="w-4 h-4 text-slate-300 shrink-0 mx-0.5" />
-            )}
-          </React.Fragment>
-        );
-      })}
+    <div className="mb-5">
+      <LiquidTabSwitcher
+        tabs={STEPS}
+        activeTab={activeStep}
+        onChange={goToStep}
+      />
     </div>
   );
 

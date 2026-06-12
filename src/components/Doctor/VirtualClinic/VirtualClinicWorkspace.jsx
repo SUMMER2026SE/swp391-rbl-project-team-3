@@ -17,6 +17,7 @@ import FollowUpAppointmentForm from './RightPanel/FollowUpAppointmentForm';
 
 import { ChatModel } from '../../../models/ChatModel';
 import { doctors } from '../../../mockData';
+import LiquidTabSwitcher from '../../ui/LiquidTabSwitcher';
 
 export default function VirtualClinicWorkspace({ appointment, onBack, handleCompleteExamination }) {
   const [clinicalStep, setClinicalStep] = useState(1);
@@ -176,49 +177,12 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
         <div className="lg:col-span-7 xl:col-span-6 h-full flex flex-col min-h-0">
 
           {/* Clinical Stepper — responsive horizontal scroll to prevent cutoff */}
-          <div className="glass-3d-soft rounded-[1.75rem] p-2.5 mb-8 flex items-stretch gap-1.5 overflow-x-auto hide-scrollbar flex-shrink-0">
-            {steps.map((step, index) => {
-              const Icon = step.icon;
-              const isActive = clinicalStep === step.id;
-              const isPast = clinicalStep > step.id;
-
-              return (
-                <React.Fragment key={step.id}>
-                  <motion.button
-                    onClick={() => setClinicalStep(step.id)}
-                    whileTap={{ scale: 0.97 }}
-                    animate={{ scale: isActive ? 1 : 0.97 }}
-                    transition={stepTransition}
-                    className={`relative flex-1 min-w-0 flex items-center gap-2.5 rounded-2xl px-3 sm:px-4 py-3 border text-left transition-colors duration-300 cursor-pointer ${
-                      isActive
-                        ? 'stepper-active bg-gradient-to-br from-emerald-500 to-teal-600 text-white border-emerald-300/60'
-                        : isPast
-                          ? 'bg-white text-emerald-700 border-emerald-100 shadow-sm hover:bg-emerald-50/60'
-                          : 'bg-white/30 text-slate-400 border-white/50 grayscale opacity-60 hover:opacity-100 hover:grayscale-0'
-                    }`}
-                  >
-                    <span className={`flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0 transition-colors ${
-                      isActive ? 'bg-white/25 text-white'
-                        : isPast ? 'bg-emerald-50 text-emerald-600'
-                        : 'bg-slate-100 text-slate-400'
-                    }`}>
-                      {isPast ? <Check className="w-4 h-4 stroke-[3]" /> : <Icon className="w-4 h-4" />}
-                    </span>
-                    <div className="hidden sm:block min-w-0">
-                      <span className={`block text-[10px] font-bold uppercase tracking-wider ${isActive ? 'text-white/80' : 'opacity-70'}`}>
-                        Bước {step.id}
-                      </span>
-                      <span className="block text-sm font-semibold leading-tight truncate">{step.label}</span>
-                    </div>
-                  </motion.button>
-                  {index < steps.length - 1 && (
-                    <ChevronRight className={`self-center w-4 h-4 flex-shrink-0 transition-colors ${
-                      clinicalStep > step.id ? 'text-emerald-400' : 'text-slate-300'
-                    }`} />
-                  )}
-                </React.Fragment>
-              );
-            })}
+          <div className="mb-8">
+            <LiquidTabSwitcher
+              tabs={steps}
+              activeTab={clinicalStep}
+              onChange={setClinicalStep}
+            />
           </div>
 
           {/* Stepper Content Area — a liquid surface that spreads on press */}

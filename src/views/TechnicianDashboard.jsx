@@ -31,6 +31,7 @@ import AssignedTasksList from '../components/Technician/AssignedTasks/AssignedTa
 import TechnicianSchedule from '../components/Technician/WorkSchedule/TechnicianSchedule';
 import TechnicianWorkspace from '../components/Technician/ProcedureWorkspace/TechnicianWorkspace';
 import TechnicianFeedbackView from '../components/Technician/TechnicianFeedbackView';
+import LiquidSidebarMenu from '../components/ui/LiquidSidebarMenu';
 
 export default function TechnicianDashboard() {
   const { user, logout } = useAuth();
@@ -237,49 +238,15 @@ export default function TechnicianDashboard() {
           </div>
 
           {/* Nav Items */}
-          <nav className="flex flex-col gap-1.5">
-            {navItems.map((item) => {
-              const isActive = activeTab === item.id && !activeTask;
-              const Icon = item.icon;
-              return (
-                <motion.button
-                  key={item.id}
-                  onClick={() => {
-                    setActiveTab(item.id);
-                    setActiveTask(null);
-                  }}
-                  className={`relative flex items-center gap-3 px-3 py-2.5 rounded-2xl transition-all duration-200 group ${
-                    isActive
-                      ? 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/25'
-                      : 'text-slate-600 hover:text-teal-700 hover:bg-teal-50/60'
-                  }`}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <Icon size={20} className="flex-shrink-0" />
-                  <AnimatePresence>
-                    {isSidebarExpanded && (
-                      <motion.span
-                        initial={{ opacity: 0, x: -8 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -8 }}
-                        transition={{ duration: 0.18 }}
-                        className="text-sm font-medium whitespace-nowrap"
-                      >
-                        {item.label}
-                      </motion.span>
-                    )}
-                  </AnimatePresence>
-                  {/* Tooltip when collapsed */}
-                  {!isSidebarExpanded && (
-                    <div className="absolute left-full ml-3 px-2.5 py-1 rounded-lg bg-slate-800 text-white text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-xl z-50">
-                      {item.label}
-                    </div>
-                  )}
-                </motion.button>
-              );
-            })}
-          </nav>
+          <LiquidSidebarMenu
+            items={navItems}
+            activeId={activeTab === 'overview' && activeTask ? '' : activeTab}
+            onChange={(id) => {
+              setActiveTab(id);
+              setActiveTask(null);
+            }}
+            isSidebarExpanded={isSidebarExpanded}
+          />
         </div>
 
         {/* Sidebar Footer */}

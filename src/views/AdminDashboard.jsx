@@ -25,6 +25,7 @@ import ConsultationTimeManagement from '../components/Admin/ConsultationTimeMana
 import RevenueStatistics from '../components/Admin/RevenueStatistics';
 import VoucherManagement from '../components/Admin/VoucherManagement';
 import ReportsPage from '../components/Admin/ReportsPage';
+import LiquidSidebarMenu from '../components/ui/LiquidSidebarMenu';
 
 // Placeholder components for other tabs
 const PlaceholderTab = ({ title }) => (
@@ -89,28 +90,12 @@ const AdminDashboard = () => {
             <p className="text-xs text-indigo-500/80 font-bold tracking-widest mt-1 uppercase">Quản trị hệ thống</p>
           </div>
           <nav className="mt-6 px-6 space-y-3">
-            {navItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center px-5 py-4 rounded-2xl transition-all duration-300 relative group overflow-hidden ${
-                  activeTab === item.id
-                    ? 'bg-gradient-to-r from-indigo-50 to-sky-50/50 shadow-sm border border-indigo-100/50'
-                    : 'hover:bg-slate-100/50 hover:shadow-sm'
-                }`}
-              >
-                {activeTab === item.id && (
-                  <motion.div 
-                    layoutId="activeTabIndicator"
-                    className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-indigo-500 to-sky-500 rounded-r-full" 
-                  />
-                )}
-                <item.icon className={`w-5 h-5 mr-4 transition-colors ${activeTab === item.id ? 'text-indigo-600' : 'text-slate-400 group-hover:text-indigo-500'}`} />
-                <span className={`font-bold text-sm transition-colors ${activeTab === item.id ? 'text-indigo-900' : 'text-slate-600 group-hover:text-slate-900'}`}>
-                  {item.label}
-                </span>
-              </button>
-            ))}
+            <LiquidSidebarMenu
+              items={navItems}
+              activeId={activeTab}
+              onChange={setActiveTab}
+              isSidebarExpanded={true}
+            />
           </nav>
         </div>
 
