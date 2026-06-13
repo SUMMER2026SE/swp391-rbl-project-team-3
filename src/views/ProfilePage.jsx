@@ -14,10 +14,10 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeft, User, Settings, BarChart3, Calendar, FileText, Star } from 'lucide-react';
+import { ArrowLeft, User, Settings, BarChart3, Calendar, FileText, Star, Loader2 } from 'lucide-react';
 
 import { useAuth } from '../context/AuthContext';
-import { useProfileData } from '../components/profile/useProfileData';
+import { useProfileData, normalizeProfileData } from '../components/profile/useProfileData';
 import ProfileSummaryCard from '../components/profile/ProfileSummaryCard';
 import ProfileTabs from '../components/profile/ProfileTabs';
 import PersonalInfoTab from '../components/profile/tabs/PersonalInfoTab';
@@ -26,6 +26,7 @@ import StaffInsightsTab from '../components/profile/tabs/StaffInsightsTab';
 import MedicalRecordTab from '../components/profile/tabs/MedicalRecordTab';
 import AppointmentsTab from '../components/PatientPortal/AppointmentsTab';
 import PatientFeedbackTab from '../components/PatientPortal/PatientFeedbackTab';
+import { ProfileModel } from '../models/ProfileModel';
 
 const tabContentVariants = {
   hidden: { opacity: 0, y: 16, scale: 0.99 },
@@ -36,15 +37,12 @@ const tabContentVariants = {
 export default function ProfilePage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('personal');
 
-  // Local avatar override so the "change photo" hover affordance is reflected
-  // immediately without needing a real upload endpoint.
-  const [avatarOverride, setAvatarOverride] = useState(null);
-
-  const profile = useProfileData(user);
-  const viewProfile = avatarOverride ? { ...profile, avatar: avatarOverride } : profile;
+  const { profile, isLoading, error, setProfile } = useProfileData(user);
 
   const tabs = useMemo(() => {
+    if (!profile) return [];
     const common = [
       { id: 'personal', label: 'Thông tin cá nhân', icon: User },
       { id: 'settings', label: 'Cài đặt tài khoản', icon: Settings },
@@ -58,9 +56,56 @@ export default function ProfilePage() {
       { id: 'records', label: 'Hồ sơ bệnh án', icon: FileText },
       { id: 'feedback', label: 'Đánh giá của tôi', icon: Star },
     ];
-  }, [profile.kind]);
+  }, [profile?.kind]);
 
-  const [activeTab, setActiveTab] = useState('personal');
+  const handleAvatarChange = async (file) => {
+    if (!user?.id) return;
+    try {
+      const publicUrl = await ProfileModel.uploadAvatar(user.id, file);
+      setProfile((prev) => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          avatar: publicUrl,
+        };
+      });
+    } catch (err) {
+      console.error('Error uploading avatar:', err);
+    }
+  };
+
+  const handleProfileSaved = (updatedRawProfile) => {
+    const visitsCount = profile?.metrics?.visits || 0;
+    const normalized = normalizeProfileData(updatedRawProfile, profile.role, visitsCount);
+    setProfile(normalized);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen font-sans antialiased relative bg-[url('https://images.unsplash.com/photo-1557682250-33bd709cbe85?q=80&w=2029&auto=format&fit=crop')] bg-cover bg-fixed bg-center flex items-center justify-center">
+        <div className="absolute inset-0 bg-background/80 backdrop-blur-3xl" />
+        <div className="relative z-10 flex flex-col items-center gap-3">
+          <Loader2 className="w-10 h-10 animate-spin text-primary" />
+          <p className="text-sm font-bold text-on-surface-variant/70">Đang tải hồ sơ...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !profile) {
+    return (
+      <div className="min-h-screen font-sans antialiased relative bg-[url('https://images.unsplash.com/photo-1557682250-33bd709cbe85?q=80&w=2029&auto=format&fit=crop')] bg-cover bg-fixed bg-center flex items-center justify-center">
+        <div className="absolute inset-0 bg-background/80 backdrop-blur-3xl" />
+        <div className="relative z-10 glass-3d rounded-2xl p-6 text-center max-w-md">
+          <h2 className="text-xl font-bold text-rose-600 mb-2">Lỗi tải dữ liệu</h2>
+          <p className="text-sm text-on-surface-variant/80 mb-4">{error?.message || 'Không thể lấy thông tin hồ sơ của bạn.'}</p>
+          <button onClick={() => window.location.reload()} className="btn-primary px-4 py-2 rounded-xl text-sm font-bold">
+            Thử lại
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen font-sans antialiased relative bg-[url('https://images.unsplash.com/photo-1557682250-33bd709cbe85?q=80&w=2029&auto=format&fit=crop')] bg-cover bg-fixed bg-center">
@@ -96,7 +141,7 @@ export default function ProfilePage() {
       >
         {/* Left — sticky identity card */}
         <div className="md:col-span-4 md:sticky md:top-6">
-          <ProfileSummaryCard profile={viewProfile} onAvatarChange={setAvatarOverride} />
+          <ProfileSummaryCard profile={profile} onAvatarChange={handleAvatarChange} />
         </div>
 
         {/* Right — tabs + dynamic content */}
@@ -112,11 +157,11 @@ export default function ProfilePage() {
                 animate="visible"
                 exit="exit"
               >
-                {activeTab === 'personal' && <PersonalInfoTab profile={viewProfile} />}
+                {activeTab === 'personal' && <PersonalInfoTab profile={profile} onSaved={handleProfileSaved} />}
                 {activeTab === 'settings' && <AccountSettingsTab />}
-                {activeTab === 'insights' && <StaffInsightsTab profile={viewProfile} />}
+                {activeTab === 'insights' && <StaffInsightsTab profile={profile} />}
                 {activeTab === 'appointments' && <AppointmentsTab />}
-                {activeTab === 'records' && <MedicalRecordTab profile={viewProfile} />}
+                {activeTab === 'records' && <MedicalRecordTab profile={profile} />}
                 {activeTab === 'feedback' && <PatientFeedbackTab user={user} />}
               </motion.div>
             </AnimatePresence>

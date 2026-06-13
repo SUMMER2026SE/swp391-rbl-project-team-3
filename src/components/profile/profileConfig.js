@@ -76,24 +76,24 @@ export const ROLE_THEME = {
  */
 export const ROLE_METRICS = {
   ADMIN: [
-    { icon: Users, label: 'Nhân sự quản lý', value: '32', accent: 'text-violet-600' },
-    { icon: Activity, label: 'Phiên hệ thống', value: '1.4k', accent: 'text-fuchsia-600' },
+    { icon: Users, label: 'Nhân sự quản lý', value: null, accent: 'text-violet-600' },
+    { icon: Activity, label: 'Phiên hệ thống', value: null, accent: 'text-fuchsia-600' },
   ],
   DOCTOR: [
-    { icon: Stethoscope, label: 'Ca khám thành công', value: '84', accent: 'text-emerald-600' },
-    { icon: Clock, label: 'Giờ làm việc', value: '1,250', accent: 'text-teal-600' },
-    { icon: Star, label: 'Đánh giá trung bình', value: '4.9', accent: 'text-amber-500' },
+    { icon: Stethoscope, label: 'Ca khám thành công', value: null, accent: 'text-emerald-600' },
+    { icon: Clock, label: 'Giờ làm việc', value: null, accent: 'text-teal-600' },
+    { icon: Star, label: 'Đánh giá trung bình', value: null, accent: 'text-amber-500' },
   ],
   TECHNICIAN: [
-    { icon: FlaskConical, label: 'Thủ thuật hoàn tất', value: '156', accent: 'text-sky-600' },
-    { icon: Clock, label: 'Giờ làm việc', value: '980', accent: 'text-indigo-600' },
+    { icon: FlaskConical, label: 'Thủ thuật hoàn tất', value: null, accent: 'text-sky-600' },
+    { icon: Clock, label: 'Giờ làm việc', value: null, accent: 'text-indigo-600' },
   ],
   RECEPTIONIST: [
-    { icon: CalendarCheck, label: 'Lịch hẹn đã tiếp nhận', value: '120', accent: 'text-amber-600' },
-    { icon: Users, label: 'Khách đã phục vụ', value: '430', accent: 'text-orange-600' },
+    { icon: CalendarCheck, label: 'Lịch hẹn đã tiếp nhận', value: null, accent: 'text-amber-600' },
+    { icon: Users, label: 'Khách đã phục vụ', value: null, accent: 'text-orange-600' },
   ],
   PATIENT: [
-    { icon: CalendarCheck, label: 'Lượt khám', value: '—', accent: 'text-teal-600' },
+    { icon: CalendarCheck, label: 'Lượt khám', value: null, accent: 'text-teal-600' },
   ],
 };
 

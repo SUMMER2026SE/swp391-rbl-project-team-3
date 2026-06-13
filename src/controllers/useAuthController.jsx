@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { AuthModel } from '../models/AuthModel';
 import { mockEmployees } from '../mockData';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../supabaseClient';
 
 // Regex Constants
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -311,7 +312,28 @@ export function useAuthController(onSuccessCallback = null) {
           const authResult = await withTimeout(AuthModel.signInWithPassword(normalizedEmail, passwordInput), 12000);
           
           if (authResult.success) {
-            const path = login(authResult.role);
+            const { data: userData, error: userError } = await supabase
+              .from('users')
+              .select('role_id')
+              .eq('user_id', authResult.user.id)
+              .maybeSingle();
+              
+            if (userError || !userData) {
+              // Fallback if user profile isn't fully generated yet
+              navigate('/profile');
+              return;
+            }
+
+            let finalRole = authResult.role;
+            switch (userData.role_id) {
+              case 1: finalRole = 'ADMIN'; break;
+              case 2: finalRole = 'DOCTOR'; break;
+              case 3: finalRole = 'TECHNICIAN'; break;
+              case 4: finalRole = 'RECEPTIONIST'; break;
+              case 5: finalRole = 'PATIENT'; break;
+            }
+
+            const path = login(finalRole);
             if (onSuccessCallback) {
               onSuccessCallback();
             } else {

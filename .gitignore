@@ -8,3 +8,4 @@ dist-ssr
 .env.test.local
 .env.production.local
 nbproject/
+inspect_db.js

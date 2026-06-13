@@ -1,150 +1,140 @@
 /**
  * useProfileData.js
  * ───────────────────────────────────────────────────────────────────────────
- * Builds a stable, presentation-ready view-model from the raw auth `user`.
+ * Custom React hook that fetches the authenticated user's real profile from Supabase
+ * and transforms it into a stable, presentation-ready view-model.
  *
- *  - Staff actors get sensible defaults for the employee fields the mock auth
- *    object does not carry (department, specialization, schedule, employeeId).
- *  - The Patient actor gets a fully-normalized MEDICAL RECORD assembled from
- *    `mockMedicalRecords` + `mockPatients`: vitals, medical history, a clinical
- *    timeline, and active treatment protocols with progress.
- *
- * Everything is memoized on the user id so child tabs receive referentially
- * stable data and don't thrash on re-render.
+ * Employs strict ZERO MOCK DATA policy. Uses empty states for missing values.
  */
-import { useMemo } from 'react';
-import { MedicalRecordModel } from '../../models/MedicalRecordModel';
-import { mockPatients } from '../../mockData';
-import { ROLE_DISPLAY_NAMES, isStaffRole } from './profileConfig';
+import { useEffect, useState } from 'react';
+import { supabase } from '../../supabaseClient';
+import { ProfileModel } from '../../models/ProfileModel';
+import { ROLE_DISPLAY_NAMES } from './profileConfig';
 
-// Per-role default employee metadata (mock auth doesn't store these).
-const STAFF_DEFAULTS = {
-  DOCTOR: { department: 'Khoa Da liễu', specialization: 'Da liễu thẩm mỹ & Laser', schedule: 'Thứ 2 – Thứ 6, 08:00 – 17:00' },
-  TECHNICIAN: { department: 'Khoa Kỹ thuật', specialization: 'Phân tích da & Thiết bị laser', schedule: 'Thứ 2 – Thứ 7, 08:00 – 16:00' },
-  RECEPTIONIST: { department: 'Tiếp đón & CSKH', specialization: 'Tiếp nhận & Điều phối lịch hẹn', schedule: 'Xoay ca, 07:30 – 20:00' },
-  ADMIN: { department: 'Ban điều hành', specialization: 'Quản trị hệ thống', schedule: 'Thứ 2 – Thứ 6, 08:30 – 17:30' },
-};
+export function normalizeProfileData(realData, userRole, visitsCount = 0) {
+  if (!realData) return null;
+  
+  const base = {
+    id: realData.id,
+    role: userRole,
+    roleLabel: ROLE_DISPLAY_NAMES[userRole] || userRole,
+    name: realData.name || '',
+    email: realData.email || '',
+    phone: realData.phone || '',
+    avatar: realData.avatar || null,
+    initials: (realData.name || 'U').trim().charAt(0).toUpperCase(),
+    status: realData.status === 'ACTIVE' || realData.status === 'Hoạt động' ? 'Hoạt động' : (realData.status || ''),
+    code: realData.id ? realData.id.split('-')[0].toUpperCase() : '',
+    memberSince: realData.created_at ? new Date(realData.created_at).toLocaleDateString('vi-VN') : '',
+  };
 
-// Health overview fields that aren't on the mock patient yet. Keyed by patient
-// id with a graceful default, so the UI always renders a complete record.
-const PATIENT_HEALTH = {
-  'pat-01': { bloodType: 'O+', allergies: ['Penicillin', 'Phấn hoa'], familyHistory: 'Bố có tiền sử viêm da cơ địa' },
-};
-const DEFAULT_HEALTH = { bloodType: 'Chưa cập nhật', allergies: [], familyHistory: 'Không ghi nhận' };
-
-// Heuristic severity tagging for free-text history strings.
-const SEVERITY_BY_KEYWORD = [
-  { match: /nặng|vảy nến|mãn/i, level: 'Nặng', tone: 'rose' },
-  { match: /viêm|rosacea|nấm/i, level: 'Trung bình', tone: 'amber' },
-];
-const tagSeverity = (condition) => {
-  const hit = SEVERITY_BY_KEYWORD.find((s) => s.match.test(condition));
-  return hit || { level: 'Đang theo dõi', tone: 'sky' };
-};
-
-export function useProfileData(user) {
-  const role = user?.role || 'PATIENT';
-  const userId = user?.id || null;
-
-  return useMemo(() => {
-    const base = {
-      id: userId,
-      role,
-      roleLabel: ROLE_DISPLAY_NAMES[role] || role,
-      name: user?.name || 'Người dùng',
-      email: user?.email || `${(user?.name || 'user').toLowerCase().replace(/\s+/g, '.')}@dermasmart.vn`,
-      phone: user?.phone || '0901 234 567',
-      avatar: user?.avatar || null,
-      initials: (user?.name || 'U').trim().charAt(0).toUpperCase(),
-      // Administrative metadata shown in the identity card.
-      status: 'Hoạt động',
-      code: userId ? userId.toUpperCase() : '—',
-      memberSince: user?.memberSince || '15/03/2024',
+  if (realData.kind === 'staff') {
+    return {
+      ...base,
+      kind: 'staff',
+      employeeId: realData.id ? realData.id.split('-')[0].toUpperCase() : '',
+      department: realData.department || '',
+      specialization: realData.specialization || '',
+      schedule: realData.schedule || '',
     };
-
-    // ── STAFF ────────────────────────────────────────────────────────────────
-    if (isStaffRole(role)) {
-      const defaults = STAFF_DEFAULTS[role] || {};
-      return {
-        ...base,
-        kind: 'staff',
-        employeeId: user?.employeeId || (userId ? userId.toUpperCase() : 'NV-0001'),
-        department: user?.department || defaults.department || '—',
-        specialization: user?.specialization || defaults.specialization || '—',
-        schedule: user?.schedule || defaults.schedule || '—',
-      };
-    }
-
-    // ── PATIENT ──────────────────────────────────────────────────────────────
-    const records = MedicalRecordModel.getByPatientId(userId || 'pat-01');
-    const patientInfo =
-      mockPatients.find((p) => p.id === userId) ||
-      mockPatients.find((p) => p.id === 'pat-01') ||
-      {};
-    const latest = records[0] || {};
-    const health = PATIENT_HEALTH[patientInfo.id] || DEFAULT_HEALTH;
-
-    // Vitals & overview
+  } else {
     const vitals = {
-      bloodType: health.bloodType,
-      height: latest?.vitalSigns?.height || 'Chưa cập nhật',
-      weight: latest?.vitalSigns?.weight || 'Chưa cập nhật',
-      bloodPressure: latest?.vitalSigns?.bloodPressure || '—',
-      allergies: health.allergies,
-      familyHistory: health.familyHistory,
+      bloodType: realData.blood_type || null,
+      height: realData.height || null,
+      weight: realData.weight || null,
+      bloodPressure: realData.blood_pressure || null,
+      allergies: realData.allergies || (realData.allergyNote ? realData.allergyNote.split(',').map(s => s.trim()) : null),
+      familyHistory: realData.familyHistory || null,
     };
 
-    // Medical history (chronic / skin conditions)
-    const medicalHistory = (patientInfo.medicalHistory || []).map((condition) => {
-      const sev = tagSeverity(condition);
-      const note = records.find((r) => r.diagnosis?.includes(condition.split(' ')[0]))?.diagnosisDetail;
-      return {
-        condition,
-        severity: sev.level,
-        tone: sev.tone,
-        note: note || 'Theo dõi định kỳ theo chỉ định của bác sĩ.',
-      };
-    });
-
-    // Clinical history timeline
-    const clinicalHistory = records.map((r) => ({
-      id: r.id,
-      date: r.date,
-      doctor: r.doctor,
-      specialty: r.specialty,
-      diagnosis: r.diagnosis,
-      diagnosisCode: r.diagnosisCode,
-      prescriptions: r.prescriptions || [],
-      record: r,
-    }));
-
-    // Active treatment protocols (with progress)
-    const activeTreatments = records
-      .filter((r) => r.treatmentPlan)
-      .map((r) => {
-        const tp = r.treatmentPlan;
-        const done = tp.sessions || 0;
-        const total = tp.totalSessions || tp.sessions || 1;
+    let medicalHistory = [];
+    if (realData.medicalHistory) {
+      const conditions = Array.isArray(realData.medicalHistory)
+        ? realData.medicalHistory
+        : realData.medicalHistory.split(',').map(s => s.trim());
+      
+      medicalHistory = conditions.filter(Boolean).map((condition) => {
+        const match = /nặng|vảy nến|mãn/i.test(condition);
         return {
-          id: `tp-${r.id}`,
-          title: tp.title,
-          duration: tp.duration,
-          done,
-          total,
-          percent: Math.min(100, Math.round((done / total) * 100)),
-          doctor: r.doctor,
-          notes: tp.doctorNotes,
+          condition,
+          severity: match ? 'Nặng' : 'Đang theo dõi',
+          tone: match ? 'rose' : 'sky',
+          note: 'Ghi nhận trong hồ sơ bệnh án hệ thống.'
         };
       });
+    }
 
     return {
       ...base,
       kind: 'patient',
-      gender: user?.gender || patientInfo.gender || 'Nam',
-      dob: user?.dob || patientInfo.dob || '',
-      address: user?.address || patientInfo.address || '—',
-      medical: { vitals, medicalHistory, clinicalHistory, activeTreatments },
-      metrics: { visits: records.length },
+      gender: realData.gender || '',
+      dob: realData.dob || '',
+      address: realData.address || '',
+      medical: {
+        vitals,
+        medicalHistory,
+        clinicalHistory: [],
+        activeTreatments: [],
+      },
+      metrics: {
+        visits: visitsCount
+      }
     };
-  }, [userId, role, user?.name, user?.email, user?.phone, user?.avatar]);
+  }
+}
+
+export function useProfileData(authUser) {
+  const [profile, setProfile] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchProfile = async () => {
+    if (!authUser) {
+      setProfile(null);
+      setIsLoading(false);
+      return;
+    }
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      // 1. Get the active user's UUID and Role from Supabase Auth session
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      if (!user) throw new Error('No authenticated user found');
+
+      const userRole = user.user_metadata?.role || 'PATIENT';
+      
+      // 2. Fetch the real profile using ProfileModel
+      const realData = await ProfileModel.getProfile(user.id, userRole);
+
+      // 3. Fetch real metrics from Supabase (e.g., patient appointments count)
+      let visitsCount = 0;
+      if (userRole === 'PATIENT') {
+        const { count, error: countError } = await supabase
+          .from('appointments')
+          .select('*', { count: 'exact', head: true })
+          .eq('patient_id', user.id);
+        if (!countError && count !== null) {
+          visitsCount = count;
+        }
+      }
+
+      // 4. Transform raw database profile into UI view-model
+      const transformed = normalizeProfileData(realData, userRole, visitsCount);
+
+      setProfile(transformed);
+    } catch (err) {
+      console.error('Error loading profile:', err);
+      setError(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProfile();
+  }, [authUser?.id]);
+
+  return { profile, isLoading, error, setProfile, refresh: fetchProfile };
 }

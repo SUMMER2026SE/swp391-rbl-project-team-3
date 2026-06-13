@@ -152,7 +152,7 @@ export default function MedicalRecordTab({ profile }) {
             </div>
           ) : (
             <p className="mt-3 text-sm font-medium text-emerald-700/80 leading-relaxed">
-              Không ghi nhận dị ứng nào. Hãy báo bác sĩ nếu có thay đổi.
+              Không có tiền sử dị ứng
             </p>
           )}
         </div>

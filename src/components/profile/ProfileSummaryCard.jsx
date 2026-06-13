@@ -54,7 +54,7 @@ export default function ProfileSummaryCard({ profile, onAvatarChange }) {
 
   const handlePick = (e) => {
     const file = e.target.files?.[0];
-    if (file) onAvatarChange?.(URL.createObjectURL(file));
+    if (file) onAvatarChange?.(file);
   };
 
   return (

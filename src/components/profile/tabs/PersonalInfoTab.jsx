@@ -15,22 +15,13 @@ import { Edit3, Save, X, Loader2, CheckCircle2, AlertTriangle } from 'lucide-rea
 import ProfileField from '../ProfileField';
 import { STAFF_FIELDS, PATIENT_FIELDS } from '../profileConfig';
 import { validateForm } from '../profileValidation';
+import { ProfileModel } from '../../../models/ProfileModel';
 
 const formatDob = (dob) => {
   if (!dob) return '';
   const d = new Date(dob);
   return Number.isNaN(d.getTime()) ? dob : d.toLocaleDateString('vi-VN');
 };
-
-// Mocks a backend write so we can exercise the real loading / success / error
-// states. Swap for the actual ProfileModel.update() when the API lands.
-const persistProfile = (payload) =>
-  new Promise((resolve, reject) => {
-    setTimeout(() => {
-      if (payload.email?.includes('fail@')) reject(new Error('Máy chủ từ chối yêu cầu. Vui lòng thử lại.'));
-      else resolve(payload);
-    }, 1100);
-  });
 
 export default function PersonalInfoTab({ profile, onSaved }) {
   const fields = profile.kind === 'staff' ? STAFF_FIELDS : PATIENT_FIELDS;
@@ -92,7 +83,7 @@ export default function PersonalInfoTab({ profile, onSaved }) {
     setLoading(true);
     setAlert(null);
     try {
-      const result = await persistProfile(formData);
+      const result = await ProfileModel.updateProfile(profile.id, profile.role, formData);
       if (!isMountedRef.current) return;
       setSaved(result);
       setIsEditing(false);

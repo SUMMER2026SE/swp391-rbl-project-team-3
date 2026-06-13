@@ -10,15 +10,6 @@ import { motion } from 'framer-motion';
 import { Award, Building2, Sparkles, CalendarDays, TrendingUp } from 'lucide-react';
 import { ROLE_METRICS, ROLE_THEME } from '../profileConfig';
 
-const WEEK_SCHEDULE = [
-  { day: 'Thứ 2', hours: '08:00 – 17:00' },
-  { day: 'Thứ 3', hours: '08:00 – 17:00' },
-  { day: 'Thứ 4', hours: '08:00 – 12:00' },
-  { day: 'Thứ 5', hours: '08:00 – 17:00' },
-  { day: 'Thứ 6', hours: '08:00 – 17:00' },
-  { day: 'Thứ 7', hours: 'Nghỉ / Trực luân phiên' },
-];
-
 export default function StaffInsightsTab({ profile }) {
   const metrics = ROLE_METRICS[profile.role] || [];
   const theme = ROLE_THEME[profile.role] || ROLE_THEME.DOCTOR;
@@ -48,7 +39,7 @@ export default function StaffInsightsTab({ profile }) {
                 <Icon className="w-5 h-5" />
               </span>
               <div>
-                <p className={`text-3xl font-extrabold leading-none ${m.accent}`}>{m.value}</p>
+                <p className={`text-3xl font-extrabold leading-none ${m.accent}`}>{m.value ?? '—'}</p>
                 <p className="text-xs font-semibold text-on-surface-variant/70 mt-1.5">{m.label}</p>
               </div>
               <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 mt-auto">
@@ -69,17 +60,13 @@ export default function StaffInsightsTab({ profile }) {
       {/* Weekly schedule */}
       <div className="glass-3d-soft rounded-2xl p-6">
         <h4 className="flex items-center gap-2 text-base font-extrabold text-on-surface mb-4">
-          <CalendarDays className="w-5 h-5 text-primary" /> Lịch làm việc tuần
+          <CalendarDays className="w-5 h-5 text-primary" /> Lịch làm việc
         </h4>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-          {WEEK_SCHEDULE.map((s) => (
-            <div key={s.day} className="glass-inner rounded-xl px-4 py-3 flex items-center justify-between">
-              <span className="text-sm font-bold text-on-surface">{s.day}</span>
-              <span className="text-xs font-semibold text-primary bg-primary/10 px-2.5 py-1 rounded-lg">
-                {s.hours}
-              </span>
-            </div>
-          ))}
+        <div className="glass-inner rounded-xl px-4 py-4 flex items-center justify-between">
+          <span className="text-sm font-bold text-on-surface">Khung giờ công tác</span>
+          <span className="text-sm font-semibold text-primary bg-primary/10 px-3.5 py-1.5 rounded-lg">
+            {profile.schedule || 'Chưa cập nhật'}
+          </span>
         </div>
       </div>
     </div>
