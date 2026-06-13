@@ -9,12 +9,12 @@ import React from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   User, Mail, Phone, MapPin, Calendar, BadgeCheck, Building2,
-  Sparkles, CalendarDays, AlertCircle, Lock,
+  Sparkles, CalendarDays, AlertCircle, Lock, Award, Clock
 } from 'lucide-react';
 
 const ICONS = {
   User, Mail, Phone, MapPin, Calendar, BadgeCheck, Building2,
-  Sparkles, CalendarDays, Lock,
+  Sparkles, CalendarDays, Lock, Award, Clock
 };
 
 export default function ProfileField({

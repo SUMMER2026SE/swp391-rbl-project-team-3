@@ -14,7 +14,7 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeft, User, Settings, BarChart3, Calendar, FileText, Star, Loader2 } from 'lucide-react';
+import { ArrowLeft, User, Settings, BarChart3, Calendar, FileText, Star, Loader2, ShieldCheck, Activity, CalendarDays } from 'lucide-react';
 
 import { useAuth } from '../context/AuthContext';
 import { useProfileData, normalizeProfileData } from '../components/profile/useProfileData';
@@ -47,6 +47,22 @@ export default function ProfilePage() {
       { id: 'personal', label: 'Thông tin cá nhân', icon: User },
       { id: 'settings', label: 'Cài đặt tài khoản', icon: Settings },
     ];
+    if (profile.role === 'ADMIN') {
+      return [
+        ...common,
+        { id: 'activity_log', label: 'Nhật ký hoạt động', icon: Activity },
+        { id: 'permissions', label: 'Quyền hạn', icon: ShieldCheck },
+      ];
+    }
+    if (profile.role === 'TECHNICIAN') {
+      return [
+        ...common,
+        { id: 'work_schedule', label: 'Lịch làm việc / Ca trực', icon: CalendarDays },
+      ];
+    }
+    if (profile.role === 'RECEPTIONIST') {
+      return [...common];
+    }
     if (profile.kind === 'staff') {
       return [...common, { id: 'insights', label: 'Hồ sơ chuyên sâu', icon: BarChart3 }];
     }
@@ -56,7 +72,7 @@ export default function ProfilePage() {
       { id: 'records', label: 'Hồ sơ bệnh án', icon: FileText },
       { id: 'feedback', label: 'Đánh giá của tôi', icon: Star },
     ];
-  }, [profile?.kind]);
+  }, [profile?.kind, profile?.role]);
 
   const handleAvatarChange = async (file) => {
     if (!user?.id) return;
@@ -163,6 +179,24 @@ export default function ProfilePage() {
                 {activeTab === 'appointments' && <AppointmentsTab />}
                 {activeTab === 'records' && <MedicalRecordTab profile={profile} />}
                 {activeTab === 'feedback' && <PatientFeedbackTab user={user} />}
+                {activeTab === 'activity_log' && (
+                  <div className="text-center py-12 border-2 border-dashed border-slate-200 rounded-2xl bg-white/40 backdrop-blur-sm">
+                    <Activity className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                    <p className="text-slate-500 font-medium">Nhật ký hoạt động hệ thống đang được cập nhật.</p>
+                  </div>
+                )}
+                {activeTab === 'permissions' && (
+                  <div className="text-center py-12 border-2 border-dashed border-slate-200 rounded-2xl bg-white/40 backdrop-blur-sm">
+                    <ShieldCheck className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                    <p className="text-slate-500 font-medium">Bảng điều khiển phân quyền sẽ xuất hiện tại đây.</p>
+                  </div>
+                )}
+                {activeTab === 'work_schedule' && (
+                  <div className="text-center py-12 border-2 border-dashed border-slate-200 rounded-2xl bg-white/40 backdrop-blur-sm">
+                    <CalendarDays className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                    <p className="text-slate-500 font-medium">Lịch làm việc và ca trực đang được đồng bộ.</p>
+                  </div>
+                )}
               </motion.div>
             </AnimatePresence>
           </div>

@@ -748,6 +748,24 @@ button:active { transform: scale(0.95); }
     scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
 }
 
+.light-scrollbar::-webkit-scrollbar {
+    width: 6px;
+}
+.light-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+.light-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.5); /* tailwind slate-400 with opacity */
+    border-radius: 10px;
+}
+.light-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.8);
+}
+.light-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.5) transparent;
+}
+
 /* Login Modal */
 .login-modal {
     background-color: rgba(255, 255, 255, 0.15);

@@ -104,12 +104,7 @@ export default function ProfileSummaryCard({ profile, onAvatarChange }) {
         </p>
       )}
 
-      {/* Contact quick-actions */}
-      <div className="w-full mt-6 flex items-stretch gap-2.5">
-        <QuickAction icon={Phone} label="Gọi" href={`tel:${(profile.phone || '').replace(/\s+/g, '')}`} />
-        <QuickAction icon={MessageSquare} label="Nhắn tin" href={`sms:${(profile.phone || '').replace(/\s+/g, '')}`} />
-        <QuickAction icon={Mail} label="Email" href={`mailto:${profile.email}`} />
-      </div>
+      {/* Contact quick-actions removed as per request */}
 
       {/* Quick metrics — data over labels */}
       <div className="w-full mt-5 pt-5 border-t border-white/50 grid grid-cols-1 gap-2.5">
@@ -147,7 +142,7 @@ export default function ProfileSummaryCard({ profile, onAvatarChange }) {
         />
         <InfoRow
           icon={IdCard}
-          label={profile.kind === 'patient' ? 'Mã bệnh nhân' : 'Mã nhân viên'}
+          label={profile.kind === 'patient' ? 'Mã bệnh nhân' : (profile.role === 'DOCTOR' ? 'Mã bác sĩ / Thẻ nhân viên' : (profile.role === 'RECEPTIONIST' ? 'Mã nhân viên' : (profile.role === 'TECHNICIAN' ? 'Mã nhân viên / Mã KTV' : 'Mã nhân viên / ID Hệ thống')))}
           value={profile.kind === 'staff' ? profile.employeeId : profile.code}
         />
         <InfoRow icon={CalendarClock} label="Ngày tạo hồ sơ" value={profile.memberSince} />

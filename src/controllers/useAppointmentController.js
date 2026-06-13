@@ -212,6 +212,7 @@ export function useAppointmentController(patientId = null) {
     rescheduleAppointment,
     isSlotBooked,
     getAvailableSlots,
-    canCancel: AppointmentModel.canCancel
+    canCancel: AppointmentModel.canCancel,
+    lockSlot: AppointmentModel.lockSlot.bind(AppointmentModel)
   };
 }

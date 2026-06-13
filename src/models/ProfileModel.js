@@ -173,6 +173,8 @@ export const ProfileModel = {
         .upsert({
           employee_id: userId, // Primary key required for upsert
           specialization: profileData.specialization,
+          degree: profileData.degree,
+          experience_years: profileData.experienceYears ? parseInt(profileData.experienceYears, 10) : 0,
           department: profileData.department, 
           work_schedule: profileData.schedule, 
         });

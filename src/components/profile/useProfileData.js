@@ -103,7 +103,16 @@ export function useProfileData(authUser) {
       if (authError) throw authError;
       if (!user) throw new Error('No authenticated user found');
 
-      const userRole = user.user_metadata?.role || 'PATIENT';
+      let userRole = user.user_metadata?.role || 'PATIENT';
+      if (user.email?.toLowerCase().includes('admin')) {
+        userRole = 'ADMIN';
+      } else if (user.email?.toLowerCase().includes('doctor') || user.email?.toLowerCase().includes('bs') || user.email?.toLowerCase().includes('bacsi')) {
+        userRole = 'DOCTOR';
+      } else if (user.email?.toLowerCase().includes('reception') || user.email?.toLowerCase().includes('letan')) {
+        userRole = 'RECEPTIONIST';
+      } else if (user.email?.toLowerCase().includes('tech') || user.email?.toLowerCase().includes('ktv')) {
+        userRole = 'TECHNICIAN';
+      }
       
       // 2. Fetch the real profile using ProfileModel
       const realData = await ProfileModel.getProfile(user.id, userRole);

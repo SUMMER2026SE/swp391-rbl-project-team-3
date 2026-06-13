@@ -17,6 +17,7 @@ const DAY_MAP = {
 const STORAGE_KEY = 'dermasmart_appointments';
 const APPOINTMENTS_KEY = 'dermasmart_appointments';
 const PAYMENTS_KEY = 'dermasmart_payments';
+const LOCKED_SLOTS_KEY = 'dermasmart_locked_slots';
 
 const MOCK_APPOINTMENTS_INITIAL = [
   {
@@ -216,13 +217,52 @@ export const AppointmentModel = {
   // Check if a time slot is already booked for a specific doctor
   isTimeSlotBooked(doctorId, dateStr, timeStr) {
     const list = this.getAll();
-    return list.some(
+    const isBooked = list.some(
       a =>
         a.doctorId === doctorId &&
         a.date === dateStr &&
         a.time === timeStr &&
         a.status !== 'Đã hủy'
     );
+    if (isBooked) return true;
+    
+    return this.isTimeSlotLocked(doctorId, dateStr, timeStr);
+  },
+
+  // Temporarily lock a slot
+  getLockedSlots() {
+    try {
+      const data = localStorage.getItem(LOCKED_SLOTS_KEY);
+      if (!data) return [];
+      const parsed = JSON.parse(data);
+      const now = Date.now();
+      const validLocks = parsed.filter(l => l.lockedUntil > now);
+      if (validLocks.length !== parsed.length) {
+         localStorage.setItem(LOCKED_SLOTS_KEY, JSON.stringify(validLocks));
+      }
+      return validLocks;
+    } catch {
+      return [];
+    }
+  },
+
+  lockSlot(doctorId, dateStr, timeStr, durationMinutes = 5) {
+    const list = this.getLockedSlots();
+    // Remove any existing locks for this slot to avoid duplicates
+    const filteredList = list.filter(l => !(String(l.doctorId) === String(doctorId) && l.date === dateStr && l.time === timeStr));
+    filteredList.push({
+       doctorId,
+       date: dateStr,
+       time: timeStr,
+       lockedUntil: Date.now() + durationMinutes * 60 * 1000
+    });
+    localStorage.setItem(LOCKED_SLOTS_KEY, JSON.stringify(filteredList));
+    window.dispatchEvent(new CustomEvent('appointments-updated'));
+  },
+
+  isTimeSlotLocked(doctorId, dateStr, timeStr) {
+    const list = this.getLockedSlots();
+    return list.some(l => String(l.doctorId) === String(doctorId) && l.date === dateStr && l.time === timeStr);
   },
 
   // Get days of the week a doctor is scheduled to work

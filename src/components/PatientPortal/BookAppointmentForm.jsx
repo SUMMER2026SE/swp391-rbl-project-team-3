@@ -3,18 +3,18 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Calendar, Clock, User, Stethoscope, CheckCircle2,
   ChevronDown, Star, AlertTriangle, Ticket, Tag, Sparkles,
-  TrendingDown, Info,
+  TrendingDown, Info, QrCode, Timer, CreditCard
 } from 'lucide-react';
-import { doctors, mockServices } from '../../mockData';
+import { serviceCategories, mockTimeSlots } from '../../mockData';
 import { useAppointmentController } from '../../controllers/useAppointmentController';
 import { useVoucherController } from '../../controllers/useVoucherController';
 import { useAuth } from '../../context/AuthContext';
+import { useDoctors } from '../../hooks/useDoctors';
 
 // ─── Parse price string → number ─────────────────────────────────────────────
 function parsePriceToNumber(priceStr) {
   if (!priceStr) return 0;
   if (typeof priceStr === 'number') return priceStr;
-  // "1,800,000 VNĐ" → 1800000
   return parseInt(priceStr.replace(/[^0-9]/g, ''), 10) || 0;
 }
 
@@ -36,7 +36,6 @@ function VoucherBanner({ applicable }) {
       animate={{ opacity: 1, y: 0 }}
       className="rounded-2xl overflow-hidden border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50"
     >
-      {/* Best voucher */}
       <div className="p-3.5">
         <div className="flex items-start gap-2.5">
           <div className="p-1.5 bg-emerald-500 rounded-lg shrink-0 mt-0.5">
@@ -65,7 +64,6 @@ function VoucherBanner({ applicable }) {
         </div>
       </div>
 
-      {/* Extra vouchers */}
       {rest.length > 0 && (
         <>
           <button
@@ -110,7 +108,16 @@ function VoucherBanner({ applicable }) {
 
 // ─── Price Summary ────────────────────────────────────────────────────────────
 function PriceSummary({ originalAmount, bestVoucher }) {
-  if (!originalAmount) return null;
+  if (!originalAmount) {
+    return (
+      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-2">
+        <div className="flex justify-between text-xs font-semibold text-slate-600">
+          <span>Giá dịch vụ</span>
+          <span className="italic text-slate-500 text-[11px]">(Được xác định theo bác sĩ)</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-2">
@@ -138,94 +145,142 @@ function PriceSummary({ originalAmount, bestVoucher }) {
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-export default function BookAppointmentForm({ isOpen, onClose, preselectedDoctorId = null }) {
+export default function BookAppointmentForm({ isOpen, onClose }) {
   const { user } = useAuth();
-  const { bookAppointment, getAvailableSlots } = useAppointmentController(user?.id);
+  const { bookAppointment, getAvailableSlots, isSlotBooked, lockSlot } = useAppointmentController(user?.id);
   const { getAutoApplicable, incrementUsage } = useVoucherController();
+  const { doctors, loading: loadingDocs } = useDoctors();
 
-  const [selectedService, setSelectedService]   = useState('');
-  const [servicesList, setServicesList]         = useState([]);
-  const [selectedDoctor, setSelectedDoctor]     = useState(preselectedDoctorId || '');
   const [selectedDate, setSelectedDate]         = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedDoctor, setSelectedDoctor]     = useState('');
   const [selectedTime, setSelectedTime]         = useState('');
   const [guestName, setGuestName]               = useState('');
   const [guestPhone, setGuestPhone]             = useState('');
   const [guestEmail, setGuestEmail]             = useState('');
   const [errorMessage, setErrorMessage]         = useState('');
-  const [isSubmitted, setIsSubmitted]           = useState(false);
+  
+  // Multistep state
+  const [step, setStep]                         = useState('form'); // 'form', 'payment', 'timeout', 'success'
+  const [timeLeft, setTimeLeft]                 = useState(300); // 5 minutes in seconds
+  const [paymentPayload, setPaymentPayload]     = useState(null);
 
   // Reset khi modal mở
   useEffect(() => {
     if (isOpen) {
-      setSelectedService('');
-      setSelectedDoctor(preselectedDoctorId || '');
       setSelectedDate('');
+      setSelectedCategory('');
+      setSelectedDoctor('');
       setSelectedTime('');
       setGuestName('');
       setGuestPhone('');
       setGuestEmail('');
       setErrorMessage('');
-      setIsSubmitted(false);
-
-      const saved = localStorage.getItem('admin-services');
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved)
-            .map(s => ({
-              id: s.id,
-              name: s.name,
-              price: typeof s.price === 'number' ? `${s.price.toLocaleString('vi-VN')} VNĐ` : s.price,
-              description: s.description,
-              status: s.status,
-            }))
-            .filter(s => s.status === 'Hoạt động');
-          setServicesList(parsed);
-        } catch { setServicesList(mockServices); }
-      } else {
-        setServicesList(mockServices);
-      }
+      setStep('form');
+      setTimeLeft(300);
+      setPaymentPayload(null);
     }
   }, [isOpen]);
 
-  const selectedDoctorData = doctors.find(d => d.id === selectedDoctor);
-  const selectedServiceData = servicesList.find(s => s.id === selectedService);
+  // Countdown timer logic
+  useEffect(() => {
+    if (step === 'payment' && timeLeft > 0) {
+      const timer = setInterval(() => {
+        setTimeLeft(prev => prev - 1);
+      }, 1000);
+      return () => clearInterval(timer);
+    } else if (step === 'payment' && timeLeft === 0) {
+      setStep('timeout');
+    }
+  }, [step, timeLeft]);
+
+  const formatTime = (seconds) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const selectedCategoryData = serviceCategories.find(c => c.id === selectedCategory);
 
   // Ngày tối thiểu = ngày mai
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   const minDate = tomorrow.toISOString().split('T')[0];
 
-  // Kiểm tra bác sĩ có trực hôm đó không
-  let isDoctorWorkingOnDay = true;
-  let doctorScheduleText = '';
-  if (selectedDoctorData && selectedDate) {
-    const DAY_MAP = { 'Chủ Nhật':0,'Thứ Hai':1,'Thứ Ba':2,'Thứ Tư':3,'Thứ Năm':4,'Thứ Sáu':5,'Thứ Bảy':6 };
+  // ── Lọc Bác Sĩ & Khung Giờ ──
+  const DAY_MAP = { 'Chủ Nhật':0,'Thứ Hai':1,'Thứ Ba':2,'Thứ Tư':3,'Thứ Năm':4,'Thứ Sáu':5,'Thứ Bảy':6 };
+  
+  const workingDocs = useMemo(() => {
+    if (!selectedDate || !selectedCategory) return [];
     const [y, m, d] = selectedDate.split('-').map(Number);
     const dayOfWeek = new Date(y, m - 1, d).getDay();
-    const workingDays = selectedDoctorData.schedule.map(s => DAY_MAP[s.day] ?? -1).filter(d => d !== -1);
-    isDoctorWorkingOnDay = workingDays.includes(dayOfWeek);
-    doctorScheduleText = selectedDoctorData.schedule.map(s => s.day).join(', ');
-  }
+    
+    return doctors.filter(doc => {
+      // Chỉ lấy bác sĩ có chuyên môn phù hợp
+      if (!doc.specialties.includes(selectedCategory)) return false;
+      // Bác sĩ phải có lịch trực vào thứ này
+      const wDays = doc.schedule.map(s => DAY_MAP[s.day] ?? -1);
+      return wDays.includes(dayOfWeek);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate, selectedCategory, doctors]);
 
-  const slots = (selectedDoctor && selectedDate && isDoctorWorkingOnDay)
-    ? getAvailableSlots(selectedDoctor, selectedDate)
-    : [];
+  const filteredDocs = (() => {
+    if (!selectedTime) return workingDocs;
+    return workingDocs.filter(doc => !isSlotBooked(doc.id, selectedDate, selectedTime));
+  })();
+
+  const filteredSlots = (() => {
+    // Robust local read to guarantee slots are locked in UI
+    const lockedListStr = localStorage.getItem('dermasmart_locked_slots') || '[]';
+    let lockedList = [];
+    try { lockedList = JSON.parse(lockedListStr); } catch (e) {}
+    const activeLocks = lockedList.filter(l => l.lockedUntil > Date.now());
+
+    const isSlotActuallyBooked = (dId, dDate, dTime) => {
+      // Check normal bookings
+      const booked = isSlotBooked(dId, dDate, dTime);
+      // Check locks
+      const locked = activeLocks.some(l => String(l.doctorId) === String(dId) && l.date === dDate && l.time === dTime);
+      return booked || locked;
+    };
+
+    if (selectedDoctor) {
+      const slots = getAvailableSlots(selectedDoctor, selectedDate);
+      return slots.map(s => ({
+        ...s,
+        isBooked: isSlotActuallyBooked(selectedDoctor, selectedDate, s.time)
+      }));
+    } else {
+      return mockTimeSlots.map(time => {
+        const isAllBooked = !workingDocs.some(doc => !isSlotActuallyBooked(doc.id, selectedDate, time));
+        return {
+          time,
+          isBooked: isAllBooked || workingDocs.length === 0
+        };
+      });
+    }
+  })();
+
+  // Lưu ý: Không ép buộc chọn bác sĩ, hệ thống có thể random assign nếu selectedDoctor rỗng, 
+  // nhưng logic backend hiện cần doctorId. Nếu chưa có, lấy tự động 1 bác sĩ đầu tiên trống.
+  const finalDoctorId = selectedDoctor || (workingDocs.find(doc => !isSlotBooked(doc.id, selectedDate, selectedTime))?.id);
+  const finalDoctorData = finalDoctorId ? doctors.find(d => d.id === finalDoctorId) : null;
 
   // ── Auto-apply voucher ──────────────────────────────────────────────────────
-  const originalAmount = selectedServiceData ? parsePriceToNumber(selectedServiceData.price) : 0;
+  const originalAmount = finalDoctorData ? parsePriceToNumber(finalDoctorData.consultationFee) : 0;
 
   const applicableVouchers = useMemo(() => {
-    if (!selectedService || !originalAmount || !selectedDate) return [];
-    return getAutoApplicable(selectedService, originalAmount, selectedDate);
+    if (!selectedCategory || !originalAmount || !selectedDate) return [];
+    return getAutoApplicable(selectedCategory, originalAmount, selectedDate);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedService, originalAmount, selectedDate]);
+  }, [selectedCategory, originalAmount, selectedDate]);
 
-  const bestVoucher = applicableVouchers[0] || null; // voucher giảm nhiều nhất
+  const bestVoucher = applicableVouchers[0] || null;
 
-  // Giá cuối sau khi apply
   const finalFee = bestVoucher
     ? formatVND(bestVoucher.finalAmount)
-    : selectedServiceData?.price || '300,000 VNĐ';
+    : finalDoctorData?.consultationFee || '300,000 VNĐ';
 
   if (!isOpen) return null;
 
@@ -233,117 +288,114 @@ export default function BookAppointmentForm({ isOpen, onClose, preselectedDoctor
   const isContactInfoComplete = user
     ? true
     : (guestName.trim() && guestPhone.trim() && guestEmail.trim());
+  
+  const isFormComplete = selectedCategory && selectedDate && selectedTime && isContactInfoComplete && finalDoctorId;
 
-  const isFormComplete =
-    selectedService && selectedDoctor && selectedDate && selectedTime &&
-    isDoctorWorkingOnDay && isContactInfoComplete;
-
-  // ── Submit ──────────────────────────────────────────────────────────────────
-  const handleSubmit = (e) => {
+  // ── Submit Form to Payment Step ──────────────────────────────────────────────
+  const handleProceedToPayment = (e) => {
     e.preventDefault();
     if (!isFormComplete) return;
     setErrorMessage('');
 
     const bookingPayload = {
-      doctorId: selectedDoctor,
+      doctorId: finalDoctorId,
       patientId: user ? user.id : null,
       patientName: user ? user.name : guestName,
       patientPhone: user ? (user.phone || guestPhone) : guestPhone,
       patientEmail: user ? (user.email || guestEmail) : guestEmail,
       date: selectedDate,
       time: selectedTime,
-      service: selectedServiceData?.name || 'Khám Da Liễu Tổng Quát',
+      service: selectedCategoryData?.name || 'Khám Da Liễu',
       fee: finalFee,
-      originalFee: selectedServiceData?.price || finalFee,
+      originalFee: finalDoctorData?.consultationFee || finalFee,
       voucherId: bestVoucher?.voucher.id || null,
       voucherCode: bestVoucher?.voucher.code || null,
       discount: bestVoucher?.discount || 0,
       notes: user
         ? `Khách hàng đặt lịch khám qua cổng Portal.${bestVoucher ? ' Đã áp dụng ưu đãi.' : ''}`
         : `Khách vãng lai đăng ký qua website.${bestVoucher ? ' Đã áp dụng ưu đãi.' : ''}`,
+      bookingFee: 200000,
+      paymentStatus: 'Đã thanh toán một phần (Giữ chỗ)'
     };
 
-    const result = bookAppointment(bookingPayload);
+    setPaymentPayload(bookingPayload);
+    setStep('payment');
+    setTimeLeft(300); // 5 minutes
+    
+    // Lock slot immediately for 5 minutes during the payment process
+    try {
+      const lockedListStr = localStorage.getItem('dermasmart_locked_slots') || '[]';
+      let lockedList = [];
+      try { lockedList = JSON.parse(lockedListStr); } catch (e) {}
+      
+      const filteredList = lockedList.filter(l => !(String(l.doctorId) === String(finalDoctorId) && l.date === selectedDate && l.time === selectedTime));
+      filteredList.push({
+        doctorId: finalDoctorId,
+        date: selectedDate,
+        time: selectedTime,
+        lockedUntil: Date.now() + 5 * 60 * 1000 // 5 minutes
+      });
+      localStorage.setItem('dermasmart_locked_slots', JSON.stringify(filteredList));
+      
+      lockSlot(finalDoctorId, selectedDate, selectedTime, 5);
+    } catch (err) {
+      console.error('Error locking slot immediately:', err);
+    }
+  };
+
+  // ── Confirm Payment ─────────────────────────────────────────────────────────
+  const handleConfirmPayment = () => {
+    const result = bookAppointment(paymentPayload);
     if (result.success) {
-      // Tăng usage count cho voucher đã dùng
       if (bestVoucher) {
         incrementUsage(bestVoucher.voucher.id);
       }
-      setIsSubmitted(true);
-      setTimeout(() => onClose(), 2800);
+      setStep('success');
+      setTimeout(() => onClose(), 3500);
     } else {
       setErrorMessage(result.error);
+      setStep('form');
     }
+  };
+
+  // ── Cancel Payment ────────────────────────────────────────────────────────────
+  const handleCancelPayment = () => {
+    setErrorMessage('Giao dịch đã bị hủy. Khung giờ này vẫn đang bị khóa trong thời gian thanh toán (tối đa 5 phút).');
+    setSelectedTime('');
+    setStep('form');
   };
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm font-sans"
-      onClick={onClose}
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm font-sans"
+      onClick={step === 'payment' ? undefined : onClose}
     >
       <motion.div
         initial={{ scale: 0.9, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.9, opacity: 0, y: 20 }}
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-        className="w-full max-w-xl backdrop-blur-3xl bg-white/90 border border-white/80 shadow-[0_20px_60px_rgba(14,165,233,0.15)] rounded-[2.5rem] p-8 relative max-h-[92vh] overflow-y-auto"
+        className="w-full max-w-xl backdrop-blur-3xl bg-white/95 border border-white shadow-[0_20px_60px_rgba(0,0,0,0.15)] rounded-[2.5rem] p-8 relative max-h-[92vh] overflow-y-auto light-scrollbar"
         onClick={e => e.stopPropagation()}
       >
         {/* Close */}
-        <button
-          onClick={onClose}
-          className="absolute top-5 right-5 bg-transparent border-none text-slate-400 hover:text-slate-700 hover:bg-slate-100/50 p-2 rounded-full flex items-center justify-center transition-all cursor-pointer"
-        >
-          <X className="w-5 h-5" />
-        </button>
+        {step !== 'payment' && (
+          <button
+            onClick={onClose}
+            className="absolute top-5 right-5 bg-transparent border-none text-slate-400 hover:text-slate-700 hover:bg-slate-100/50 p-2 rounded-full flex items-center justify-center transition-all cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
 
-        {/* ── Success ── */}
-        <AnimatePresence>
-          {isSubmitted && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="flex flex-col items-center justify-center py-12 text-center"
-            >
-              <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', damping: 15, stiffness: 200, delay: 0.1 }}>
-                <CheckCircle2 className="w-16 h-16 text-emerald-500 mb-4" />
-              </motion.div>
-              <h3 className="text-2xl font-bold text-slate-800 mb-2">Đặt lịch thành công!</h3>
-              {bestVoucher && (
-                <div className="mb-3 inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold px-3 py-1.5 rounded-full">
-                  <Ticket className="w-3.5 h-3.5" />
-                  {bestVoucher.voucher.eventEmoji || '🏷️'} Tiết kiệm {formatVND(bestVoucher.discount)}
-                </div>
-              )}
-              <p className="text-sm text-slate-500 max-w-sm leading-relaxed">
-                Yêu cầu đặt lịch đã gửi tới Lễ tân để phê duyệt.{' '}
-                {user
-                  ? 'Xem và quản lý lịch khám tại trang cá nhân.'
-                  : 'Lễ tân sẽ gọi điện xác nhận sớm nhất.'}
-              </p>
-              {bestVoucher && originalAmount > 0 && (
-                <div className="mt-4 bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3 text-sm space-y-1.5 text-left w-full max-w-xs mx-auto">
-                  <div className="flex justify-between text-slate-500">
-                    <span>Giá gốc</span>
-                    <span className="line-through">{formatVND(originalAmount)}</span>
-                  </div>
-                  <div className="flex justify-between text-emerald-600 font-semibold">
-                    <span>Voucher {bestVoucher.voucher.eventEmoji || '🏷️'}</span>
-                    <span>-{formatVND(bestVoucher.discount)}</span>
-                  </div>
-                  <div className="flex justify-between font-black text-slate-900 border-t border-slate-200 pt-1.5">
-                    <span>Thanh toán</span>
-                    <span className="text-emerald-600">{formatVND(bestVoucher.finalAmount)}</span>
-                  </div>
-                </div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* ── Form ── */}
-        {!isSubmitted && (
-          <form onSubmit={handleSubmit}>
+        {/* ── Step 1: Form ── */}
+        <AnimatePresence mode="wait">
+        {step === 'form' && (
+          <motion.form 
+            key="form"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onSubmit={handleProceedToPayment}
+          >
             {/* Header */}
             <div className="mb-6 text-center">
               <h2 className="text-2xl font-bold text-slate-800 mb-1 tracking-tight">Đặt lịch khám mới</h2>
@@ -359,133 +411,142 @@ export default function BookAppointmentForm({ isOpen, onClose, preselectedDoctor
             )}
 
             <div className="space-y-4">
-              {/* 1. Service */}
-              <div>
-                <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                  <Stethoscope className="w-4 h-4 text-emerald-500" />
-                  Chọn dịch vụ
-                </label>
-                <div className="relative">
-                  <select
-                    value={selectedService}
-                    onChange={e => { setSelectedService(e.target.value); setSelectedTime(''); }}
-                    required
-                    className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-emerald-500 text-slate-800 transition-colors appearance-none cursor-pointer text-sm pr-10"
-                  >
-                    <option value="">-- Chọn dịch vụ --</option>
-                    {servicesList.map(svc => (
-                      <option key={svc.id} value={svc.id}>
-                        {svc.name} — {svc.price}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                </div>
-              </div>
-
-              {/* 2. Doctor */}
-              <div>
-                <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                  <User className="w-4 h-4 text-sky-500" />
-                  Chọn bác sĩ
-                </label>
-                <div className="relative">
-                  <select
-                    value={selectedDoctor}
-                    onChange={e => { setSelectedDoctor(e.target.value); setSelectedTime(''); }}
-                    required
-                    className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-emerald-500 text-slate-800 transition-colors appearance-none cursor-pointer text-sm pr-10"
-                  >
-                    <option value="">-- Chọn bác sĩ --</option>
-                    {doctors.map(doc => (
-                      <option key={doc.id} value={doc.id}>
-                        {doc.name} — {doc.title}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                </div>
-                <AnimatePresence>
-                  {selectedDoctorData && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="mt-2 bg-emerald-50/60 border border-emerald-100 rounded-xl p-3 overflow-hidden"
-                    >
-                      <div className="flex items-center gap-3">
-                        <img src={selectedDoctorData.image} alt={selectedDoctorData.name} className="w-10 h-10 rounded-lg object-cover" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-bold text-slate-700 truncate">{selectedDoctorData.name}</p>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-[10px] text-emerald-600 font-semibold flex items-center gap-0.5">
-                              <Star className="w-3 h-3 fill-emerald-500 text-emerald-500" />
-                              {selectedDoctorData.rating}
-                            </span>
-                            <span className="text-[10px] text-slate-400">Lịch trực: {selectedDoctorData.schedule.map(s => s.day).join(', ')}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              {/* 3. Date */}
+              {/* 1. Date */}
               <div>
                 <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
                   <Calendar className="w-4 h-4 text-teal-500" />
-                  Chọn ngày khám
+                  Bước 1: Chọn ngày khám
                 </label>
                 <input
                   type="date"
                   value={selectedDate}
                   min={minDate}
                   required
-                  onChange={e => { setSelectedDate(e.target.value); setSelectedTime(''); }}
+                  onChange={e => { setSelectedDate(e.target.value); setSelectedTime(''); setSelectedDoctor(''); }}
                   className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-emerald-500 text-slate-800 transition-colors cursor-pointer text-sm"
                 />
-                {selectedDoctorData && selectedDate && !isDoctorWorkingOnDay && (
-                  <div className="mt-2 text-xs text-rose-500 font-semibold flex items-center gap-1.5">
-                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                    Bác sĩ không có lịch trực ngày này. ({doctorScheduleText})
-                  </div>
-                )}
               </div>
 
-              {/* 4. Time */}
-              {selectedDoctor && selectedDate && isDoctorWorkingOnDay && (
-                <div>
-                  <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                    <Clock className="w-4 h-4 text-amber-500" />
-                    Chọn khung giờ
-                  </label>
-                  <div className="grid grid-cols-4 gap-2">
-                    {slots.map(slot => (
-                      <button
-                        key={slot.time}
-                        type="button"
-                        disabled={slot.isBooked}
-                        onClick={() => setSelectedTime(slot.time)}
-                        className={`px-2 py-2.5 rounded-xl text-xs font-bold text-center cursor-pointer border transition-all ${
-                          slot.isBooked
-                            ? 'bg-slate-100 border-slate-200 text-slate-300 cursor-not-allowed line-through'
-                            : selectedTime === slot.time
-                            ? 'bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-500/20'
-                            : 'bg-white border-slate-200 text-slate-600 hover:border-emerald-300 hover:bg-emerald-50'
-                        }`}
-                      >
-                        {slot.time}
-                        {slot.isBooked && <span className="block text-[8px] font-normal leading-none mt-0.5 text-slate-400">Đã đặt</span>}
-                      </button>
+              {/* 2. Category */}
+              <div>
+                <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                  <Stethoscope className="w-4 h-4 text-emerald-500" />
+                  Bước 2: Chọn nhu cầu khám
+                </label>
+                <div className="relative">
+                  <select
+                    value={selectedCategory}
+                    onChange={e => { setSelectedCategory(e.target.value); setSelectedTime(''); setSelectedDoctor(''); }}
+                    required
+                    className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-emerald-500 text-slate-800 transition-colors appearance-none cursor-pointer text-sm pr-10"
+                  >
+                    <option value="">-- Chọn nhóm bệnh / nhu cầu --</option>
+                    {serviceCategories.map(cat => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </option>
                     ))}
-                  </div>
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                 </div>
-              )}
+              </div>
+
+              {/* 3. Parallel Doctor & Time */}
+              <AnimatePresence>
+                {selectedDate && selectedCategory && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-5 overflow-hidden"
+                  >
+                    {workingDocs.length === 0 ? (
+                      <div className="text-sm text-rose-500 font-semibold flex items-center gap-2 justify-center py-4">
+                        <AlertTriangle className="w-4 h-4" /> Không có bác sĩ chuyên khoa này làm việc vào ngày đã chọn.
+                      </div>
+                    ) : (
+                      <>
+                        <div className="text-center bg-sky-100 text-sky-800 text-xs font-bold py-1.5 rounded-full mb-2 border border-sky-200">
+                          Bước 3: Chọn bác sĩ hoặc chọn khung giờ bạn muốn
+                        </div>
+                        {/* Doctor Select */}
+                        <div>
+                          <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                            <User className="w-4 h-4 text-sky-500" />
+                            Danh sách bác sĩ {selectedTime && "(Còn trống khung giờ trên)"}
+                          </label>
+                          <div className="flex flex-col gap-2">
+                            {loadingDocs ? (
+                              <div className="text-sm text-slate-500 italic p-3 text-center border rounded-xl border-slate-200">
+                                <span className="animate-pulse">Đang tải danh sách bác sĩ...</span>
+                              </div>
+                            ) : (
+                              <>
+                                {filteredDocs.map(doc => (
+                                  <div
+                                    key={doc.id}
+                                    onClick={() => setSelectedDoctor(doc.id === selectedDoctor ? '' : doc.id)}
+                                    className={`flex items-center gap-3 p-3 border rounded-xl cursor-pointer transition-all ${
+                                      selectedDoctor === doc.id
+                                        ? 'bg-sky-50 border-sky-400 shadow-sm shadow-sky-500/10'
+                                        : 'bg-white border-slate-200 hover:border-sky-300'
+                                    }`}
+                                  >
+                                    <img src={doc.image} alt={doc.name} className="w-10 h-10 rounded-lg object-cover" />
+                                    <div className="flex-1 min-w-0">
+                                      <p className={`text-sm font-bold truncate ${selectedDoctor === doc.id ? 'text-sky-700' : 'text-slate-700'}`}>
+                                        {doc.name}
+                                      </p>
+                                      <p className="text-[10px] text-slate-500">{doc.title}</p>
+                                    </div>
+                                    {selectedDoctor === doc.id && <CheckCircle2 className="w-5 h-5 text-sky-500 shrink-0" />}
+                                  </div>
+                                ))}
+                                {filteredDocs.length === 0 && selectedTime && (
+                                  <div className="text-xs text-slate-500 italic p-2 text-center bg-white border border-slate-100 rounded-lg">
+                                    Không có bác sĩ nào trống khung giờ này.
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Time Select */}
+                        <div>
+                          <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                            <Clock className="w-4 h-4 text-amber-500" />
+                            Các khung giờ {selectedDoctor ? "(Của bác sĩ này)" : "(Có thể đặt)"}
+                          </label>
+                          <div className="grid grid-cols-4 gap-2">
+                            {filteredSlots.map(slot => (
+                               <button
+                                key={slot.time}
+                                type="button"
+                                disabled={slot.isBooked}
+                                onClick={() => setSelectedTime(slot.time === selectedTime ? '' : slot.time)}
+                                className={`px-2 py-2.5 rounded-xl text-xs font-bold text-center cursor-pointer border transition-all ${
+                                  slot.isBooked
+                                    ? 'bg-slate-100 border-slate-200 text-slate-300 cursor-not-allowed line-through'
+                                    : selectedTime === slot.time
+                                    ? 'bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-500/20'
+                                    : 'bg-white border-slate-200 text-slate-600 hover:border-emerald-300 hover:bg-emerald-50'
+                                }`}
+                              >
+                                {slot.time}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* ── Auto-apply Voucher Banner ── */}
               <AnimatePresence>
-                {selectedService && selectedDate && applicableVouchers.length > 0 && (
+                {selectedCategory && selectedDate && applicableVouchers.length > 0 && (
                   <motion.div
                     initial={{ opacity: 0, y: -6 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -498,7 +559,7 @@ export default function BookAppointmentForm({ isOpen, onClose, preselectedDoctor
 
               {/* ── No voucher info ── */}
               <AnimatePresence>
-                {selectedService && selectedDate && applicableVouchers.length === 0 && (
+                {selectedCategory && selectedDate && applicableVouchers.length === 0 && (
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -513,7 +574,7 @@ export default function BookAppointmentForm({ isOpen, onClose, preselectedDoctor
 
               {/* ── Price Summary ── */}
               <AnimatePresence>
-                {selectedService && (
+                {selectedCategory && (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                     <PriceSummary
                       originalAmount={originalAmount}
@@ -573,11 +634,148 @@ export default function BookAppointmentForm({ isOpen, onClose, preselectedDoctor
                   : 'bg-slate-300 cursor-not-allowed shadow-none'
               }`}
             >
-              {bestVoucher
-                ? `Xác nhận — Tiết kiệm ${formatVND(bestVoucher.discount)} 🎉`
-                : 'Xác nhận đặt lịch'}            </button>
-          </form>
+              Tiếp tục thanh toán giữ chỗ (200.000 VNĐ)
+            </button>
+          </motion.form>
         )}
+
+        {/* ── Step 2: Payment ── */}
+        {step === 'payment' && (
+          <motion.div 
+            key="payment"
+            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+            className="flex flex-col items-center text-center"
+          >
+            <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
+              <QrCode className="w-8 h-8 text-emerald-600" />
+            </div>
+            <h3 className="text-xl font-bold text-slate-800 mb-2">Thanh toán phí giữ chỗ</h3>
+            <p className="text-sm text-slate-500 mb-6 max-w-sm">
+              Để đảm bảo slot khám, vui lòng thanh toán phí giữ chỗ <span className="font-bold text-slate-800">200,000 VNĐ</span>. Số tiền này sẽ được trừ vào chi phí khám bệnh thực tế.
+            </p>
+
+            <div className="bg-slate-50 border border-slate-200 p-4 rounded-3xl mb-6 shadow-sm relative overflow-hidden group w-full max-w-xs">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 to-sky-400"></div>
+              <img 
+                src="https://img.vietqr.io/image/tpbank-84702012001-compact2.jpg?amount=200000&addInfo=DAT LICH KHAM&accountName=NGUYEN QUANG NHUT" 
+                alt="QR Code Thanh Toán" 
+                className="w-full h-auto rounded-xl mix-blend-multiply"
+              />
+            </div>
+
+            <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 px-4 py-3 rounded-xl mb-6 w-full justify-center">
+              <Timer className={`w-5 h-5 ${timeLeft < 60 ? 'text-rose-500 animate-pulse' : 'text-amber-500'}`} />
+              <div className="text-sm font-semibold text-amber-800">
+                Thời gian giữ slot: <span className={`font-black text-lg ${timeLeft < 60 ? 'text-rose-600' : 'text-amber-600'}`}>{formatTime(timeLeft)}</span>
+              </div>
+            </div>
+
+            <div className="flex gap-3 w-full">
+              <button 
+                type="button"
+                onClick={handleCancelPayment}
+                className="flex-1 py-3.5 px-4 rounded-xl font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors border-none cursor-pointer"
+              >
+                Hủy giao dịch
+              </button>
+              <button 
+                onClick={handleConfirmPayment}
+                className="flex-1 py-3.5 px-4 rounded-xl font-semibold text-white bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/30 transition-all hover:-translate-y-0.5 flex items-center justify-center gap-2 border-none cursor-pointer"
+              >
+                <CreditCard className="w-4 h-4" />
+                Tôi đã thanh toán
+              </button>
+            </div>
+            <p className="text-[10px] text-slate-400 mt-4 italic">
+              * Đây là nút giả lập thanh toán (Mock button). Trong thực tế, hệ thống sẽ tự động xác nhận khi ngân hàng báo có tiền.
+            </p>
+          </motion.div>
+        )}
+
+        {/* ── Step 3: Timeout ── */}
+        {step === 'timeout' && (
+          <motion.div 
+            key="timeout"
+            initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+            className="flex flex-col items-center justify-center py-8 text-center"
+          >
+            <div className="w-20 h-20 bg-rose-100 rounded-full flex items-center justify-center mb-4">
+              <Timer className="w-10 h-10 text-rose-500" />
+            </div>
+            <h3 className="text-xl font-bold text-slate-800 mb-2">Hết thời gian giữ chỗ!</h3>
+            <p className="text-sm text-slate-500 max-w-sm mb-6 leading-relaxed">
+              Bạn đã quá 5 phút để thanh toán. Slot hẹn này sẽ bị khóa tạm thời trong 3 phút để nhường cho bệnh nhân khác.
+              <br/><br/>
+              Vui lòng thử lại sau hoặc chọn một slot trống khác!
+            </p>
+            <button
+              onClick={onClose}
+              className="px-8 py-3 border-none cursor-pointer bg-slate-800 text-white font-bold rounded-xl hover:bg-slate-700 transition-colors"
+            >
+              Đóng lại
+            </button>
+          </motion.div>
+        )}
+
+        {/* ── Step 4: Success ── */}
+        {step === 'success' && (
+          <motion.div
+            key="success"
+            initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
+            className="flex flex-col items-center justify-center py-12 text-center"
+          >
+            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', damping: 15, stiffness: 200, delay: 0.1 }}>
+              <CheckCircle2 className="w-16 h-16 text-emerald-500 mb-4" />
+            </motion.div>
+            <h3 className="text-2xl font-bold text-slate-800 mb-2">Đặt lịch thành công!</h3>
+            <div className="mb-3 inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold px-3 py-1.5 rounded-full">
+              <Ticket className="w-3.5 h-3.5" />
+              Đã thanh toán cọc 200,000 VNĐ
+            </div>
+            <p className="text-sm text-slate-500 max-w-sm leading-relaxed">
+              Yêu cầu đặt lịch đã được xác nhận.{' '}
+              {user
+                ? 'Xem và quản lý lịch khám tại trang cá nhân.'
+                : 'Lễ tân sẽ gọi điện xác nhận sớm nhất.'}
+            </p>
+            {bestVoucher && originalAmount > 0 ? (
+              <div className="mt-4 bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3 text-sm space-y-1.5 text-left w-full max-w-xs mx-auto">
+                <div className="flex justify-between font-black text-slate-900 border-b border-slate-200 pb-1.5 mb-1.5">
+                  <span>Dự kiến thanh toán thêm</span>
+                  <span className="text-emerald-600">{formatVND(Math.max(0, bestVoucher.finalAmount - 200000))}</span>
+                </div>
+                <div className="flex justify-between text-slate-500 text-[11px]">
+                  <span>Chi phí gốc (bác sĩ)</span>
+                  <span>{formatVND(originalAmount)}</span>
+                </div>
+                <div className="flex justify-between text-emerald-600 font-semibold text-[11px]">
+                  <span>Voucher giảm giá</span>
+                  <span>-{formatVND(bestVoucher.discount)}</span>
+                </div>
+                <div className="flex justify-between text-slate-500 font-semibold text-[11px]">
+                  <span>Đã thanh toán (Cọc)</span>
+                  <span>-200.000 VNĐ</span>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-4 bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3 text-sm space-y-1.5 text-left w-full max-w-xs mx-auto">
+                <div className="flex justify-between font-black text-slate-900 border-b border-slate-200 pb-1.5 mb-1.5">
+                  <span>Dự kiến thanh toán thêm</span>
+                  <span className="text-emerald-600">{formatVND(Math.max(0, originalAmount - 200000))}</span>
+                </div>
+                <div className="flex justify-between text-slate-500 text-[11px]">
+                  <span>Chi phí gốc (bác sĩ)</span>
+                  <span>{formatVND(originalAmount)}</span>
+                </div>
+                <div className="flex justify-between text-slate-500 font-semibold text-[11px]">
+                  <span>Đã thanh toán (Cọc)</span>
+                  <span>-200.000 VNĐ</span>
+                </div>
+              </div>
+            )}
+          </motion.div>
+        )}
+        </AnimatePresence>
       </motion.div>
     </div>
   );

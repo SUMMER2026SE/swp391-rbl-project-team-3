@@ -26,9 +26,9 @@ import {
 export const STAFF_ROLES = ['ADMIN', 'DOCTOR', 'TECHNICIAN', 'RECEPTIONIST'];
 
 export const ROLE_DISPLAY_NAMES = {
-  ADMIN: 'Quản trị viên',
-  DOCTOR: 'Bác sĩ Chuyên khoa',
-  RECEPTIONIST: 'Lễ tân',
+  ADMIN: 'Quản trị viên / Admin',
+  DOCTOR: 'Bác sĩ / Chuyên gia',
+  RECEPTIONIST: 'Lễ tân / Tiếp đón',
   TECHNICIAN: 'Kỹ thuật viên',
   PATIENT: 'Bệnh nhân',
 };
@@ -90,7 +90,7 @@ export const ROLE_METRICS = {
   ],
   RECEPTIONIST: [
     { icon: CalendarCheck, label: 'Lịch hẹn đã tiếp nhận', value: null, accent: 'text-amber-600' },
-    { icon: Users, label: 'Khách đã phục vụ', value: null, accent: 'text-orange-600' },
+    { icon: Users, label: 'Số khách tiếp nhận', value: null, accent: 'text-orange-600' },
   ],
   PATIENT: [
     { icon: CalendarCheck, label: 'Lượt khám', value: null, accent: 'text-teal-600' },
@@ -107,7 +107,9 @@ export const STAFF_FIELDS = [
   { key: 'phone', label: 'Số điện thoại', icon: 'Phone', type: 'tel', editable: true },
   { key: 'employeeId', label: 'Mã nhân viên', icon: 'BadgeCheck', type: 'text', editable: false },
   { key: 'department', label: 'Phòng ban', icon: 'Building2', type: 'text', editable: true },
-  { key: 'specialization', label: 'Chuyên môn', icon: 'Sparkles', type: 'text', editable: true },
+  { key: 'specialization', label: 'Chuyên môn / Nghiệp vụ', icon: 'Sparkles', type: 'text', editable: true },
+  { key: 'degree', label: 'Bằng cấp', icon: 'Award', type: 'text', editable: true },
+  { key: 'experienceYears', label: 'Kinh nghiệm (năm)', icon: 'Clock', type: 'number', editable: true },
   { key: 'schedule', label: 'Lịch làm việc', icon: 'CalendarDays', type: 'text', editable: true },
 ];
 
