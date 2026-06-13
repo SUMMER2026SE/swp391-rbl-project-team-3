@@ -306,7 +306,7 @@ function LandingPage({ user, onLogout }) {
               </button>
               <button
                 className="bg-teal-500/80 backdrop-blur-xl text-white px-6 py-2 rounded-xl border border-teal-400/50 shadow-[0_0_20px_rgba(13,148,136,0.4)] hover:scale-105 transition-transform font-semibold text-sm cursor-pointer"
-                onClick={() => navigate('/login')}
+                onClick={() => navigate('/login', { state: { isRegistering: true } })}
               >
                 Đăng ký
               </button>
@@ -376,7 +376,7 @@ function LandingPage({ user, onLogout }) {
               </button>
               <button
                 className="bg-teal-500/80 text-white px-6 py-2 rounded-xl border border-teal-400/50 shadow-[0_0_20px_rgba(13,148,136,0.4)] font-semibold text-sm cursor-pointer"
-                onClick={() => { navigate('/login'); setMobileMenuOpen(false); }}
+                onClick={() => { navigate('/login', { state: { isRegistering: true } }); setMobileMenuOpen(false); }}
               >
                 Đăng ký
               </button>

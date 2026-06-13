@@ -12,7 +12,7 @@ export const AuthModel = {
     return subscription;
   },
 
-  async signUp(email, password, fullName, role = 'PATIENT') {
+  async signUp(email, password, fullName, role = 'PATIENT', phone = '') {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -20,6 +20,7 @@ export const AuthModel = {
         data: {
           full_name: fullName,
           role: role,
+          phone: phone,
         }
       }
     });
@@ -33,7 +34,9 @@ export const AuthModel = {
       password,
     });
     if (error) throw error;
-    return data;
+    
+    const role = data?.user?.user_metadata?.role || 'PATIENT';
+    return { success: true, role, ...data };
   },
 
   async signInWithGoogle(redirectTo) {

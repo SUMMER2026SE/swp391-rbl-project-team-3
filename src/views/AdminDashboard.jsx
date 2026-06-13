@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard,
@@ -15,6 +16,7 @@ import {
   Clock,
   Star,
   TrendingUp,
+  User,
 } from 'lucide-react';
 import AdminOverview from '../components/Admin/AdminOverview';
 import EmployeeManagement from '../components/Admin/EmployeeManagement';
@@ -36,6 +38,8 @@ const PlaceholderTab = ({ title }) => (
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const navigate = useNavigate();
   
   const { user, logout } = useAuth();
 
@@ -135,16 +139,66 @@ const AdminDashboard = () => {
 
             <div className="h-8 w-[1px] bg-slate-200"></div>
 
-            <button className="flex items-center space-x-3 group cursor-pointer hover:bg-white/50 p-2 rounded-2xl transition-colors">
-              <div className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 to-sky-400 flex items-center justify-center text-white font-bold shadow-md border-2 border-white group-hover:scale-105 transition-transform">
-                {user?.name?.charAt(0) || 'A'}
-              </div>
-              <div className="text-left hidden md:block">
-                <div className="text-sm font-bold text-slate-800">{user?.name || 'Admin'}</div>
-                <div className="text-xs font-semibold text-indigo-600">{user?.role || 'Super Admin'}</div>
-              </div>
-              <ChevronDown className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
-            </button>
+            <div className="relative">
+              <button 
+                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                className="flex items-center space-x-3 group cursor-pointer hover:bg-white/50 p-2 rounded-2xl transition-all hover:scale-105 active:scale-95 ring-2 ring-transparent hover:ring-emerald-500/50"
+              >
+                <div className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 to-sky-400 flex items-center justify-center text-white font-bold shadow-md border-2 border-white group-hover:scale-105 transition-transform">
+                  {user?.name?.charAt(0) || 'A'}
+                </div>
+                <div className="text-left hidden md:block">
+                  <div className="text-sm font-bold text-slate-800">{user?.name || 'Admin'}</div>
+                  <div className="text-xs font-semibold text-indigo-600">{user?.role || 'Super Admin'}</div>
+                </div>
+                <ChevronDown className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
+              </button>
+
+              <AnimatePresence>
+                {showProfileMenu && (
+                  <>
+                    {/* Click-away backdrop */}
+                    <div className="fixed inset-0 z-40" onClick={() => setShowProfileMenu(false)} />
+                    
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      className="absolute right-0 mt-2 w-56 bg-white/90 backdrop-blur-xl border border-slate-200 shadow-2xl rounded-2xl p-2 z-50 origin-top-right"
+                    >
+                      <div className="px-3 py-2.5 border-b border-slate-100 mb-1">
+                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Tài khoản</p>
+                        <p className="text-sm font-bold text-slate-800 truncate mt-0.5">{user?.name || 'Admin'}</p>
+                        <p className="text-[11px] text-indigo-600 font-medium truncate">{user?.email || 'admin@dermasmart.com'}</p>
+                      </div>
+                      
+                      <button
+                        onClick={() => {
+                          setShowProfileMenu(false);
+                          navigate('/profile');
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:text-indigo-600 hover:bg-indigo-50/50 transition-colors border-none bg-transparent cursor-pointer text-left"
+                      >
+                        <User className="w-4 h-4 text-slate-400" />
+                        Xem hồ sơ cá nhân
+                      </button>
+
+                      <button
+                        onClick={async () => {
+                          setShowProfileMenu(false);
+                          await logout();
+                          navigate('/login');
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-rose-600 hover:bg-rose-50/50 transition-colors border-none bg-transparent cursor-pointer text-left"
+                      >
+                        <LogOut className="w-4 h-4 text-rose-400" />
+                        Đăng xuất
+                      </button>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </header>
 

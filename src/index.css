@@ -5,6 +5,30 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer components {
+  .glass-card {
+    @apply bg-white/40 border border-white/50 backdrop-blur-2xl shadow-[0_4px_30px_rgba(0,104,95,0.05)] transition-all duration-300;
+  }
+  .glass-card:hover {
+    @apply border-white/80 shadow-[0_8px_40px_rgba(0,104,95,0.08)];
+  }
+  .glass-input {
+    @apply bg-white/60 border border-[#bcc9c6] transition-all duration-200 outline-none;
+  }
+  .glass-input:focus {
+    @apply bg-white/90 border-[#00685f] ring-4 ring-[#00685f]/10;
+  }
+  .btn-primary {
+    @apply bg-gradient-to-br from-[#00685f] to-[#0058be] text-white shadow-[0_4px_15px_rgba(0,104,95,0.2)] transition-all duration-300 border-none cursor-pointer;
+  }
+  .btn-primary:hover {
+    @apply shadow-[0_6px_20px_rgba(0,104,95,0.3)] -translate-y-[1px];
+  }
+  .btn-primary:disabled {
+    @apply opacity-70 cursor-not-allowed transform-none;
+  }
+}
+
 
 
 :root {
@@ -1128,3 +1152,13 @@ body {
     .water-refract::after { transition: none; }
 }
 
+/* ===== Auth Module: Scoped Glassmorphism Overrides ===== */
+
+/* Hide native browser password reveal icons to prevent duplicates with custom UI */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+    display: none;
+}
+input[type="password"]::-webkit-reveal {
+    display: none;
+}

@@ -85,6 +85,7 @@ export default function ReceptionistDashboard() {
 
   // ─── STATE MANAGEMENT ───────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState('overview');
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const { 
     appointments, 
     updateAppointmentStatus, 
@@ -410,13 +411,7 @@ export default function ReceptionistDashboard() {
 
         {/* Footer actions */}
         <div className="border-t border-slate-100 pt-4 space-y-1">
-          <button
-            onClick={() => navigate('/profile')}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-slate-600 hover:text-teal-600 hover:bg-teal-50/40 transition-all border-none cursor-pointer bg-transparent align-middle text-left"
-          >
-            <User className="w-5 h-5 text-slate-400" />
-            <span className="text-sm">Hồ sơ cá nhân</span>
-          </button>
+
           <a href="#" className="flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-slate-600 hover:text-teal-600 hover:bg-teal-50/40 transition-all">
             <HelpCircle className="w-5 h-5 text-slate-400" />
             <span className="text-sm">Hỗ trợ kỹ thuật</span>
@@ -549,13 +544,63 @@ export default function ReceptionistDashboard() {
               <button className="hover:bg-slate-100 hover:text-teal-600 transition-all p-2 rounded-full active:scale-95 border-none cursor-pointer bg-transparent flex items-center justify-center">
                 <Settings className="w-5 h-5" />
               </button>
-              <button className="w-8 h-8 rounded-full overflow-hidden border border-slate-200 active:scale-95 transition-transform cursor-pointer border-none p-0">
-                <img
-                  alt="User Profile"
-                  className="w-full h-full object-cover"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuD-M2BqQXPDoBCWJkM6Fd79cimImp2GcimZMOlz2hyxwTH4bQ8vpMqVC_RIXoL2gAQqWt-OWMeEUU7YiJjTYdrKJ6XsjhktqmEjjycsJnakxWx_WlOKVxXcDhdC1jsooRwJbR1GBzC3hvEXnYhVvwZVOThox8jAo1EtiX6UhXkt9_AzZQuaNOIK89GbYNWX7HblAuBxdx77DsQ0O6pidqIO0QfLOZipt9s6XBnKNn_qc7Ii5Gu8kjJ1_lut2j9_FojRaUOzDBewe09P"
-                />
-              </button>
+              <div className="relative flex items-center">
+                <button 
+                  onClick={() => setShowProfileMenu(!showProfileMenu)}
+                  className="w-8 h-8 rounded-full overflow-hidden border border-slate-200 cursor-pointer transition-transform hover:scale-105 active:scale-95 ring-2 ring-transparent hover:ring-emerald-500/50 p-0 flex items-center justify-center"
+                >
+                  <img
+                    alt="User Profile"
+                    className="w-full h-full object-cover"
+                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuD-M2BqQXPDoBCWJkM6Fd79cimImp2GcimZMOlz2hyxwTH4bQ8vpMqVC_RIXoL2gAQqWt-OWMeEUU7YiJjTYdrKJ6XsjhktqmEjjycsJnakxWx_WlOKVxXcDhdC1jsooRwJbR1GBzC3hvEXnYhVvwZVOThox8jAo1EtiX6UhXkt9_AzZQuaNOIK89GbYNWX7HblAuBxdx77DsQ0O6pidqIO0QfLOZipt9s6XBnKNn_qc7Ii5Gu8kjJ1_lut2j9_FojRaUOzDBewe09P"
+                  />
+                </button>
+
+                <AnimatePresence>
+                  {showProfileMenu && (
+                    <>
+                      {/* Click-away backdrop */}
+                      <div className="fixed inset-0 z-40" onClick={() => setShowProfileMenu(false)} />
+                      
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        className="absolute right-0 mt-10 w-56 bg-white/90 backdrop-blur-xl border border-slate-200 shadow-2xl rounded-2xl p-2 z-50 origin-top-right text-left"
+                      >
+                        <div className="px-3 py-2.5 border-b border-slate-100 mb-1">
+                          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Tài khoản</p>
+                          <p className="text-sm font-bold text-slate-800 truncate mt-0.5">{user?.name || 'Lễ tân Hoàng Anh'}</p>
+                          <p className="text-[11px] text-teal-600 font-medium truncate">{user?.email || 'receptionist@dermasmart.com'}</p>
+                        </div>
+                        
+                        <button
+                          onClick={() => {
+                            setShowProfileMenu(false);
+                            navigate('/profile');
+                          }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:text-teal-600 hover:bg-teal-50/50 transition-colors border-none bg-transparent cursor-pointer text-left"
+                        >
+                          <User className="w-4 h-4 text-slate-400" />
+                          Xem hồ sơ cá nhân
+                        </button>
+
+                        <button
+                          onClick={async () => {
+                            setShowProfileMenu(false);
+                            await logout();
+                            navigate('/login');
+                          }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-rose-600 hover:bg-rose-50/50 transition-colors border-none bg-transparent cursor-pointer text-left"
+                        >
+                          <LogOut className="w-4 h-4 text-rose-400" />
+                          Đăng xuất
+                        </button>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
           </div>
         </motion.header>

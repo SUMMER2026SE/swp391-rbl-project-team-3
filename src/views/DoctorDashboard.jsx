@@ -49,6 +49,7 @@ export default function DoctorDashboard() {
 
   // State-based routing
   const [activeTab, setActiveTab] = useState('overview');
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [activeAppointment, setActiveAppointment] = useState(null);
   const [notifications, setNotifications] = useState(() => NotificationModel.getAll());
   const [showNotifications, setShowNotifications] = useState(false);
@@ -275,33 +276,6 @@ export default function DoctorDashboard() {
         <div className="border-t border-slate-100/60 pt-4 space-y-1">
           <div className="relative group">
             <button
-              onClick={() => navigate('/profile')}
-              className={`w-full flex items-center gap-3 rounded-xl font-medium text-slate-600 hover:text-teal-600 hover:bg-teal-50/40 transition-all ${
-                isSidebarExpanded ? 'px-4 py-3' : 'px-0 py-3 justify-center'
-              }`}
-            >
-              <User className="w-5 h-5 text-slate-400 flex-shrink-0" />
-              <AnimatePresence>
-                {isSidebarExpanded && (
-                  <motion.span
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="text-sm whitespace-nowrap"
-                  >
-                    Hồ sơ cá nhân
-                  </motion.span>
-                )}
-              </AnimatePresence>
-            </button>
-            {!isSidebarExpanded && (
-              <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
-                Hồ sơ cá nhân
-              </div>
-            )}
-          </div>
-          <div className="relative group">
-            <button
               onClick={async () => {
                 await logout();
                 navigate('/login');
@@ -460,16 +434,65 @@ export default function DoctorDashboard() {
               <button className="hover:bg-white/70 hover:text-teal-600 transition-all p-2.5 rounded-full active:scale-95">
                 <Settings className="w-[22px] h-[22px]" />
               </button>
-              <button className="w-8 h-8 rounded-full overflow-hidden border border-slate-200 active:scale-95 transition-transform flex items-center justify-center">
-                {activeDoctor?.image ? (
-                  <img src={activeDoctor.image} alt={activeDoctor.name} className="w-full h-full object-cover object-top" />
-                ) : (
-                  <div className="w-full h-full bg-teal-50 flex items-center justify-center text-teal-600 font-bold text-xs">
-                    <User className="w-4 h-4" />
-                  </div>
-                )}
+              <div className="relative">
+                <button 
+                  onClick={() => setShowProfileMenu(!showProfileMenu)}
+                  className="w-8 h-8 rounded-full overflow-hidden border border-slate-200 cursor-pointer transition-transform hover:scale-105 active:scale-95 ring-2 ring-transparent hover:ring-emerald-500/50 flex items-center justify-center"
+                >
+                  {activeDoctor?.image ? (
+                    <img src={activeDoctor.image} alt={activeDoctor.name} className="w-full h-full object-cover object-top" />
+                  ) : (
+                    <div className="w-full h-full bg-teal-50 flex items-center justify-center text-teal-600 font-bold text-xs">
+                      <User className="w-4 h-4" />
+                    </div>
+                  )}
+                </button>
 
-              </button>
+                <AnimatePresence>
+                  {showProfileMenu && (
+                    <>
+                      {/* Click-away backdrop */}
+                      <div className="fixed inset-0 z-40" onClick={() => setShowProfileMenu(false)} />
+                      
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        className="absolute right-0 mt-2 w-56 bg-white/90 backdrop-blur-xl border border-slate-200 shadow-2xl rounded-2xl p-2 z-50 origin-top-right"
+                      >
+                        <div className="px-3 py-2.5 border-b border-slate-100 mb-1">
+                          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Tài khoản</p>
+                          <p className="text-sm font-bold text-slate-800 truncate mt-0.5">{user?.name || activeDoctor?.name || 'Bác sĩ'}</p>
+                          <p className="text-[11px] text-teal-600 font-medium truncate">{user?.email || 'doctor@dermasmart.com'}</p>
+                        </div>
+                        
+                        <button
+                          onClick={() => {
+                            setShowProfileMenu(false);
+                            navigate('/profile');
+                          }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:text-teal-600 hover:bg-teal-50/50 transition-colors border-none bg-transparent cursor-pointer text-left"
+                        >
+                          <User className="w-4 h-4 text-slate-400" />
+                          Xem hồ sơ cá nhân
+                        </button>
+
+                        <button
+                          onClick={async () => {
+                            setShowProfileMenu(false);
+                            await logout();
+                            navigate('/login');
+                          }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-rose-600 hover:bg-rose-50/50 transition-colors border-none bg-transparent cursor-pointer text-left"
+                        >
+                          <LogOut className="w-4 h-4 text-rose-400" />
+                          Đăng xuất
+                        </button>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
           </div>
         </motion.header>

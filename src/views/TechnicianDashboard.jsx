@@ -39,6 +39,7 @@ export default function TechnicianDashboard() {
 
   /* ───────── state ───────── */
   const [activeTab, setActiveTab] = useState('overview');
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [activeTask, setActiveTask] = useState(null);
   const [tasks, setTasks] = useState(mockAssignedTasks || []);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
@@ -251,34 +252,7 @@ export default function TechnicianDashboard() {
 
         {/* Sidebar Footer */}
         <div className="flex flex-col gap-2">
-          {/* Profile */}
-          <motion.button
-            className="relative flex items-center gap-3 px-3 py-2.5 rounded-2xl text-slate-600 hover:text-teal-700 hover:bg-teal-50/60 transition-all duration-200 group"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center flex-shrink-0">
-              <User size={16} className="text-white" />
-            </div>
-            <AnimatePresence>
-              {isSidebarExpanded && (
-                <motion.span
-                  initial={{ opacity: 0, x: -8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -8 }}
-                  transition={{ duration: 0.18 }}
-                  className="text-sm font-medium whitespace-nowrap"
-                >
-                  Hồ sơ
-                </motion.span>
-              )}
-            </AnimatePresence>
-            {!isSidebarExpanded && (
-              <div className="absolute left-full ml-3 px-2.5 py-1 rounded-lg bg-slate-800 text-white text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-xl z-50">
-                Hồ sơ
-              </div>
-            )}
-          </motion.button>
+
 
           {/* Logout */}
           <motion.button
@@ -386,13 +360,61 @@ export default function TechnicianDashboard() {
                 </motion.button>
 
                 {/* Avatar */}
-                <motion.button
-                  whileHover={{ scale: 1.08 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-500/20"
-                >
-                  <User size={18} className="text-white" />
-                </motion.button>
+                <div className="relative">
+                  <motion.button
+                    onClick={() => setShowProfileMenu(!showProfileMenu)}
+                    whileHover={{ scale: 1.08 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-500/20 cursor-pointer transition-transform hover:scale-105 ring-2 ring-transparent hover:ring-emerald-500/50"
+                  >
+                    <User size={18} className="text-white" />
+                  </motion.button>
+
+                  <AnimatePresence>
+                    {showProfileMenu && (
+                      <>
+                        {/* Click-away backdrop */}
+                        <div className="fixed inset-0 z-40" onClick={() => setShowProfileMenu(false)} />
+                        
+                        <motion.div
+                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                          className="absolute right-0 mt-2 w-56 bg-white/90 backdrop-blur-xl border border-slate-200 shadow-2xl rounded-2xl p-2 z-50 origin-top-right text-left"
+                        >
+                          <div className="px-3 py-2.5 border-b border-slate-100 mb-1">
+                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Tài khoản</p>
+                            <p className="text-sm font-bold text-slate-800 truncate mt-0.5">{user?.name || 'Kỹ thuật viên'}</p>
+                            <p className="text-[11px] text-emerald-600 font-medium truncate">{user?.email || 'tech@dermasmart.com'}</p>
+                          </div>
+                          
+                          <button
+                            onClick={() => {
+                              setShowProfileMenu(false);
+                              navigate('/profile');
+                            }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:text-emerald-600 hover:bg-emerald-50/50 transition-colors border-none bg-transparent cursor-pointer text-left"
+                          >
+                            <User className="w-4 h-4 text-slate-400" />
+                            Xem hồ sơ cá nhân
+                          </button>
+
+                          <button
+                            onClick={async () => {
+                              setShowProfileMenu(false);
+                              await logout();
+                              navigate('/login');
+                            }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-rose-600 hover:bg-rose-50/50 transition-colors border-none bg-transparent cursor-pointer text-left"
+                          >
+                            <LogOut className="w-4 h-4 text-rose-400" />
+                            Đăng xuất
+                          </button>
+                        </motion.div>
+                      </>
+                    )}
+                  </AnimatePresence>
+                </div>
               </div>
             </div>
           </motion.header>
