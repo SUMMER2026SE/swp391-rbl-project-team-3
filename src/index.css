@@ -1152,6 +1152,13 @@ body {
     .water-refract::after { transition: none; }
 }
 
+/* ===== Liquid-glass thin scrollbar (Profile scalable sections) ===== */
+.glass-scrollbar::-webkit-scrollbar { width: 4px; }
+.glass-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.glass-scrollbar::-webkit-scrollbar-thumb { background: rgba(0, 104, 95, 0.2); border-radius: 4px; }
+.glass-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(0, 104, 95, 0.4); }
+.glass-scrollbar { scrollbar-width: thin; scrollbar-color: rgba(0, 104, 95, 0.2) transparent; }
+
 /* ===== Auth Module: Scoped Glassmorphism Overrides ===== */
 
 /* Hide native browser password reveal icons to prevent duplicates with custom UI */

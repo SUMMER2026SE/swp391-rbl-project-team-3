@@ -8,7 +8,7 @@ import AdminDashboard from './views/AdminDashboard';
 import DoctorDashboard from './views/DoctorDashboard';
 import ReceptionistDashboard from './views/ReceptionistDashboard';
 import TechnicianDashboard from './views/TechnicianDashboard';
-import UserProfilePage from './views/UserProfilePage';
+import ProfilePage from './views/ProfilePage';
 import ProtectedRoute from './components/ProtectedRoute';
 import LiquidGlassFilter from './components/common/LiquidGlassFilter';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -95,7 +95,7 @@ function AppContent() {
           path="/profile" 
           element={
             <ProtectedRoute allowedRoles={['ADMIN', 'DOCTOR', 'RECEPTIONIST', 'TECHNICIAN', 'PATIENT']}>
-              <UserProfilePage />
+              <ProfilePage />
             </ProtectedRoute>
           } 
         />
