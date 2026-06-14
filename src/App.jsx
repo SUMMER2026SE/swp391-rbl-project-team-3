@@ -17,7 +17,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import './index.css';
 
 function AppContent() {
-  const { user, logout, getDashboardPath } = useAuth();
+  const { user, loading, logout, getDashboardPath } = useAuth();
 
   const handleLogout = async () => {
     await logout();
@@ -36,14 +36,14 @@ function AppContent() {
           element={<LandingPage user={landingPageUser} onLogout={handleLogout} />} 
         />
         
-        <Route 
-          path="/login" 
-          element={!user ? <LoginPage /> : <Navigate to={getDashboardPath(user.role)} replace />} 
+        <Route
+          path="/login"
+          element={loading ? <LoginPage /> : (!user ? <LoginPage /> : <Navigate to={getDashboardPath(user.role)} replace />)}
         />
 
-        <Route 
-          path="/login-supabase" 
-          element={!user ? <LoginPage /> : <Navigate to={getDashboardPath(user.role)} replace />} 
+        <Route
+          path="/login-supabase"
+          element={loading ? <LoginPage /> : (!user ? <LoginPage /> : <Navigate to={getDashboardPath(user.role)} replace />)}
         />
 
         <Route 

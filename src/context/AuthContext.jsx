@@ -13,17 +13,33 @@ const ROLE_DASHBOARD_MAP = {
 
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
+  // Tracks whether the initial Supabase session lookup has resolved.
+  // Without this, a refresh momentarily reports the user as logged-out,
+  // bouncing authenticated users to /login before the session loads.
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    AuthModel.getSession().then((session) => {
-      setSession(session);
-    }).catch(console.error);
+    let mounted = true;
+
+    AuthModel.getSession()
+      .then((session) => {
+        if (mounted) setSession(session);
+      })
+      .catch(console.error)
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
 
     const subscription = AuthModel.onAuthStateChange((_event, session) => {
+      if (!mounted) return;
       setSession(session);
+      setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const login = () => {
@@ -62,7 +78,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user: activeUser, session, login, logout, getDashboardPath }}>
+    <AuthContext.Provider value={{ user: activeUser, session, loading, login, logout, getDashboardPath }}>
       {children}
     </AuthContext.Provider>
   );

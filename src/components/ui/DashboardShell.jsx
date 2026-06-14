@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 import {
   motion,
   AnimatePresence,
@@ -10,78 +10,58 @@ import {
   useMotionTemplate,
 } from 'framer-motion';
 import {
-  LayoutDashboard,
-  ClipboardList,
-  Calendar,
   LogOut,
   Search,
   Bell,
   Settings,
   User,
-  Star,
-  ChevronLeft,
-  ChevronRight,
   PanelLeftClose,
   PanelLeftOpen,
-  CheckCircle2,
 } from 'lucide-react';
-import TechnicianOverview from '../components/Technician/Overview/TechnicianOverview';
-import AssignedTasksList from '../components/Technician/AssignedTasks/AssignedTasksList';
-import TechnicianSchedule from '../components/Technician/WorkSchedule/TechnicianSchedule';
-import TechnicianWorkspace from '../components/Technician/ProcedureWorkspace/TechnicianWorkspace';
-import TechnicianFeedbackView from '../components/Technician/TechnicianFeedbackView';
-import LiquidSidebarMenu from '../components/ui/LiquidSidebarMenu';
-import logo from '../assets/logo.png';
+import LiquidSidebarMenu from './LiquidSidebarMenu';
+import logo from '../../assets/logo.png';
 
-export default function TechnicianDashboard() {
+/**
+ * DashboardShell — the shared premium "Liquid Glass" chrome extracted from the
+ * Doctor/Technician dashboards so every actor portal renders an identical shell:
+ *  - transparent canvas with animated emerald/sky mesh blobs
+ *  - compact hover-expand glass sidebar (LiquidSidebarMenu)
+ *  - scroll-linked morphing pill topbar with gradient title
+ *  - glass profile dropdown + logout
+ *
+ * It is purely presentational chrome; each portal passes its own nav config and
+ * page content as `children`, so no business logic or features are lost.
+ */
+export default function DashboardShell({
+  portalName = 'Portal',
+  navItems = [],
+  activeTab,
+  onTabChange,
+  pageTitle = 'Tổng quan',
+  searchPlaceholder = 'Tìm kiếm...',
+  onSearch,
+  headerExtras = null,
+  children,
+}) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
-  /* ───────── state ───────── */
-  const [activeTab, setActiveTab] = useState('overview');
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [activeTask, setActiveTask] = useState(null);
-  const [tasks, setTasks] = useState(([]) || []);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
-  const [showToast, setShowToast] = useState(false);
 
-  /* ───────── dynamic page title ───────── */
-  const getPageTitle = () => {
-    if (activeTask) {
-      return `Phòng Kỹ thuật: ${activeTask.patientName}`;
-    }
-    const tabNames = {
-      overview: 'Tổng quan',
-      tasks: 'Danh sách Chỉ định',
-      schedule: 'Lịch làm việc',
-      feedback: 'Đánh giá',
-    };
-    return tabNames[activeTab] || 'Tổng quan';
-  };
-
-  /* ───────── scroll-linked navbar ───────── */
+  /* scroll-linked morphing topbar (matches Doctor/Tech baseline) */
   const scrollRef = useRef(null);
   const { scrollY } = useScroll({ container: scrollRef });
-
   const springCfg = { stiffness: 220, damping: 32, mass: 0.9 };
 
-  const rawWidth = useTransform(scrollY, [0, 120], [100, 90]);
-  const rawMaxW = useTransform(scrollY, [0, 120], [1600, 1140]);
-  const rawRadius = useTransform(scrollY, [0, 120], [0, 32]);
-  const rawTop = useTransform(scrollY, [0, 120], [0, 16]);
-  const rawPX = useTransform(scrollY, [0, 120], [32, 30]);
-  const rawBgOpacity = useTransform(scrollY, [0, 120], [0, 0.72]);
-  const rawShadowOpacity = useTransform(scrollY, [0, 120], [0, 0.12]);
-  const rawRingOpacity = useTransform(scrollY, [0, 120], [0, 0.7]);
-
-  const widthMV = useSpring(rawWidth, springCfg);
-  const maxWMV = useSpring(rawMaxW, springCfg);
-  const radiusMV = useSpring(rawRadius, springCfg);
-  const topMV = useSpring(rawTop, springCfg);
-  const pxMV = useSpring(rawPX, springCfg);
-  const bgMV = useSpring(rawBgOpacity, springCfg);
-  const shadowMV = useSpring(rawShadowOpacity, springCfg);
-  const ringMV = useSpring(rawRingOpacity, springCfg);
+  const widthMV = useSpring(useTransform(scrollY, [0, 120], [100, 90]), springCfg);
+  const maxWMV = useSpring(useTransform(scrollY, [0, 120], [1600, 1140]), springCfg);
+  const radiusMV = useSpring(useTransform(scrollY, [0, 120], [0, 32]), springCfg);
+  const topMV = useSpring(useTransform(scrollY, [0, 120], [0, 16]), springCfg);
+  const pxMV = useSpring(useTransform(scrollY, [0, 120], [32, 30]), springCfg);
+  const bgMV = useSpring(useTransform(scrollY, [0, 120], [0, 0.72]), springCfg);
+  const shadowMV = useSpring(useTransform(scrollY, [0, 120], [0, 0.12]), springCfg);
+  const ringMV = useSpring(useTransform(scrollY, [0, 120], [0, 0.7]), springCfg);
 
   const navWidth = useMotionTemplate`${widthMV}%`;
   const navMaxWidth = useMotionTemplate`${maxWMV}px`;
@@ -91,84 +71,11 @@ export default function TechnicianDashboard() {
   const navBg = useMotionTemplate`rgba(255, 255, 255, ${bgMV})`;
   const navShadow = useMotionTemplate`0 14px 40px rgba(2, 32, 29, ${shadowMV}), inset 0 1px 2px rgba(255,255,255,0.9), inset 0 0 0 1px rgba(255,255,255,${ringMV})`;
 
-  /* ───────── nav items ───────── */
-  const navItems = [
-    { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard },
-    { id: 'tasks', label: 'Danh sách Chỉ định', icon: ClipboardList },
-    { id: 'schedule', label: 'Lịch làm việc', icon: Calendar },
-    { id: 'feedback', label: 'Đánh giá', icon: Star },
-  ];
+  const safeNavItems = Array.isArray(navItems) ? navItems : [];
 
-  /* ───────── handlers ───────── */
-  const handleCompleteTask = (taskId, resultRecord) => {
-    const updatedTasks = tasks?.map?.((t) =>
-      t.id === taskId ? { ...t, status: 'Đã hoàn thành', resultRecord } : t);
-    setTasks(updatedTasks);
-    // Also update global mock
-    const found = ([])?.find((t) => t.id === taskId);
-    if (found) {
-      found.status = 'Đã hoàn thành';
-      found.resultRecord = resultRecord;
-    }
-    setActiveTask(null);
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 3000);
-  };
-
-  const handleSelectTask = (task) => {
-    setActiveTask(task);
-  };
-
-  const handleReviewTask = (task) => {
-    setActiveTask(task);
-  };
-
-  /* ───────── content renderer ───────── */
-  const renderContent = () => {
-    if (activeTask) {
-      if (activeTask.status === 'Đã hoàn thành') {
-        return (
-          <TechnicianWorkspace
-            task={activeTask}
-            onBack={() => setActiveTask(null)}
-            isReviewMode={true}
-          />
-        );
-      }
-      return (
-        <TechnicianWorkspace
-          task={activeTask}
-          onBack={() => setActiveTask(null)}
-          onComplete={handleCompleteTask}
-          isReviewMode={false}
-        />
-      );
-    }
-
-    switch (activeTab) {
-      case 'overview':
-        return <TechnicianOverview tasks={tasks} />;
-      case 'tasks':
-        return (
-          <AssignedTasksList
-            tasks={tasks}
-            onExecuteTask={handleSelectTask}
-            onReviewTask={handleReviewTask}
-          />
-        );
-      case 'schedule':
-        return <TechnicianSchedule />;
-      case 'feedback':
-        return <TechnicianFeedbackView />;
-      default:
-        return <TechnicianOverview tasks={tasks} />;
-    }
-  };
-
-  /* ═══════════════════════════════════════════ JSX ═══════════════════════════════════════════ */
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50/40 overflow-hidden">
-      {/* ─── Background Blobs ─── */}
+    <div className="relative min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50/40 overflow-hidden font-sans text-slate-800">
+      {/* Animated mesh blobs */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div
           className="absolute -top-32 -left-32 w-[520px] h-[520px] rounded-full bg-emerald-300/15 blur-[120px]"
@@ -193,23 +100,19 @@ export default function TechnicianDashboard() {
         }
       `}</style>
 
-      {/* ─── Sidebar ─── */}
+      {/* Sidebar */}
       <motion.aside
         animate={{ width: isSidebarExpanded ? 256 : 80 }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
         className="hidden md:flex backdrop-blur-2xl bg-white/30 border-r border-white/40 fixed h-full z-40 flex-col py-8 px-3 justify-between shadow-[4px_0_24px_rgba(0,0,0,0.03),inset_-1px_0_2px_rgba(255,255,255,0.7)] overflow-hidden"
       >
-        {/* Sidebar Top */}
         <div className="flex flex-col gap-6">
-          {/* Logo & Toggle Header */}
           <div className={`flex items-center ${isSidebarExpanded ? 'justify-between px-1' : 'justify-center'} min-h-[80px]`}>
             {isSidebarExpanded ? (
               <>
                 <div className="flex flex-col items-start gap-1">
                   <img src={logo} alt="DermaSmart Logo" className="h-16 w-auto object-contain" />
-                  <span className="text-[10px] text-slate-400 whitespace-nowrap animate-fadeIn">
-                    Technician Portal
-                  </span>
+                  <span className="text-[10px] text-slate-400 whitespace-nowrap">{portalName}</span>
                 </div>
                 <button
                   onClick={() => setIsSidebarExpanded(false)}
@@ -230,23 +133,15 @@ export default function TechnicianDashboard() {
             )}
           </div>
 
-          {/* Nav Items */}
           <LiquidSidebarMenu
-            items={navItems}
-            activeId={activeTab === 'overview' && activeTask ? '' : activeTab}
-            onChange={(id) => {
-              setActiveTab(id);
-              setActiveTask(null);
-            }}
+            items={safeNavItems}
+            activeId={activeTab}
+            onChange={(id) => onTabChange?.(id)}
             isSidebarExpanded={isSidebarExpanded}
           />
         </div>
 
-        {/* Sidebar Footer */}
         <div className="flex flex-col gap-2">
-
-
-          {/* Logout */}
           <motion.button
             onClick={async () => {
               await logout();
@@ -279,15 +174,10 @@ export default function TechnicianDashboard() {
         </div>
       </motion.aside>
 
-      {/* ─── Main Content Area ─── */}
-      <div
-        className={`transition-all duration-300 ${
-          isSidebarExpanded ? 'md:ml-64' : 'md:ml-20'
-        }`}
-      >
-        {/* Scroll container */}
+      {/* Main content area */}
+      <div className={`transition-all duration-300 ${isSidebarExpanded ? 'md:ml-64' : 'md:ml-20'}`}>
         <div ref={scrollRef} className="h-screen overflow-y-auto relative">
-          {/* ─── Navbar ─── */}
+          {/* Morphing pill topbar */}
           <motion.header
             style={{
               width: navWidth,
@@ -305,34 +195,27 @@ export default function TechnicianDashboard() {
               <div className="flex items-center gap-4 flex-1">
                 <span className="font-black text-2xl text-gradient-emerald md:hidden tracking-tight">DermaSmart</span>
                 <h1 className="text-xl md:text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-800 to-teal-500 tracking-tight whitespace-nowrap mr-6">
-                  {getPageTitle()}
+                  {pageTitle}
                 </h1>
-                <div className="relative flex-1 max-w-md">
-                  <Search
-                    size={18}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                  />
+                <div className="relative flex-1 max-w-md hidden md:block">
+                  <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="text"
-                    placeholder="Tìm kiếm chỉ định, bệnh nhân..."
+                    placeholder={searchPlaceholder}
+                    onChange={(e) => onSearch?.(e.target.value)}
                     className="w-full pl-11 pr-4 py-2.5 rounded-2xl bg-white/40 border border-white/60 backdrop-blur-md text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-300/60 shadow-inner shadow-white/20 transition-all"
                   />
                 </div>
               </div>
 
-              {/* Right side */}
               <div className="flex items-center gap-3">
-                {/* User info */}
+                {headerExtras}
+
                 <div className="hidden lg:flex flex-col items-end mr-1">
-                  <span className="text-sm font-semibold text-slate-700">
-                    {user?.name || 'KTV. Lê Thị C'}
-                  </span>
-                  <span className="text-[11px] text-slate-400">
-                    Technician Portal
-                  </span>
+                  <span className="text-sm font-semibold text-slate-700">{user?.name || 'Người dùng'}</span>
+                  <span className="text-[11px] text-slate-400">{portalName}</span>
                 </div>
 
-                {/* Bell */}
                 <motion.button
                   whileHover={{ scale: 1.08 }}
                   whileTap={{ scale: 0.95 }}
@@ -342,7 +225,6 @@ export default function TechnicianDashboard() {
                   <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-red-500 border-2 border-white" />
                 </motion.button>
 
-                {/* Settings */}
                 <motion.button
                   whileHover={{ scale: 1.08 }}
                   whileTap={{ scale: 0.95 }}
@@ -351,23 +233,24 @@ export default function TechnicianDashboard() {
                   <Settings size={18} />
                 </motion.button>
 
-                {/* Avatar */}
                 <div className="relative">
                   <motion.button
                     onClick={() => setShowProfileMenu(!showProfileMenu)}
                     whileHover={{ scale: 1.08 }}
                     whileTap={{ scale: 0.95 }}
-                    className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-500/20 cursor-pointer transition-transform hover:scale-105 ring-2 ring-transparent hover:ring-emerald-500/50"
+                    className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-500/20 cursor-pointer transition-transform hover:scale-105 ring-2 ring-transparent hover:ring-emerald-500/50 overflow-hidden"
                   >
-                    <User size={18} className="text-white" />
+                    {user?.avatar ? (
+                      <img src={user.avatar} alt={user?.name || 'avatar'} className="w-full h-full object-cover" />
+                    ) : (
+                      <User size={18} className="text-white" />
+                    )}
                   </motion.button>
 
                   <AnimatePresence>
                     {showProfileMenu && (
                       <>
-                        {/* Click-away backdrop */}
                         <div className="fixed inset-0 z-40" onClick={() => setShowProfileMenu(false)} />
-                        
                         <motion.div
                           initial={{ opacity: 0, y: 10, scale: 0.95 }}
                           animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -376,10 +259,10 @@ export default function TechnicianDashboard() {
                         >
                           <div className="px-3 py-2.5 border-b border-slate-100 mb-1">
                             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Tài khoản</p>
-                            <p className="text-sm font-bold text-slate-800 truncate mt-0.5">{user?.name || 'Kỹ thuật viên'}</p>
-                            <p className="text-[11px] text-emerald-600 font-medium truncate">{user?.email || 'tech@dermasmart.com'}</p>
+                            <p className="text-sm font-bold text-slate-800 truncate mt-0.5">{user?.name || 'Người dùng'}</p>
+                            <p className="text-[11px] text-emerald-600 font-medium truncate">{user?.email || ''}</p>
                           </div>
-                          
+
                           <button
                             onClick={() => {
                               setShowProfileMenu(false);
@@ -411,43 +294,20 @@ export default function TechnicianDashboard() {
             </div>
           </motion.header>
 
-          {/* ─── Page Content ─── */}
+          {/* Page content — keyed remount (matches Doctor baseline; avoids the
+              AnimatePresence mode="wait" exit-stall that can block tab swaps). */}
           <main className="relative z-10 px-4 md:px-8 py-8 max-w-[1600px] mx-auto">
-            {/* Keyed remount instead of AnimatePresence mode="wait" (whose exit
-                stalled and blocked tab/task content from swapping). */}
             <motion.div
-              key={
-                activeTask
-                  ? `task-${activeTask.id}`
-                  : `tab-${activeTab}`
-              }
+              key={`tab-${activeTab}`}
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, ease: 'easeOut' }}
             >
-              {renderContent()}
+              {children}
             </motion.div>
           </main>
         </div>
       </div>
-
-      {/* ─── Toast ─── */}
-      <AnimatePresence>
-        {showToast && (
-          <motion.div
-            initial={{ opacity: 0, y: 60, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 40, scale: 0.95 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-            className="fixed bottom-8 right-8 z-50 flex items-center gap-3 px-6 py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-2xl shadow-emerald-500/30"
-          >
-            <CheckCircle2 size={22} className="flex-shrink-0" />
-            <span className="text-sm font-semibold">
-              Kết quả thủ thuật đã được ghi nhận!
-            </span>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

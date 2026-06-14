@@ -61,9 +61,11 @@ function ReplyModal({ feedback, onClose, onSubmit }) {
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function ReceptionistFeedbackView() {
-  const { getAllFeedbacks, getStats, replyToFeedback, updateStatus } = useFeedbackController();
-  const allFeedbacks = getAllFeedbacks();
-  const published = allFeedbacks?.filter?.(f => f.status === 'published');
+  // Use the controller's loaded `feedbacks` state — getAllFeedbacks() is async
+  // and returned a Promise, which made `published`/`filtered` undefined and
+  // crashed the tab on `filtered.length`.
+  const { feedbacks, isLoading, getStats, replyToFeedback, updateStatus } = useFeedbackController();
+  const published = (Array.isArray(feedbacks) ? feedbacks : []).filter(f => f.status === 'published');
   const stats = getStats(published);
 
   const [search, setSearch]           = useState('');
@@ -187,7 +189,12 @@ export default function ReceptionistFeedbackView() {
       </div>
       {/* List */}
       <div className="space-y-4">
-        {filtered.length > 0 ? (
+        {isLoading ? (
+          <div className="text-center py-12 bg-white border border-dashed border-slate-200 rounded-2xl">
+            <div className="w-8 h-8 rounded-full border-4 border-slate-200 border-t-emerald-500 animate-spin mx-auto mb-3" />
+            <p className="text-sm text-slate-500 font-semibold">Đang tải đánh giá...</p>
+          </div>
+        ) : filtered.length > 0 ? (
           filtered?.map?.(fb => (
             <FeedbackCard
               key={fb.id}

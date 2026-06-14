@@ -1,7 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { motion, AnimatePresence } from 'framer-motion';
+import {
+  motion,
+  AnimatePresence,
+  useScroll,
+  useTransform,
+  useSpring,
+  useMotionTemplate,
+} from 'framer-motion';
 import { useAppointmentController } from '../controllers/useAppointmentController';
 import { useMedicalRecordController } from '../controllers/useMedicalRecordController';
 import { AppointmentModel } from '../models/AppointmentModel';
@@ -40,7 +47,9 @@ import {
   FileText,
   Printer,
   Heart,
-  ChevronDown
+  ChevronDown,
+  PanelLeftClose,
+  PanelLeftOpen
 } from 'lucide-react';
 import LiveChatDrawer from '../components/Receptionist/LiveChatDrawer';
 import ReceptionistFeedbackView from '../components/Receptionist/ReceptionistFeedbackView';
@@ -86,6 +95,7 @@ export default function ReceptionistDashboard() {
   const { doctors } = useDoctors();
   const navigate = useNavigate();
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [patientSearchTerm, setPatientSearchTerm] = useState('');
 
@@ -312,6 +322,26 @@ export default function ReceptionistDashboard() {
       setIsScrolled(false);
     }
   };
+
+  /* Continuous scroll-linked morphing topbar — matches the Doctor/Tech baseline. */
+  const scrollRef = useRef(null);
+  const { scrollY } = useScroll({ container: scrollRef });
+  const rcpSpring = { stiffness: 220, damping: 32, mass: 0.9 };
+  const rcpWidth = useSpring(useTransform(scrollY, [0, 120], [100, 92]), rcpSpring);
+  const rcpMaxW = useSpring(useTransform(scrollY, [0, 120], [1600, 1100]), rcpSpring);
+  const rcpRadius = useSpring(useTransform(scrollY, [0, 120], [0, 32]), rcpSpring);
+  const rcpTop = useSpring(useTransform(scrollY, [0, 120], [0, 16]), rcpSpring);
+  const rcpPadX = useSpring(useTransform(scrollY, [0, 120], [32, 30]), rcpSpring);
+  const rcpBg = useSpring(useTransform(scrollY, [0, 120], [0, 0.75]), rcpSpring);
+  const rcpShadow = useSpring(useTransform(scrollY, [0, 120], [0, 0.12]), rcpSpring);
+  const rcpRing = useSpring(useTransform(scrollY, [0, 120], [0, 0.7]), rcpSpring);
+  const navWidth = useMotionTemplate`${rcpWidth}%`;
+  const navMaxWidth = useMotionTemplate`${rcpMaxW}px`;
+  const navRadius = useMotionTemplate`${rcpRadius}px`;
+  const navTop = useMotionTemplate`${rcpTop}px`;
+  const navPadX = useMotionTemplate`${rcpPadX}px`;
+  const navBg = useMotionTemplate`rgba(255, 255, 255, ${rcpBg})`;
+  const navShadow = useMotionTemplate`0 14px 40px rgba(2, 32, 29, ${rcpShadow}), inset 0 1px 2px rgba(255,255,255,0.9), inset 0 0 0 1px rgba(255,255,255,${rcpRing})`;
 
   // ─── TOAST NOTIFICATION ─────────────────────────────────────────────────
   const showToast = (message, type = 'success') => {
@@ -812,24 +842,54 @@ export default function ReceptionistDashboard() {
         <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-emerald-300/15 blur-[120px] bg-mesh-blob-1"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] rounded-full bg-sky-300/15 blur-[120px] bg-mesh-blob-2"></div>
       </div>
-      {/* Unified Glass Sidebar */}
-      <aside className="hidden md:flex backdrop-blur-2xl bg-white/60 border-r border-white/50 w-64 fixed h-full z-40 flex-col py-8 px-4 justify-between">
-        <div>
-          {/* Logo Brand */}
-          <div className="px-4 mb-10 flex flex-col items-start gap-1">
-            <img src={logo} alt="DermaSmart Logo" className="h-16 w-auto object-contain" />
-            <span className="text-[11px] text-slate-500 font-medium">Clinic Management</span>
+      {/* Unified Glass Sidebar — compact hover-expand, matches Doctor/Tech baseline */}
+      <motion.aside
+        animate={{ width: isSidebarExpanded ? 256 : 80 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+        className="hidden md:flex backdrop-blur-2xl bg-white/60 border-r border-white/50 shadow-[4px_0_24px_rgba(0,0,0,0.03),inset_-1px_0_2px_rgba(255,255,255,0.7)] fixed h-full z-40 flex-col py-8 px-3 justify-between overflow-hidden"
+      >
+        <div className="flex flex-col gap-6">
+          {/* Logo & Collapse/Expand Toggle */}
+          <div className={`flex items-center ${isSidebarExpanded ? 'justify-between px-1' : 'justify-center'} min-h-[64px]`}>
+            {isSidebarExpanded ? (
+              <>
+                <div className="flex flex-col items-start gap-1">
+                  <img src={logo} alt="DermaSmart Logo" className="h-14 w-auto object-contain" />
+                  <span className="text-[10px] text-slate-400 whitespace-nowrap">Clinic Management</span>
+                </div>
+                <button
+                  onClick={() => setIsSidebarExpanded(false)}
+                  className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-teal-600 transition-colors cursor-pointer"
+                  title="Thu gọn"
+                >
+                  <PanelLeftClose className="w-5 h-5" />
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => setIsSidebarExpanded(true)}
+                className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-teal-600 transition-colors cursor-pointer"
+                title="Mở rộng"
+              >
+                <PanelLeftOpen className="w-5 h-5" />
+              </button>
+            )}
           </div>
 
           {/* New Appointment Button */}
-          <div className="px-2 mb-6">
-            <button 
+          <div className="relative group">
+            <button
               onClick={() => setIsAddOpen(true)}
-              className="w-full bg-gradient-to-r from-teal-600 to-sky-600 text-white py-3 px-4 rounded-xl font-semibold shadow-md shadow-teal-600/10 hover:shadow-lg hover:shadow-teal-600/20 active:scale-95 transition-all flex justify-center items-center gap-2 text-sm border-none cursor-pointer"
+              className={`w-full bg-gradient-to-r from-teal-600 to-sky-600 text-white rounded-xl font-semibold shadow-md shadow-teal-600/10 hover:shadow-lg hover:shadow-teal-600/20 active:scale-95 transition-all flex items-center justify-center gap-2 text-sm border-none cursor-pointer ${isSidebarExpanded ? 'py-3 px-4' : 'py-3 px-0'}`}
             >
-              <Plus className="w-4 h-4" />
-              Đặt lịch hẹn
+              <Plus className="w-4 h-4 flex-shrink-0" />
+              {isSidebarExpanded && <span className="whitespace-nowrap">Đặt lịch hẹn</span>}
             </button>
+            {!isSidebarExpanded && (
+              <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                Đặt lịch hẹn
+              </div>
+            )}
           </div>
 
           {/* Navigation Links */}
@@ -837,47 +897,66 @@ export default function ReceptionistDashboard() {
             items={navItems}
             activeId={activeTab}
             onChange={setActiveTab}
-            isSidebarExpanded={true}
+            isSidebarExpanded={isSidebarExpanded}
           />
         </div>
 
         {/* Footer actions */}
-        <div className="border-t border-slate-100 pt-4 space-y-1">
-
-          <a href="#" className="flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-slate-600 hover:text-teal-600 hover:bg-teal-50/40 transition-all">
-            <HelpCircle className="w-5 h-5 text-slate-400" />
-            <span className="text-sm">Hỗ trợ kỹ thuật</span>
-          </a>
-          <button
-            onClick={async () => {
-              await logout();
-              navigate('/login');
-            }}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-slate-600 hover:text-rose-600 hover:bg-rose-50/40 transition-all border-none cursor-pointer bg-transparent align-middle text-left"
-          >
-            <LogOut className="w-5 h-5 text-slate-400" />
-            <span className="text-sm">Đăng xuất</span>
-          </button>
+        <div className="border-t border-slate-100/60 pt-4 space-y-1">
+          <div className="relative group">
+            <a
+              href="#"
+              className={`flex items-center gap-3 rounded-xl font-medium text-slate-600 hover:text-teal-600 hover:bg-teal-50/40 transition-all ${isSidebarExpanded ? 'px-4 py-3' : 'px-0 py-3 justify-center'}`}
+            >
+              <HelpCircle className="w-5 h-5 text-slate-400 flex-shrink-0" />
+              {isSidebarExpanded && <span className="text-sm whitespace-nowrap">Hỗ trợ kỹ thuật</span>}
+            </a>
+            {!isSidebarExpanded && (
+              <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                Hỗ trợ kỹ thuật
+              </div>
+            )}
+          </div>
+          <div className="relative group">
+            <button
+              onClick={async () => {
+                await logout();
+                navigate('/login');
+              }}
+              className={`w-full flex items-center gap-3 rounded-xl font-medium text-slate-600 hover:text-rose-600 hover:bg-rose-50/40 transition-all border-none cursor-pointer bg-transparent text-left ${isSidebarExpanded ? 'px-4 py-3' : 'px-0 py-3 justify-center'}`}
+            >
+              <LogOut className="w-5 h-5 text-slate-400 flex-shrink-0" />
+              {isSidebarExpanded && <span className="text-sm whitespace-nowrap">Đăng xuất</span>}
+            </button>
+            {!isSidebarExpanded && (
+              <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                Đăng xuất
+              </div>
+            )}
+          </div>
         </div>
-      </aside>
+      </motion.aside>
       {/* Main Content Area */}
-      <div className="flex-1 md:ml-64 flex flex-col h-screen overflow-y-auto z-10" onScroll={handleScroll}>
-        
-        {/* Dynamic Morphing Pill Topbar */}
+      <div ref={scrollRef} className={`flex-1 flex flex-col h-screen overflow-y-auto z-10 transition-all duration-300 ${isSidebarExpanded ? 'md:ml-64' : 'md:ml-20'}`} onScroll={handleScroll}>
+
+        {/* Continuous Morphing Pill Topbar — matches Doctor/Tech baseline */}
         <motion.header
-          animate={{
-            width: isScrolled ? "92%" : "100%",
-            maxWidth: isScrolled ? "1100px" : "100%",
-            top: isScrolled ? "16px" : "0px",
-            borderRadius: isScrolled ? "9999px" : "0px",
-            backgroundColor: isScrolled ? "rgba(255, 255, 255, 0.75)" : "transparent",
-            boxShadow: isScrolled ? "0 10px 30px rgba(0,0,0,0.06)" : "none",
-            borderBottom: isScrolled ? "none" : "1px solid rgba(226, 232, 240, 0.8)",
-            border: isScrolled ? "1px solid rgba(255, 255, 255, 0.8)" : "none",
+          style={{
+            position: 'sticky',
+            zIndex: 40,
+            margin: '0 auto',
+            left: 0,
+            right: 0,
+            width: navWidth,
+            maxWidth: navMaxWidth,
+            top: navTop,
+            borderRadius: navRadius,
+            paddingLeft: navPadX,
+            paddingRight: navPadX,
+            backgroundColor: navBg,
+            boxShadow: navShadow,
           }}
-          transition={{ type: "spring", stiffness: 200, damping: 25 }}
-          style={{ position: 'sticky', zIndex: 40, margin: '0 auto', left: 0, right: 0 }}
-          className="backdrop-blur-xl flex justify-between items-center w-full px-8 h-20"
+          className="backdrop-blur-2xl flex justify-between items-center h-20 transition-all duration-500 ease-out"
         >
           <div className="flex items-center gap-4">
             <span className="font-extrabold text-xl text-teal-600 md:hidden tracking-tight">DermaSmart</span>
@@ -1038,7 +1117,10 @@ export default function ReceptionistDashboard() {
 
         {/* Dashboard Content */}
         <main className="p-8 space-y-8 max-w-7xl w-full mx-auto">
-          <AnimatePresence mode="wait">
+          {/* Fragment instead of <AnimatePresence mode="wait">: the wait-mode
+              exit stalled and blocked tab content from swapping. Conditional
+              motion.divs still play their enter animation on mount. */}
+          <>
             {activeTab === 'overview' && (
               <motion.div 
                 key="overview"
@@ -2335,7 +2417,7 @@ export default function ReceptionistDashboard() {
               </motion.div>
             )}
 
-          </AnimatePresence>
+          </>
         </main>
       </div>
       {/* ─── LIVE CHAT DRAWER INTEGRATION ──────────────────────────────────── */}
