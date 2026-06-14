@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthController } from '../controllers/useAuthController';
 import { Shield, AlertCircle, CheckCircle, User, Mail, Phone, Lock, Eye, EyeOff, Key, ArrowRight } from 'lucide-react';
 import logo from '../assets/logo.png';
+import bgImage from '../assets/bg-login.png';
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -28,24 +29,20 @@ function LoginPage() {
   } = useAuthController();
 
   return (
-    <div
-      className="min-h-screen bg-background text-on-background selection:bg-primary/20 selection:text-primary overflow-x-hidden antialiased flex flex-col font-body-md relative"
-      style={{
-        backgroundImage: "url('https://lh3.googleusercontent.com/aida/AP1WRLs1HXYLM1iatH49FEBH23ired4EZ3tuK6Si58It1ZHrlBJZAB8vCuJ4muCiWppQM5xYn3hge5vhRGQujRSaNwmy1ufJr2IXxyxatzsYGoJdZjige7BnuIu9Ud5DuEcV4ne5RWAjjF4gObb9Gqp2aOpKd8C5qpZvvWhMFqg38hQMIsYjVOfMOItCPWV8r66N82lCpmzU-a-0zedsWm0zS9_99p_8qdJ6F6UtboO2_LK83z9Z0sh14hSlDSit')",
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundAttachment: 'fixed',
-      }}
+    <div 
+      className="min-h-screen w-full flex items-center justify-center bg-cover bg-center bg-no-repeat relative overflow-hidden"
+      style={{ backgroundImage: `url(${bgImage})` }}
     >
-      {/* Background glass overlay */}
-      <div className="absolute inset-0 bg-white/10 backdrop-blur-[2px] pointer-events-none z-0"></div>
 
       {/* Dynamic Floating Glass/Blur Orbs */}
-      <div className="bg-orbs z-0">
+      <div className="bg-orbs -z-10">
         <div className="orb-1"></div>
         <div className="orb-2"></div>
         <div className="orb-3"></div>
       </div>
+
+      {/* Content Wrapper */}
+      <div className="flex flex-col min-h-screen w-full relative z-10 text-on-background selection:bg-primary/20 selection:text-primary font-body-md">
 
       <main className="flex-grow flex items-center justify-center p-margin-mobile md:p-margin-desktop relative z-10">
         <div className="w-full max-w-md glass-card rounded-2xl p-8 md:p-10 relative z-20 bg-white/40 backdrop-blur-xl border border-white/50 shadow-[0_8px_32px_0_rgba(0,104,95,0.08)] mx-auto">
@@ -563,6 +560,7 @@ function LoginPage() {
           </a>
         </div>
       </footer>
+      </div>
     </div>
   );
 }

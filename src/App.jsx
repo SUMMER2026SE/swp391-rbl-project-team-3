@@ -145,7 +145,7 @@ function GlobalToast() {
 function App() {
   return (
     <AuthProvider>
-      <div className="min-h-screen bg-gradient-to-br from-indigo-50/80 via-emerald-50/90 to-teal-100/80 bg-fixed relative">
+      <div className="min-h-screen bg-transparent relative">
         {/* Trigger Tailwind JIT */}
         {/* App-wide SVG refraction filters for the liquid-glass system */}
         <LiquidGlassFilter />

@@ -4,6 +4,7 @@ import { useAuthController } from '../controllers/useAuthController';
 import { AuthModel } from '../models/AuthModel';
 import '../index.css';
 import logo from '../assets/logo.png';
+import bgImage from '../assets/bg-login.png';
 
 function ResetPasswordPage() {
   const {
@@ -48,26 +49,17 @@ function ResetPasswordPage() {
   }, [setErrorMsg]);
 
   return (
-    <div style={{
-        minHeight: '100vh',
-        width: '100vw',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        position: 'relative',
-        overflow: 'hidden',
-        background: '#0f172a'
-    }}>
+    <div 
+      className="min-h-screen w-full flex items-center justify-center bg-cover bg-center bg-no-repeat relative overflow-hidden"
+      style={{ backgroundImage: `url(${bgImage})` }}
+    >
+
       {/* Background Orbs */}
-      <div className="bg-orbs">
+      <div className="bg-orbs -z-10">
         <div className="orb-1"></div>
         <div className="orb-2"></div>
         <div className="orb-3"></div>
       </div>
-      
-      {/* Background Image synced with Landing Page */}
-      <img alt="Futuristic clinical lab background" className="hero-bg" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0, opacity: 0.4 }} src="https://lh3.googleusercontent.com/aida/ADBb0ugiZRAensr-eNMU_UEv4qBnu7BObTmK77qcsUtesw43DPjGg6YhHs7HQRWkjUFqed-MkB7RFtFkFGuAqmsugbBk5SKavyqu8-9KUVuR68hA40m3wL8KrnJH7sCVgRRn7bVzXxs61VbJfTRehOadkIJGS7xHMLQ8RHU_06gQ8j9xZA--57F72EdVtYg1IcUDusJ8N9ddi2c4rtnZGWbXXhIDn3czjOnUyZyWHXvoeh7M7K2001PCGiFVevo"/>
-      <div className="hero-overlay" style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.5)', opacity: 0.8, zIndex: 1 }}></div>
 
       {/* Premium Glass Box */}
       <div className="login-modal custom-scrollbar" style={{ 
