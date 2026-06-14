@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Calendar,
@@ -17,11 +18,14 @@ import {
   Pill,
   ClipboardList,
   Edit3,
+  QrCode,
+  Timer
 } from 'lucide-react';
 import { useAppointmentController } from '../../controllers/useAppointmentController';
 import { useFeedbackController } from '../../controllers/useFeedbackController';
 import { useAuth } from '../../context/AuthContext';
 import { DoctorModel } from '../../models/DoctorModel';
+import { createPaymentLink, getPaymentStatus } from '../../utils/payos';
 import FeedbackFormModal from './FeedbackFormModal';
 
 // ─── Status Badge Component ─────────────────────────────────────────────────
@@ -166,13 +170,21 @@ function AppointmentCard({ apt, index, isUpcoming, onCancel, onReschedule, onVie
 // ─── Reschedule Confirmation Modal ───────────────────────────────────────────
 
 function RescheduleModal({ apt, onClose, onConfirm, rescheduleError }) {
-  const { getAvailableSlots, canCancel } = useAppointmentController();
+  const { getAvailableSlots, canCancel, lockSlot } = useAppointmentController();
   const [newDate, setNewDate] = useState('');
   const [newTime, setNewTime] = useState('');
+  
+  // Multistep state
+  const [step, setStep] = useState('form');
+  const isSubmittingRef = useRef(false);
+  const [timeLeft, setTimeLeft] = useState(300);
+  const [orderCode, setOrderCode] = useState(null);
+  const [payosData, setPayosData] = useState(null);
+  const [isPayOSPaid, setIsPayOSPaid] = useState(false);
+  const [localError, setLocalError] = useState('');
 
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const minDate = tomorrow.toISOString().split('T')[0];
+  const todayDate = new Date();
+  const minDate = `${todayDate.getFullYear()}-${(todayDate.getMonth() + 1).toString().padStart(2, '0')}-${todayDate.getDate().toString().padStart(2, '0')}`;
 
   const selectedDoctorData = DoctorModel.getAllDoctors().find((d) => d.id === apt.doctorId);
 
@@ -196,10 +208,130 @@ function RescheduleModal({ apt, onClose, onConfirm, rescheduleError }) {
     ? getAvailableSlots(apt.doctorId, newDate)
     : [];
 
-  const handleConfirm = () => {
-    if (newDate && newTime && isDoctorWorkingOnDay) {
-      onConfirm(newDate, newTime);
+  // Handle PayOS Success properly avoiding stale closures
+  useEffect(() => {
+    if (isPayOSPaid && step === 'payment') {
+      setIsPayOSPaid(false);
+      handleConfirmPayment();
     }
+  }, [isPayOSPaid, step]);
+
+  // PayOS logic
+  useEffect(() => {
+    if (step !== 'payment') return;
+
+    let isSubscribed = true;
+    let newOrderCode = Date.now();
+    setOrderCode(newOrderCode);
+
+    const initPayOS = async () => {
+      try {
+        const desc = `Doi lich ${newOrderCode}`.substring(0, 25);
+        const data = await createPaymentLink(newOrderCode, 50000, desc);
+        if (isSubscribed) setPayosData(data);
+      } catch (err) {
+        console.error("PayOS init error:", err);
+      }
+    };
+    initPayOS();
+
+    const interval = setInterval(async () => {
+      try {
+        const statusData = await getPaymentStatus(newOrderCode);
+        if (statusData.status === 'PAID') {
+          clearInterval(interval);
+          if (isSubscribed) setIsPayOSPaid(true);
+        }
+      } catch (e) {
+        // ignore
+      }
+    }, 3000);
+
+    return () => {
+      isSubscribed = false;
+      clearInterval(interval);
+    };
+  }, [step]);
+
+  // Countdown timer logic
+  useEffect(() => {
+    if (step === 'payment' && timeLeft > 0) {
+      const timer = setInterval(() => {
+        setTimeLeft(prev => prev - 1);
+      }, 1000);
+      return () => clearInterval(timer);
+    } else if (step === 'payment' && timeLeft === 0) {
+      setStep('timeout');
+    }
+  }, [step, timeLeft]);
+
+  const formatTimeLeft = () => {
+    const m = Math.floor(timeLeft / 60);
+    const s = timeLeft % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const handleProceedToPayment = () => {
+    if (newDate && newTime && isDoctorWorkingOnDay) {
+      if (canCancel(apt)) {
+        // Free reschedule
+        handleConfirmPayment();
+      } else {
+        // Requires payment
+        setLocalError('');
+        setStep('payment');
+        setTimeLeft(300);
+
+        // Lock slot immediately for 5 minutes during the payment process
+        try {
+          const lockedListStr = localStorage.getItem('dermasmart_locked_slots') || '[]';
+          let lockedList = [];
+          try { lockedList = JSON.parse(lockedListStr); } catch (e) {}
+          
+          const filteredList = lockedList.filter(l => !(String(l.doctorId) === String(apt.doctorId) && l.date === newDate && l.time === newTime));
+          filteredList.push({
+            doctorId: apt.doctorId,
+            date: newDate,
+            time: newTime,
+            lockedUntil: Date.now() + 5 * 60 * 1000 // 5 minutes
+          });
+          localStorage.setItem('dermasmart_locked_slots', JSON.stringify(filteredList));
+          
+          if (lockSlot) {
+            lockSlot(apt.doctorId, newDate, newTime, 5);
+          }
+        } catch (err) {
+          console.error('Error locking slot immediately:', err);
+        }
+      }
+    }
+  };
+
+  const handleConfirmPayment = () => {
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+    
+    const res = onConfirm(newDate, newTime);
+    if (res && res.success) {
+      setStep('success');
+      window.dispatchEvent(new CustomEvent('show-toast', {
+        detail: { message: canCancel(apt) ? 'Đổi lịch hẹn thành công!' : 'Thanh toán phụ phí thành công!', type: 'success' }
+      }));
+      setTimeout(() => {
+        isSubmittingRef.current = false;
+        onClose();
+      }, 3500);
+    } else {
+      isSubmittingRef.current = false;
+      setLocalError(res?.error || 'Đã có lỗi xảy ra. Vui lòng thử lại.');
+      setStep('form');
+    }
+  };
+
+  const handleCancelPayment = () => {
+    setLocalError('Giao dịch thanh toán phụ phí đã bị hủy.');
+    setNewTime('');
+    setStep('form');
   };
 
   return (
@@ -208,130 +340,220 @@ function RescheduleModal({ apt, onClose, onConfirm, rescheduleError }) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/35 backdrop-blur-sm font-sans"
-      onClick={onClose}
+      onClick={step === 'payment' ? undefined : onClose}
     >
       <motion.div
         initial={{ scale: 0.9, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.9, opacity: 0, y: 20 }}
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-        className="w-full max-w-md backdrop-blur-3xl bg-white/80 border border-white/80 shadow-2xl rounded-[2rem] p-8 relative"
+        className="w-full max-w-md backdrop-blur-3xl bg-white/80 border border-white/80 shadow-2xl rounded-[2rem] p-8 relative overflow-y-auto max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
       >
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 bg-transparent border-none text-slate-400 hover:text-slate-700 hover:bg-slate-100/50 p-2 rounded-full flex items-center justify-center transition-all cursor-pointer"
-        >
-          <X className="w-5 h-5" />
-        </button>
-
-        <div className="text-center mb-6">
-          <h3 className="text-xl font-bold text-slate-800 mb-1">Đổi lịch hẹn khám</h3>
-          <p className="text-sm text-slate-500">Chọn ngày và giờ khám mới cho cuộc hẹn của bạn</p>
-        </div>
-
-        {rescheduleError && (
-          <div className="mb-4 p-3.5 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-2.5 text-xs text-rose-700 font-medium">
-            <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
-            <div>
-              <span className="font-bold">Lỗi đổi lịch:</span> {rescheduleError}
-            </div>
-          </div>
-        )}
-
-        {!canCancel(apt) && (
-          <div className="mb-4 p-3.5 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5 text-xs text-amber-700 font-semibold leading-relaxed">
-            <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-            <div>
-              Lưu ý: Bạn đang đổi lịch sát giờ hẹn (dưới 24h). Việc đổi lịch sẽ phát sinh thêm phụ phí 50.000 VNĐ cộng vào hóa đơn khám.
-            </div>
-          </div>
-        )}
-
-        <div className="space-y-4">
-          <div className="bg-slate-50/70 border border-slate-200/60 rounded-2xl p-4 space-y-1 text-xs">
-            <p className="text-slate-400 font-bold uppercase tracking-wider">Thông tin hiện tại</p>
-            <p className="font-bold text-slate-750 flex items-center gap-1.5">
-              <Stethoscope className="w-3.5 h-3.5 text-emerald-500" />
-              {apt.doctorName}
-            </p>
-            <p className="text-slate-500 font-medium">{apt.service}</p>
-            <p className="text-slate-400">
-              Đang đặt: <span className="font-semibold text-slate-500">{apt.date} • {apt.time}</span>
-            </p>
-          </div>
-
-          <div>
-            <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-              <Calendar className="w-4 h-4 text-teal-500" />
-              Chọn ngày khám mới
-            </label>
-            <input
-              type="date"
-              value={newDate}
-              min={minDate}
-              onChange={(e) => {
-                setNewDate(e.target.value);
-                setNewTime('');
-              }}
-              className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-emerald-500 text-slate-800 transition-colors cursor-pointer text-sm"
-            />
-            {selectedDoctorData && newDate && !isDoctorWorkingOnDay && (
-              <div className="mt-2 text-xs text-rose-500 font-semibold flex items-center gap-1.5">
-                <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                Bác sĩ không trực ngày này. Lịch trực: {doctorScheduleText}.
-              </div>
-            )}
-          </div>
-
-          {newDate && isDoctorWorkingOnDay && (
-            <div>
-              <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                <Clock className="w-4 h-4 text-amber-500" />
-                Chọn khung giờ mới
-              </label>
-              <div className="grid grid-cols-4 gap-2">
-                {slots.map((slot) => (
-                  <button
-                    key={slot.time}
-                    type="button"
-                    disabled={slot.isBooked}
-                    onClick={() => setNewTime(slot.time)}
-                    className={`px-2 py-2 rounded-xl text-xs font-bold text-center cursor-pointer border transition-all ${
-                      slot.isBooked
-                        ? 'bg-slate-100 border-slate-200 text-slate-300 cursor-not-allowed line-through'
-                        : newTime === slot.time
-                        ? 'bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-500/20'
-                        : 'bg-white border-slate-200 text-slate-600 hover:border-emerald-300 hover:bg-emerald-50'
-                    }`}
-                  >
-                    {slot.time}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="flex gap-3 mt-6">
-          <button
-            onClick={handleConfirm}
-            disabled={!newDate || !newTime || !isDoctorWorkingOnDay}
-            className={`flex-1 py-3 rounded-xl text-white font-semibold text-sm border-none shadow-md transition-all cursor-pointer ${
-              (newDate && newTime && isDoctorWorkingOnDay)
-                ? 'bg-gradient-to-r from-emerald-500 to-sky-500 shadow-emerald-500/10 hover:shadow-lg'
-                : 'bg-slate-300 cursor-not-allowed shadow-none'
-            }`}
-          >
-            Xác nhận đổi lịch
-          </button>
+        {step !== 'payment' && step !== 'success' && (
           <button
             onClick={onClose}
-            className="px-6 py-3 rounded-xl bg-white border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-all cursor-pointer"
+            className="absolute top-4 right-4 bg-transparent border-none text-slate-400 hover:text-slate-700 hover:bg-slate-100/50 p-2 rounded-full flex items-center justify-center transition-all cursor-pointer"
           >
-            Quay lại
+            <X className="w-5 h-5" />
           </button>
-        </div>
+        )}
+
+        <AnimatePresence mode="wait">
+          {step === 'form' && (
+            <motion.div key="form" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
+              <div className="text-center mb-6">
+                <h3 className="text-xl font-bold text-slate-800 mb-1">Đổi lịch hẹn khám</h3>
+                <p className="text-sm text-slate-500">Chọn ngày và giờ khám mới cho cuộc hẹn của bạn</p>
+              </div>
+
+              {(rescheduleError || localError) && (
+                <div className="mb-4 p-3.5 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-2.5 text-xs text-rose-700 font-medium">
+                  <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold">Lỗi:</span> {localError || rescheduleError}
+                  </div>
+                </div>
+              )}
+
+              {!canCancel(apt) && (
+                <div className="mb-4 p-3.5 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5 text-xs text-amber-700 font-semibold leading-relaxed">
+                  <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                  <div>
+                    Lưu ý: Bạn đang đổi lịch sát giờ hẹn (dưới 24h). Việc đổi lịch sẽ phát sinh thêm phụ phí 50.000 VNĐ.
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-4">
+                <div className="bg-slate-50/70 border border-slate-200/60 rounded-2xl p-4 space-y-1 text-xs">
+                  <p className="text-slate-400 font-bold uppercase tracking-wider">Thông tin hiện tại</p>
+                  <p className="font-bold text-slate-750 flex items-center gap-1.5">
+                    <Stethoscope className="w-3.5 h-3.5 text-emerald-500" />
+                    {apt.doctorName}
+                  </p>
+                  <p className="text-slate-500 font-medium">{apt.service}</p>
+                  <p className="text-slate-400">
+                    Đang đặt: <span className="font-semibold text-slate-500">{apt.date} • {apt.time}</span>
+                  </p>
+                </div>
+
+                <div>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                    <Calendar className="w-4 h-4 text-teal-500" />
+                    Chọn ngày khám mới
+                  </label>
+                  <input
+                    type="date"
+                    value={newDate}
+                    min={minDate}
+                    onChange={(e) => {
+                      setNewDate(e.target.value);
+                      setNewTime('');
+                    }}
+                    className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-emerald-500 text-slate-800 transition-colors cursor-pointer text-sm"
+                  />
+                  {selectedDoctorData && newDate && !isDoctorWorkingOnDay && (
+                    <div className="mt-2 text-xs text-rose-500 font-semibold flex items-center gap-1.5">
+                      <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                      Bác sĩ không trực ngày này. Lịch trực: {doctorScheduleText}.
+                    </div>
+                  )}
+                </div>
+
+                {newDate && isDoctorWorkingOnDay && (
+                  <div>
+                    <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                      <Clock className="w-4 h-4 text-amber-500" />
+                      Chọn khung giờ mới
+                    </label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {slots.map((slot) => (
+                        <button
+                          key={slot.time}
+                          type="button"
+                          disabled={slot.isBooked}
+                          onClick={() => setNewTime(slot.time)}
+                          className={`px-2 py-2 rounded-xl text-xs font-bold text-center cursor-pointer border transition-all ${
+                            slot.isBooked
+                              ? 'bg-slate-100 border-slate-200 text-slate-300 cursor-not-allowed line-through'
+                              : newTime === slot.time
+                              ? 'bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-500/20'
+                              : 'bg-white border-slate-200 text-slate-600 hover:border-emerald-300 hover:bg-emerald-50'
+                          }`}
+                        >
+                          {slot.time}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={handleProceedToPayment}
+                  disabled={!newDate || !newTime || !isDoctorWorkingOnDay}
+                  className={`flex-1 py-3 rounded-xl text-white font-semibold text-sm border-none shadow-md transition-all cursor-pointer ${
+                    (newDate && newTime && isDoctorWorkingOnDay)
+                      ? 'bg-gradient-to-r from-emerald-500 to-sky-500 shadow-emerald-500/10 hover:shadow-lg'
+                      : 'bg-slate-300 cursor-not-allowed shadow-none'
+                  }`}
+                >
+                  {canCancel(apt) ? 'Xác nhận đổi lịch' : 'Thanh toán phụ phí'}
+                </button>
+                <button
+                  onClick={onClose}
+                  className="px-6 py-3 rounded-xl bg-white border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-all cursor-pointer"
+                >
+                  Quay lại
+                </button>
+              </div>
+            </motion.div>
+          )}
+
+          {step === 'payment' && (
+            <motion.div key="payment" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-4 relative">
+                  <QrCode className="w-8 h-8 text-emerald-500" />
+                  <div className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center">
+                    <span className="text-[10px] text-white font-bold animate-pulse">!</span>
+                  </div>
+                </div>
+                <h3 className="text-2xl font-bold text-slate-800 mb-2">Thanh toán phụ phí</h3>
+                <p className="text-sm text-slate-500 mb-1">Quét mã QR bằng ứng dụng ngân hàng</p>
+                <div className="inline-flex items-center gap-2 bg-amber-50 text-amber-700 px-3 py-1.5 rounded-full mt-2 border border-amber-200">
+                  <Timer className="w-4 h-4 animate-pulse" />
+                  <span className="font-mono font-bold text-sm">{formatTimeLeft()}</span>
+                </div>
+              </div>
+
+              <div className="bg-white border-2 border-dashed border-emerald-200 rounded-[2rem] p-8 flex flex-col items-center justify-center mb-6 relative overflow-hidden group min-h-[300px]">
+                {payosData ? (
+                  <>
+                    <img src={`https://img.vietqr.io/image/${payosData.bin}-${payosData.accountNumber}-compact2.png?amount=${payosData.amount}&addInfo=${encodeURIComponent(payosData.description)}&accountName=${encodeURIComponent(payosData.accountName)}`} alt="QR Code" className="w-56 h-56 object-contain relative z-10 rounded-xl mix-blend-multiply" />
+                    <div className="mt-4 text-center">
+                      <p className="text-xs text-slate-400 font-medium mb-1">Số tiền thanh toán</p>
+                      <p className="text-xl font-bold text-emerald-600">50.000 VNĐ</p>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center gap-3">
+                    <RefreshCw className="w-8 h-8 text-emerald-400 animate-spin" />
+                    <p className="text-sm font-medium text-emerald-600">Đang khởi tạo mã QR...</p>
+                  </div>
+                )}
+              </div>
+
+              <button
+                onClick={handleCancelPayment}
+                className="w-full py-3.5 rounded-xl bg-white border border-rose-200 text-rose-600 font-bold text-sm hover:bg-rose-50 transition-all cursor-pointer"
+              >
+                Hủy giao dịch
+              </button>
+            </motion.div>
+          )}
+
+          {step === 'timeout' && (
+            <motion.div key="timeout" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-6">
+              <div className="w-20 h-20 rounded-full bg-rose-50 flex items-center justify-center mx-auto mb-6">
+                <Timer className="w-10 h-10 text-rose-500" />
+              </div>
+              <h3 className="text-2xl font-bold text-slate-800 mb-3">Hết thời gian</h3>
+              <p className="text-sm text-slate-500 mb-8 max-w-[280px] mx-auto">
+                Phiên giao dịch đã hết hạn. Vui lòng thực hiện lại nếu bạn vẫn muốn đổi lịch.
+              </p>
+              <button
+                onClick={() => { setStep('form'); setNewTime(''); setTimeLeft(300); }}
+                className="w-full py-3.5 rounded-xl bg-rose-500 text-white font-bold text-sm shadow-md shadow-rose-500/20 hover:bg-rose-600 transition-all border-none cursor-pointer"
+              >
+                Thử lại
+              </button>
+            </motion.div>
+          )}
+
+          {step === 'success' && (
+            <motion.div key="success" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-8">
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 200, damping: 15 }}
+                className="w-24 h-24 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-6 relative"
+              >
+                <div className="absolute inset-0 rounded-full border-4 border-emerald-500/20 animate-ping"></div>
+                <CheckCircle2 className="w-12 h-12 text-emerald-500 relative z-10" />
+              </motion.div>
+              <h3 className="text-2xl font-bold text-slate-800 mb-3">Đổi lịch thành công!</h3>
+              <p className="text-sm text-slate-500 mb-6">
+                Hệ thống đã cập nhật lịch hẹn mới cho bạn.
+              </p>
+              <div className="bg-emerald-50 text-emerald-700 px-4 py-3 rounded-xl text-sm font-semibold inline-flex items-center gap-2">
+                <RefreshCw className="w-4 h-4 animate-spin" /> Tự động đóng...
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.div>
     </motion.div>
   );
@@ -353,22 +575,25 @@ function CancelModal({ apt, onClose, onConfirm, cancelError }) {
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.9, opacity: 0, y: 20 }}
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-        className="w-full max-w-md backdrop-blur-3xl bg-white/75 border border-white/80 shadow-2xl rounded-[2rem] p-8 relative"
+        className="w-full max-w-md backdrop-blur-3xl bg-white/90 border border-white/80 shadow-2xl rounded-[2rem] p-6 relative"
         onClick={(e) => e.stopPropagation()}
       >
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 bg-transparent border-none text-slate-400 hover:text-slate-700 hover:bg-slate-100/50 p-2 rounded-full flex items-center justify-center transition-all cursor-pointer"
+          className="absolute top-3 right-3 bg-transparent border-none text-slate-400 hover:text-slate-700 hover:bg-slate-100/50 p-2 rounded-full flex items-center justify-center transition-all cursor-pointer"
         >
           <X className="w-5 h-5" />
         </button>
 
-        <div className="text-center mb-6">
-          <div className="w-14 h-14 rounded-full bg-rose-50 flex items-center justify-center mx-auto mb-4">
-            <AlertCircle className="w-7 h-7 text-rose-500" />
+        <div className="text-center mb-4">
+          <div className="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center mx-auto mb-3">
+            <AlertCircle className="w-6 h-6 text-rose-500" />
           </div>
-          <h3 className="text-xl font-bold text-slate-800 mb-2">Xác nhận hủy lịch hẹn</h3>
-          <p className="text-sm text-slate-500">Bạn có chắc chắn muốn hủy lịch hẹn này không?</p>
+          <h3 className="text-xl font-bold text-slate-800 mb-1">Xác nhận hủy lịch hẹn</h3>
+          <p className="text-sm text-slate-500 mb-2">Bạn có chắc chắn muốn hủy lịch hẹn này không?</p>
+          <p className="text-xs text-rose-600 font-semibold bg-rose-50 inline-block px-3 py-1 rounded-full">
+            Lưu ý: Bạn sẽ mất phí đặt cọc giữ chỗ.
+          </p>
         </div>
 
         {cancelError && (
@@ -593,9 +818,10 @@ export default function AppointmentsTab() {
     if (rescheduleTarget) {
       setRescheduleError('');
       const res = rescheduleAppointment(rescheduleTarget.id, newDate, newTime);
-      if (res.success) setRescheduleTarget(null);
-      else setRescheduleError(res.error);
+      if (!res.success) setRescheduleError(res.error);
+      return res;
     }
+    return { success: false };
   };
 
   return (
@@ -673,34 +899,39 @@ export default function AppointmentsTab() {
       </div>
 
       {/* Modals */}
-      <AnimatePresence>
-        {cancelTarget && (
-          <CancelModal apt={cancelTarget} onClose={() => { setCancelTarget(null); setCancelError(''); }} onConfirm={handleConfirmCancel} cancelError={cancelError} />
-        )}
-      </AnimatePresence>
-      <AnimatePresence>
-        {rescheduleTarget && (
-          <RescheduleModal apt={rescheduleTarget} onClose={() => { setRescheduleTarget(null); setRescheduleError(''); }} onConfirm={handleConfirmReschedule} rescheduleError={rescheduleError} />
-        )}
-      </AnimatePresence>
-      <AnimatePresence>
-        {viewTarget && (
-          <ViewFeedbackModal
-            apt={viewTarget}
-            feedback={getFeedbackByAppointment(viewTarget.id)}
-            onClose={() => setViewTarget(null)}
-          />
-        )}
-      </AnimatePresence>
-      <AnimatePresence>
-        {writeFeedbackTarget && (
-          <FeedbackFormModal
-            apt={writeFeedbackTarget}
-            onClose={() => setWriteFeedbackTarget(null)}
-            onSubmitted={() => setWriteFeedbackTarget(null)}
-          />
-        )}
-      </AnimatePresence>
+      {createPortal(
+        <>
+          <AnimatePresence>
+            {cancelTarget && (
+              <CancelModal apt={cancelTarget} onClose={() => { setCancelTarget(null); setCancelError(''); }} onConfirm={handleConfirmCancel} cancelError={cancelError} />
+            )}
+          </AnimatePresence>
+          <AnimatePresence>
+            {rescheduleTarget && (
+              <RescheduleModal apt={rescheduleTarget} onClose={() => { setRescheduleTarget(null); setRescheduleError(''); }} onConfirm={handleConfirmReschedule} rescheduleError={rescheduleError} />
+            )}
+          </AnimatePresence>
+          <AnimatePresence>
+            {viewTarget && (
+              <ViewFeedbackModal
+                apt={viewTarget}
+                feedback={getFeedbackByAppointment(viewTarget.id)}
+                onClose={() => setViewTarget(null)}
+              />
+            )}
+          </AnimatePresence>
+          <AnimatePresence>
+            {writeFeedbackTarget && (
+              <FeedbackFormModal
+                apt={writeFeedbackTarget}
+                onClose={() => setWriteFeedbackTarget(null)}
+                onSubmitted={() => setWriteFeedbackTarget(null)}
+              />
+            )}
+          </AnimatePresence>
+        </>,
+        document.body
+      )}
     </div>
   );
 }

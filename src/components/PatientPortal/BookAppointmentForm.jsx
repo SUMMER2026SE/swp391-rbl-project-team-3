@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Calendar, Clock, User, Stethoscope, CheckCircle2,
@@ -10,6 +10,7 @@ import { useAppointmentController } from '../../controllers/useAppointmentContro
 import { useVoucherController } from '../../controllers/useVoucherController';
 import { useAuth } from '../../context/AuthContext';
 import { useDoctors } from '../../hooks/useDoctors';
+import { createPaymentLink, getPaymentStatus } from '../../utils/payos';
 
 // ─── Parse price string → number ─────────────────────────────────────────────
 function parsePriceToNumber(priceStr) {
@@ -162,8 +163,13 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
   
   // Multistep state
   const [step, setStep]                         = useState('form'); // 'form', 'payment', 'timeout', 'success'
+  const isSubmittingRef                         = useRef(false);
   const [timeLeft, setTimeLeft]                 = useState(300); // 5 minutes in seconds
   const [paymentPayload, setPaymentPayload]     = useState(null);
+  
+  const [payosData, setPayosData]               = useState(null);
+  const [orderCode, setOrderCode]               = useState(null);
+  const [isPayOSPaid, setIsPayOSPaid]           = useState(false);
 
   // Reset khi modal mở
   useEffect(() => {
@@ -179,8 +185,56 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
       setStep('form');
       setTimeLeft(300);
       setPaymentPayload(null);
+      setPayosData(null);
+      setOrderCode(null);
+      setIsPayOSPaid(false);
     }
   }, [isOpen]);
+
+  // Handle PayOS Success properly avoiding stale closures
+  useEffect(() => {
+    if (isPayOSPaid && step === 'payment') {
+      setIsPayOSPaid(false);
+      handleConfirmPayment();
+    }
+  }, [isPayOSPaid, step]);
+
+  // PayOS logic
+  useEffect(() => {
+    if (step !== 'payment') return;
+
+    let isSubscribed = true;
+    let newOrderCode = Date.now();
+    setOrderCode(newOrderCode);
+
+    const initPayOS = async () => {
+      try {
+        const desc = `Dat lich ${newOrderCode}`.substring(0, 25);
+        const data = await createPaymentLink(newOrderCode, 50000, desc);
+        if (isSubscribed) setPayosData(data);
+      } catch (err) {
+        console.error("PayOS init error:", err);
+      }
+    };
+    initPayOS();
+
+    const interval = setInterval(async () => {
+      try {
+        const statusData = await getPaymentStatus(newOrderCode);
+        if (statusData.status === 'PAID') {
+          clearInterval(interval);
+          if (isSubscribed) setIsPayOSPaid(true);
+        }
+      } catch (e) {
+        // ignore
+      }
+    }, 3000);
+
+    return () => {
+      isSubscribed = false;
+      clearInterval(interval);
+    };
+  }, [step]);
 
   // Countdown timer logic
   useEffect(() => {
@@ -202,10 +256,9 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
 
   const selectedCategoryData = serviceCategories.find(c => c.id === selectedCategory);
 
-  // Ngày tối thiểu = ngày mai
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const minDate = tomorrow.toISOString().split('T')[0];
+  // Ngày tối thiểu = hôm nay
+  const todayDate = new Date();
+  const minDate = `${todayDate.getFullYear()}-${(todayDate.getMonth() + 1).toString().padStart(2, '0')}-${todayDate.getDate().toString().padStart(2, '0')}`;
 
   // ── Lọc Bác Sĩ & Khung Giờ ──
   const DAY_MAP = { 'Chủ Nhật':0,'Thứ Hai':1,'Thứ Ba':2,'Thứ Tư':3,'Thứ Năm':4,'Thứ Sáu':5,'Thứ Bảy':6 };
@@ -238,6 +291,19 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
     const activeLocks = lockedList.filter(l => l.lockedUntil > Date.now());
 
     const isSlotActuallyBooked = (dId, dDate, dTime) => {
+      // Check if slot is in the past
+      const isPast = (() => {
+        if (dDate < minDate) return true;
+        if (dDate === minDate) {
+          const now = new Date();
+          const currentMins = now.getHours() * 60 + now.getMinutes();
+          const [h, m] = dTime.split(':').map(Number);
+          return (h * 60 + m) <= currentMins;
+        }
+        return false;
+      })();
+      if (isPast) return true;
+
       // Check normal bookings
       const booked = isSlotBooked(dId, dDate, dTime);
       // Check locks
@@ -314,7 +380,7 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
       notes: user
         ? `Khách hàng đặt lịch khám qua cổng Portal.${bestVoucher ? ' Đã áp dụng ưu đãi.' : ''}`
         : `Khách vãng lai đăng ký qua website.${bestVoucher ? ' Đã áp dụng ưu đãi.' : ''}`,
-      bookingFee: 200000,
+      bookingFee: 50000,
       paymentStatus: 'Đã thanh toán một phần (Giữ chỗ)'
     };
 
@@ -345,14 +411,24 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
 
   // ── Confirm Payment ─────────────────────────────────────────────────────────
   const handleConfirmPayment = () => {
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+    
     const result = bookAppointment(paymentPayload);
     if (result.success) {
       if (bestVoucher) {
         incrementUsage(bestVoucher.voucher.id);
       }
       setStep('success');
-      setTimeout(() => onClose(), 3500);
+      window.dispatchEvent(new CustomEvent('show-toast', {
+        detail: { message: 'Thanh toán phí giữ chỗ thành công!', type: 'success' }
+      }));
+      setTimeout(() => {
+        isSubmittingRef.current = false;
+        onClose();
+      }, 3500);
     } else {
+      isSubmittingRef.current = false;
       setErrorMessage(result.error);
       setStep('form');
     }
@@ -634,7 +710,7 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
                   : 'bg-slate-300 cursor-not-allowed shadow-none'
               }`}
             >
-              Tiếp tục thanh toán giữ chỗ (200.000 VNĐ)
+              Tiếp tục thanh toán giữ chỗ (50.000 VNĐ)
             </button>
           </motion.form>
         )}
@@ -651,16 +727,23 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
             </div>
             <h3 className="text-xl font-bold text-slate-800 mb-2">Thanh toán phí giữ chỗ</h3>
             <p className="text-sm text-slate-500 mb-6 max-w-sm">
-              Để đảm bảo slot khám, vui lòng thanh toán phí giữ chỗ <span className="font-bold text-slate-800">200,000 VNĐ</span>. Số tiền này sẽ được trừ vào chi phí khám bệnh thực tế.
+              Để đảm bảo slot khám, vui lòng thanh toán phí giữ chỗ <span className="font-bold text-slate-800">50,000 VNĐ</span>. Số tiền này sẽ được trừ vào chi phí khám bệnh thực tế.
             </p>
 
             <div className="bg-slate-50 border border-slate-200 p-4 rounded-3xl mb-6 shadow-sm relative overflow-hidden group w-full max-w-xs">
               <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 to-sky-400"></div>
-              <img 
-                src="https://img.vietqr.io/image/tpbank-84702012001-compact2.jpg?amount=200000&addInfo=DAT LICH KHAM&accountName=NGUYEN QUANG NHUT" 
-                alt="QR Code Thanh Toán" 
-                className="w-full h-auto rounded-xl mix-blend-multiply"
-              />
+              {payosData ? (
+                <img 
+                  src={`https://img.vietqr.io/image/${payosData.bin}-${payosData.accountNumber}-compact2.png?amount=${payosData.amount}&addInfo=${encodeURIComponent(payosData.description)}&accountName=${encodeURIComponent(payosData.accountName)}`}
+                  alt="QR Code Thanh Toán" 
+                  className="w-full h-auto rounded-xl mix-blend-multiply"
+                />
+              ) : (
+                <div className="w-full aspect-square flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
+                </div>
+              )}
+              {orderCode && <div className="text-[10px] text-center text-slate-400 mt-2">Mã đơn: {orderCode}</div>}
             </div>
 
             <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 px-4 py-3 rounded-xl mb-6 w-full justify-center">
@@ -670,25 +753,13 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
               </div>
             </div>
 
-            <div className="flex gap-3 w-full">
-              <button 
-                type="button"
-                onClick={handleCancelPayment}
-                className="flex-1 py-3.5 px-4 rounded-xl font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors border-none cursor-pointer"
-              >
-                Hủy giao dịch
-              </button>
-              <button 
-                onClick={handleConfirmPayment}
-                className="flex-1 py-3.5 px-4 rounded-xl font-semibold text-white bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/30 transition-all hover:-translate-y-0.5 flex items-center justify-center gap-2 border-none cursor-pointer"
-              >
-                <CreditCard className="w-4 h-4" />
-                Tôi đã thanh toán
-              </button>
-            </div>
-            <p className="text-[10px] text-slate-400 mt-4 italic">
-              * Đây là nút giả lập thanh toán (Mock button). Trong thực tế, hệ thống sẽ tự động xác nhận khi ngân hàng báo có tiền.
-            </p>
+            <button 
+              type="button"
+              onClick={handleCancelPayment}
+              className="w-full py-3.5 px-4 rounded-xl font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors border-none cursor-pointer"
+            >
+              Hủy giao dịch
+            </button>
           </motion.div>
         )}
 
@@ -730,7 +801,7 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
             <h3 className="text-2xl font-bold text-slate-800 mb-2">Đặt lịch thành công!</h3>
             <div className="mb-3 inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold px-3 py-1.5 rounded-full">
               <Ticket className="w-3.5 h-3.5" />
-              Đã thanh toán cọc 200,000 VNĐ
+              Đã thanh toán cọc 50,000 VNĐ
             </div>
             <p className="text-sm text-slate-500 max-w-sm leading-relaxed">
               Yêu cầu đặt lịch đã được xác nhận.{' '}
@@ -742,7 +813,7 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
               <div className="mt-4 bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3 text-sm space-y-1.5 text-left w-full max-w-xs mx-auto">
                 <div className="flex justify-between font-black text-slate-900 border-b border-slate-200 pb-1.5 mb-1.5">
                   <span>Dự kiến thanh toán thêm</span>
-                  <span className="text-emerald-600">{formatVND(Math.max(0, bestVoucher.finalAmount - 200000))}</span>
+                  <span className="text-emerald-600">{formatVND(Math.max(0, bestVoucher.finalAmount - 50000))}</span>
                 </div>
                 <div className="flex justify-between text-slate-500 text-[11px]">
                   <span>Chi phí gốc (bác sĩ)</span>
@@ -754,14 +825,14 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
                 </div>
                 <div className="flex justify-between text-slate-500 font-semibold text-[11px]">
                   <span>Đã thanh toán (Cọc)</span>
-                  <span>-200.000 VNĐ</span>
+                  <span>-50.000 VNĐ</span>
                 </div>
               </div>
             ) : (
               <div className="mt-4 bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3 text-sm space-y-1.5 text-left w-full max-w-xs mx-auto">
                 <div className="flex justify-between font-black text-slate-900 border-b border-slate-200 pb-1.5 mb-1.5">
                   <span>Dự kiến thanh toán thêm</span>
-                  <span className="text-emerald-600">{formatVND(Math.max(0, originalAmount - 200000))}</span>
+                  <span className="text-emerald-600">{formatVND(Math.max(0, originalAmount - 50000))}</span>
                 </div>
                 <div className="flex justify-between text-slate-500 text-[11px]">
                   <span>Chi phí gốc (bác sĩ)</span>
@@ -769,7 +840,7 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
                 </div>
                 <div className="flex justify-between text-slate-500 font-semibold text-[11px]">
                   <span>Đã thanh toán (Cọc)</span>
-                  <span>-200.000 VNĐ</span>
+                  <span>-50.000 VNĐ</span>
                 </div>
               </div>
             )}

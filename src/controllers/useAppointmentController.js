@@ -150,13 +150,27 @@ export function useAppointmentController(patientId = null) {
     const savedSlots = localStorage.getItem('admin-consultation-slots');
     const adminSlots = savedSlots ? JSON.parse(savedSlots) : [];
 
+    // Helper to check if a time slot is in the past
+    const todayDate = new Date();
+    const todayStr = `${todayDate.getFullYear()}-${(todayDate.getMonth() + 1).toString().padStart(2, '0')}-${todayDate.getDate().toString().padStart(2, '0')}`;
+    const currentMins = todayDate.getHours() * 60 + todayDate.getMinutes();
+
+    const isPastSlot = (slotTimeStr) => {
+      if (date < todayStr) return true;
+      if (date === todayStr) {
+        const [h, m] = slotTimeStr.split(':').map(Number);
+        return (h * 60 + m) <= currentMins;
+      }
+      return false;
+    };
+
     // Filter slots for this doctor and date
     const dailySlots = adminSlots.filter(s => s.doctorName === docName && s.date === date);
 
     if (dailySlots.length > 0) {
       return dailySlots.map(s => ({
         time: s.startTime,
-        isBooked: s.status === 'Đã đặt' || s.status === 'Đã hủy' || isSlotBooked(docId, date, s.startTime)
+        isBooked: isPastSlot(s.startTime) || s.status === 'Đã đặt' || s.status === 'Đã hủy' || isSlotBooked(docId, date, s.startTime)
       }));
     }
 
@@ -169,7 +183,7 @@ export function useAppointmentController(patientId = null) {
 
     return standardSlots.map(time => ({
       time,
-      isBooked: isSlotBooked(docId, date, time)
+      isBooked: isPastSlot(time) || isSlotBooked(docId, date, time)
     }));
   }, [isSlotBooked]);
 

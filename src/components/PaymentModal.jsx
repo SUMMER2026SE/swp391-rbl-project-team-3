@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, CreditCard, QrCode, Wallet, CheckCircle2, ShieldCheck, RefreshCw } from 'lucide-react';
 import { useAppointmentController } from '../controllers/useAppointmentController';
 import { useAuth } from '../context/AuthContext';
-
+import { createPaymentLink, getPaymentStatus } from '../utils/payos';
 export default function PaymentModal({ isOpen, onClose, appointment, onSuccess }) {
   const { user } = useAuth();
   const { payAppointment } = useAppointmentController();
@@ -12,8 +12,9 @@ export default function PaymentModal({ isOpen, onClose, appointment, onSuccess }
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // QR Code States
-  const [qrCountdown, setQrCountdown] = useState(6);
+  // PayOS States
+  const [payosData, setPayosData] = useState(null);
+  const [orderCode, setOrderCode] = useState(null);
 
   // Credit Card States
   const [cardNumber, setCardNumber] = useState('');
@@ -33,24 +34,41 @@ export default function PaymentModal({ isOpen, onClose, appointment, onSuccess }
   const discountAmount = 0; // Default
   const finalAmount = totalAmount - discountAmount;
 
-  // Auto trigger success for QR code tab mock scanning
   useEffect(() => {
     if (!isOpen || activeTab !== 'qr' || paymentSuccess || isProcessing) return;
 
-    setQrCountdown(6);
-    const interval = setInterval(() => {
-      setQrCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          handleSuccessCheckout('QR Code');
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+    let isSubscribed = true;
+    let newOrderCode = Date.now();
+    setOrderCode(newOrderCode);
 
-    return () => clearInterval(interval);
-  }, [isOpen, activeTab, paymentSuccess, isProcessing]);
+    const initPayOS = async () => {
+      try {
+        const desc = `Thanh toan kham ${newOrderCode}`.substring(0, 25);
+        const data = await createPaymentLink(newOrderCode, finalAmount, desc);
+        if (isSubscribed) setPayosData(data);
+      } catch (err) {
+        console.error("PayOS init error:", err);
+      }
+    };
+    initPayOS();
+
+    const interval = setInterval(async () => {
+      try {
+        const statusData = await getPaymentStatus(newOrderCode);
+        if (statusData.status === 'PAID') {
+          clearInterval(interval);
+          handleSuccessCheckout('QR Code (PayOS)');
+        }
+      } catch (e) {
+        // Ignore polling errors
+      }
+    }, 3000);
+
+    return () => {
+      isSubscribed = false;
+      clearInterval(interval);
+    };
+  }, [isOpen, activeTab, paymentSuccess, isProcessing, finalAmount]);
 
   if (!isOpen || !appointment) return null;
 
@@ -73,6 +91,11 @@ export default function PaymentModal({ isOpen, onClose, appointment, onSuccess }
         payAppointment(payload);
         setIsProcessing(false);
         setPaymentSuccess(true);
+        
+        // Dispatch global toast
+        window.dispatchEvent(new CustomEvent('show-toast', {
+          detail: { message: 'Đặt lịch thành công!', type: 'success' }
+        }));
         
         // Wait and close
         setTimeout(() => {
@@ -204,11 +227,15 @@ export default function PaymentModal({ isOpen, onClose, appointment, onSuccess }
                   <div className="flex flex-col items-center text-center space-y-4 py-2">
                     {/* Glowing scanning QR container */}
                     <div className="relative p-3 bg-white rounded-[2rem] border border-slate-200 shadow-md w-44 h-44 flex items-center justify-center overflow-hidden">
-                      <img
-                        src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=DermaSmartClinicBookingPay"
-                        alt="QR Code"
-                        className="w-full h-full object-contain"
-                      />
+                      {payosData ? (
+                        <img
+                          src={`https://img.vietqr.io/image/${payosData.bin}-${payosData.accountNumber}-compact2.png?amount=${payosData.amount}&addInfo=${encodeURIComponent(payosData.description)}&accountName=${encodeURIComponent(payosData.accountName)}`}
+                          alt="QR Code"
+                          className="w-full h-full object-contain"
+                        />
+                      ) : (
+                        <RefreshCw className="w-8 h-8 text-teal-500 animate-spin" />
+                      )}
                       {/* Laser Beam scanning animation */}
                       <style>{`
                         @keyframes qr-scan {
@@ -226,9 +253,12 @@ export default function PaymentModal({ isOpen, onClose, appointment, onSuccess }
                       <p className="text-[10px] text-slate-400 font-semibold mt-1">Hỗ trợ Napas 24/7, VietQR, các ví điện tử</p>
                     </div>
 
-                    <div className="bg-teal-50/50 border border-teal-200/30 rounded-xl px-4 py-2 text-[10px] font-bold text-teal-700 flex items-center gap-2">
-                      <RefreshCw size={12} className="animate-spin text-teal-500" />
-                      Hệ thống đang kiểm tra giao dịch tự động trong {qrCountdown}s...
+                    <div className="bg-teal-50/50 border border-teal-200/30 rounded-xl px-4 py-2 text-[10px] font-bold text-teal-700 flex flex-col items-center gap-1">
+                      <div className="flex items-center gap-2">
+                        <RefreshCw size={12} className="animate-spin text-teal-500" />
+                        Hệ thống đang chờ thanh toán...
+                      </div>
+                      <span className="text-[9px] text-teal-600/70 font-semibold">Mã đơn: {orderCode}</span>
                     </div>
                   </div>
                 )}

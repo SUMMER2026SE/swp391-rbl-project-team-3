@@ -12,6 +12,8 @@ import ProfilePage from './views/ProfilePage';
 import ProtectedRoute from './components/ProtectedRoute';
 import LiquidGlassFilter from './components/common/LiquidGlassFilter';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { CheckCircle2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import './index.css';
 
 function AppContent() {
@@ -106,14 +108,49 @@ function AppContent() {
   );
 }
 
+function GlobalToast() {
+  const [toast, setToast] = React.useState(null);
+
+  React.useEffect(() => {
+    const handleShowToast = (e) => {
+      setToast(e.detail);
+      setTimeout(() => setToast(null), 5000);
+    };
+    window.addEventListener('show-toast', handleShowToast);
+    return () => window.removeEventListener('show-toast', handleShowToast);
+  }, []);
+
+  return (
+    <AnimatePresence>
+      {toast && (
+        <motion.div
+          initial={{ opacity: 0, y: 50, scale: 0.9 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 20, scale: 0.9 }}
+          className="fixed bottom-6 right-6 z-[9999] flex items-center gap-3 bg-emerald-50 text-emerald-700 px-5 py-4 rounded-2xl shadow-xl shadow-emerald-500/20 border border-emerald-200"
+        >
+          <div className="bg-emerald-100 rounded-full p-1">
+            <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+          </div>
+          <div>
+            <h4 className="font-bold text-sm">Thành công</h4>
+            <p className="text-xs font-semibold opacity-90">{toast.message}</p>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
 function App() {
   return (
     <AuthProvider>
-      <div className="min-h-screen bg-gradient-to-br from-indigo-50/80 via-emerald-50/90 to-teal-100/80 bg-fixed">
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50/80 via-emerald-50/90 to-teal-100/80 bg-fixed relative">
         {/* Trigger Tailwind JIT */}
         {/* App-wide SVG refraction filters for the liquid-glass system */}
         <LiquidGlassFilter />
         <AppContent />
+        <GlobalToast />
       </div>
     </AuthProvider>
   );

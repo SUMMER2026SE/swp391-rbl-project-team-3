@@ -219,7 +219,7 @@ export const AppointmentModel = {
     const list = this.getAll();
     const isBooked = list.some(
       a =>
-        a.doctorId === doctorId &&
+        String(a.doctorId) === String(doctorId) &&
         a.date === dateStr &&
         a.time === timeStr &&
         a.status !== 'Đã hủy'
@@ -300,17 +300,25 @@ export const AppointmentModel = {
   validateBooking(bookingData) {
     const { doctorId, patientId, patientPhone, patientEmail, date, time } = bookingData;
     
-    // Rule 1: Date must be tomorrow or later
-    const tomorrow = new Date();
-    tomorrow.setHours(0, 0, 0, 0);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    // Rule 1: Date must be today or later
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
     const parts = date.split('-');
     const selectDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
     selectDate.setHours(0, 0, 0, 0);
 
-    if (selectDate < tomorrow) {
-      return { valid: false, error: 'Ngày đặt khám tối thiểu phải từ ngày mai trở đi.' };
+    if (selectDate < today) {
+      return { valid: false, error: 'Ngày đặt khám tối thiểu phải từ hôm nay trở đi.' };
+    }
+
+    if (selectDate.getTime() === today.getTime()) {
+      const now = new Date();
+      const currentMins = now.getHours() * 60 + now.getMinutes();
+      const [h, m] = time.split(':').map(Number);
+      if (h * 60 + m <= currentMins) {
+        return { valid: false, error: 'Khung giờ này đã qua, vui lòng chọn khung giờ khác.' };
+      }
     }
 
     // Rule 2: Doctor must be working on that day
@@ -326,7 +334,14 @@ export const AppointmentModel = {
     }
 
     // Rule 3: No double booking for doctor
-    if (this.isTimeSlotBooked(doctorId, date, time)) {
+    const isActuallyBooked = this.getAll().some(
+      a =>
+        String(a.doctorId) === String(doctorId) &&
+        a.date === date &&
+        a.time === time &&
+        a.status !== 'Đã hủy'
+    );
+    if (isActuallyBooked) {
       return { valid: false, error: 'Khung giờ này đã được đặt trước cho bác sĩ này. Vui lòng chọn khung giờ khác.' };
     }
 
@@ -367,7 +382,7 @@ export const AppointmentModel = {
 
       // Rule 5: Cannot book the same doctor on the same day twice
       const sameDayDoc = patientAppointments.some(
-        a => a.doctorId === doctorId && a.date === date && a.status !== 'Đã hủy'
+        a => String(a.doctorId) === String(doctorId) && a.date === date && a.status !== 'Đã hủy'
       );
       if (sameDayDoc) {
         return {
@@ -479,21 +494,28 @@ export const AppointmentModel = {
     let updatedFee = apt.fee;
     
     if (isCloseToTime) {
-      updatedFee = this.applySurcharge(apt.fee, 50000);
-      surchargeMessage = ' (Tính thêm phụ phí 50.000 VNĐ đổi lịch sát giờ)';
+      surchargeMessage = ' (Đã thanh toán phụ phí 50.000 VNĐ đổi lịch sát giờ)';
     }
 
-    // 1. Date must be tomorrow or later
-    const tomorrow = new Date();
-    tomorrow.setHours(0, 0, 0, 0);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    // 1. Date must be today or later
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
     const parts = newDate.split('-');
     const selectDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
     selectDate.setHours(0, 0, 0, 0);
 
-    if (selectDate < tomorrow) {
-      throw new Error('Ngày hẹn mới tối thiểu phải từ ngày mai trở đi.');
+    if (selectDate < today) {
+      throw new Error('Ngày dời lịch tối thiểu phải từ hôm nay trở đi.');
+    }
+
+    if (selectDate.getTime() === today.getTime()) {
+      const now = new Date();
+      const currentMins = now.getHours() * 60 + now.getMinutes();
+      const [h, m] = newTime.split(':').map(Number);
+      if (h * 60 + m <= currentMins) {
+        throw new Error('Khung giờ này đã qua, vui lòng chọn khung giờ khác.');
+      }
     }
 
     // 2. Doctor working schedule check
@@ -509,7 +531,7 @@ export const AppointmentModel = {
     const isBooked = appointments.some(
       a =>
         a.id !== appointmentId &&
-        a.doctorId === apt.doctorId &&
+        String(a.doctorId) === String(apt.doctorId) &&
         a.date === newDate &&
         a.time === newTime &&
         a.status !== 'Đã hủy'
