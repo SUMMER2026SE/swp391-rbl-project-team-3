@@ -3,8 +3,8 @@ import { motion } from 'framer-motion';
 import { ClipboardList, CheckCircle2, Clock, TrendingUp } from 'lucide-react';
 
 const TechnicianOverview = ({ tasks }) => {
-    const pendingTasks = tasks?.filter(t => t.status === "Chờ thực hiện")?.length || 0;
-    const completedTasks = tasks?.filter(t => t.status === "Đã hoàn thành")?.length || 0;
+    const pendingTasks = (Array.isArray(tasks) ? tasks : []).filter(t => t.status === "Chờ thực hiện")?.length || 0;
+    const completedTasks = (Array.isArray(tasks) ? tasks : []).filter(t => t.status === "Đã hoàn thành")?.length || 0;
     const totalShifts = ([])?.length || 0;
 
     const stats = [
@@ -47,7 +47,7 @@ const TechnicianOverview = ({ tasks }) => {
             className="space-y-8"
         >
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {stats?.map((stat, idx) => (
+                {(Array.isArray(stats) ? stats : []).map((stat, idx) => (
                     <div key={idx} className="backdrop-blur-xl bg-white/60 border border-white/80 shadow-[0_8px_30px_rgba(0,0,0,0.04)] rounded-3xl p-6 relative overflow-hidden group hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-all">
                         <div className="flex justify-between items-start mb-6">
                             <div className={`p-4 rounded-2xl ${stat.bg}`}>

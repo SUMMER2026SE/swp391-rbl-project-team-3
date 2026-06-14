@@ -4,6 +4,17 @@ import { User, Activity, Clock } from 'lucide-react';
 const TaskCard = ({ task, onExecute }) => {
     if (!task) return null;
 
+    const formatRequestTime = (timeStr) => {
+        if (!timeStr) return '—';
+        try {
+            const date = new Date(timeStr);
+            if (isNaN(date.getTime())) return timeStr;
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        } catch {
+            return '—';
+        }
+    };
+
     return (
         <div className="bg-white border border-slate-200 shadow-sm rounded-xl p-5 hover:shadow-md transition-shadow">
             <div className="flex justify-between items-start mb-4">
@@ -35,7 +46,7 @@ const TaskCard = ({ task, onExecute }) => {
                 </div>
                 <div className="flex items-center text-sm text-slate-500">
                     <Clock className="w-4 h-4 mr-2 text-slate-400" />
-                    <span>Yêu cầu lúc: {new Date(task?.requestTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                    <span>Yêu cầu lúc: {formatRequestTime(task?.requestTime || task?.createdAt)}</span>
                 </div>
             </div>
 

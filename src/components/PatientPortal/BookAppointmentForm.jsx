@@ -267,7 +267,17 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  const selectedCategoryData = serviceCategories.find(c => c.id === selectedCategory);
+  const localServiceCategories = [
+    { id: 'cat-01', name: 'Khám da liễu tổng quát' },
+    { id: 'cat-02', name: 'Điều trị mụn & sẹo rỗ' },
+    { id: 'cat-03', name: 'Trị nám, tàn nhang & đốm nâu' },
+    { id: 'cat-04', name: 'Trẻ hóa & chống lão hóa da' },
+    { id: 'cat-05', name: 'Điều trị viêm da, vảy nến, eczema' },
+    { id: 'cat-06', name: 'Thẩm mỹ & chăm sóc da chuyên sâu' },
+    { id: 'cat-07', name: 'Soi da & tư vấn AI' },
+  ];
+  const categoriesToUse = typeof serviceCategories !== 'undefined' && Array.isArray(serviceCategories) ? serviceCategories : localServiceCategories;
+  const selectedCategoryData = categoriesToUse.find(c => c.id === selectedCategory);
 
   // Ngày tối thiểu = hôm nay
   const todayDate = new Date();
@@ -331,7 +341,8 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
         isBooked: isSlotActuallyBooked(selectedDoctor, selectedDate, s.time)
       }));
     } else {
-      return ([])?.map?.(time => {
+      const standardSlots = ["08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30"];
+      return standardSlots.map(time => {
         const isAllBooked = !workingDocs.some(doc => !isSlotActuallyBooked(doc.id, selectedDate, time));
         return {
           time,
@@ -532,7 +543,7 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
                     className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-emerald-500 text-slate-800 transition-colors appearance-none cursor-pointer text-sm pr-10"
                   >
                     <option value="">-- Chọn nhóm bệnh / nhu cầu --</option>
-                    {serviceCategories?.map?.(cat => (
+                    {categoriesToUse.map(cat => (
                       <option key={cat.id} value={cat.id}>
                         {cat.name}
                       </option>

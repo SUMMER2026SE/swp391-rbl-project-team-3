@@ -38,9 +38,9 @@ export function useFeedbackController(filterBy = {}) {
   }, []);
 
   function applyFilter(list, filter) {
-    let result = list;
-    if (filter.patientId) result = result?.filter?.(f => f.patientId === filter.patientId);
-    if (filter.doctorId)  result = result?.filter?.(f => f.doctorId  === filter.doctorId);
+    let result = Array.isArray(list) ? list : [];
+    if (filter.patientId) result = result.filter(f => f.patientId === filter.patientId);
+    if (filter.doctorId)  result = result.filter(f => f.doctorId  === filter.doctorId);
     return result;
   }
 
@@ -75,10 +75,46 @@ export function useFeedbackController(filterBy = {}) {
   };
 
   const getStats = (list = null) => {
-    const data = list || feedbacks;
+    const data = Array.isArray(list || feedbacks) ? (list || feedbacks) : [];
+    const total = data.length;
+    
+    const distribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    const criteriaSums = { doctor: 0, technician: 0, treatmentEffect: 0, waitingTime: 0, facility: 0 };
+    const criteriaCounts = { doctor: 0, technician: 0, treatmentEffect: 0, waitingTime: 0, facility: 0 };
+    
+    let sumRating = 0;
+    
+    data.forEach(f => {
+      if (!f) return;
+      const r = Math.round(f.overallRating || f.rating || 0);
+      if (r >= 1 && r <= 5) {
+        distribution[r] = (distribution[r] || 0) + 1;
+      }
+      sumRating += (f.overallRating || f.rating || 0);
+      
+      const cr = f.criteriaRatings || {};
+      Object.keys(criteriaSums).forEach(key => {
+        const val = cr[key] !== undefined ? cr[key] : f[key];
+        if (typeof val === 'number' && val > 0) {
+          criteriaSums[key] += val;
+          criteriaCounts[key] += 1;
+        }
+      });
+    });
+    
+    const avg = total > 0 ? (Math.round((sumRating / total) * 10) / 10) : 0;
+    
+    const criteria = {};
+    Object.keys(criteriaSums).forEach(key => {
+      criteria[key] = criteriaCounts[key] > 0 ? criteriaSums[key] / criteriaCounts[key] : 0;
+    });
+    
     return {
-      total: data.length,
-      averageRating: data.length ? data.reduce((sum, f) => sum + (f.rating || 0), 0) / data.length : 0
+      total,
+      averageRating: avg,
+      avg,
+      distribution,
+      criteria
     };
   };
 

@@ -4,11 +4,22 @@ import { TrendingUp, Users, Ticket, Activity, ChevronRight, Zap, Shield } from '
 import { SystemLogModel } from '../../models/SystemLogModel';
 
 const AdminOverview = () => {
-  const [logs, setLogs] = useState(() => SystemLogModel.getAll());
+  const [logs, setLogs] = useState([]);
 
   useEffect(() => {
+    const fetchLogs = async () => {
+      try {
+        const data = await SystemLogModel.getAll();
+        setLogs(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error("Failed to fetch logs:", err);
+        setLogs([]);
+      }
+    };
+    fetchLogs();
+
     const handleUpdate = () => {
-      setLogs(SystemLogModel.getAll());
+      fetchLogs();
     };
     window.addEventListener('system-logs-updated', handleUpdate);
     return () => window.removeEventListener('system-logs-updated', handleUpdate);
@@ -73,7 +84,7 @@ const AdminOverview = () => {
       </div>
       {/* Bento Grid: Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        {stats?.map?.((stat, index) => (
+        {(Array.isArray(stats) ? stats : []).map((stat, index) => (
           <motion.div 
             key={index} 
             variants={itemVariants}
@@ -113,7 +124,7 @@ const AdminOverview = () => {
           </div>
           
           <div className="space-y-5">
-            {logs?.map((log) => (
+            {(Array.isArray(logs) ? logs : []).map((log) => (
               <div key={log.id} className="flex items-start p-5 rounded-2xl bg-white/80 border border-slate-100 shadow-sm hover:shadow-md transition-shadow group">
                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mr-5 ${log.severity === 'Success' ? 'bg-emerald-100 text-emerald-600' : 'bg-sky-100 text-sky-600'}`}>
                   {log.severity === 'Success' ? <Activity className="w-6 h-6" /> : <Users className="w-6 h-6" />}

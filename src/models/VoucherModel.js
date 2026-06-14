@@ -1,6 +1,10 @@
 import { supabase } from '../supabaseClient';
 
 export const VoucherModel = {
+  async getAll() {
+    return this.getAllVouchers();
+  },
+
   async getAllVouchers() {
     try {
       const { data, error } = await supabase.from('vouchers').select('*');
@@ -64,6 +68,20 @@ export const VoucherModel = {
     } catch (e) {
       console.warn('Supabase delete error (vouchers):', e.message);
       return false;
+    }
+  },
+
+  async incrementUsage(id) {
+    try {
+      const { data: voucher, error: fetchError } = await supabase.from('vouchers').select('usageCount').eq('id', id).single();
+      if (fetchError) throw fetchError;
+      const newCount = (voucher?.usageCount || 0) + 1;
+      const { data, error } = await supabase.from('vouchers').update({ usageCount: newCount }).eq('id', id).select();
+      if (error) throw error;
+      return data[0];
+    } catch (e) {
+      console.warn('Supabase update error (incrementUsage):', e.message);
+      return null;
     }
   }
 };

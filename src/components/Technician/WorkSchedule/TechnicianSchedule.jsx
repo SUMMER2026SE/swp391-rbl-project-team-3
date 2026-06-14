@@ -15,14 +15,14 @@ const TechnicianSchedule = () => {
             </h2>
             
             <div className="space-y-4">
-                {([])?.map((shift) => (
-                    <div key={shift.id} className="flex items-center justify-between p-4 border border-slate-100 rounded-xl bg-slate-50/50 hover:bg-slate-50 transition-colors">
+                {(Array.isArray([]) ? [] : []).map((shift) => (
+                    <div key={shift?.id} className="flex items-center justify-between p-4 border border-slate-100 rounded-xl bg-slate-50/50 hover:bg-slate-50 transition-colors">
                         <div className="flex items-center space-x-4">
                             <div className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center text-slate-500">
                                 <Clock className="w-6 h-6" />
                             </div>
                             <div>
-                                <p className="font-medium text-slate-800">Ngày: {shift.date}</p>
+                                <p className="font-medium text-slate-800">Ngày: {shift?.date}</p>
                                 <p className="text-sm text-slate-500">Ca: {shift.shift}</p>
                             </div>
                         </div>

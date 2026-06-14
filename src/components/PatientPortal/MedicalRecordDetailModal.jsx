@@ -208,10 +208,10 @@ function OverviewTab({ record }) {
         </div>
       </Section>
       {/* Ghi chú */}
-      {(record.notes || record.technicianNotes) && (
+      {(record?.notes || record?.technicianNotes) && (
         <Section icon={<MessageSquare className="w-4 h-4" />} title="Ghi chú" accent="teal">
           <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3">
-            {record.notes && (
+            {record?.notes && (
               <div>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
                   <Shield className="w-3 h-3" /> Bác sĩ
@@ -219,7 +219,7 @@ function OverviewTab({ record }) {
                 <p className="text-sm text-slate-700 leading-relaxed">{record.notes}</p>
               </div>
             )}
-            {record.technicianNotes && (
+            {record?.technicianNotes && (
               <div className={record.notes ? 'border-t border-slate-100 pt-3' : ''}>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
                   <Wrench className="w-3 h-3" /> Kỹ thuật viên

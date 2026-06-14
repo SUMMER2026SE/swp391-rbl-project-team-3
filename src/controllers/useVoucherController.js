@@ -74,14 +74,79 @@ export function useVoucherController() {
     return { success: false, message: "Not implemented" };
   };
 
-  const getAutoApplicable = async (serviceId, amount, dateStr) => {
-    console.warn("getAutoApplicable is not implemented in model yet");
-    return null;
+  const getAutoApplicable = (serviceId, amount, dateStr) => {
+    if (!vouchers || !Array.isArray(vouchers)) return [];
+    
+    const today = dateStr || new Date().toISOString().split('T')[0];
+    
+    const active = vouchers.filter(v => {
+      const isActive = v.isActive === true || v.status === 'Hoạt động';
+      if (!isActive) return false;
+      
+      if (v.validFrom && v.validFrom > today) return false;
+      if (v.validTo && v.validTo < today) return false;
+      
+      if (v.usageCount !== undefined && v.maxUsage !== undefined && v.usageCount >= v.maxUsage) return false;
+      
+      if (v.applicableServices) {
+        try {
+          const arr = typeof v.applicableServices === 'string' ? JSON.parse(v.applicableServices) : v.applicableServices;
+          if (Array.isArray(arr) && arr.length > 0 && !arr.includes(serviceId)) {
+            return false;
+          }
+        } catch (e) {
+          if (typeof v.applicableServices === 'string' && v.applicableServices.trim() !== '') {
+            const list = v.applicableServices.split(',').map(s => s.trim());
+            if (!list.includes(serviceId)) return false;
+          }
+        }
+      }
+      
+      const minAmount = Number(v.minOrderAmount || v.minOrderValue || 0);
+      if (amount < minAmount) return false;
+      
+      return true;
+    });
+    
+    const results = active.map(v => {
+      let discount = 0;
+      const discountType = v.discountType;
+      const discountValue = Number(v.discountValue || 0);
+      
+      if (discountType === 'Percentage') {
+        discount = (amount * discountValue) / 100;
+        const maxDiscount = Number(v.maxDiscountAmount || v.maxDiscountValue || 0);
+        if (maxDiscount > 0 && discount > maxDiscount) {
+          discount = maxDiscount;
+        }
+      } else {
+        discount = discountValue;
+      }
+      
+      if (discount > amount) {
+        discount = amount;
+      }
+      
+      const finalAmount = amount - discount;
+      
+      return {
+        voucher: v,
+        discount,
+        finalAmount
+      };
+    });
+    
+    return results.sort((a, b) => b.discount - a.discount);
   };
 
   const incrementUsage = async (voucherId) => {
-    console.warn("incrementUsage is not implemented in model yet");
-    return { success: false };
+    try {
+      const v = await VoucherModel.incrementUsage(voucherId);
+      await fetchVouchers();
+      return { success: true, voucher: v };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
   };
 
   const getStats = () => {

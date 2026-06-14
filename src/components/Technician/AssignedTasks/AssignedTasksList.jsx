@@ -102,7 +102,7 @@ const AssignedTasksList = ({ tasks, onExecuteTask, onReviewTask }) => {
             </tr>
           </thead>
           <tbody className="divide-y divide-white/20">
-            {taskList?.map?.((task, index) => {
+            {(Array.isArray(taskList) ? taskList : []).map((task, index) => {
               const isCompleted = task?.status === 'Đã hoàn thành';
               const isPending = task?.status === 'Chờ thực hiện';
 

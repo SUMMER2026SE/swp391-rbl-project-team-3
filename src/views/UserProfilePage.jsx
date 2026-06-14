@@ -412,7 +412,7 @@ function MedicalRecordsTab({ user }) {
       {/* Record List */}
       <div className="bg-slate-50/90 border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
         {records.length > 0 ? (
-          records?.map?.((record, idx) => {
+          (Array.isArray(records) ? records : []).map((record, idx) => {
             const accent = SPECIALTY_ACCENT[record.specialty] || SPECIALTY_ACCENT['Da liễu'];
             const prescriptionCount = record.prescriptions?.length || 0;
             const followUpCount = record.followUps?.length || 0;
@@ -466,7 +466,7 @@ function MedicalRecordsTab({ user }) {
                       <div className="pl-6 flex items-center gap-2">
                         <Pill className="w-3.5 h-3.5 text-sky-500 shrink-0" />
                         <p className="text-xs text-slate-500">
-                          {record.prescriptions?.slice(0, 2)?.map?.(p => p.name).join(', ')}
+                          {(Array.isArray(record.prescriptions) ? record.prescriptions : []).slice(0, 2).map(p => p.name).join(', ')}
                           {prescriptionCount > 2 ? ` +${prescriptionCount - 2} thuốc` : ''}
                         </p>
                       </div>
@@ -552,12 +552,23 @@ export default function UserProfilePage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('personal');
-  const [notifications, setNotifications] = useState(() => NotificationModel.getAll());
+  const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
 
   useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const res = await NotificationModel.getAll();
+        setNotifications(Array.isArray(res) ? res : []);
+      } catch (error) {
+        console.error("Failed to fetch notifications", error);
+        setNotifications([]);
+      }
+    };
+    fetchNotifications();
+
     const handleUpdate = () => {
-      setNotifications(NotificationModel.getAll());
+      fetchNotifications();
     };
     window.addEventListener('notifications-updated', handleUpdate);
     return () => window.removeEventListener('notifications-updated', handleUpdate);
@@ -656,7 +667,7 @@ export default function UserProfilePage() {
                   {myNotifications.length === 0 ? (
                     <p className="text-xs text-slate-400 italic text-center py-4">Chưa có thông báo nào.</p>
                   ) : (
-                    myNotifications?.map?.((notif) => (
+                    (Array.isArray(myNotifications) ? myNotifications : []).map((notif) => (
                       <div 
                         key={notif.id}
                         onClick={() => {
@@ -702,7 +713,7 @@ export default function UserProfilePage() {
               <p className="text-center text-[11px] text-slate-400 font-medium">{ROLE_DISPLAY_NAMES[role]}</p>
             </div>
 
-            {tabs?.map?.((tab) => (
+            {(Array.isArray(tabs) ? tabs : []).map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}

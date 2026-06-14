@@ -53,7 +53,7 @@ export default function DoctorDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [activeAppointment, setActiveAppointment] = useState(null);
-  const [notifications, setNotifications] = useState(() => NotificationModel.getAll());
+  const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [appointments, setAppointments] = useState([]);
@@ -102,7 +102,7 @@ export default function DoctorDashboard() {
     
     // 1. Update local React state optimistically
     setAppointments((prev) =>
-      prev?.map?.(
+      (Array.isArray(prev) ? prev : []).map(
         (app) => (app.id === appointmentId ? { ...app, status: 'Đã khám', examRecord: clinicalData } : app)
       )
     );
@@ -117,16 +117,27 @@ export default function DoctorDashboard() {
     }, 3000);
   };
 
-  const doctorId = DoctorModel.getDoctorById(user?.id) ? user.id : 'doc-01';
+  const doctorId = currentDoctorId;
 
   useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const res = await NotificationModel.getAll();
+        setNotifications(Array.isArray(res) ? res : []);
+      } catch (error) {
+        console.error("Failed to fetch notifications", error);
+        setNotifications([]);
+      }
+    };
+    fetchNotifications();
+
     const handleUpdate = () => {
-      setNotifications(NotificationModel.getAll());
+      fetchNotifications();
     };
 
     window.addEventListener('notifications-updated', handleUpdate);
     return () => window.removeEventListener('notifications-updated', handleUpdate);
-  }, []);
+  }, [currentDoctorId]);
 
   const myNotifications = notifications?.filter?.(
     (n) => n.recipientRole === 'DOCTOR' && (n.recipientId === doctorId || n.recipientId === 'all')
@@ -332,7 +343,7 @@ export default function DoctorDashboard() {
                     onChange={(e) => setCurrentDoctorId(e.target.value)}
                     className="font-bold text-sm text-slate-900 bg-white/80 border border-slate-200 rounded-xl px-3 py-1.5 outline-none focus:border-teal-500 transition-all text-right shadow-sm cursor-pointer"
                   >
-                    {doctorsList?.map?.(d => (
+                    {(Array.isArray(doctorsList) ? doctorsList : []).map(d => (
                       <option key={d.id} value={d.id}>{d.name}</option>
                     ))}
                   </select>
@@ -381,7 +392,7 @@ export default function DoctorDashboard() {
                         {myNotifications.length === 0 ? (
                           <p className="text-xs text-slate-400 italic text-center py-4">Chưa có thông báo nào.</p>
                         ) : (
-                          myNotifications?.map?.((notif) => (
+                          (Array.isArray(myNotifications) ? myNotifications : []).map((notif) => (
                             <div
                               key={notif.id}
                               onClick={() => {

@@ -1,11 +1,34 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, X, Send, Bot, Headphones, Calendar, ScanLine, BadgeDollarSign, Pill, MessageSquare } from 'lucide-react';
+import { X, Send, Bot, Headphones, Calendar, ScanLine, BadgeDollarSign, Pill, MessageSquare } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { ReceptionistChatModel } from '../../models/ChatModel';
 import './FloatingChatbot.css';
 
 /* ───────────────────────── Sub-components ───────────────────────── */
+
+/* Custom brand mark — a clean monoline skincare droplet. Deliberately not the
+   stock AI sparkle/robot; the stroked silhouette lets the orb's gradient show
+   through, with a faint inner highlight reading as a soft reflection. */
+function BrandMark({ className = '' }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M12 3.2c3.9 3.45 6 6.78 6 9.93a6 6 0 0 1-12 0c0-3.15 2.1-6.48 6-9.93Z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M9.4 13.6a2.7 2.7 0 0 0 2.3 2.6"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        opacity="0.5"
+      />
+    </svg>
+  );
+}
 
 function ModeToggle({ mode, setMode }) {
   const tabs = [
@@ -40,8 +63,47 @@ function ModeToggle({ mode, setMode }) {
   );
 }
 
-function MessageBubble({ msg }) {
+/* Streams the bot's text out character-by-character (ChatGPT/Gemini feel).
+   Only the *latest* message types; older history renders instantly so it
+   never re-types when the chat is reopened or the list re-renders. */
+function TypewriterMessage({ text, isLatest, onTextUpdate }) {
+  const isLatestRef = useRef(isLatest);
+  const [displayedText, setDisplayedText] = useState(isLatestRef.current ? '' : text);
+  const [isStreaming, setIsStreaming] = useState(isLatestRef.current);
+  const typedRef = useRef(!isLatestRef.current);
+
+  useEffect(() => {
+    if (!isStreaming || typedRef.current) return;
+
+    let i = 0;
+    const id = setInterval(() => {
+      i += 1;
+      setDisplayedText(text.slice(0, i));
+      if (i >= text.length) {
+        clearInterval(id);
+        setIsStreaming(false);
+        typedRef.current = true;
+      }
+    }, 18);
+
+    return () => clearInterval(id);
+  }, [text, isStreaming]);
+
+  useEffect(() => {
+    onTextUpdate?.();
+  }, [displayedText, onTextUpdate]);
+
+  return (
+    <>
+      {displayedText}
+      {isStreaming && <span className="animate-pulse ml-1">▋</span>}
+    </>
+  );
+}
+
+function MessageBubble({ msg, isLatest, onTextUpdate }) {
   const isPatient = msg.senderRole === 'PATIENT';
+  const isBot = msg.senderRole === 'BOT';
   return (
     <motion.div
       initial={{ opacity: 0, y: 14, scale: 0.96 }}
@@ -59,7 +121,9 @@ function MessageBubble({ msg }) {
             : 'lg-bubble-in max-w-[78%] px-4 py-2.5 rounded-2xl rounded-bl-md text-sm leading-relaxed text-white/90 shadow-lg shadow-black/20'
         }
       >
-        {msg.text}
+        {isBot
+          ? <TypewriterMessage text={msg.text} isLatest={isLatest} onTextUpdate={onTextUpdate} />
+          : msg.text}
       </div>
     </motion.div>
   );
@@ -98,6 +162,22 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, []);
+
+  // Called continuously while a message streams. Stays pinned to the bottom
+  // (so growing text never hides under the input) but only if the user is
+  // already near the bottom — never yanks them away from reading history.
+  const keepPinned = useCallback(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, []);
+
+  const typedMessageIds = useRef(new Set());
+
+  useEffect(() => {
+    if (messages.length > 0 && typedMessageIds.current.size === 0) {
+      messages.forEach(m => typedMessageIds.current.add(m.id));
+    }
+  }, [messages]);
 
   const filteredMessages = messages?.filter?.(
     (m) => (mode === 'AI' ? m.mode === 'AI' : m.mode === 'Live')
@@ -244,7 +324,7 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
             className="fixed bottom-6 right-6 z-[9998] w-16 h-16 rounded-full flex items-center justify-center cursor-pointer border-none text-white bg-gradient-to-br from-cyan-400 via-sky-500 to-violet-500 shadow-xl shadow-sky-500/40"
           >
             <span className="lg-orb absolute inset-0 rounded-full" />
-            <Sparkles className="w-7 h-7 relative z-10" />
+            <BrandMark className="w-7 h-7 relative z-10" />
           </motion.button>
         )}
       </AnimatePresence>
@@ -296,7 +376,7 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
               <header className="flex-none flex items-center justify-between gap-3 pt-5 pb-4">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="relative w-11 h-11 rounded-2xl flex items-center justify-center bg-gradient-to-br from-cyan-400 via-sky-500 to-violet-500 shadow-lg shadow-sky-500/30 shrink-0">
-                    <Sparkles className="w-5 h-5 text-white" />
+                    <BrandMark className="w-5 h-5 text-white" />
                   </div>
                   <div className="min-w-0">
                     <h2 className="text-white font-bold text-base leading-tight truncate">DermaSmart AI</h2>
@@ -342,9 +422,24 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
                   </div>
                 )}
 
-                {filteredMessages.map((msg) => (
-                  <MessageBubble key={msg.id} msg={msg} />
-                ))}
+                {filteredMessages.map((msg, index) => {
+                  const isLast = index === filteredMessages.length - 1;
+                  const alreadyTyped = typedMessageIds.current.has(msg.id);
+                  const isLatest = isLast && !alreadyTyped && msg.senderRole === 'BOT';
+                  
+                  if (isLatest) {
+                    typedMessageIds.current.add(msg.id);
+                  }
+                  
+                  return (
+                    <MessageBubble
+                      key={msg.id}
+                      msg={msg}
+                      isLatest={isLatest}
+                      onTextUpdate={keepPinned}
+                    />
+                  );
+                })}
 
                 {isTyping && mode === 'AI' && (
                   <div className="flex flex-col items-start">

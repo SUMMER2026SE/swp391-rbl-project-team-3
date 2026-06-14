@@ -9,14 +9,63 @@ export default function TechnicianFeedbackView({ technicianId }) {
   const resolvedId = technicianId || 'doc-03';
   const { feedbacks, getStats } = useFeedbackController();
 
-  const ownPublished = feedbacks?.filter?.(f => f.doctorId === resolvedId && f.status === 'published');
-  const visibleFeedbacks = feedbacks?.filter?.(
-    f => f.status === 'published' && (f.doctorId === resolvedId || f.isPublic === true)
-  );
-  const stats = getStats(ownPublished);
+  const [feedbackList, setFeedbackList] = React.useState([]);
 
-  const technicianCriteria = CRITERIA_META?.filter?.(c =>
-    ['technician', 'treatmentEffect', 'waitingTime', 'facility'].includes(c.key));
+  React.useEffect(() => {
+    setFeedbackList(Array.isArray(feedbacks) ? feedbacks : []);
+  }, [feedbacks]);
+
+  const ownPublished = (Array.isArray(feedbackList) ? feedbackList : []).filter(
+    f => f?.doctorId === resolvedId && f?.status === 'published'
+  );
+  const visibleFeedbacks = (Array.isArray(feedbackList) ? feedbackList : []).filter(
+    f => f?.status === 'published' && (f?.doctorId === resolvedId || f?.isPublic === true)
+  );
+  const stats = getStats(ownPublished) || {
+    total: 0,
+    avg: 0,
+    distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+    criteria: { doctor: 0, technician: 0, treatmentEffect: 0, waitingTime: 0, facility: 0 }
+  };
+
+  const technicianCriteria = (Array.isArray(CRITERIA_META) ? CRITERIA_META : []).filter(c =>
+    c && ['technician', 'treatmentEffect', 'waitingTime', 'facility'].includes(c.key)
+  ) || [];
+
+  const statCards = [
+    {
+      label: 'Điểm trung bình',
+      value: stats?.avg > 0 ? stats.avg : '—',
+      sub: '/5 sao',
+      color: 'amber',
+      icon: Star,
+    },
+    {
+      label: 'Tổng đánh giá',
+      value: stats?.total || 0,
+      sub: 'từ bệnh nhân',
+      color: 'sky',
+      icon: MessageSquare,
+    },
+    {
+      label: 'Kỹ thuật viên',
+      value: stats?.criteria?.technician
+        ? (Math.round(stats.criteria.technician * 10) / 10)
+        : '—',
+      sub: 'điểm kỹ thuật',
+      color: 'emerald',
+      icon: Wrench,
+    },
+    {
+      label: 'Hài lòng',
+      value: (stats?.total || 0) > 0 && stats?.distribution
+        ? `${Math.round((((stats.distribution[4] || 0) + (stats.distribution[5] || 0)) / stats.total) * 100)}%`
+        : '—',
+      sub: '4–5 sao',
+      color: 'teal',
+      icon: ThumbsUp,
+    },
+  ];
 
   return (
     <div className="space-y-6">
@@ -26,40 +75,7 @@ export default function TechnicianFeedbackView({ technicianId }) {
       </div>
       {/* Score cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[
-          {
-            label: 'Điểm trung bình',
-            value: stats.avg > 0 ? stats.avg : '—',
-            sub: '/5 sao',
-            color: 'amber',
-            icon: Star,
-          },
-          {
-            label: 'Tổng đánh giá',
-            value: stats.total,
-            sub: 'từ bệnh nhân',
-            color: 'sky',
-            icon: MessageSquare,
-          },
-          {
-            label: 'Kỹ thuật viên',
-            value: stats.criteria.technician
-              ? (Math.round(stats.criteria.technician * 10) / 10)
-              : '—',
-            sub: 'điểm kỹ thuật',
-            color: 'emerald',
-            icon: Wrench,
-          },
-          {
-            label: 'Hài lòng',
-            value: stats.total > 0
-              ? `${Math.round(((stats.distribution[4] + stats.distribution[5]) / stats.total) * 100)}%`
-              : '—',
-            sub: '4–5 sao',
-            color: 'teal',
-            icon: ThumbsUp,
-          },
-        ]?.map?.((s, i) => {
+        {(Array.isArray(statCards) ? statCards : []).map((s, i) => {
           const CARD_COLORS = {
             amber: { bg: 'bg-amber-50', border: 'border-amber-100', text: 'text-amber-500', val: 'text-amber-700' },
             sky: { bg: 'bg-sky-50', border: 'border-sky-100', text: 'text-sky-500', val: 'text-sky-700' },
@@ -84,14 +100,14 @@ export default function TechnicianFeedbackView({ technicianId }) {
         })}
       </div>
       {/* Technician-specific criteria */}
-      {stats.total > 0 && (
+      {(stats?.total || 0) > 0 && (
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
           <p className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-emerald-500" /> Điểm tiêu chí liên quan
           </p>
           <div className="grid grid-cols-2 gap-3">
-            {technicianCriteria?.map?.(({ key, label, icon: Icon, color }) => {
-              const val = stats.criteria[key]
+            {(Array.isArray(technicianCriteria) ? technicianCriteria : []).map(({ key, label, icon: Icon, color }) => {
+              const val = stats?.criteria?.[key]
                 ? Math.round(stats.criteria[key] * 10) / 10
                 : 0;
               return (
@@ -120,16 +136,16 @@ export default function TechnicianFeedbackView({ technicianId }) {
       {/* Feedback list */}
       <div>
         <p className="text-sm font-bold text-slate-700 mb-3">
-          {visibleFeedbacks.length} đánh giá công khai
+          {(Array.isArray(visibleFeedbacks) ? visibleFeedbacks : []).length} đánh giá công khai
         </p>
-        {visibleFeedbacks.length > 0 ? (
+        {(Array.isArray(visibleFeedbacks) ? visibleFeedbacks : []).length > 0 ? (
           <div className="space-y-4">
-            {visibleFeedbacks?.map?.(fb => (
+            {(Array.isArray(visibleFeedbacks) ? visibleFeedbacks : []).map(fb => (
               <FeedbackCard
-                key={fb.id}
+                key={fb?.id}
                 fb={fb}
                 showPatient
-                showDoctor={fb.doctorId !== resolvedId}
+                showDoctor={fb?.doctorId !== resolvedId}
                 highlightKey="technician"
               />
             ))}

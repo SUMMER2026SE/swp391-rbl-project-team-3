@@ -118,12 +118,23 @@ export default function ReceptionistDashboard() {
     };
   }, []);
   
-  const [notifications, setNotifications] = useState(() => NotificationModel.getAll());
+  const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
 
   useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const res = await NotificationModel.getAll();
+        setNotifications(Array.isArray(res) ? res : []);
+      } catch (error) {
+        console.error("Failed to fetch notifications", error);
+        setNotifications([]);
+      }
+    };
+    fetchNotifications();
+
     const handleUpdate = () => {
-      setNotifications(NotificationModel.getAll());
+      fetchNotifications();
     };
     window.addEventListener('notifications-updated', handleUpdate);
     return () => window.removeEventListener('notifications-updated', handleUpdate);
@@ -160,13 +171,15 @@ export default function ReceptionistDashboard() {
     if (isAddOpen) {
       const saved = localStorage.getItem('admin-services');
       if (saved) {
-        const parsed = JSON.parse(saved)?.map(s => ({
+        let rawList = [];
+        try { rawList = JSON.parse(saved); } catch (e) {}
+        const parsed = (Array.isArray(rawList) ? rawList : []).map(s => ({
           id: s.id,
           name: s.name,
           price: typeof s.price === 'number' ? `${s.price.toLocaleString('vi-VN')} VNĐ` : s.price,
           description: s.description,
           status: s.status
-        }))?.filter?.(s => s.status === 'Hoạt động');
+        })).filter(s => s.status === 'Hoạt động');
         setServicesList(parsed);
         if (parsed.length > 0 && !parsed.some(s => s.name === newApt.service)) {
           setNewApt(prev => ({ ...prev, service: parsed[0].name }));
@@ -528,7 +541,7 @@ export default function ReceptionistDashboard() {
                         {myNotifications.length === 0 ? (
                           <p className="text-xs text-slate-400 italic text-center py-4">Chưa có thông báo nào.</p>
                         ) : (
-                          myNotifications?.map?.((notif) => (
+                          (Array.isArray(myNotifications) ? myNotifications : []).map((notif) => (
                             <div 
                               key={notif.id}
                               onClick={() => {
@@ -730,7 +743,7 @@ export default function ReceptionistDashboard() {
                     </p>
                   </div>
                 ) : (
-                  (filteredWaiting || [])?.map?.((apt, index) => {
+                  (Array.isArray(filteredWaiting) ? filteredWaiting : []).map((apt, index) => {
                     const isCheckedIn = apt.status === 'Completed';
                     
                     return (
@@ -839,7 +852,7 @@ export default function ReceptionistDashboard() {
                     </p>
                   </div>
                 ) : (
-                  (filteredRequests || [])?.map?.((apt) => (
+                  (Array.isArray(filteredRequests) ? filteredRequests : []).map((apt) => (
                     <div 
                       key={apt.appointment_id}
                       className="backdrop-blur-xl bg-white/50 border border-white/70 shadow-[0_4px_20px_rgba(0,0,0,0.02)] rounded-2xl p-4 hover:shadow-md transition-all border-l-4 border-l-sky-500 relative flex flex-col"
@@ -1064,7 +1077,7 @@ export default function ReceptionistDashboard() {
                       onChange={(e) => setNewApt(prev => ({ ...prev, time: e.target.value }))}
                       className="bg-slate-50/60 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 text-xs font-medium text-slate-800 cursor-pointer"
                     >
-                      {(([]) || [])?.map?.(slot => (
+                      {["08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30"].map(slot => (
                         <option key={slot} value={slot}>{slot}</option>
                       ))}
                     </select>
@@ -1080,7 +1093,7 @@ export default function ReceptionistDashboard() {
                     onChange={(e) => setNewApt(prev => ({ ...prev, service: e.target.value }))}
                     className="bg-slate-50/60 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 text-xs font-medium text-slate-800 cursor-pointer"
                   >
-                    {(servicesList || [])?.map?.(svc => (
+                    {(Array.isArray(servicesList) ? servicesList : []).map(svc => (
                       <option key={svc.id} value={svc.name}>{svc.name} - ({svc.price})</option>
                     ))}
                   </select>
@@ -1095,7 +1108,7 @@ export default function ReceptionistDashboard() {
                     onChange={(e) => setNewApt(prev => ({ ...prev, doctorName: e.target.value }))}
                     className="bg-slate-50/60 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 text-xs font-medium text-slate-800 cursor-pointer"
                   >
-                    {(doctors || [])?.map?.(doc => (
+                    {(Array.isArray(doctors) ? doctors : []).map(doc => (
                       <option key={doc.id} value={doc.name}>{doc.name} - ({doc.title})</option>
                     ))}
                   </select>

@@ -62,9 +62,9 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
     if (isReviewMode && task?.resultRecord) {
       return {
         0: {
-          images: task.resultRecord.images || [],
-          metrics: task.resultRecord.metrics || {},
-          technicianNotes: task.resultRecord.technicianNotes || ''
+          images: task?.resultRecord?.images || [],
+          metrics: task?.resultRecord?.metrics || {},
+          technicianNotes: task?.resultRecord?.technicianNotes || ''
         }
       };
     }
@@ -95,18 +95,18 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
   // ─── Initialize review mode data ────────────────────────────────────────
   useEffect(() => {
     if (isReviewMode && task?.resultRecord) {
-      if (task.resultRecord?.resultsMap) {
+      if (task?.resultRecord?.resultsMap) {
         setResultsMap(task.resultRecord.resultsMap);
       } else {
         setResultsMap({
           0: {
-            images: task.resultRecord.images || [],
-            metrics: task.resultRecord.metrics || {},
-            technicianNotes: task.resultRecord.technicianNotes || ''
+            images: task?.resultRecord?.images || [],
+            metrics: task?.resultRecord?.metrics || {},
+            technicianNotes: task?.resultRecord?.technicianNotes || ''
           }
         });
       }
-      if (task.resultRecord?.technicianNotes) {
+      if (task?.resultRecord?.technicianNotes) {
         setGlobalNotes(task.resultRecord.technicianNotes);
       }
     }
@@ -369,7 +369,7 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
           </div>
 
           <div className="flex flex-col gap-2.5">
-            {procedures?.map?.((proc, idx) => {
+            {(Array.isArray(procedures) ? procedures : []).map((proc, idx) => {
               const pType = proc?.procedureType || proc?.procedure || proc?.name || proc?.service || 'Thủ thuật';
               const isSelected = idx === activeProcIndex;
               const isDone = isProcedureComplete(proc, idx);
@@ -554,7 +554,7 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
             )}
 
             <div className="grid grid-cols-2 gap-3">
-              {images?.map?.((img, idx) => (
+              {(Array.isArray(images) ? images : []).map((img, idx) => (
                 <motion.div
                   key={img?.id || `img-${idx}`}
                   layout
@@ -631,7 +631,7 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
             </div>
           )}
 
-          {metrics?.map?.((metric, idx) => (
+          {(Array.isArray(metrics) ? metrics : []).map((metric, idx) => (
             <motion.div
               key={metric}
               variants={fadeUp}
@@ -736,7 +736,7 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
         </div>
         {/* ── Summary Cards for All Procedures ── */}
         <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pr-1">
-          {procedures?.map?.((proc, idx) => {
+          {(Array.isArray(procedures) ? procedures : []).map((proc, idx) => {
             const pType = proc?.procedureType || proc?.procedure || proc?.name || proc?.service || 'Thủ thuật';
             const pDetailsType = proc?.procedureDetails?.type;
             const isImg = pDetailsType === 'Imaging' || pType.toLowerCase().includes('soi da') || pType.toLowerCase().includes('chụp');
@@ -777,7 +777,7 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
                     </div>
                     {procImages.length > 0 && (
                       <div className="flex gap-1.5 mt-2 flex-wrap">
-                        {procImages?.map?.((img, i) => (
+                        {(Array.isArray(procImages) ? procImages : []).map((img, i) => (
                           <div key={img?.id || i} className="w-12 h-12 rounded-lg overflow-hidden border border-slate-200">
                             <img src={img?.url} alt="thumbnail" className="w-full h-full object-cover" />
                           </div>
@@ -787,7 +787,7 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
                   </div>
                 ) : isLab && pMetrics.length > 0 ? (
                   <div className="grid grid-cols-2 gap-2 mt-2">
-                    {pMetrics?.map?.((m) => (
+                    {(Array.isArray(pMetrics) ? pMetrics : []).map((m) => (
                       <div key={m} className="bg-slate-50/50 border border-slate-100 p-2.5 rounded-xl">
                         <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-semibold">{m}</span>
                         <span className="text-sm font-bold text-slate-800 block mt-0.5">{procMetrics[m] || '—'}</span>
