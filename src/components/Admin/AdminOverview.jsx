@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp, Users, Ticket, Activity, ChevronRight, Zap, Shield } from 'lucide-react';
-import { mockEmployees, mockVouchers } from '../../mockData';
 import { SystemLogModel } from '../../models/SystemLogModel';
 
 const AdminOverview = () => {
@@ -39,7 +38,7 @@ const AdminOverview = () => {
     },
     { 
       title: "Tổng nhân sự", 
-      value: mockEmployees?.length.toString() || "0", 
+      value: ([])?.length.toString() || "0", 
       icon: Users, 
       gradient: "from-sky-400 to-sky-500",
       lightBg: "bg-sky-50",
@@ -47,7 +46,7 @@ const AdminOverview = () => {
     },
     { 
       title: "Voucher hoạt động", 
-      value: mockVouchers?.filter(v => v.status === "Hoạt động").length.toString() || "0", 
+      value: ([])?.filter(v => v.status === "Hoạt động").length.toString() || "0", 
       icon: Ticket, 
       gradient: "from-emerald-400 to-emerald-500",
       lightBg: "bg-emerald-50",
@@ -72,10 +71,9 @@ const AdminOverview = () => {
           Báo cáo nhanh
         </button>
       </div>
-
       {/* Bento Grid: Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        {stats.map((stat, index) => (
+        {stats?.map?.((stat, index) => (
           <motion.div 
             key={index} 
             variants={itemVariants}
@@ -98,7 +96,6 @@ const AdminOverview = () => {
           </motion.div>
         ))}
       </div>
-
       {/* Bento Grid: Recent Activity & Quick Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <motion.div 
@@ -146,7 +143,7 @@ const AdminOverview = () => {
              <div className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center mb-6 border border-white/20 shadow-inner">
                <Shield className="w-7 h-7 text-white" />
              </div>
-             <h3 className="text-2xl font-extrabold mb-3 tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-indigo-100">Pristine Admin</h3>
+             <h3 className="text-2xl font-extrabold mb-3 tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-indigo-100">DermaSmart Admin</h3>
              <p className="text-indigo-100/90 text-sm mb-8 font-medium leading-relaxed">
                Không gian quản trị toàn diện. Kiểm soát nhân sự, phân quyền, quản lý dịch vụ và hệ thống báo cáo chuyên sâu.
              </p>

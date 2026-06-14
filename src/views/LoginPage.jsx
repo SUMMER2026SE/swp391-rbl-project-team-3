@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthController } from '../controllers/useAuthController';
 import { Shield, AlertCircle, CheckCircle, User, Mail, Phone, Lock, Eye, EyeOff, Key, ArrowRight } from 'lucide-react';
@@ -7,6 +7,8 @@ import logo from '../assets/logo.png';
 
 function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from?.pathname || null;
   const {
     emailInput, setEmailInput,
     passwordInput, setPasswordInput,
@@ -107,7 +109,7 @@ function LoginPage() {
           {/* Forms */}
           {isForgotPass ? (
             /* FORGOT PASSWORD FORM */
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={(e) => handleSubmit(e, from)} className="space-y-5">
               {!isVerifyingOtp && !isOtpVerified && (
                 /* Step 1: Send OTP */
                 <div>
@@ -246,7 +248,7 @@ function LoginPage() {
             </form>
           ) : isRegistering ? (
             /* REGISTRATION FORM */
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={(e) => handleSubmit(e, from)} className="space-y-5">
               <div>
                 <label className="block font-label-sm text-label-sm text-on-surface mb-1.5" htmlFor="fullname">
                   Họ và tên
@@ -414,7 +416,7 @@ function LoginPage() {
             </form>
           ) : (
             /* LOGIN FORM */
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={(e) => handleSubmit(e, from)} className="space-y-5">
               <div>
                 <label className="block font-label-sm text-label-sm text-on-surface mb-1.5" htmlFor="email">
                   Email hoặc Số điện thoại

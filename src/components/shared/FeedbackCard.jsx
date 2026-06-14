@@ -17,7 +17,7 @@ export function StarDisplay({ value, size = 'sm' }) {
   const sz = { lg: 'w-6 h-6', md: 'w-4 h-4', sm: 'w-3.5 h-3.5', xs: 'w-3 h-3' }[size] || 'w-3.5 h-3.5';
   return (
     <span className="flex items-center gap-0.5">
-      {[1, 2, 3, 4, 5].map(s => (
+      {[1, 2, 3, 4, 5]?.map?.(s => (
         <Star
           key={s}
           className={`${sz} ${s <= Math.round(value) ? 'fill-amber-400 text-amber-400' : 'fill-slate-200 text-slate-200'}`}
@@ -92,7 +92,6 @@ export default function FeedbackCard({
         fb.overallRating === 3 ? 'bg-gradient-to-r from-amber-400 to-yellow-400' :
         'bg-gradient-to-r from-rose-400 to-orange-400'
       }`} />
-
       <div className="p-5">
         {/* ── Header row ── */}
         <div className="flex items-start justify-between gap-3 mb-3">
@@ -153,7 +152,7 @@ export default function FeedbackCard({
         {/* ── Images ── */}
         {fb.images?.length > 0 && (
           <div className="flex gap-2 mb-3 flex-wrap">
-            {fb.images.map((img, i) => (
+            {fb.images?.map?.((img, i) => (
               <img
                 key={i} src={img} alt=""
                 className="w-16 h-16 rounded-xl object-cover border border-slate-200 cursor-pointer hover:opacity-90 transition-opacity"
@@ -190,7 +189,7 @@ export default function FeedbackCard({
               className="overflow-hidden"
             >
               <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 bg-slate-50 border border-slate-100 rounded-xl p-3 mt-1">
-                {CRITERIA_META.map(({ key, label, icon: Icon, color }) => {
+                {CRITERIA_META?.map?.(({ key, label, icon: Icon, color }) => {
                   const val = fb.criteriaRatings?.[key] || 0;
                   if (!val) return null;
                   const isHighlighted = key === highlightKey;

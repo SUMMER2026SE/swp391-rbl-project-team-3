@@ -43,7 +43,7 @@ export function normalizeProfileData(realData, userRole, visitsCount = 0) {
       height: realData.height || null,
       weight: realData.weight || null,
       bloodPressure: realData.blood_pressure || null,
-      allergies: realData.allergies || (realData.allergyNote ? realData.allergyNote.split(',').map(s => s.trim()) : null),
+      allergies: realData.allergies || (realData.allergyNote ? realData.allergyNote.split(',')?.map?.(s => s.trim()) : null),
       familyHistory: realData.familyHistory || null,
     };
 
@@ -51,9 +51,9 @@ export function normalizeProfileData(realData, userRole, visitsCount = 0) {
     if (realData.medicalHistory) {
       const conditions = Array.isArray(realData.medicalHistory)
         ? realData.medicalHistory
-        : realData.medicalHistory.split(',').map(s => s.trim());
+        : realData.medicalHistory.split(',')?.map?.(s => s.trim());
       
-      medicalHistory = conditions.filter(Boolean).map((condition) => {
+      medicalHistory = conditions?.filter(Boolean)?.map?.((condition) => {
         const match = /nặng|vảy nến|mãn/i.test(condition);
         return {
           condition,

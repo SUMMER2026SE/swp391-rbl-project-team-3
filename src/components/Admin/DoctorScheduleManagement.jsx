@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { CalendarDays, Plus, Save, Search } from 'lucide-react';
-import { doctors } from '../../mockData';
+import { useDoctors } from '../../hooks/useDoctors';
 
 const getVietnameseDayName = (dateString) => {
     const days = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
@@ -9,7 +9,8 @@ const getVietnameseDayName = (dateString) => {
 };
 
 export default function DoctorScheduleManagement() {
-    const doctorOptions = doctors?.map((doctor) => doctor.name) || ['BS. Nguyễn Văn A'];
+    const { doctors } = useDoctors();
+    const doctorOptions = doctors.length > 0 ? doctors.map((doctor) => doctor.name) : ['BS. Nguyễn Văn A'];
 
     const [schedules, setSchedules] = useState(() => {
         const saved = localStorage.getItem('admin-doctor-schedules');
@@ -42,7 +43,7 @@ export default function DoctorScheduleManagement() {
     };
 
     const updateSchedule = (id, field, value) => {
-        const nextSchedules = schedules.map((schedule) => {
+        const nextSchedules = schedules?.map?.((schedule) => {
             if (schedule.id !== id) return schedule;
             const updated = { ...schedule, [field]: value };
             if (field === 'date') updated.day = getVietnameseDayName(value);
@@ -51,10 +52,9 @@ export default function DoctorScheduleManagement() {
         saveSchedules(nextSchedules);
     };
 
-    const filteredSchedules = schedules.filter((schedule) =>
+    const filteredSchedules = schedules?.filter?.((schedule) =>
         schedule.doctorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        schedule.room.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+        schedule.room.toLowerCase().includes(searchTerm.toLowerCase()));
 
     return (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
@@ -62,7 +62,6 @@ export default function DoctorScheduleManagement() {
                 <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">Lịch làm việc Bác sĩ</h2>
                 <p className="text-slate-500 text-sm font-medium mt-1">Admin phân công và cập nhật lịch làm việc cho bác sĩ.</p>
             </div>
-
             <div className="backdrop-blur-xl bg-white/75 border border-white/80 shadow-[0_15px_40px_rgba(0,0,0,0.05)] rounded-[2rem] p-8">
                 <div className="flex items-center gap-2 mb-6 pb-4 border-b border-slate-200/50">
                     <Plus className="w-5 h-5 text-indigo-600" />
@@ -77,7 +76,6 @@ export default function DoctorScheduleManagement() {
                     <button onClick={createSchedule} className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-sky-500 text-white rounded-2xl font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-200"><Save className="w-4 h-4" /> Lưu lịch</button>
                 </div>
             </div>
-
             <div className="backdrop-blur-xl bg-white/75 border border-white/80 shadow-[0_15px_40px_rgba(0,0,0,0.05)] rounded-[2rem] overflow-hidden">
                 <div className="p-6 border-b border-slate-200/50 flex flex-col md:flex-row justify-between gap-4 bg-white/40">
                     <div className="flex items-center gap-2"><CalendarDays className="w-5 h-5 text-indigo-600" /><h3 className="font-extrabold text-lg text-slate-800">Danh sách lịch</h3></div>
@@ -87,7 +85,7 @@ export default function DoctorScheduleManagement() {
                     <table className="w-full text-left">
                         <thead className="bg-slate-100/50"><tr><th className="px-8 py-5 text-xs font-bold text-slate-500 uppercase">Bác sĩ</th><th className="px-8 py-5 text-xs font-bold text-slate-500 uppercase">Ngày</th><th className="px-8 py-5 text-xs font-bold text-slate-500 uppercase">Thứ</th><th className="px-8 py-5 text-xs font-bold text-slate-500 uppercase">Giờ</th><th className="px-8 py-5 text-xs font-bold text-slate-500 uppercase">Phòng</th><th className="px-8 py-5 text-xs font-bold text-slate-500 uppercase">Trạng thái</th></tr></thead>
                         <tbody className="divide-y divide-slate-100">
-                        {filteredSchedules.map((schedule) => (
+                        {filteredSchedules?.map?.((schedule) => (
                             <tr key={schedule.id} className="hover:bg-slate-50/80">
                                 <td className="px-8 py-5"><Select value={schedule.doctorName} onChange={(v) => updateSchedule(schedule.id, 'doctorName', v)} options={doctorOptions} /></td>
                                 <td className="px-8 py-5"><Input type="date" value={schedule.date} onChange={(v) => updateSchedule(schedule.id, 'date', v)} /></td>
@@ -109,5 +107,5 @@ function Input({ value, onChange, type = 'text' }) {
     return <input type={type} value={value} onChange={(e) => onChange(e.target.value)} className="w-full bg-white border border-slate-200 rounded-2xl py-3 px-4 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400" />;
 }
 function Select({ value, onChange, options }) {
-    return <select value={value} onChange={(e) => onChange(e.target.value)} className="w-full bg-white border border-slate-200 rounded-2xl py-3 px-4 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400">{options.map((option) => <option key={option}>{option}</option>)}</select>;
+    return <select value={value} onChange={(e) => onChange(e.target.value)} className="w-full bg-white border border-slate-200 rounded-2xl py-3 px-4 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400">{options?.map?.((option) => <option key={option}>{option}</option>)}</select>;
 }

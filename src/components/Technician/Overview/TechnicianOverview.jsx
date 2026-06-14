@@ -1,12 +1,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ClipboardList, CheckCircle2, Clock, TrendingUp } from 'lucide-react';
-import { mockTechnicianShifts } from '../../../mockData';
 
 const TechnicianOverview = ({ tasks }) => {
     const pendingTasks = tasks?.filter(t => t.status === "Chờ thực hiện")?.length || 0;
     const completedTasks = tasks?.filter(t => t.status === "Đã hoàn thành")?.length || 0;
-    const totalShifts = mockTechnicianShifts?.length || 0;
+    const totalShifts = ([])?.length || 0;
 
     const stats = [
         { 

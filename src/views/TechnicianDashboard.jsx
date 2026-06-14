@@ -25,13 +25,13 @@ import {
   PanelLeftOpen,
   CheckCircle2,
 } from 'lucide-react';
-import { mockAssignedTasks } from '../mockData';
 import TechnicianOverview from '../components/Technician/Overview/TechnicianOverview';
 import AssignedTasksList from '../components/Technician/AssignedTasks/AssignedTasksList';
 import TechnicianSchedule from '../components/Technician/WorkSchedule/TechnicianSchedule';
 import TechnicianWorkspace from '../components/Technician/ProcedureWorkspace/TechnicianWorkspace';
 import TechnicianFeedbackView from '../components/Technician/TechnicianFeedbackView';
 import LiquidSidebarMenu from '../components/ui/LiquidSidebarMenu';
+import logo from '../assets/logo.png';
 
 export default function TechnicianDashboard() {
   const { user, logout } = useAuth();
@@ -41,7 +41,7 @@ export default function TechnicianDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [activeTask, setActiveTask] = useState(null);
-  const [tasks, setTasks] = useState(mockAssignedTasks || []);
+  const [tasks, setTasks] = useState(([]) || []);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [showToast, setShowToast] = useState(false);
 
@@ -101,12 +101,11 @@ export default function TechnicianDashboard() {
 
   /* ───────── handlers ───────── */
   const handleCompleteTask = (taskId, resultRecord) => {
-    const updatedTasks = tasks.map((t) =>
-      t.id === taskId ? { ...t, status: 'Đã hoàn thành', resultRecord } : t
-    );
+    const updatedTasks = tasks?.map?.((t) =>
+      t.id === taskId ? { ...t, status: 'Đã hoàn thành', resultRecord } : t);
     setTasks(updatedTasks);
     // Also update global mock
-    const found = mockAssignedTasks?.find((t) => t.id === taskId);
+    const found = ([])?.find((t) => t.id === taskId);
     if (found) {
       found.status = 'Đã hoàn thành';
       found.resultRecord = resultRecord;
@@ -203,21 +202,14 @@ export default function TechnicianDashboard() {
         {/* Sidebar Top */}
         <div className="flex flex-col gap-6">
           {/* Logo & Toggle Header */}
-          <div className={`flex items-center ${isSidebarExpanded ? 'justify-between px-1' : 'justify-center'} min-h-[44px]`}>
+          <div className={`flex items-center ${isSidebarExpanded ? 'justify-between px-1' : 'justify-center'} min-h-[80px]`}>
             {isSidebarExpanded ? (
               <>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/25 flex-shrink-0">
-                    <span className="text-white font-bold text-sm">DS</span>
-                  </div>
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-sm font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent whitespace-nowrap font-black animate-fadeIn">
-                      DermaSmart
-                    </span>
-                    <span className="text-[10px] text-slate-400 whitespace-nowrap animate-fadeIn">
-                      Technician Portal
-                    </span>
-                  </div>
+                <div className="flex flex-col items-start gap-1">
+                  <img src={logo} alt="DermaSmart Logo" className="h-16 w-auto object-contain" />
+                  <span className="text-[10px] text-slate-400 whitespace-nowrap animate-fadeIn">
+                    Technician Portal
+                  </span>
                 </div>
                 <button
                   onClick={() => setIsSidebarExpanded(false)}

@@ -16,8 +16,8 @@ import TreatmentProgressTracker from './RightPanel/TreatmentProgressTracker';
 import FollowUpAppointmentForm from './RightPanel/FollowUpAppointmentForm';
 
 import { ChatModel } from '../../../models/ChatModel';
-import { doctors } from '../../../mockData';
 import LiquidTabSwitcher from '../../ui/LiquidTabSwitcher';
+import { useDoctors } from '../../../hooks/useDoctors';
 
 export default function VirtualClinicWorkspace({ appointment, onBack, handleCompleteExamination }) {
   const [clinicalStep, setClinicalStep] = useState(1);
@@ -41,10 +41,11 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
   const [inputValue, setInputValue] = useState('');
   const messagesEndRef = useRef(null);
 
+  const { doctors } = useDoctors();
   const doctorId = appointment?.doctorId || 'doc-01';
   const patientId = appointment?.patientId || 'pat-01';
   const patientName = appointment?.patientName || 'Bệnh nhân';
-  const activeDoctor = doctors.find(d => d.id === doctorId) || doctors[0];
+  const activeDoctor = doctors.find(d => d.id === doctorId) || doctors[0] || null;
 
   const isReviewMode = appointment?.status === 'Đã khám';
 
@@ -86,7 +87,7 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
 
     const newMsg = ChatModel.addMessage({
       senderId: doctorId,
-      senderName: activeDoctor.name,
+      senderName: activeDoctor?.name || 'Bác sĩ',
       senderRole: 'DOCTOR',
       receiverId: patientId,
       receiverName: patientName,

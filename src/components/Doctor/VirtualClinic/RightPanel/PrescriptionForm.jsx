@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Pill, Plus, Trash2, Calendar } from 'lucide-react';
-import { mockPrescriptions } from '../../../../mockData';
 
 export default function PrescriptionForm({ appointmentId, isReviewMode = false, examRecord = null, onChange }) {
   // Find prescription or initialize with defaults
-  const existingPrescription = mockPrescriptions?.find(p => p.appointmentId === appointmentId);
+  const existingPrescription = ([])?.find(p => p.appointmentId === appointmentId);
 
   const [medications, setMedications] = useState([]);
   const [generalInstructions, setGeneralInstructions] = useState('');
@@ -70,11 +69,11 @@ export default function PrescriptionForm({ appointmentId, isReviewMode = false, 
               Hệ thống Phòng khám Da liễu
             </h4>
             <h2 className="font-black text-xl text-slate-900 mt-0.5 tracking-tight">
-              PRISTINE CLINIC
+              DERMASMART CLINIC
             </h2>
             <p className="text-[10px] text-slate-400 font-medium mt-1 leading-relaxed">
               Địa chỉ: 128 Đường Ba Tháng Hai, Quận 10, TP. Hồ Chí Minh<br />
-              Hotline: 1900 6000 • Website: pristineclinic.vn
+              Hotline: 1900 6000 • Website: dermasmart.vn
             </p>
           </div>
           <div className="text-right">
@@ -105,7 +104,7 @@ export default function PrescriptionForm({ appointmentId, isReviewMode = false, 
           </div>
 
           <div className="space-y-5">
-            {medications.map((med, idx) => (
+            {medications?.map?.((med, idx) => (
               <div 
                 key={idx} 
                 className="group relative p-5 bg-slate-50/50 hover:bg-slate-50 border border-slate-200/50 hover:border-slate-300/80 rounded-2xl transition-all duration-200"
@@ -220,7 +219,6 @@ export default function PrescriptionForm({ appointmentId, isReviewMode = false, 
           />
         </div>
       </div>
-
       {/* Follow-up Section (Hẹn tái khám) */}
       <div className="glass-3d water-refract rounded-[2rem] p-6">
         <div className="flex items-center gap-2 mb-4 pb-4 border-b border-slate-200/40">

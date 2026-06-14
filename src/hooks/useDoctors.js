@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
-import { doctors as mockDoctors } from '../mockData';
 
 export function useDoctors() {
   const [doctors, setDoctors] = useState([]);
@@ -36,14 +35,14 @@ export function useDoctors() {
       if (fetchError) throw fetchError;
 
       // Normalize data to match the format expected by the frontend
-      const normalizedDoctors = (data || []).map(user => {
+      const normalizedDoctors = (data || [])?.map?.(user => {
         const emp = user.employee_profiles ? (Array.isArray(user.employee_profiles) ? user.employee_profiles[0] : user.employee_profiles) : {};
         const doc = user.doctor_profiles ? (Array.isArray(user.doctor_profiles) ? user.doctor_profiles[0] : user.doctor_profiles) : {};
         
         // Parse specialties: "cat-01, cat-02" -> ["cat-01", "cat-02"]
         let specialties = [];
         if (emp?.specialization) {
-           specialties = emp.specialization.split(',').map(s => s.trim());
+           specialties = emp.specialization.split(',')?.map?.(s => s.trim());
         }
 
         // Parse schedule. If stored as JSON string or JSON array
@@ -76,15 +75,15 @@ export function useDoctors() {
       });
 
       if (normalizedDoctors.length === 0) {
-        console.warn('No doctors found in DB. Falling back to mockData...');
-        setDoctors(mockDoctors);
+        console.warn('No doctors found in DB. Falling back to ([])...');
+        setDoctors(([]));
       } else {
         setDoctors(normalizedDoctors);
       }
     } catch (err) {
       console.error('Lỗi khi tải danh sách bác sĩ:', err);
       setError(err.message);
-      setDoctors(mockDoctors); // fallback on error
+      setDoctors(([])); // fallback on error
     } finally {
       setLoading(false);
     }

@@ -71,14 +71,12 @@ function AppointmentCard({ apt, index, isUpcoming, onCancel, onReschedule, onVie
         </span>
         <StatusBadge text={apt.status} type="status" />
       </div>
-
       <div className="flex items-center gap-2 mb-2">
         <Stethoscope className="w-4 h-4 text-emerald-500 shrink-0" />
         <span className="text-sm font-bold text-slate-800">{apt.doctorName}</span>
         <span className="text-xs text-slate-400">•</span>
         <span className="text-xs text-slate-500 font-medium">{apt.service}</span>
       </div>
-
       <div className="flex items-center gap-3 mb-4">
         <span className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
           <CreditCard className="w-3.5 h-3.5 text-sky-500" />
@@ -88,7 +86,7 @@ function AppointmentCard({ apt, index, isUpcoming, onCancel, onReschedule, onVie
         {/* Show star rating if feedback exists */}
         {existingFeedback && (
           <span className="flex items-center gap-0.5">
-            {[1,2,3,4,5].map(s => (
+            {[1,2,3,4,5]?.map?.(s => (
               <Star key={s} className={`w-3 h-3 ${s <= existingFeedback.overallRating ? 'fill-amber-400 text-amber-400' : 'fill-slate-200 text-slate-200'}`} />
             ))}
           </span>
@@ -100,7 +98,6 @@ function AppointmentCard({ apt, index, isUpcoming, onCancel, onReschedule, onVie
           </span>
         )}
       </div>
-
       <div className="flex flex-wrap gap-2">
         {isUpcoming && apt.status !== 'Đã hủy' && (
           <>
@@ -187,9 +184,9 @@ function RescheduleModal({ apt, onClose, onConfirm, rescheduleError }) {
       'Chủ Nhật': 0, 'Thứ Hai': 1, 'Thứ Ba': 2, 'Thứ Tư': 3, 'Thứ Năm': 4, 'Thứ Sáu': 5, 'Thứ Bảy': 6,
     };
 
-    const workingDays = selectedDoctorData.schedule.map(s => DAY_MAP[s.day] !== undefined ? DAY_MAP[s.day] : -1).filter(d => d !== -1);
+    const workingDays = selectedDoctorData.schedule?.map(s => DAY_MAP[s.day] !== undefined ? DAY_MAP[s.day] : -1)?.filter?.(d => d !== -1);
     isDoctorWorkingOnDay = workingDays.includes(dayOfWeek);
-    doctorScheduleText = selectedDoctorData.schedule.map(s => s.day).join(', ');
+    doctorScheduleText = selectedDoctorData.schedule?.map?.(s => s.day).join(', ');
   }
 
   const slots = (apt.doctorId && newDate && isDoctorWorkingOnDay)
@@ -291,7 +288,7 @@ function RescheduleModal({ apt, onClose, onConfirm, rescheduleError }) {
                 Chọn khung giờ mới
               </label>
               <div className="grid grid-cols-4 gap-2">
-                {slots.map((slot) => (
+                {slots?.map?.((slot) => (
                   <button
                     key={slot.time}
                     type="button"
@@ -482,7 +479,7 @@ function ViewFeedbackModal({ apt, feedback, onClose }) {
                 <Clock className="w-3.5 h-3.5 text-teal-600" /> Nhật ký cuộc hẹn
               </p>
               <div className="space-y-3 relative before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200 pl-4">
-                {apt.history.map((h, i) => (
+                {apt.history?.map?.((h, i) => (
                   <div key={i} className="relative text-xs">
                     <div className="absolute -left-6 top-1.5 w-2 h-2 rounded-full bg-teal-500 ring-4 ring-slate-50 animate-pulse"></div>
                     <p className="font-bold text-slate-700">
@@ -506,18 +503,18 @@ function ViewFeedbackModal({ apt, feedback, onClose }) {
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-semibold text-slate-700">Tổng thể:</span>
                   <div className="flex items-center gap-0.5">
-                    {[1,2,3,4,5].map(s => (
+                    {[1,2,3,4,5]?.map?.(s => (
                       <Star key={s} className={`w-5 h-5 ${s <= feedback.overallRating ? 'fill-amber-400 text-amber-400' : 'fill-slate-200 text-slate-200'}`} />
                     ))}
                   </div>
                   <span className="text-sm font-bold text-amber-600">{feedback.overallRating}/5</span>
                 </div>
                 {/* Criteria */}
-                {feedback.criteriaRatings && Object.entries(feedback.criteriaRatings).filter(([,v]) => v > 0).map(([k, v]) => (
+                {feedback.criteriaRatings && Object.entries(feedback.criteriaRatings)?.filter(([,v]) => v > 0)?.map?.(([k, v]) => (
                   <div key={k} className="flex items-center gap-2">
                     <span className="text-xs text-slate-500 w-32 shrink-0">{CRITERIA_LABELS[k]}:</span>
                     <div className="flex items-center gap-0.5">
-                      {[1,2,3,4,5].map(s => (
+                      {[1,2,3,4,5]?.map?.(s => (
                         <Star key={s} className={`w-3.5 h-3.5 ${s <= v ? 'fill-amber-400 text-amber-400' : 'fill-slate-200 text-slate-200'}`} />
                       ))}
                     </div>
@@ -530,7 +527,7 @@ function ViewFeedbackModal({ apt, feedback, onClose }) {
                 {/* Images */}
                 {feedback.images?.length > 0 && (
                   <div className="flex gap-2 flex-wrap border-t border-amber-200 pt-3">
-                    {feedback.images.map((img, i) => (
+                    {feedback.images?.map?.((img, i) => (
                       <img key={i} src={img} alt="" className="w-16 h-16 rounded-xl object-cover border border-amber-200" />
                     ))}
                   </div>
@@ -573,10 +570,10 @@ export default function AppointmentsTab() {
   const [viewTarget, setViewTarget] = useState(null);
   const [writeFeedbackTarget, setWriteFeedbackTarget] = useState(null);
 
-  const upcoming = appointments.filter(
+  const upcoming = appointments?.filter?.(
     (a) => a.status === 'Đã xác nhận' || a.status === 'Chờ xác nhận' || a.status === 'Đang chờ'
   );
-  const past = appointments.filter(
+  const past = appointments?.filter?.(
     (a) => a.status === 'Đã khám' || a.status === 'Đã hủy' || a.status === 'Reviewed'
   );
 
@@ -613,7 +610,7 @@ export default function AppointmentsTab() {
         </div>
         <div className="bg-slate-50/90 border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
           {upcoming.length > 0 ? (
-            upcoming.map((apt, idx) => (
+            upcoming?.map?.((apt, idx) => (
               <AppointmentCard
                 key={apt.id}
                 apt={apt}
@@ -635,7 +632,6 @@ export default function AppointmentsTab() {
           )}
         </div>
       </div>
-
       {/* Past */}
       <div>
         <div className="flex items-center gap-3 mb-4">
@@ -649,7 +645,7 @@ export default function AppointmentsTab() {
         </div>
         <div className="bg-slate-50/90 border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
           {past.length > 0 ? (
-            past.map((apt, idx) => (
+            past?.map?.((apt, idx) => (
               <AppointmentCard
                 key={apt.id}
                 apt={apt}
@@ -671,7 +667,6 @@ export default function AppointmentsTab() {
           )}
         </div>
       </div>
-
       {/* Modals */}
       <AnimatePresence>
         {cancelTarget && (

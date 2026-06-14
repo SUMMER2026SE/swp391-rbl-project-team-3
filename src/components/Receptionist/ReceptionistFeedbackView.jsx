@@ -63,14 +63,14 @@ function ReplyModal({ feedback, onClose, onSubmit }) {
 export default function ReceptionistFeedbackView() {
   const { getAllFeedbacks, getStats, replyToFeedback, updateStatus } = useFeedbackController();
   const allFeedbacks = getAllFeedbacks();
-  const published = allFeedbacks.filter(f => f.status === 'published');
+  const published = allFeedbacks?.filter?.(f => f.status === 'published');
   const stats = getStats(published);
 
   const [search, setSearch]           = useState('');
   const [filterRating, setFilterRating] = useState(0);
   const [replyTarget, setReplyTarget]   = useState(null);
 
-  const filtered = published.filter(f => {
+  const filtered = published?.filter?.(f => {
     const q = search.toLowerCase();
     const matchSearch = !q ||
       (f.patientName || '').toLowerCase().includes(q) ||
@@ -91,7 +91,6 @@ export default function ReceptionistFeedbackView() {
         <h2 className="text-xl font-bold text-slate-900">Đánh giá bệnh nhân</h2>
         <p className="text-sm text-slate-500 mt-1">Xem và phản hồi đánh giá từ bệnh nhân về dịch vụ phòng khám</p>
       </div>
-
       {/* Overview stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
@@ -104,10 +103,10 @@ export default function ReceptionistFeedbackView() {
           },
           {
             label: 'Chờ phản hồi',
-            value: published.filter(f => !f.adminReply).length,
+            value: published?.filter?.(f => !f.adminReply).length,
             color: 'rose', icon: Reply,
           },
-        ].map((s, i) => {
+        ]?.map?.((s, i) => {
           const CARD_COLORS = {
             amber: { bg: 'bg-amber-50', border: 'border-amber-100', text: 'text-amber-500', val: 'text-amber-700' },
             sky: { bg: 'bg-sky-50', border: 'border-sky-100', text: 'text-sky-500', val: 'text-sky-700' },
@@ -128,7 +127,6 @@ export default function ReceptionistFeedbackView() {
           );
         })}
       </div>
-
       {/* Rating distribution */}
       {stats.total > 0 && (
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
@@ -136,7 +134,7 @@ export default function ReceptionistFeedbackView() {
             <BarChart3 className="w-4 h-4 text-emerald-500" /> Phân bổ sao
           </p>
           <div className="space-y-2">
-            {[5, 4, 3, 2, 1].map(star => {
+            {[5, 4, 3, 2, 1]?.map?.(star => {
               const count = stats.distribution[star] || 0;
               const pct   = stats.total ? (count / stats.total) * 100 : 0;
               return (
@@ -159,7 +157,6 @@ export default function ReceptionistFeedbackView() {
           </div>
         </div>
       )}
-
       {/* Filter bar */}
       <div className="flex flex-wrap gap-3 items-center bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
         <div className="relative flex-1 min-w-48">
@@ -172,7 +169,7 @@ export default function ReceptionistFeedbackView() {
         </div>
         <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
           <span className="text-xs text-slate-400 mr-1">Lọc:</span>
-          {[0, 5, 4, 3, 2, 1].map(r => (
+          {[0, 5, 4, 3, 2, 1]?.map?.(r => (
             <button
               key={r}
               onClick={() => setFilterRating(r === filterRating ? 0 : r)}
@@ -188,11 +185,10 @@ export default function ReceptionistFeedbackView() {
         </div>
         <span className="text-xs text-slate-400 font-medium">{filtered.length} đánh giá</span>
       </div>
-
       {/* List */}
       <div className="space-y-4">
         {filtered.length > 0 ? (
-          filtered.map(fb => (
+          filtered?.map?.(fb => (
             <FeedbackCard
               key={fb.id}
               fb={fb}
@@ -208,7 +204,6 @@ export default function ReceptionistFeedbackView() {
           </div>
         )}
       </div>
-
       <AnimatePresence>
         {replyTarget && (
           <ReplyModal

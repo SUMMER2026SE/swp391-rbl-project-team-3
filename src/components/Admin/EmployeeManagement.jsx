@@ -13,7 +13,6 @@ import {
   Save,
   Lock,
 } from 'lucide-react';
-import { mockEmployees } from '../../mockData';
 
 const roles = ['Bác sĩ', 'Lễ tân', 'Kỹ thuật viên', 'Admin'];
 const departments = ['Da liễu', 'Lễ tân', 'Kỹ thuật', 'Quản trị'];
@@ -26,7 +25,7 @@ const EmployeeManagement = () => {
   const [generatedPassword, setGeneratedPassword] = useState('');
   const [employees, setEmployees] = useState(() => {
     const saved = localStorage.getItem('admin-employees');
-    return saved ? JSON.parse(saved) : (mockEmployees || []);
+    return saved ? JSON.parse(saved) : (([]) || []);
   });
 
   const [form, setForm] = useState({
@@ -41,11 +40,10 @@ const EmployeeManagement = () => {
   const [editingEmployee, setEditingEmployee] = useState(null);
 
   const filteredEmployees = useMemo(() => {
-    return employees.filter((emp) =>
+    return employees?.filter?.((emp) =>
         emp.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         emp.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        emp.role?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+        emp.role?.toLowerCase().includes(searchTerm.toLowerCase()));
   }, [employees, searchTerm]);
 
   const saveEmployees = (nextEmployees) => {
@@ -108,11 +106,10 @@ const EmployeeManagement = () => {
   const handleUpdateEmployee = () => {
     if (!editingEmployee) return;
 
-    const nextEmployees = employees.map((emp) =>
+    const nextEmployees = employees?.map?.((emp) =>
         emp.id === editingEmployee.id
             ? { ...emp, ...form }
-            : emp
-    );
+            : emp);
 
     saveEmployees(nextEmployees);
     setIsEditModalOpen(false);
@@ -121,9 +118,8 @@ const EmployeeManagement = () => {
   };
 
   const handleQuickRoleChange = (employeeId, role) => {
-    const nextEmployees = employees.map((emp) =>
-        emp.id === employeeId ? { ...emp, role } : emp
-    );
+    const nextEmployees = employees?.map?.((emp) =>
+        emp.id === employeeId ? { ...emp, role } : emp);
     saveEmployees(nextEmployees);
   };
 
@@ -143,149 +139,146 @@ const EmployeeManagement = () => {
   };
 
   return (
-      <div className="space-y-8 relative h-full">
-        <div className="flex justify-between items-end mb-2">
-          <div>
-            <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">Quản lý Nhân sự</h2>
-            <p className="text-slate-500 text-sm font-medium mt-1">
-              Tạo nhân viên, cập nhật thông tin, phân quyền và trạng thái tài khoản.
-            </p>
-          </div>
+    <div className="space-y-8 relative h-full">
+      <div className="flex justify-between items-end mb-2">
+        <div>
+          <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">Quản lý Nhân sự</h2>
+          <p className="text-slate-500 text-sm font-medium mt-1">
+            Tạo nhân viên, cập nhật thông tin, phân quyền và trạng thái tài khoản.
+          </p>
         </div>
-
-        <div className="backdrop-blur-xl bg-white/75 border border-white/80 shadow-[0_15px_40px_rgba(0,0,0,0.05)] rounded-[2rem] overflow-hidden flex flex-col">
-          <div className="p-6 md:p-8 border-b border-slate-200/50 flex flex-col md:flex-row justify-between items-center gap-4 bg-white/40">
-            <div className="relative w-full md:w-96">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-              <input
-                  type="text"
-                  className="block w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-400 transition-all font-semibold text-slate-700 shadow-sm"
-                  placeholder="Tìm kiếm nhân viên theo tên, email, vai trò..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-
-            <button
-                onClick={handleOpenAddModal}
-                className="w-full md:w-auto flex items-center justify-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-sky-500 hover:from-indigo-700 hover:to-sky-600 text-white rounded-2xl font-bold text-sm transition-all shadow-lg shadow-indigo-200 hover:shadow-indigo-300 transform hover:-translate-y-0.5"
-            >
-              <Plus className="w-5 h-5 mr-2" />
-              Thêm nhân viên mới
-            </button>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-              <tr className="bg-slate-100/50 border-b border-slate-200/50">
-                <th className="px-8 py-5 text-xs font-bold text-slate-500 uppercase tracking-wider">Nhân viên</th>
-                <th className="px-8 py-5 text-xs font-bold text-slate-500 uppercase tracking-wider">Liên hệ</th>
-                <th className="px-8 py-5 text-xs font-bold text-slate-500 uppercase tracking-wider">Vai trò</th>
-                <th className="px-8 py-5 text-xs font-bold text-slate-500 uppercase tracking-wider">Trạng thái</th>
-                <th className="px-8 py-5 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Thao tác</th>
-              </tr>
-              </thead>
-
-              <tbody className="divide-y divide-slate-100">
-              {filteredEmployees.map((emp) => (
-                  <tr key={emp.id} className="hover:bg-slate-50/80 transition-colors group">
-                    <td className="px-8 py-5">
-                      <div className="flex items-center">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-100 to-sky-100 flex items-center justify-center text-indigo-700 font-extrabold text-lg border border-white shadow-sm mr-4 group-hover:scale-105 transition-transform">
-                          {emp.name?.charAt(0) || 'U'}
-                        </div>
-                        <div>
-                          <div className="font-bold text-slate-800 text-base">{emp.name}</div>
-                          <div className="text-xs font-semibold text-slate-400 mt-0.5">{emp.id}</div>
-                        </div>
-                      </div>
-                    </td>
-
-                    <td className="px-8 py-5">
-                      <div className="text-sm font-bold text-slate-700 mb-1 flex items-center">
-                        <Mail className="w-4 h-4 mr-2 text-slate-400" />
-                        {emp.email}
-                      </div>
-                      <div className="text-xs font-semibold text-slate-500 flex items-center">
-                        <Phone className="w-4 h-4 mr-2 text-slate-400" />
-                        {emp.phone}
-                      </div>
-                    </td>
-
-                    <td className="px-8 py-5">
-                      <select
-                          value={emp.role}
-                          onChange={(e) => handleQuickRoleChange(emp.id, e.target.value)}
-                          className={`inline-flex px-3 py-1.5 text-xs font-bold rounded-xl border ${getRoleBadgeColor(emp.role)} shadow-sm outline-none cursor-pointer`}
-                      >
-                        {roles.map((role) => <option key={role}>{role}</option>)}
-                      </select>
-                      <div className="text-xs font-semibold text-slate-500 mt-2">{emp.department}</div>
-                    </td>
-
-                    <td className="px-8 py-5">
-                    <span className={`inline-flex items-center px-3 py-1.5 text-xs font-bold rounded-xl border ${getStatusBadgeColor(emp.status)} shadow-sm`}>
-                      {emp.status === 'Hoạt động' ? <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" /> : <Lock className="w-3.5 h-3.5 mr-1.5" />}
-                      {emp.status}
-                    </span>
-                    </td>
-
-                    <td className="px-8 py-5 text-right">
-                      <div className="flex justify-end space-x-2">
-                        <button
-                            onClick={() => handleOpenEditModal(emp)}
-                            className="p-2.5 text-slate-400 hover:text-sky-600 hover:bg-sky-50 rounded-xl transition-colors border border-transparent hover:border-sky-100 shadow-sm"
-                            title="Chỉnh sửa"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                            onClick={() => handleOpenEditModal(emp)}
-                            className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors border border-transparent hover:border-indigo-100 shadow-sm"
-                            title="Phân quyền"
-                        >
-                          <Shield className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-              ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="p-6 border-t border-slate-200/50 bg-white/40 flex justify-between items-center">
-          <span className="text-sm font-semibold text-slate-500">
-            Hiển thị <strong className="text-slate-800">{filteredEmployees.length}</strong> nhân viên
-          </span>
-          </div>
-        </div>
-
-        <EmployeeModal
-            isOpen={isAddModalOpen}
-            title="Thêm nhân viên mới"
-            subtitle="Khởi tạo tài khoản nhân sự hệ thống"
-            form={form}
-            setForm={setForm}
-            generatedPassword={generatedPassword}
-            onClose={() => setIsAddModalOpen(false)}
-            onSubmit={handleCreateEmployee}
-            submitLabel="Tạo tài khoản"
-            showPassword
-        />
-
-        <EmployeeModal
-            isOpen={isEditModalOpen}
-            title="Cập nhật nhân viên"
-            subtitle="Cập nhật thông tin, phòng ban, vai trò và trạng thái làm việc"
-            form={form}
-            setForm={setForm}
-            onClose={() => setIsEditModalOpen(false)}
-            onSubmit={handleUpdateEmployee}
-            submitLabel="Lưu thay đổi"
-        />
       </div>
+      <div className="backdrop-blur-xl bg-white/75 border border-white/80 shadow-[0_15px_40px_rgba(0,0,0,0.05)] rounded-[2rem] overflow-hidden flex flex-col">
+        <div className="p-6 md:p-8 border-b border-slate-200/50 flex flex-col md:flex-row justify-between items-center gap-4 bg-white/40">
+          <div className="relative w-full md:w-96">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+            <input
+                type="text"
+                className="block w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-400 transition-all font-semibold text-slate-700 shadow-sm"
+                placeholder="Tìm kiếm nhân viên theo tên, email, vai trò..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+
+          <button
+              onClick={handleOpenAddModal}
+              className="w-full md:w-auto flex items-center justify-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-sky-500 hover:from-indigo-700 hover:to-sky-600 text-white rounded-2xl font-bold text-sm transition-all shadow-lg shadow-indigo-200 hover:shadow-indigo-300 transform hover:-translate-y-0.5"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            Thêm nhân viên mới
+          </button>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+            <tr className="bg-slate-100/50 border-b border-slate-200/50">
+              <th className="px-8 py-5 text-xs font-bold text-slate-500 uppercase tracking-wider">Nhân viên</th>
+              <th className="px-8 py-5 text-xs font-bold text-slate-500 uppercase tracking-wider">Liên hệ</th>
+              <th className="px-8 py-5 text-xs font-bold text-slate-500 uppercase tracking-wider">Vai trò</th>
+              <th className="px-8 py-5 text-xs font-bold text-slate-500 uppercase tracking-wider">Trạng thái</th>
+              <th className="px-8 py-5 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Thao tác</th>
+            </tr>
+            </thead>
+
+            <tbody className="divide-y divide-slate-100">
+            {filteredEmployees?.map?.((emp) => (
+                <tr key={emp.id} className="hover:bg-slate-50/80 transition-colors group">
+                  <td className="px-8 py-5">
+                    <div className="flex items-center">
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-100 to-sky-100 flex items-center justify-center text-indigo-700 font-extrabold text-lg border border-white shadow-sm mr-4 group-hover:scale-105 transition-transform">
+                        {emp.name?.charAt(0) || 'U'}
+                      </div>
+                      <div>
+                        <div className="font-bold text-slate-800 text-base">{emp.name}</div>
+                        <div className="text-xs font-semibold text-slate-400 mt-0.5">{emp.id}</div>
+                      </div>
+                    </div>
+                  </td>
+
+                  <td className="px-8 py-5">
+                    <div className="text-sm font-bold text-slate-700 mb-1 flex items-center">
+                      <Mail className="w-4 h-4 mr-2 text-slate-400" />
+                      {emp.email}
+                    </div>
+                    <div className="text-xs font-semibold text-slate-500 flex items-center">
+                      <Phone className="w-4 h-4 mr-2 text-slate-400" />
+                      {emp.phone}
+                    </div>
+                  </td>
+
+                  <td className="px-8 py-5">
+                    <select
+                        value={emp.role}
+                        onChange={(e) => handleQuickRoleChange(emp.id, e.target.value)}
+                        className={`inline-flex px-3 py-1.5 text-xs font-bold rounded-xl border ${getRoleBadgeColor(emp.role)} shadow-sm outline-none cursor-pointer`}
+                    >
+                      {roles?.map?.((role) => <option key={role}>{role}</option>)}
+                    </select>
+                    <div className="text-xs font-semibold text-slate-500 mt-2">{emp.department}</div>
+                  </td>
+
+                  <td className="px-8 py-5">
+                  <span className={`inline-flex items-center px-3 py-1.5 text-xs font-bold rounded-xl border ${getStatusBadgeColor(emp.status)} shadow-sm`}>
+                    {emp.status === 'Hoạt động' ? <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" /> : <Lock className="w-3.5 h-3.5 mr-1.5" />}
+                    {emp.status}
+                  </span>
+                  </td>
+
+                  <td className="px-8 py-5 text-right">
+                    <div className="flex justify-end space-x-2">
+                      <button
+                          onClick={() => handleOpenEditModal(emp)}
+                          className="p-2.5 text-slate-400 hover:text-sky-600 hover:bg-sky-50 rounded-xl transition-colors border border-transparent hover:border-sky-100 shadow-sm"
+                          title="Chỉnh sửa"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                          onClick={() => handleOpenEditModal(emp)}
+                          className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors border border-transparent hover:border-indigo-100 shadow-sm"
+                          title="Phân quyền"
+                      >
+                        <Shield className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+            ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="p-6 border-t border-slate-200/50 bg-white/40 flex justify-between items-center">
+        <span className="text-sm font-semibold text-slate-500">
+          Hiển thị <strong className="text-slate-800">{filteredEmployees.length}</strong> nhân viên
+        </span>
+        </div>
+      </div>
+      <EmployeeModal
+          isOpen={isAddModalOpen}
+          title="Thêm nhân viên mới"
+          subtitle="Khởi tạo tài khoản nhân sự hệ thống"
+          form={form}
+          setForm={setForm}
+          generatedPassword={generatedPassword}
+          onClose={() => setIsAddModalOpen(false)}
+          onSubmit={handleCreateEmployee}
+          submitLabel="Tạo tài khoản"
+          showPassword
+      />
+      <EmployeeModal
+          isOpen={isEditModalOpen}
+          title="Cập nhật nhân viên"
+          subtitle="Cập nhật thông tin, phòng ban, vai trò và trạng thái làm việc"
+          form={form}
+          setForm={setForm}
+          onClose={() => setIsEditModalOpen(false)}
+          onSubmit={handleUpdateEmployee}
+          submitLabel="Lưu thay đổi"
+      />
+    </div>
   );
 };
 
@@ -389,16 +382,16 @@ function FormInput({ label, icon: Icon, value, onChange, placeholder, type = 'te
 
 function FormSelect({ label, value, onChange, options }) {
   return (
-      <div>
-        <label className="block text-sm font-bold text-slate-700 mb-2">{label}</label>
-        <select
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            className="w-full px-4 py-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 outline-none text-sm font-semibold transition-all appearance-none shadow-sm cursor-pointer"
-        >
-          {options.map((option) => <option key={option}>{option}</option>)}
-        </select>
-      </div>
+    <div>
+      <label className="block text-sm font-bold text-slate-700 mb-2">{label}</label>
+      <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full px-4 py-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 outline-none text-sm font-semibold transition-all appearance-none shadow-sm cursor-pointer"
+      >
+        {options?.map?.((option) => <option key={option}>{option}</option>)}
+      </select>
+    </div>
   );
 }
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useDoctorController } from '../controllers/useDoctorController';
-import { useVoucherController } from '../controllers/useVoucherController';
+import { DoctorModel } from '../models/DoctorModel';
+import { VoucherModel } from '../models/VoucherModel';
 import ChangePasswordModal from './ChangePasswordModal';
 import FreeSkinScanModal from '../components/FreeSkinScanModal';
 import FloatingChatbot from '../components/PatientPortal/FloatingChatbot';
@@ -14,7 +14,9 @@ import {
   useSpring,
   useMotionTemplate,
 } from 'framer-motion';
-import { Key, LogOut, User, Ticket, Tag, Calendar, ArrowRight } from 'lucide-react';
+import { Key, LogOut, User, Ticket, Tag, Calendar, ArrowRight, ChevronDown } from 'lucide-react';
+import logo from '../assets/logo.png';
+import { supabase } from '../supabaseClient';
 
 import '../index.css';
 
@@ -43,6 +45,120 @@ const heroFadeInUp = {
   }
 };
 
+const ROLE_MAP = {
+  1: 'Quản trị viên',
+  2: 'Bác sĩ',
+  3: 'Kỹ thuật viên',
+  4: 'Lễ tân',
+  5: 'Bệnh nhân'
+};
+
+// ──────────────────────────────────────────────────────────────────────────────
+// LOCAL FALLBACK DATA (public Landing Page only)
+// The Landing Page is public-facing and must always look complete, even before
+// the Supabase tables are seeded. Real data from DoctorModel/VoucherModel still
+// takes priority — these arrays are only used when the live fetch returns empty
+// or fails, so the marketing page never renders blank for visitors.
+// ──────────────────────────────────────────────────────────────────────────────
+const LOCAL_MOCK_DOCTORS = [
+  {
+    id: 'mock-doc-01',
+    name: 'BS. CKII. Trần Hải Yến',
+    title: 'Trưởng khoa Da liễu Thẩm mỹ',
+    image: 'https://i.pravatar.cc/600?img=47',
+    experience: '15 năm kinh nghiệm',
+    bio: 'Chuyên gia đầu ngành về điều trị nám, trẻ hóa da công nghệ cao và laser thẩm mỹ. Từng tu nghiệp tại Hàn Quốc và Singapore.',
+    specialties: ['Trị nám & tàn nhang', 'Trẻ hóa da', 'Laser thẩm mỹ'],
+    consultationFee: '500,000 VNĐ',
+    rating: 4.9,
+    reviewsCount: 312,
+    schedule: [
+      { day: 'Thứ Hai', hours: '08:00 - 17:00' },
+      { day: 'Thứ Tư', hours: '08:00 - 17:00' },
+      { day: 'Thứ Sáu', hours: '08:00 - 17:00' },
+    ],
+  },
+  {
+    id: 'mock-doc-02',
+    name: 'ThS. BS. Nguyễn Minh Khoa',
+    title: 'Bác sĩ Da liễu lâm sàng',
+    image: 'https://i.pravatar.cc/600?img=12',
+    experience: '10 năm kinh nghiệm',
+    bio: 'Tận tâm trong điều trị mụn trứng cá, sẹo rỗ và các bệnh lý viêm da mạn tính bằng phác đồ cá nhân hóa kết hợp AI.',
+    specialties: ['Điều trị mụn', 'Sẹo rỗ', 'Viêm da cơ địa'],
+    consultationFee: '350,000 VNĐ',
+    rating: 4.8,
+    reviewsCount: 248,
+    schedule: [
+      { day: 'Thứ Ba', hours: '08:00 - 17:00' },
+      { day: 'Thứ Năm', hours: '08:00 - 17:00' },
+      { day: 'Thứ Bảy', hours: '08:00 - 12:00' },
+    ],
+  },
+  {
+    id: 'mock-doc-03',
+    name: 'BS. CKI. Lê Thị Phương Anh',
+    title: 'Bác sĩ Da liễu & Chăm sóc da',
+    image: 'https://i.pravatar.cc/600?img=45',
+    experience: '8 năm kinh nghiệm',
+    bio: 'Chuyên sâu về soi da AI, tư vấn chăm sóc da khoa học và điều trị các vấn đề sắc tố, lão hóa sớm cho mọi loại da.',
+    specialties: ['Soi da AI', 'Chăm sóc da chuyên sâu', 'Chống lão hóa'],
+    consultationFee: '300,000 VNĐ',
+    rating: 4.9,
+    reviewsCount: 196,
+    schedule: [
+      { day: 'Thứ Hai', hours: '13:00 - 20:00' },
+      { day: 'Thứ Tư', hours: '13:00 - 20:00' },
+      { day: 'Thứ Sáu', hours: '13:00 - 20:00' },
+    ],
+  },
+];
+
+const LOCAL_MOCK_VOUCHERS = [
+  {
+    id: 'mock-v-01',
+    name: 'Ưu đãi Khám lần đầu',
+    description: 'Giảm ngay 20% phí khám cho khách hàng đặt lịch lần đầu tại DermaSmart.',
+    discountType: 'Percentage',
+    discountValue: 20,
+    validTo: '2026-12-31',
+    minOrderAmount: 0,
+    applicableServices: [],
+    maxUsage: 200,
+    usageCount: 74,
+    eventTag: '',
+    eventEmoji: '',
+  },
+  {
+    id: 'mock-v-02',
+    name: 'Combo Trẻ Hóa Mùa Hè',
+    description: 'Giảm 500.000đ cho liệu trình trẻ hóa & trị nám công nghệ cao.',
+    discountType: 'Amount',
+    discountValue: 500000,
+    validTo: '2026-08-31',
+    minOrderAmount: 2000000,
+    applicableServices: [],
+    maxUsage: 100,
+    usageCount: 88,
+    eventTag: 'Hè Rực Rỡ',
+    eventEmoji: '☀️',
+  },
+  {
+    id: 'mock-v-03',
+    name: 'Soi Da AI Miễn Phí',
+    description: 'Tặng lượt soi da AI 14 chỉ số khi đặt lịch khám da liễu tổng quát.',
+    discountType: 'Percentage',
+    discountValue: 100,
+    validTo: '2026-12-31',
+    minOrderAmount: 0,
+    applicableServices: [],
+    maxUsage: 500,
+    usageCount: 210,
+    eventTag: 'AI 2.0',
+    eventEmoji: '✨',
+  },
+];
+
 function LandingPage({ user, onLogout }) {
   const [scrolled, setScrolled] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
@@ -52,21 +168,104 @@ function LandingPage({ user, onLogout }) {
   const [isAIScanOpen, setIsAIScanOpen] = useState(false);
   const [selectedDoctor, setSelectedDoctor] = useState(null);
   const [bookingDocId, setBookingDocId] = useState(null);
+
+  // Context-aware authentication state variables
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userRole, setUserRole] = useState(null);
+  const [userFullName, setUserFullName] = useState('');
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   
   const navigate = useNavigate();
-  const { getDoctors } = useDoctorController();
-  const { vouchers } = useVoucherController();
-  const doctorsList = getDoctors();
+  const [doctorsList, setDoctorsList] = useState([]);
+  const [activeVouchers, setActiveVouchers] = useState([]);
+  const [isLoadingData, setIsLoadingData] = useState(true);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        setIsLoadingData(true);
+        const docs = await DoctorModel.getAllDoctors();
+        setDoctorsList(docs);
+
+        const allVouchers = await VoucherModel.getAllVouchers();
+        const today = new Date().toISOString().split('T')[0];
+        const active = allVouchers?.filter?.(v =>
+          v.status === 'Hoạt động' &&
+          (v.validFrom ? v.validFrom <= today : true) &&
+          (v.validTo ? v.validTo >= today : true) &&
+          (v.usageCount || 0) < (v.maxUsage || 999));
+        setActiveVouchers(active);
+      } catch (err) {
+        console.error('Error loading landing page data:', err);
+      } finally {
+        setIsLoadingData(false);
+      }
+    }
+    loadData();
+  }, []);
+
   const mobileMenuRef = useRef(null);
 
-  // Vouchers đang hoạt động trong ngày hôm nay
-  const today = new Date().toISOString().split('T')[0];
-  const activeVouchers = vouchers.filter(v =>
-    v.status === 'Hoạt động' &&
-    v.validFrom <= today &&
-    v.validTo >= today &&
-    v.usageCount < v.maxUsage
-  );
+  // Dynamic routing helper to direct users back to their respective dashboards
+  const getDashboardRoute = (roleId) => {
+    const currentRole = Number(roleId);
+    if (currentRole === 1) return '/dashboard/admin';
+    if (currentRole === 2) return '/dashboard/doctor';
+    if (currentRole === 3) return '/dashboard/technician';
+    if (currentRole === 4) return '/dashboard/receptionist';
+    if (currentRole === 5) return '/profile';
+    return '/';
+  };
+
+  // Fetch authentication state, role ID, and full name on mount
+  useEffect(() => {
+    async function checkAuth() {
+      try {
+        setIsLoadingAuth(true);
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          setIsLoggedIn(true);
+          const { data: userData, error } = await supabase
+            .from('users')
+            .select('role_id, full_name')
+            .eq('user_id', session.user.id)
+            .maybeSingle();
+          if (userData && !error) {
+            setUserRole(userData.role_id);
+            setUserFullName(userData.full_name || '');
+          }
+        } else {
+          setIsLoggedIn(false);
+          setUserRole(null);
+          setUserFullName('');
+        }
+      } catch (err) {
+        console.error('Error fetching auth session on mount:', err);
+      } finally {
+        setIsLoadingAuth(false);
+      }
+    }
+    checkAuth();
+  }, []);
+
+  // Logout handler for Supabase session
+  const handleSupabaseLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      setIsLoggedIn(false);
+      setUserRole(null);
+      setUserFullName('');
+    } catch (err) {
+      console.error('Logout error:', err);
+    } finally {
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.replace('/');
+    }
+  };
+
+
 
   /* --------------------------------------------------------------
      Continuous scroll-linked navbar morph (Part 2).
@@ -80,7 +279,7 @@ function LandingPage({ user, onLogout }) {
   const navMaxWMV = useSpring(useTransform(scrollY, [0, 120], [2200, 1080]), navSpring);
   const navRadiusMV = useSpring(useTransform(scrollY, [0, 120], [0, 34]), navSpring);
   const navTopMV = useSpring(useTransform(scrollY, [0, 120], [0, 16]), navSpring);
-  const navHeightMV = useSpring(useTransform(scrollY, [0, 120], [86, 70]), navSpring);
+  const navHeightMV = useSpring(useTransform(scrollY, [0, 120], [110, 90]), navSpring);
   const navPadMV = useSpring(useTransform(scrollY, [0, 120], [24, 34]), navSpring);
   const navBgMV = useSpring(useTransform(scrollY, [0, 120], [0.04, 0.72]), navSpring);
   const navShadowMV = useSpring(useTransform(scrollY, [0, 120], [0, 0.1]), navSpring);
@@ -96,7 +295,7 @@ function LandingPage({ user, onLogout }) {
   const navShadow = useMotionTemplate`0 14px 40px rgba(2, 32, 29, ${navShadowMV}), inset 0 1px 2px rgba(255,255,255,0.85), inset 0 0 0 1px rgba(255,255,255,${navRingMV})`;
 
   const handleBookFromHero = () => {
-    if (!user) {
+    if (!isLoggedIn && !user) {
       navigate('/login');
     } else {
       setBookingDocId(null);
@@ -105,7 +304,7 @@ function LandingPage({ user, onLogout }) {
   };
 
   const handleBookFromModal = () => {
-    if (!user) {
+    if (!isLoggedIn && !user) {
       navigate('/login');
     } else {
       const docId = selectedDoctor.id;
@@ -118,15 +317,15 @@ function LandingPage({ user, onLogout }) {
 
   // Close user dropdown on outside click
   useEffect(() => {
-    if (!showUserDropdown) return;
+    if (!isDropdownOpen) return;
     const closeDropdown = (e) => {
-      if (!e.target.closest('.user-profile')) {
-        setShowUserDropdown(false);
+      if (!e.target.closest('.user-profile-dropdown')) {
+        setIsDropdownOpen(false);
       }
     };
     document.addEventListener('click', closeDropdown);
     return () => document.removeEventListener('click', closeDropdown);
-  }, [showUserDropdown]);
+  }, [isDropdownOpen]);
 
   // Close mobile menu on outside click
   useEffect(() => {
@@ -205,6 +404,11 @@ function LandingPage({ user, onLogout }) {
     navigate(`/doctor/${docId}`);
   }, [navigate]);
 
+  // Real Supabase data takes priority; fall back to local mock so the public
+  // page is always visually complete even before the DB is seeded.
+  const displayDoctors = doctorsList.length > 0 ? doctorsList : LOCAL_MOCK_DOCTORS;
+  const displayVouchers = activeVouchers.length > 0 ? activeVouchers : LOCAL_MOCK_VOUCHERS;
+
   return (
     <>
       {/* Animated Background Orbs */}
@@ -213,10 +417,9 @@ function LandingPage({ user, onLogout }) {
         <div className="absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] rounded-full bg-secondary/10 blur-[150px] animate-[float-reverse_20s_ease-in-out_infinite]" />
         <div className="absolute top-[30%] left-[50%] w-[40vw] h-[40vw] rounded-full bg-primary-fixed-dim/20 blur-[100px] animate-[float_18s_ease-in-out_infinite_3s]" />
       </div>
-
       {/* TopNavBar — continuous scroll-linked morph (no snapping) */}
       <motion.nav
-        className="fixed left-1/2 -translate-x-1/2 z-50 flex items-center justify-between backdrop-blur-2xl border border-white/30"
+        className="fixed left-1/2 -translate-x-1/2 z-[100] overflow-visible flex items-center justify-between backdrop-blur-2xl border border-white/30"
         style={{
           top: navTop,
           width: navWidth,
@@ -233,13 +436,11 @@ function LandingPage({ user, onLogout }) {
           className="flex items-center gap-2 transition-transform hover:scale-105"
           href="#"
         >
-          <span className="font-black text-[26px] bg-clip-text text-transparent bg-gradient-to-r from-emerald-600 to-sky-500 tracking-tight">
-            DermaSmart
-          </span>
+          <img src={logo} alt="DermaSmart Logo" className={`w-auto object-contain transition-all duration-300 ${scrolled ? 'h-14' : 'h-20'}`} />
         </a>
 
         {/* Desktop Nav Links */}
-        <div className="hidden md:flex items-center gap-8">
+        <div className="hidden md:flex items-center gap-8 absolute left-1/2 -translate-x-1/2">
           <a className={`transition-colors duration-300 font-semibold text-sm ${scrolled ? 'text-on-surface hover:text-primary' : 'text-gray-100 hover:text-white'}`} href="#">Trang chủ</a>
           <a className={`transition-colors duration-300 font-semibold text-sm ${scrolled ? 'text-on-surface hover:text-primary' : 'text-gray-100 hover:text-white'}`} href="#features">Tính năng AI</a>
           <a
@@ -253,48 +454,89 @@ function LandingPage({ user, onLogout }) {
 
         {/* Desktop Nav Actions */}
         <div className="hidden md:flex items-center gap-4">
-          {user ? (
-            <div className="user-profile relative">
-              <span
-                className={`cursor-pointer select-none gap-2 flex items-center transition-colors duration-200 font-semibold text-sm ${scrolled ? 'text-on-surface' : 'text-gray-100'}`}
-                onClick={() => setShowUserDropdown(!showUserDropdown)}
+          {isLoadingAuth ? (
+            <div className={`text-sm font-semibold ${scrolled ? 'text-on-surface' : 'text-gray-100'}`}>
+              Đang tải...
+            </div>
+          ) : isLoggedIn ? (
+            <div className="user-profile-dropdown relative">
+              {/* Menu Trigger */}
+              <button
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className={`flex items-center gap-2 font-semibold text-sm bg-transparent border-none cursor-pointer select-none transition-colors duration-300 hover:opacity-80 ${
+                  scrolled ? 'text-slate-800' : 'text-white'
+                }`}
               >
-                <span className="material-symbols-outlined">account_circle</span>
-                Xin chào, {user.username}
-                <span
-                  className="material-symbols-outlined text-[1.2rem] transition-transform duration-300"
-                  style={{ transform: showUserDropdown ? 'rotate(180deg)' : 'rotate(0)' }}
-                >
-                  keyboard_arrow_down
-                </span>
-              </span>
+                <span>Xin chào, {userFullName}</span>
+                <ChevronDown 
+                  size={16} 
+                  className={`transition-transform duration-300 ${isDropdownOpen ? 'rotate-180' : 'rotate-0'}`} 
+                />
+              </button>
 
-              {showUserDropdown && (
-                <div className="absolute top-full right-0 mt-3 w-56 backdrop-blur-2xl bg-white/70 border border-white/60 shadow-xl rounded-2xl p-2 z-[100] font-sans flex flex-col gap-1">
-                  <button
-                    onClick={() => { navigate('/profile'); setShowUserDropdown(false); }}
-                    className="bg-transparent border-none text-slate-700 py-3 px-4 rounded-xl cursor-pointer flex items-center gap-3 text-sm font-semibold text-left transition-colors duration-200 w-full hover:bg-teal-50/80 hover:text-teal-700"
+              {/* Liquid Glass Drop Menu Container */}
+              <AnimatePresence>
+                {isDropdownOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    transition={{ duration: 0.2, ease: "easeOut" }}
+                    className="absolute right-0 top-full mt-3 w-64 z-[9999] backdrop-filter backdrop-blur-xl bg-white/60 dark:bg-slate-900/60 border border-white/50 shadow-[0_8px_30px_rgb(0,0,0,0.12)] rounded-2xl overflow-hidden ring-1 ring-black/5 p-2 transition-all duration-300 origin-top-right flex flex-col gap-2 font-sans"
                   >
-                    <User size={16} />
-                    Hồ sơ cá nhân
-                  </button>
-                  <button
-                    onClick={() => { setIsChangePasswordOpen(true); setShowUserDropdown(false); }}
-                    className="bg-transparent border-none text-slate-700 py-3 px-4 rounded-xl cursor-pointer flex items-center gap-3 text-sm font-semibold text-left transition-colors duration-200 w-full hover:bg-emerald-50/80 hover:text-emerald-700"
-                  >
-                    <Key size={16} />
-                    Đổi mật khẩu
-                  </button>
-                  <div className="h-px bg-slate-200/50 my-1" />
-                  <button
-                    onClick={() => { onLogout(); setShowUserDropdown(false); }}
-                    className="bg-transparent border-none text-slate-700 py-3 px-4 rounded-xl cursor-pointer flex items-center gap-3 text-sm font-semibold text-left transition-colors duration-200 w-full hover:bg-sky-50/80 hover:text-sky-700"
-                  >
-                    <LogOut size={16} />
-                    Đăng xuất
-                  </button>
-                </div>
-              )}
+                    {/* Header Block (Non-clickable) */}
+                    <div className="flex flex-col text-left px-3 py-2 select-none">
+                      <span className="text-slate-800 font-bold text-sm leading-tight">
+                        {userFullName}
+                      </span>
+                      <span className="text-slate-500 font-bold text-[10px] tracking-wider uppercase mt-1">
+                        {ROLE_MAP[Number(userRole)] || ''}
+                      </span>
+                    </div>
+
+                    {/* Glass Separator line */}
+                    <div className="h-px bg-white/20 my-1 mx-2" />
+
+                    {/* Menu Item: Hồ sơ cá nhân */}
+                    <button
+                      onClick={() => {
+                        setIsDropdownOpen(false);
+                        navigate('/profile');
+                      }}
+                      className="hover:bg-white/20 hover:shadow-sm text-slate-800 border-none bg-transparent py-2.5 px-4 rounded-xl cursor-pointer flex items-center gap-3 text-sm font-semibold text-left transition-all duration-300 w-full hover:scale-[1.02] active:scale-95"
+                    >
+                      <User size={16} className="text-slate-700" />
+                      Hồ sơ cá nhân
+                    </button>
+
+                    {/* Menu Item: Không gian làm việc (Conditionally render ONLY if currentRole !== 5) */}
+                    {Number(userRole) > 0 && Number(userRole) !== 5 && (
+                      <button
+                        onClick={() => {
+                          setIsDropdownOpen(false);
+                          navigate(getDashboardRoute(userRole));
+                        }}
+                        className="hover:bg-white/20 hover:shadow-sm text-slate-800 border-none bg-transparent py-2.5 px-4 rounded-xl cursor-pointer flex items-center gap-3 text-sm font-semibold text-left transition-all duration-300 w-full hover:scale-[1.02] active:scale-95"
+                      >
+                        <Key size={16} className="text-slate-700" />
+                        Không gian làm việc
+                      </button>
+                    )}
+
+                    {/* Menu Item: Đăng xuất */}
+                    <button
+                      onClick={() => {
+                        setIsDropdownOpen(false);
+                        handleSupabaseLogout();
+                      }}
+                      className="bg-red-500/10 hover:bg-red-500/25 text-red-700 border border-red-500/20 py-2.5 px-4 rounded-xl cursor-pointer flex items-center gap-3 text-sm font-bold text-left transition-all duration-300 w-full hover:scale-[1.02] active:scale-95"
+                    >
+                      <LogOut size={16} className="text-red-600" />
+                      Đăng xuất
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           ) : (
             <>
@@ -324,7 +566,6 @@ function LandingPage({ user, onLogout }) {
           </span>
         </button>
       </motion.nav>
-
       {/* Mobile Menu Dropdown */}
       {mobileMenuOpen && (
         <div
@@ -341,41 +582,49 @@ function LandingPage({ user, onLogout }) {
           </a>
           <a className="text-white/90 font-semibold text-sm py-2" href="#pricing">Bảng giá</a>
           <div className="h-px bg-white/[0.08] my-2" />
-          {user ? (
-            <>
-              <span className="text-primary-fixed-dim font-semibold text-sm">Xin chào, {user.username}</span>
+          {isLoadingAuth ? (
+            <div className="text-white/50 text-sm py-2">Đang tải...</div>
+          ) : isLoggedIn ? (
+            <div className="flex flex-col gap-3">
+              {/* Mobile User Badge */}
+              <div className="flex flex-col items-center justify-center pb-3 border-b border-white/10 text-center">
+                <span className="text-white font-semibold text-base">{userFullName}</span>
+                <span className="text-emerald-400 text-xs font-bold uppercase tracking-wider mt-1">{ROLE_MAP[Number(userRole)]}</span>
+              </div>
+
               <button
                 onClick={() => { navigate('/profile'); setMobileMenuOpen(false); }}
-                className="bg-transparent border-none text-white/90 py-2 cursor-pointer flex items-center gap-3 text-sm font-semibold"
+                className="w-full bg-white/5 hover:bg-white/10 backdrop-blur-md text-white border border-white/20 py-3 px-4 rounded-xl transition-all font-semibold text-sm cursor-pointer flex items-center justify-center gap-2"
               >
-                <User size={16} />
                 Hồ sơ cá nhân
               </button>
+
+              {Number(userRole) > 0 && Number(userRole) !== 5 && (
+                <button
+                  onClick={() => { navigate(getDashboardRoute(userRole)); setMobileMenuOpen(false); }}
+                  className="w-full bg-white/10 hover:bg-white/20 backdrop-blur-md text-white border border-white/20 py-3 px-4 rounded-xl transition-all font-semibold text-sm cursor-pointer flex items-center justify-center gap-2"
+                >
+                  Không gian làm việc
+                </button>
+              )}
               <button
-                onClick={() => { setIsChangePasswordOpen(true); setMobileMenuOpen(false); }}
-                className="bg-transparent border-none text-white/90 py-2 cursor-pointer flex items-center gap-3 text-sm font-semibold"
-              >
-                <Key size={16} />
-                Đổi mật khẩu
-              </button>
-              <button
-                onClick={() => { onLogout(); setMobileMenuOpen(false); }}
-                className="bg-transparent border-none text-red-300 py-2 cursor-pointer flex items-center gap-3 text-sm font-semibold"
+                onClick={() => { handleSupabaseLogout(); setMobileMenuOpen(false); }}
+                className="w-full bg-transparent border-none text-red-300 py-3 px-4 rounded-xl cursor-pointer flex items-center justify-center gap-2 text-sm font-semibold hover:bg-white/5"
               >
                 <LogOut size={16} />
                 Đăng xuất
               </button>
-            </>
+            </div>
           ) : (
             <div className="flex flex-col gap-3">
               <button
-                className="text-white/90 hover:bg-white/10 px-5 py-2 rounded-xl transition-all font-semibold text-sm bg-transparent border-none cursor-pointer"
+                className="text-white/90 hover:bg-white/10 px-5 py-2 rounded-xl transition-all font-semibold text-sm bg-transparent border-none cursor-pointer text-center"
                 onClick={() => { navigate('/login'); setMobileMenuOpen(false); }}
               >
                 Đăng nhập
               </button>
               <button
-                className="bg-teal-500/80 text-white px-6 py-2 rounded-xl border border-teal-400/50 shadow-[0_0_20px_rgba(13,148,136,0.4)] font-semibold text-sm cursor-pointer"
+                className="bg-teal-500/80 text-white px-6 py-2 rounded-xl border border-teal-400/50 shadow-[0_0_20px_rgba(13,148,136,0.4)] font-semibold text-sm cursor-pointer text-center"
                 onClick={() => { navigate('/login', { state: { isRegistering: true } }); setMobileMenuOpen(false); }}
               >
                 Đăng ký
@@ -384,7 +633,6 @@ function LandingPage({ user, onLogout }) {
           )}
         </div>
       )}
-
       {/* Hero Section */}
       <section className="w-full min-h-screen relative flex items-center justify-center bg-[url('https://lh3.googleusercontent.com/aida-public/AB6AXuC7OT0v_iIuLuAj_638_No62Zj23gC1KQA7roRACzLjiLa5jYLAeKega8Dwb-SCFvAu5Wi76p09MdxZi4j754BX_lNLTfkZCLy5KVnCsbssI9kcKe7I1gyOu_UFP7ghIVcH8gTGb_kWawh0YavzsSvrhfktOTAUAg2pxD1M8u98KkgOAtzwFbpk4n96RScPsHIQbMA-3RuJ5zI46ePjON42HR0UcsNyVNnvLQ-x3ohlqvWYp2bCJhaXVe8-aGw1R2b7KpQ6Qj13ZEX8')] bg-cover bg-center bg-no-repeat bg-fixed overflow-hidden py-24 md:py-32">
         {/* Animated Background Mesh Gradients */}
@@ -459,7 +707,6 @@ function LandingPage({ user, onLogout }) {
           </motion.div>
         </motion.div>
       </section>
-
       {/* Main Content Canvas */}
       <main className="flex-grow py-24 px-4 md:px-10 w-full max-w-[1280px] mx-auto flex flex-col gap-[120px]">
 
@@ -469,7 +716,7 @@ function LandingPage({ user, onLogout }) {
             <h2 className="font-bold text-[32px] leading-[1.3] tracking-[-0.01em] text-on-surface">Đội ngũ chuyên gia hàng đầu</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {doctorsList.map((doc, index) => (
+            {displayDoctors?.map?.((doc, index) => (
               <motion.div
                 initial={{ opacity: 0, y: 50 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -649,7 +896,7 @@ function LandingPage({ user, onLogout }) {
               { step: 2, label: 'Bác sĩ tư vấn', highlight: false },
               { step: 3, label: 'Điều trị chuyên sâu', highlight: false },
               { step: 4, label: 'Theo dõi kết quả', highlight: true },
-            ].map(({ step, label, highlight }) => (
+            ]?.map?.(({ step, label, highlight }) => (
               <motion.div
                 initial={{ opacity: 0, y: 50 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -671,9 +918,8 @@ function LandingPage({ user, onLogout }) {
           </div>
         </section>
       </main>
-
       {/* ── Promotions / Active Vouchers Section ── */}
-      {activeVouchers.length > 0 && (
+      {displayVouchers.length > 0 && (
         <section id="pricing" className="w-full max-w-[1280px] mx-auto px-4 md:px-10 pb-20">
           <motion.div
             initial={{ opacity: 0, y: 40 }}
@@ -697,7 +943,7 @@ function LandingPage({ user, onLogout }) {
 
             {/* Voucher grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {activeVouchers.map((v, i) => {
+              {displayVouchers?.map?.((v, i) => {
                 const pct = Math.round((v.usageCount / v.maxUsage) * 100);
                 const isEvent = !!v.eventTag;
                 return (
@@ -798,7 +1044,6 @@ function LandingPage({ user, onLogout }) {
           </motion.div>
         </section>
       )}
-
       {/* Frosted Glass Showcase */}
       <section
         className="w-full min-h-[600px] relative bg-fixed bg-center bg-cover flex items-center justify-center px-4 mt-12"
@@ -814,7 +1059,6 @@ function LandingPage({ user, onLogout }) {
           </p>
         </div>
       </section>
-
       {/* Footer */}
       <motion.footer 
         initial={{ opacity: 0, y: 50 }}
@@ -824,7 +1068,7 @@ function LandingPage({ user, onLogout }) {
         className="w-full px-10 py-12 mt-20 flex flex-col md:flex-row justify-between items-center gap-6 bg-surface-container-low/40 backdrop-blur-xl rounded-t-lg border-t border-white/50 glass-panel liquid-glass"
       >
         <div className="flex flex-col items-center md:items-start gap-2">
-          <span className="font-bold text-[24px] text-primary">DermaSmart</span>
+          <img src={logo} alt="DermaSmart Logo" className="h-16 w-auto object-contain" />
           <p className="text-on-surface-variant">© 2024 DermaSmart. Nền tảng y tế số thông minh.</p>
         </div>
         <div className="flex flex-wrap items-center justify-center gap-6">
@@ -833,11 +1077,9 @@ function LandingPage({ user, onLogout }) {
           <a className="text-on-surface-variant hover:text-secondary transition-colors duration-300 no-underline" href="#">Hỗ trợ kỹ thuật</a>
         </div>
       </motion.footer>
-
       <ChangePasswordModal isOpen={isChangePasswordOpen} onClose={() => setIsChangePasswordOpen(false)} />
       <FloatingChatbot onBookAppointment={() => setIsBookingOpen(true)} onAIScan={() => setIsAIScanOpen(true)} />
       <FreeSkinScanModal isOpen={isAIScanOpen} onClose={() => setIsAIScanOpen(false)} onBookAppointment={() => setIsBookingOpen(true)} />
-
       {/* Doctor Profile Modal (Liquid Glass) */}
       <AnimatePresence>
         {selectedDoctor && (
@@ -939,7 +1181,6 @@ function LandingPage({ user, onLogout }) {
           </motion.div>
         )}
       </AnimatePresence>
-
       <BookAppointmentForm
         isOpen={isBookingOpen}
         onClose={() => setIsBookingOpen(false)}

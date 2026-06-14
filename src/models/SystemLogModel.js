@@ -1,42 +1,30 @@
-import { mockSystemLogs } from '../mockData';
-
-const STORAGE_KEY = 'dermasmart_system_logs';
+import { supabase } from '../supabaseClient';
 
 export const SystemLogModel = {
-  init() {
-    if (!localStorage.getItem(STORAGE_KEY)) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(mockSystemLogs));
-    }
-  },
-
-  getAll() {
-    this.init();
+  async getAll() {
     try {
-      return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-    } catch {
-      return mockSystemLogs;
+      const { data, error } = await supabase.from('system_logs').select('*').order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    } catch (e) {
+      console.warn('Supabase fetch error (system_logs):', e.message);
+      return [];
     }
   },
 
-  save(logs) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(logs));
-    window.dispatchEvent(new CustomEvent('system-logs-updated'));
-  },
-
-  addLog(actor, action, target, details, severity = 'Info') {
-    this.init();
-    const logs = this.getAll();
-    const newLog = {
-      id: `LOG-${Date.now()}`,
-      timestamp: new Date().toISOString(),
-      actor,
-      action,
-      target,
-      details,
-      severity,
-    };
-    logs.unshift(newLog);
-    this.save(logs);
-    return newLog;
+  async log(action, user, details) {
+    try {
+      const { data, error } = await supabase.from('system_logs').insert([{
+        action,
+        user_id: user?.id || 'system',
+        user_name: user?.name || 'System',
+        details
+      }]).select();
+      if (error) throw error;
+      return data[0];
+    } catch (e) {
+      console.warn('Supabase create error (system_logs):', e.message);
+      return null;
+    }
   }
 };

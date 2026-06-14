@@ -61,7 +61,7 @@ export default function ServiceSelectionForm({ onSelectionChange }) {
     const isSelected = selectedServices.includes(id);
     let updated;
     if (isSelected) {
-      updated = selectedServices.filter(item => item !== id);
+      updated = selectedServices?.filter?.(item => item !== id);
     } else {
       updated = [...selectedServices, id];
     }
@@ -71,9 +71,9 @@ export default function ServiceSelectionForm({ onSelectionChange }) {
     }
   };
 
-  const categories = ['All', ...new Set(MOCK_SERVICES.map(s => s.category))];
+  const categories = ['All', ...new Set(([])?.map?.(s => s.category))];
 
-  const filteredServices = MOCK_SERVICES.filter(service => {
+  const filteredServices = ([])?.filter?.(service => {
     const matchesSearch = service.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           service.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = activeCategory === 'All' || service.category === activeCategory;
@@ -92,11 +92,9 @@ export default function ServiceSelectionForm({ onSelectionChange }) {
           Đã chọn: {selectedServices.length}
         </span>
       </div>
-
       <p className="text-sm text-slate-500 mb-5 flex-shrink-0">
         Chọn các dịch vụ, kỹ thuật hoặc xét nghiệm cần thiết để Technician thực hiện hoặc chuẩn bị cho bệnh nhân.
       </p>
-
       {/* Filter and Search Bar */}
       <div className="flex flex-col md:flex-row gap-3 mb-5 flex-shrink-0">
         <div className="relative flex-1">
@@ -110,7 +108,7 @@ export default function ServiceSelectionForm({ onSelectionChange }) {
           />
         </div>
         <div className="flex gap-1.5 overflow-x-auto pb-1 md:pb-0 scrollbar-thin">
-          {categories.map((cat) => (
+          {categories?.map?.((cat) => (
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}
@@ -125,12 +123,11 @@ export default function ServiceSelectionForm({ onSelectionChange }) {
           ))}
         </div>
       </div>
-
       {/* Services Grid (Scrollable) */}
       <div className="flex-1 overflow-y-auto pr-1 -mr-1 custom-scrollbar min-h-0 space-y-3">
         {filteredServices.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filteredServices.map((service) => {
+            {filteredServices?.map?.((service) => {
               const Icon = service.icon;
               const isSelected = selectedServices.includes(service.id);
 

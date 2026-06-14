@@ -28,6 +28,7 @@ import RevenueStatistics from '../components/Admin/RevenueStatistics';
 import VoucherManagement from '../components/Admin/VoucherManagement';
 import ReportsPage from '../components/Admin/ReportsPage';
 import LiquidSidebarMenu from '../components/ui/LiquidSidebarMenu';
+import logo from '../assets/logo.png';
 
 // Placeholder components for other tabs
 const PlaceholderTab = ({ title }) => (
@@ -87,11 +88,9 @@ const AdminDashboard = () => {
       {/* Sidebar */}
       <aside className="w-72 backdrop-blur-2xl bg-white/70 border-r border-white/60 shadow-[4px_0_24px_rgba(0,0,0,0.02)] flex flex-col justify-between z-20">
         <div>
-          <div className="p-8">
-            <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-sky-500 tracking-tight">
-              Pristine
-            </h1>
-            <p className="text-xs text-indigo-500/80 font-bold tracking-widest mt-1 uppercase">Quản trị hệ thống</p>
+          <div className="p-8 flex flex-col items-start">
+            <img src={logo} alt="DermaSmart Logo" className="h-20 w-auto object-contain" />
+            <p className="text-xs text-indigo-500/80 font-bold tracking-widest mt-2 uppercase">Quản trị hệ thống</p>
           </div>
           <nav className="mt-6 px-6 space-y-3">
             <LiquidSidebarMenu

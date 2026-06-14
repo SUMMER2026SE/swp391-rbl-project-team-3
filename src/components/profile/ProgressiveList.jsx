@@ -29,7 +29,7 @@ export default function ProgressiveList({
   return (
     <div className="space-y-4">
       <div className={wrapperClassName}>
-        {head.map((item, i) => renderItem(item, i))}
+        {head?.map?.((item, i) => renderItem(item, i))}
 
         <AnimatePresence initial={false}>
           {expanded && remaining > 0 && (
@@ -41,12 +41,11 @@ export default function ProgressiveList({
               transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
               className={`overflow-hidden ${tailClassName}`}
             >
-              {tail.map((item, i) => renderItem(item, i + initialCount))}
+              {tail?.map?.((item, i) => renderItem(item, i + initialCount))}
             </motion.div>
           )}
         </AnimatePresence>
       </div>
-
       {remaining > 0 && (
         <button
           onClick={() => setExpanded((v) => !v)}

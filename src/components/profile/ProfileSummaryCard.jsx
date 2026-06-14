@@ -47,9 +47,8 @@ export default function ProfileSummaryCard({ profile, onAvatarChange }) {
   // Patient metrics carry live values; merge them into the config row.
   let metrics = ROLE_METRICS[profile.role] || [];
   if (profile.kind === 'patient' && profile.metrics) {
-    metrics = metrics.map((m, i) =>
-      i === 0 ? { ...m, value: String(profile.metrics.visits ?? '—') } : m
-    );
+    metrics = metrics?.map?.((m, i) =>
+      i === 0 ? { ...m, value: String(profile.metrics.visits ?? '—') } : m);
   }
 
   const handlePick = (e) => {
@@ -88,7 +87,6 @@ export default function ProfileSummaryCard({ profile, onAvatarChange }) {
         </button>
         <input ref={fileRef} type="file" accept="image/*" onChange={handlePick} className="hidden" />
       </div>
-
       {/* Identity */}
       <h2 className="mt-5 text-2xl font-extrabold text-on-surface tracking-tight leading-tight">
         {profile.name}
@@ -97,18 +95,15 @@ export default function ProfileSummaryCard({ profile, onAvatarChange }) {
         <RoleIcon className="w-3.5 h-3.5" />
         {profile.roleLabel}
       </span>
-
       {profile.kind === 'staff' && (
         <p className="mt-2 text-sm font-semibold text-on-surface-variant/70 leading-relaxed">
           {profile.employeeId} • {profile.department}
         </p>
       )}
-
       {/* Contact quick-actions removed as per request */}
-
       {/* Quick metrics — data over labels */}
       <div className="w-full mt-5 pt-5 border-t border-white/50 grid grid-cols-1 gap-2.5">
-        {metrics.map((m) => {
+        {metrics?.map?.((m) => {
           const Icon = m.icon;
           return (
             <div
@@ -127,7 +122,6 @@ export default function ProfileSummaryCard({ profile, onAvatarChange }) {
           );
         })}
       </div>
-
       {/* Administrative info — fills the column, anchored to the bottom */}
       <div className="w-full mt-auto pt-5 border-t border-white/50 space-y-2.5">
         <InfoRow

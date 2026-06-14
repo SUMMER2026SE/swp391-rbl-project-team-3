@@ -76,7 +76,6 @@ function DoctorProfilePage() {
                 <div className="orb-3"></div>
             </div>
             <div className="hero-overlay" style={{ position: 'fixed', inset: 0, background: '#0f172a', opacity: 0.85, zIndex: 0 }}></div>
-            
             <div style={{ position: 'relative', zIndex: 10, width: '100%', maxWidth: '1100px', margin: '0 auto' }}>
                 {/* Header Nav */}
                 <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2rem', paddingTop: '1rem' }}>
@@ -144,7 +143,7 @@ function DoctorProfilePage() {
                                 Chuyên môn điều trị
                             </h2>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
-                                {doctor.specialties.map((spec, idx) => (
+                                {doctor.specialties?.map?.((spec, idx) => (
                                     <span key={idx} style={{ padding: '0.75rem 1.5rem', background: 'rgba(255, 255, 255, 0.05)', color: '#fff', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '99px', fontSize: '1rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                         <span className="material-symbols-outlined" style={{ fontSize: '1.2rem', color: '#14b8a6' }}>check_circle</span>
                                         {spec}
@@ -162,7 +161,7 @@ function DoctorProfilePage() {
                                 Lịch khám bệnh tuần này
                             </h2>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                {doctor.schedule.map((item, idx) => (
+                                {doctor.schedule?.map?.((item, idx) => (
                                     <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '16px', transition: 'transform 0.2s', cursor: 'default' }} onMouseEnter={e => e.currentTarget.style.transform = 'translateX(5px)'} onMouseLeave={e => e.currentTarget.style.transform = 'translateX(0)'}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                                             <div style={{ width: '48px', height: '48px', background: 'rgba(255,255,255,0.1)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: '1.1rem' }}>

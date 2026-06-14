@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuthController } from '../controllers/useAuthController';
 import { AuthModel } from '../models/AuthModel';
 import '../index.css';
+import logo from '../assets/logo.png';
 
 function ResetPasswordPage() {
   const {
@@ -88,7 +89,7 @@ function ResetPasswordPage() {
         <div className="login-header" style={{ marginBottom: '2rem', textAlign: 'center' }}>
           {/* Logo Container */}
           <Link to="/" style={{ display: 'inline-block', marginBottom: '1.5rem', transition: 'transform 0.3s' }} onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'} onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
-            <img alt="DermaSmart Logo" src="https://lh3.googleusercontent.com/aida/ADBb0uiddj6CdMnqYQ2NQ2gNS__JGsBgPQWx2cgzMSUjV-6mD0NUuXFqjDCciD2rRfG3yqpqUjf6On86BpH61ioEIsnVMniDu-5fwQXKsOXQoruC848chIGCD7shN3ZsBjRvT53vJrLxxTuEAdPuXpXKSNO6j6a71dIrnJB8tr2RDReTT12L_lXF_dcmvbMwcKN8ZxtZXya1gRZ0XvNcjzSEqMuR6j0onUQdFNslqPU3afB12kawSdIxa55oCB5k" style={{ height: '50px', width: 'auto', objectFit: 'contain' }} />
+            <img alt="DermaSmart Logo" src={logo} style={{ height: '100px', width: 'auto', objectFit: 'contain' }} />
           </Link>
           <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#ffffff', marginBottom: '0.5rem', letterSpacing: '-0.025em' }}>
             Đặt lại mật khẩu mới

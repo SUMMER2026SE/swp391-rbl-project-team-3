@@ -3,24 +3,32 @@ import { AppointmentModel } from '../models/AppointmentModel';
 import { DoctorModel } from '../models/DoctorModel';
 
 export function useAppointmentController(patientId = null) {
-  // Read state initially
-  const [appointments, setAppointments] = useState(() => {
-    return patientId 
-      ? AppointmentModel.getByPatientId(patientId)
-      : AppointmentModel.getAllAppointments();
-  });
-  const [payments, setPayments] = useState(() => AppointmentModel.getAllPayments());
+  const [appointments, setAppointments] = useState([]);
+  const [payments, setPayments] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const refreshState = useCallback(() => {
-    setAppointments(
-      patientId
-        ? AppointmentModel.getByPatientId(patientId)
-        : AppointmentModel.getAllAppointments()
-    );
-    setPayments(AppointmentModel.getAllPayments());
+  const refreshState = useCallback(async () => {
+    try {
+      setLoading(true);
+      const apts = patientId
+        ? await AppointmentModel.getByPatientId(patientId)
+        : await AppointmentModel.getAllAppointments();
+      setAppointments(apts || []);
+
+      const pmts = await AppointmentModel.getAllPayments();
+      setPayments(pmts || []);
+    } catch (e) {
+      console.warn('Failed to load appointments/payments:', e.message);
+    } finally {
+      setLoading(false);
+    }
   }, [patientId]);
 
   // Keep state in sync with localStorage updates via custom events
+  useEffect(() => {
+    refreshState();
+  }, [refreshState]);
+
   useEffect(() => {
     const handleUpdate = () => {
       refreshState();
@@ -131,8 +139,23 @@ export function useAppointmentController(patientId = null) {
 
   // Check if a slot is booked
   const isSlotBooked = useCallback((docId, date, time) => {
-    return AppointmentModel.isTimeSlotBooked(docId, date, time);
-  }, []);
+    if (!Array.isArray(appointments)) return false;
+    const isBooked = appointments.some(
+      a =>
+        String(a.doctor_id || a.doctorId) === String(docId) &&
+        a.date === date &&
+        a.time === time &&
+        a.status !== 'Đã hủy'
+    );
+    if (isBooked) return true;
+
+    // Check locks
+    const lockedListStr = localStorage.getItem('dermasmart_locked_slots') || '[]';
+    let lockedList = [];
+    try { lockedList = JSON.parse(lockedListStr); } catch (e) {}
+    const activeLocks = lockedList?.filter?.(l => l.lockedUntil > Date.now());
+    return activeLocks.some(l => String(l.doctorId) === String(docId) && l.date === date && l.time === time);
+  }, [appointments]);
 
   // Get doctor schedules and filter out booked slots for UI display
   const getAvailableSlots = useCallback((docId, date) => {
@@ -143,7 +166,7 @@ export function useAppointmentController(patientId = null) {
     }
 
     // Find doctor's name
-    const doc = DoctorModel.getAllDoctors().find(d => d.id === docId);
+    const doc = DoctorModel.getAllDoctorsSync().find(d => String(d.id || d.user_id) === String(docId));
     const docName = doc ? doc.name : '';
 
     // Read Admin consultation slots
@@ -151,10 +174,10 @@ export function useAppointmentController(patientId = null) {
     const adminSlots = savedSlots ? JSON.parse(savedSlots) : [];
 
     // Filter slots for this doctor and date
-    const dailySlots = adminSlots.filter(s => s.doctorName === docName && s.date === date);
+    const dailySlots = adminSlots?.filter?.(s => s.doctorName === docName && s.date === date);
 
     if (dailySlots.length > 0) {
-      return dailySlots.map(s => ({
+      return dailySlots?.map?.(s => ({
         time: s.startTime,
         isBooked: s.status === 'Đã đặt' || s.status === 'Đã hủy' || isSlotBooked(docId, date, s.startTime)
       }));
@@ -167,7 +190,7 @@ export function useAppointmentController(patientId = null) {
       "15:30", "16:00", "16:30",
     ];
 
-    return standardSlots.map(time => ({
+    return standardSlots?.map?.(time => ({
       time,
       isBooked: isSlotBooked(docId, date, time)
     }));
@@ -196,6 +219,7 @@ export function useAppointmentController(patientId = null) {
   return {
     appointments,
     payments,
+    loading,
     getPatientAppointments,
     getAllAppointments,
     getAppointmentDetails,

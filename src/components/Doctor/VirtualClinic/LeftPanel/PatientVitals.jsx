@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { User, Activity, AlertTriangle, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { mockPatients } from '../../../../mockData';
 
 export default function PatientVitals({ patientId }) {
-  const patient = mockPatients?.find(p => p.id === patientId) || mockPatients[0];
+  const patient = ([])?.find(p => p.id === patientId) || ([])[0];
   const [showDetails, setShowDetails] = useState(false);
 
   return (

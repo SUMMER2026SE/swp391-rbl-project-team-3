@@ -22,10 +22,9 @@ export default function StaffInsightsTab({ profile }) {
           Chỉ số hiệu suất và thông tin công tác của bạn.
         </p>
       </div>
-
       {/* KPI highlight cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {metrics.map((m, i) => {
+        {metrics?.map?.((m, i) => {
           const Icon = m.icon;
           return (
             <motion.div
@@ -49,14 +48,12 @@ export default function StaffInsightsTab({ profile }) {
           );
         })}
       </div>
-
       {/* Work info */}
       <div className="glass-3d-soft rounded-2xl p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
         <InfoTile icon={Building2} label="Phòng ban" value={profile.department} accent={theme.soft} />
         <InfoTile icon={Award} label="Mã nhân viên" value={profile.employeeId} accent={theme.soft} />
         <InfoTile icon={Sparkles} label="Chuyên môn" value={profile.specialization} accent={theme.soft} full />
       </div>
-
       {/* Weekly schedule */}
       <div className="glass-3d-soft rounded-2xl p-6">
         <h4 className="flex items-center gap-2 text-base font-extrabold text-on-surface mb-4">

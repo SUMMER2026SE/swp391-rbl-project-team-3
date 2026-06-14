@@ -39,15 +39,13 @@ export default function ServiceManagement() {
     };
 
     const updateService = (id, field, value) => {
-        const nextServices = services.map((service) =>
-            service.id === id ? { ...service, [field]: field === 'price' ? Number(value) : value } : service
-        );
+        const nextServices = services?.map?.((service) =>
+            service.id === id ? { ...service, [field]: field === 'price' ? Number(value) : value } : service);
         saveServices(nextServices);
     };
 
-    const filteredServices = services.filter((service) =>
-        service.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredServices = services?.filter?.((service) =>
+        service.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
     return (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
@@ -55,7 +53,6 @@ export default function ServiceManagement() {
                 <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">Quản lý Dịch vụ</h2>
                 <p className="text-slate-500 text-sm font-medium mt-1">Cập nhật tên, giá, mô tả và trạng thái dịch vụ phòng khám.</p>
             </div>
-
             <div className="backdrop-blur-xl bg-white/75 border border-white/80 shadow-[0_15px_40px_rgba(0,0,0,0.05)] rounded-[2rem] p-8">
                 <div className="flex items-center gap-2 mb-6 pb-4 border-b border-slate-200/50">
                     <Plus className="w-5 h-5 text-indigo-600" />
@@ -71,7 +68,6 @@ export default function ServiceManagement() {
                     </button>
                 </div>
             </div>
-
             <div className="backdrop-blur-xl bg-white/75 border border-white/80 shadow-[0_15px_40px_rgba(0,0,0,0.05)] rounded-[2rem] overflow-hidden">
                 <div className="p-6 border-b border-slate-200/50 flex flex-col md:flex-row justify-between gap-4 bg-white/40">
                     <div className="flex items-center gap-2">
@@ -95,7 +91,7 @@ export default function ServiceManagement() {
                         </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                        {filteredServices.map((service) => (
+                        {filteredServices?.map?.((service) => (
                             <tr key={service.id} className="hover:bg-slate-50/80">
                                 <td className="px-8 py-5"><Input value={service.name} onChange={(v) => updateService(service.id, 'name', v)} /></td>
                                 <td className="px-8 py-5"><Input type="number" value={service.price} onChange={(v) => updateService(service.id, 'price', v)} /></td>
@@ -116,5 +112,5 @@ function Input({ value, onChange, placeholder = '', type = 'text' }) {
 }
 
 function Select({ value, onChange, options }) {
-    return <select value={value} onChange={(e) => onChange(e.target.value)} className="w-full bg-white border border-slate-200 rounded-2xl py-3 px-4 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400">{options.map((option) => <option key={option}>{option}</option>)}</select>;
+    return <select value={value} onChange={(e) => onChange(e.target.value)} className="w-full bg-white border border-slate-200 rounded-2xl py-3 px-4 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400">{options?.map?.((option) => <option key={option}>{option}</option>)}</select>;
 }

@@ -11,7 +11,7 @@ import { motion } from 'framer-motion';
 export default function ProfileTabs({ tabs, activeTab, onChange }) {
   return (
     <div className="glass-3d-soft rounded-2xl p-1.5 flex items-center gap-1 overflow-x-auto custom-scrollbar">
-      {tabs.map((tab) => {
+      {tabs?.map?.((tab) => {
         const Icon = tab.icon;
         const isActive = tab.id === activeTab;
         return (

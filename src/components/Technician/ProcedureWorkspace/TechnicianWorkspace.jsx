@@ -189,7 +189,7 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
       ...prev,
       [activeProcIndex]: {
         ...prev[activeProcIndex],
-        images: (prev[activeProcIndex]?.images || []).filter((img) => img?.id !== imageId)
+        images: (prev[activeProcIndex]?.images || [])?.filter?.((img) => img?.id !== imageId)
       }
     }));
   };
@@ -351,7 +351,6 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
             </div>
           </div>
         </motion.div>
-
         {/* CARD 2: Prescribed Procedures Checklist */}
         <motion.div
           className="glass-3d-soft rounded-3xl p-6 flex flex-col gap-4 border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] shrink-0"
@@ -370,7 +369,7 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
           </div>
 
           <div className="flex flex-col gap-2.5">
-            {procedures.map((proc, idx) => {
+            {procedures?.map?.((proc, idx) => {
               const pType = proc?.procedureType || proc?.procedure || proc?.name || proc?.service || 'Thủ thuật';
               const isSelected = idx === activeProcIndex;
               const isDone = isProcedureComplete(proc, idx);
@@ -417,7 +416,6 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
             })}
           </div>
         </motion.div>
-
         {/* CARD 3: Doctor's Request */}
         <motion.div
           className="glass-3d-soft rounded-3xl p-6 flex flex-col gap-5 border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] shrink-0"
@@ -489,7 +487,6 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
             </span>
           )}
         </div>
-
         {/* ── Drag & Drop Zone ── */}
         {!isReviewMode && (
           <motion.div
@@ -540,7 +537,6 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
             </div>
           </motion.div>
         )}
-
         {/* ── Image Previews ── */}
         <div className="flex-1 overflow-y-auto custom-scrollbar pr-1">
           <AnimatePresence mode="popLayout">
@@ -558,7 +554,7 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
             )}
 
             <div className="grid grid-cols-2 gap-3">
-              {images.map((img, idx) => (
+              {images?.map?.((img, idx) => (
                 <motion.div
                   key={img?.id || `img-${idx}`}
                   layout
@@ -627,7 +623,6 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
             </span>
           )}
         </div>
-
         <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-1">
           {metrics.length === 0 && (
             <div className="flex flex-col items-center justify-center py-10 text-slate-400">
@@ -636,7 +631,7 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
             </div>
           )}
 
-          {metrics.map((metric, idx) => (
+          {metrics?.map?.((metric, idx) => (
             <motion.div
               key={metric}
               variants={fadeUp}
@@ -739,10 +734,9 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
           <FileCheck className="w-5 h-5 text-emerald-600" />
           <h3 className="text-base font-bold text-slate-900">Xác nhận tất cả kết quả</h3>
         </div>
-
         {/* ── Summary Cards for All Procedures ── */}
         <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pr-1">
-          {procedures.map((proc, idx) => {
+          {procedures?.map?.((proc, idx) => {
             const pType = proc?.procedureType || proc?.procedure || proc?.name || proc?.service || 'Thủ thuật';
             const pDetailsType = proc?.procedureDetails?.type;
             const isImg = pDetailsType === 'Imaging' || pType.toLowerCase().includes('soi da') || pType.toLowerCase().includes('chụp');
@@ -773,7 +767,6 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
                     {isImg ? 'Hình ảnh' : isLab ? 'Xét nghiệm' : 'Khác'}
                   </span>
                 </div>
-
                 {isImg ? (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
@@ -784,7 +777,7 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
                     </div>
                     {procImages.length > 0 && (
                       <div className="flex gap-1.5 mt-2 flex-wrap">
-                        {procImages.map((img, i) => (
+                        {procImages?.map?.((img, i) => (
                           <div key={img?.id || i} className="w-12 h-12 rounded-lg overflow-hidden border border-slate-200">
                             <img src={img?.url} alt="thumbnail" className="w-full h-full object-cover" />
                           </div>
@@ -794,7 +787,7 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
                   </div>
                 ) : isLab && pMetrics.length > 0 ? (
                   <div className="grid grid-cols-2 gap-2 mt-2">
-                    {pMetrics.map((m) => (
+                    {pMetrics?.map?.((m) => (
                       <div key={m} className="bg-slate-50/50 border border-slate-100 p-2.5 rounded-xl">
                         <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-semibold">{m}</span>
                         <span className="text-sm font-bold text-slate-800 block mt-0.5">{procMetrics[m] || '—'}</span>
@@ -811,7 +804,6 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
             );
           })}
         </div>
-
         {/* ── General Technician Notes ── */}
         <motion.div
           className="glass-inner rounded-xl p-4 shadow-[0_8px_32px_rgba(0,0,0,0.04)]"
@@ -839,7 +831,6 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
             `}
           />
         </motion.div>
-
         {/* ── Action Button ── */}
         <motion.div
           variants={fadeUp}

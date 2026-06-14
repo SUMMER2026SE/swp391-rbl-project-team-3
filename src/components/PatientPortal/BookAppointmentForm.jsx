@@ -5,11 +5,25 @@ import {
   ChevronDown, Star, AlertTriangle, Ticket, Tag, Sparkles,
   TrendingDown, Info, QrCode, Timer, CreditCard
 } from 'lucide-react';
-import { serviceCategories, mockTimeSlots } from '../../mockData';
 import { useAppointmentController } from '../../controllers/useAppointmentController';
 import { useVoucherController } from '../../controllers/useVoucherController';
 import { useAuth } from '../../context/AuthContext';
 import { useDoctors } from '../../hooks/useDoctors';
+
+// ─── Service categories (static reference data) ───────────────────────────────
+// There is no `services` table in Supabase yet, and categories are stable
+// reference data, so we keep them local. The `id` values mirror the
+// `specialization` codes stored on doctor profiles ("cat-01, cat-02, …") so the
+// doctor-matching filter (`doc.specialties.includes(selectedCategory)`) works.
+const serviceCategories = [
+  { id: 'cat-01', name: 'Khám da liễu tổng quát' },
+  { id: 'cat-02', name: 'Điều trị mụn & sẹo rỗ' },
+  { id: 'cat-03', name: 'Trị nám, tàn nhang & đốm nâu' },
+  { id: 'cat-04', name: 'Trẻ hóa & chống lão hóa da' },
+  { id: 'cat-05', name: 'Điều trị viêm da, vảy nến, eczema' },
+  { id: 'cat-06', name: 'Thẩm mỹ & chăm sóc da chuyên sâu' },
+  { id: 'cat-07', name: 'Soi da & tư vấn AI' },
+];
 
 // ─── Parse price string → number ─────────────────────────────────────────────
 function parsePriceToNumber(priceStr) {
@@ -63,7 +77,6 @@ function VoucherBanner({ applicable }) {
           </div>
         </div>
       </div>
-
       {rest.length > 0 && (
         <>
           <button
@@ -82,7 +95,7 @@ function VoucherBanner({ applicable }) {
                 exit={{ height: 0, opacity: 0 }}
                 className="overflow-hidden"
               >
-                {rest.map(r => (
+                {rest?.map?.(r => (
                   <div key={r.voucher.id} className="px-3.5 py-2.5 border-t border-emerald-100 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
                       <span className="text-[10px]">{r.voucher.eventEmoji || '🏷️'}</span>
@@ -212,14 +225,14 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
   
   const workingDocs = useMemo(() => {
     if (!selectedDate || !selectedCategory) return [];
-    const [y, m, d] = selectedDate.split('-').map(Number);
+    const [y, m, d] = selectedDate.split('-')?.map?.(Number);
     const dayOfWeek = new Date(y, m - 1, d).getDay();
     
-    return doctors.filter(doc => {
+    return doctors?.filter?.(doc => {
       // Chỉ lấy bác sĩ có chuyên môn phù hợp
       if (!doc.specialties.includes(selectedCategory)) return false;
       // Bác sĩ phải có lịch trực vào thứ này
-      const wDays = doc.schedule.map(s => DAY_MAP[s.day] ?? -1);
+      const wDays = doc.schedule?.map?.(s => DAY_MAP[s.day] ?? -1);
       return wDays.includes(dayOfWeek);
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -227,7 +240,7 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
 
   const filteredDocs = (() => {
     if (!selectedTime) return workingDocs;
-    return workingDocs.filter(doc => !isSlotBooked(doc.id, selectedDate, selectedTime));
+    return workingDocs?.filter?.(doc => !isSlotBooked(doc.id, selectedDate, selectedTime));
   })();
 
   const filteredSlots = (() => {
@@ -235,7 +248,7 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
     const lockedListStr = localStorage.getItem('dermasmart_locked_slots') || '[]';
     let lockedList = [];
     try { lockedList = JSON.parse(lockedListStr); } catch (e) {}
-    const activeLocks = lockedList.filter(l => l.lockedUntil > Date.now());
+    const activeLocks = lockedList?.filter?.(l => l.lockedUntil > Date.now());
 
     const isSlotActuallyBooked = (dId, dDate, dTime) => {
       // Check normal bookings
@@ -247,12 +260,12 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
 
     if (selectedDoctor) {
       const slots = getAvailableSlots(selectedDoctor, selectedDate);
-      return slots.map(s => ({
+      return slots?.map?.(s => ({
         ...s,
         isBooked: isSlotActuallyBooked(selectedDoctor, selectedDate, s.time)
       }));
     } else {
-      return mockTimeSlots.map(time => {
+      return ([])?.map?.(time => {
         const isAllBooked = !workingDocs.some(doc => !isSlotActuallyBooked(doc.id, selectedDate, time));
         return {
           time,
@@ -328,7 +341,9 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
       let lockedList = [];
       try { lockedList = JSON.parse(lockedListStr); } catch (e) {}
       
-      const filteredList = lockedList.filter(l => !(String(l.doctorId) === String(finalDoctorId) && l.date === selectedDate && l.time === selectedTime));
+      const filteredList = lockedList?.filter?.(
+        l => !(String(l.doctorId) === String(finalDoctorId) && l.date === selectedDate && l.time === selectedTime)
+      );
       filteredList.push({
         doctorId: finalDoctorId,
         date: selectedDate,
@@ -441,7 +456,7 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
                     className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-emerald-500 text-slate-800 transition-colors appearance-none cursor-pointer text-sm pr-10"
                   >
                     <option value="">-- Chọn nhóm bệnh / nhu cầu --</option>
-                    {serviceCategories.map(cat => (
+                    {serviceCategories?.map?.(cat => (
                       <option key={cat.id} value={cat.id}>
                         {cat.name}
                       </option>
@@ -482,7 +497,7 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
                               </div>
                             ) : (
                               <>
-                                {filteredDocs.map(doc => (
+                                {filteredDocs?.map?.(doc => (
                                   <div
                                     key={doc.id}
                                     onClick={() => setSelectedDoctor(doc.id === selectedDoctor ? '' : doc.id)}
@@ -519,7 +534,7 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
                             Các khung giờ {selectedDoctor ? "(Của bác sĩ này)" : "(Có thể đặt)"}
                           </label>
                           <div className="grid grid-cols-4 gap-2">
-                            {filteredSlots.map(slot => (
+                            {filteredSlots?.map?.(slot => (
                                <button
                                 key={slot.time}
                                 type="button"

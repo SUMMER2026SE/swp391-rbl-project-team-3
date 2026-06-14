@@ -393,7 +393,6 @@ function MedicalRecordsTab({ user }) {
           </p>
         </div>
       </div>
-
       {/* Stats row */}
       {records.length > 0 && (
         <div className="grid grid-cols-3 gap-3">
@@ -401,7 +400,7 @@ function MedicalRecordsTab({ user }) {
             { label: 'Tổng hồ sơ', value: records.length, icon: <FileText className="w-4 h-4" />, color: 'emerald' },
             { label: 'Tái khám', value: records.reduce((acc, r) => acc + (r.followUps?.filter(f => f.status === 'Hoàn thành').length || 0), 0), icon: <RefreshCw className="w-4 h-4" />, color: 'sky' },
             { label: 'Đơn thuốc', value: records.reduce((acc, r) => acc + (r.prescriptions?.length || 0), 0), icon: <Pill className="w-4 h-4" />, color: 'violet' },
-          ].map((s) => (
+          ]?.map?.((s) => (
             <div key={s.label} className={`bg-${s.color}-50 border border-${s.color}-100 rounded-2xl p-3 text-center`}>
               <div className={`text-${s.color}-500 flex justify-center mb-1`}>{s.icon}</div>
               <p className={`text-xl font-bold text-${s.color}-700`}>{s.value}</p>
@@ -410,11 +409,10 @@ function MedicalRecordsTab({ user }) {
           ))}
         </div>
       )}
-
       {/* Record List */}
       <div className="bg-slate-50/90 border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
         {records.length > 0 ? (
-          records.map((record, idx) => {
+          records?.map?.((record, idx) => {
             const accent = SPECIALTY_ACCENT[record.specialty] || SPECIALTY_ACCENT['Da liễu'];
             const prescriptionCount = record.prescriptions?.length || 0;
             const followUpCount = record.followUps?.length || 0;
@@ -468,7 +466,7 @@ function MedicalRecordsTab({ user }) {
                       <div className="pl-6 flex items-center gap-2">
                         <Pill className="w-3.5 h-3.5 text-sky-500 shrink-0" />
                         <p className="text-xs text-slate-500">
-                          {record.prescriptions?.slice(0, 2).map(p => p.name).join(', ')}
+                          {record.prescriptions?.slice(0, 2)?.map?.(p => p.name).join(', ')}
                           {prescriptionCount > 2 ? ` +${prescriptionCount - 2} thuốc` : ''}
                         </p>
                       </div>
@@ -527,14 +525,12 @@ function MedicalRecordsTab({ user }) {
           </div>
         )}
       </div>
-
       {records.length > 0 && (
         <div className="text-center py-4 border border-dashed border-emerald-200 rounded-2xl bg-emerald-50/30">
           <p className="text-xs text-slate-500 font-medium">Bệnh án điện tử được cập nhật sau mỗi lần khám.</p>
           <p className="text-xs text-slate-400 mt-0.5">Liên hệ lễ tân nếu cần bổ sung hồ sơ cũ.</p>
         </div>
       )}
-
       {/* Detail Modal */}
       <AnimatePresence>
         {selectedRecord && (
@@ -567,10 +563,9 @@ export default function UserProfilePage() {
     return () => window.removeEventListener('notifications-updated', handleUpdate);
   }, []);
 
-  const myNotifications = notifications.filter(n => 
-    n.recipientRole === 'PATIENT' && (n.recipientId === user?.id || n.recipientId === 'all')
-  );
-  const unreadCount = myNotifications.filter(n => !n.isRead).length;
+  const myNotifications = notifications?.filter?.(n => 
+    n.recipientRole === 'PATIENT' && (n.recipientId === user?.id || n.recipientId === 'all'));
+  const unreadCount = myNotifications?.filter?.(n => !n.isRead).length;
 
   const handleMarkAllRead = () => {
     NotificationModel.markAllAsRead('PATIENT', user?.id);
@@ -612,7 +607,6 @@ export default function UserProfilePage() {
         <div className="absolute top-[-15%] left-[-5%] w-[45vw] h-[45vw] rounded-full bg-emerald-300/10 blur-[140px]" style={{ animation: 'profile-float 18s ease-in-out infinite' }} />
         <div className="absolute bottom-[-15%] right-[-5%] w-[55vw] h-[55vw] rounded-full bg-sky-300/10 blur-[140px]" style={{ animation: 'profile-float-2 22s ease-in-out infinite' }} />
       </div>
-
       {/* Top Bar with Back Button */}
       <div className="relative z-10 px-6 py-5 flex items-center justify-between gap-4">
         <div className="flex items-center gap-4">
@@ -662,7 +656,7 @@ export default function UserProfilePage() {
                   {myNotifications.length === 0 ? (
                     <p className="text-xs text-slate-400 italic text-center py-4">Chưa có thông báo nào.</p>
                   ) : (
-                    myNotifications.map((notif) => (
+                    myNotifications?.map?.((notif) => (
                       <div 
                         key={notif.id}
                         onClick={() => {
@@ -686,7 +680,6 @@ export default function UserProfilePage() {
           </AnimatePresence>
         </div>
       </div>
-
       {/* Main Profile Card */}
       <motion.div
         className="relative z-10 px-4 pb-12"
@@ -709,7 +702,7 @@ export default function UserProfilePage() {
               <p className="text-center text-[11px] text-slate-400 font-medium">{ROLE_DISPLAY_NAMES[role]}</p>
             </div>
 
-            {tabs.map((tab) => (
+            {tabs?.map?.((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}

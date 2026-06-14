@@ -5,8 +5,9 @@ export default function ScheduleWaitingList({ doctorId, onStartExam, appointment
   // Mock today's date
   const today = "2026-06-05";
 
-  const todayAppointments = [...appointments]
-    .filter((apt) => apt?.doctorId === doctorId && ['Đang chờ', 'Đã khám', 'Đã xác nhận'].includes(apt?.status))
+  const todayAppointments = [...appointments]?.filter?.(
+    (apt) => apt?.doctorId === doctorId && ['Đang chờ', 'Đã khám', 'Đã xác nhận'].includes(apt?.status)
+  )
     .sort((a, b) => a?.time.localeCompare(b?.time));
 
   const handleStartExam = (apt) => {
@@ -35,7 +36,6 @@ export default function ScheduleWaitingList({ doctorId, onStartExam, appointment
         <h1 className="font-extrabold text-2xl md:text-3xl text-slate-900 tracking-tight">Hàng chờ & Lịch khám</h1>
         <p className="text-sm text-slate-500 font-medium mt-1">Danh sách bệnh nhân trong ngày: {today}</p>
       </div>
-
       <div className="backdrop-blur-xl bg-white/40 border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.05)] rounded-[2rem] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -49,7 +49,7 @@ export default function ScheduleWaitingList({ doctorId, onStartExam, appointment
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100/50">
-              {todayAppointments.map((apt) => {
+              {todayAppointments?.map?.((apt) => {
                 const isCompleted = apt?.status === 'Đã khám';
                 return (
                   <tr 

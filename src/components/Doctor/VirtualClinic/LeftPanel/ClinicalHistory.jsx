@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { Activity, Beaker, CalendarDays, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { mockLabTests, mockMedicalRecords } from '../../../../mockData';
 
 export default function ClinicalHistory({ patientId }) {
-  const patientLabs = mockLabTests?.filter(lab => lab.patientId === patientId) || [];
-  const patientRecords = mockMedicalRecords?.filter(rec => rec.patientId === patientId) || [];
+  const patientLabs = ([])?.filter(lab => lab.patientId === patientId) || [];
+  const patientRecords = ([])?.filter(rec => rec.patientId === patientId) || [];
   const [showDetails, setShowDetails] = useState(false);
 
   if (patientLabs.length === 0 && patientRecords.length === 0) {
@@ -29,7 +28,6 @@ export default function ClinicalHistory({ patientId }) {
           </p>
         </div>
       </div>
-
       {/* Toggle Button */}
       <button
         onClick={() => setShowDetails(!showDetails)}
@@ -44,7 +42,6 @@ export default function ClinicalHistory({ patientId }) {
         </motion.span>
         {showDetails ? 'Thu gọn' : 'Xem thêm chi tiết'}
       </button>
-
       {/* Collapsible: Lab Tests + Timeline */}
       <AnimatePresence initial={false}>
         {showDetails && (
@@ -63,7 +60,7 @@ export default function ClinicalHistory({ patientId }) {
               </h4>
               <div className="space-y-3">
                 {patientLabs.length > 0 ? (
-                  patientLabs.map((lab) => (
+                  patientLabs?.map?.((lab) => (
                     <div key={lab.id} className="bg-white/60 p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer group">
                       <div className="flex justify-between items-start mb-2">
                         <span className="font-bold text-sm text-sky-700 group-hover:text-sky-600 transition-colors">{lab.testName}</span>
@@ -92,7 +89,7 @@ export default function ClinicalHistory({ patientId }) {
               </h4>
               <div className="relative pl-4 border-l-2 border-slate-200/60 space-y-6">
                 {patientRecords.length > 0 ? (
-                  patientRecords.map((rec) => (
+                  patientRecords?.map?.((rec) => (
                     <div key={rec.id} className="relative">
                       <div className="absolute -left-[21px] top-1 w-3 h-3 bg-teal-500 rounded-full border-2 border-white shadow-sm"></div>
                       <div className="bg-white/50 p-3.5 rounded-xl border border-slate-200/60 shadow-sm">

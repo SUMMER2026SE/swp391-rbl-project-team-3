@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { NotificationModel } from '../models/NotificationModel';
 import { DoctorModel } from '../models/DoctorModel';
+import { AppointmentModel } from '../models/AppointmentModel';
 import {
   motion,
   AnimatePresence,
@@ -31,7 +32,8 @@ import {
 } from 'lucide-react';
 
 // Import Mock Data
-import { mockAppointments, mockAssignedTasks, mockPatients } from '../mockData';
+
+import logo from '../assets/logo.png';
 
 // Import Tab Components
 import DashboardOverview from '../components/Doctor/DashboardOverview';
@@ -39,7 +41,7 @@ import ScheduleWaitingList from '../components/Doctor/ScheduleWaitingList';
 import WorkSchedule from '../components/Doctor/WorkSchedule';
 import VirtualClinicWorkspace from '../components/Doctor/VirtualClinic/VirtualClinicWorkspace';
 import DoctorFeedbackView from '../components/Doctor/DoctorFeedbackView';
-import { doctors } from '../mockData';
+
 import LiquidSidebarMenu from '../components/ui/LiquidSidebarMenu';
 
 
@@ -54,13 +56,31 @@ export default function DoctorDashboard() {
   const [notifications, setNotifications] = useState(() => NotificationModel.getAll());
   const [showNotifications, setShowNotifications] = useState(false);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
-  const [appointments, setAppointments] = useState(mockAppointments);
+  const [appointments, setAppointments] = useState([]);
+
+  useEffect(() => {
+    const loadApts = async () => {
+      const data = await AppointmentModel.getByDoctorId(currentDoctorId);
+      setAppointments(data);
+    };
+    loadApts();
+  }, [currentDoctorId]);
   const [showToast, setShowToast] = useState(false);
   const [currentDoctorId, setCurrentDoctorId] = useState(
     (user?.id && typeof user.id === 'string' && user.id.startsWith('doc-')) ? user.id : 'doc-01'
   );
-  const activeDoctor = doctors.find(d => d.id === currentDoctorId) || doctors[0];
+  const [doctorsList, setDoctorsList] = useState([]);
+  const [activeDoctor, setActiveDoctor] = useState(null);
 
+  useEffect(() => {
+    const loadDoctors = async () => {
+      const docs = await DoctorModel.getAllDoctors();
+      setDoctorsList(docs);
+      const matched = docs.find(d => d.id === currentDoctorId) || docs[0];
+      setActiveDoctor(matched);
+    };
+    loadDoctors();
+  }, [currentDoctorId]);
 
   // Dynamic Page Title
   const getPageTitle = () => {
@@ -76,51 +96,16 @@ export default function DoctorDashboard() {
     return tabNames[activeTab] || 'Tổng quan';
   };
 
-  const handleCompleteExamination = (appointmentId, selectedServices = [], clinicalData = null) => {
-    // 1. Update local React state
+  const handleCompleteExamination = async (appointmentId, selectedServices = [], clinicalData = null) => {
+    // Note: Instead of mutating mock data, we would make an API call to update status
+    // and create tasks in Supabase.
+    
+    // 1. Update local React state optimistically
     setAppointments((prev) =>
-      prev.map((app) => (app.id === appointmentId ? { ...app, status: 'Đã khám', examRecord: clinicalData } : app))
+      prev?.map?.(
+        (app) => (app.id === appointmentId ? { ...app, status: 'Đã khám', examRecord: clinicalData } : app)
+      )
     );
-
-    // 2. Update global mock data to persist across tab switches
-    const foundApt = mockAppointments?.find((a) => a.id === appointmentId);
-    if (foundApt) {
-      foundApt.status = 'Đã khám';
-      foundApt.examRecord = clinicalData;
-    }
-
-    // 3. Create assigned tasks in mockAssignedTasks
-    if (selectedServices.length > 0 && foundApt) {
-      const patient = mockPatients?.find((p) => p.id === foundApt.patientId);
-      selectedServices.forEach((serviceId, index) => {
-        let procedureType = '';
-        if (serviceId === 'soi-da') procedureType = 'Soi da cắt lớp AI';
-        else if (serviceId === 'xet-nghiem-mau') procedureType = 'Xét nghiệm máu (Gan/Thận)';
-        else if (serviceId === 'lay-nhan-mun') procedureType = 'Lấy nhân mụn chuẩn y khoa';
-        else if (serviceId === 'dien-di') procedureType = 'Điện di Vitamin C';
-        else if (serviceId === 'peel-da') procedureType = 'Peel da điều trị mụn';
-        else if (serviceId === 'chieu-den') procedureType = 'Chiếu đèn sinh học Omega Light';
-        else procedureType = serviceId;
-
-
-        const newTask = {
-          id: `TASK-${Date.now()}-${index}`,
-          patientId: foundApt.patientId || 'pat-unknown',
-          patientName: foundApt.patientName || 'Bệnh nhân',
-          age: patient?.dob ? new Date().getFullYear() - new Date(patient.dob).getFullYear() : 30,
-          gender: patient?.gender || 'Nữ',
-          procedureType,
-          assignedBy: foundApt.doctorName || 'Bác sĩ điều trị',
-          status: 'Chờ thực hiện',
-          requestTime: new Date().toISOString(),
-          notes: 'Chỉ định từ phòng khám ảo (Khám lâm sàng)',
-          procedureDetails: {
-            type: serviceId === 'soi-da' ? 'Imaging' : 'LabTest',
-          },
-        };
-        mockAssignedTasks.push(newTask);
-      });
-    }
 
     // 4. Close the Virtual Clinic
     setActiveAppointment(null);
@@ -143,10 +128,10 @@ export default function DoctorDashboard() {
     return () => window.removeEventListener('notifications-updated', handleUpdate);
   }, []);
 
-  const myNotifications = notifications.filter(
+  const myNotifications = notifications?.filter?.(
     (n) => n.recipientRole === 'DOCTOR' && (n.recipientId === doctorId || n.recipientId === 'all')
   );
-  const unreadCount = myNotifications.filter((n) => !n.isRead).length;
+  const unreadCount = myNotifications?.filter?.((n) => !n.isRead).length;
 
   const handleMarkAllRead = () => {
     NotificationModel.markAllAsRead('DOCTOR', doctorId);
@@ -210,13 +195,11 @@ export default function DoctorDashboard() {
           animation: float-reverse 20s ease-in-out infinite;
         }
       `}</style>
-
       {/* Pristine Medical Mesh Gradients */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
         <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-emerald-300/15 blur-[120px] bg-mesh-blob-1"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] rounded-full bg-sky-300/15 blur-[120px] bg-mesh-blob-2"></div>
       </div>
-
       {/* Compact Glass Sidebar — icon-only by default, expands on hover */}
       <motion.aside
         animate={{ width: isSidebarExpanded ? 256 : 80 }}
@@ -225,21 +208,14 @@ export default function DoctorDashboard() {
       >
         <div className="flex flex-col gap-6">
           {/* Logo & Toggle Header */}
-          <div className={`flex items-center ${isSidebarExpanded ? 'justify-between px-1' : 'justify-center'} min-h-[44px]`}>
+          <div className={`flex items-center ${isSidebarExpanded ? 'justify-between px-1' : 'justify-center'} min-h-[80px]`}>
             {isSidebarExpanded ? (
               <>
-                <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-black text-lg shadow-lg shadow-teal-500/25 flex-shrink-0">
-                    DS
-                  </div>
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-sm font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent whitespace-nowrap font-black animate-fadeIn">
-                      DermaSmart
-                    </span>
-                    <span className="text-[10px] text-slate-400 whitespace-nowrap animate-fadeIn">
-                      Doctor Portal
-                    </span>
-                  </div>
+                <div className="flex flex-col items-start gap-1">
+                  <img src={logo} alt="DermaSmart Logo" className="h-16 w-auto object-contain" />
+                  <span className="text-[10px] text-slate-400 whitespace-nowrap animate-fadeIn">
+                    Doctor Portal
+                  </span>
                 </div>
                 <button
                   onClick={() => setIsSidebarExpanded(false)}
@@ -306,7 +282,6 @@ export default function DoctorDashboard() {
           </div>
         </div>
       </motion.aside>
-
       {/* Main Content Area — margin adapts to compact sidebar */}
       <div
         ref={scrollRef}
@@ -357,7 +332,7 @@ export default function DoctorDashboard() {
                     onChange={(e) => setCurrentDoctorId(e.target.value)}
                     className="font-bold text-sm text-slate-900 bg-white/80 border border-slate-200 rounded-xl px-3 py-1.5 outline-none focus:border-teal-500 transition-all text-right shadow-sm cursor-pointer"
                   >
-                    {doctors.map(d => (
+                    {doctorsList?.map?.(d => (
                       <option key={d.id} value={d.id}>{d.name}</option>
                     ))}
                   </select>
@@ -406,7 +381,7 @@ export default function DoctorDashboard() {
                         {myNotifications.length === 0 ? (
                           <p className="text-xs text-slate-400 italic text-center py-4">Chưa có thông báo nào.</p>
                         ) : (
-                          myNotifications.map((notif) => (
+                          myNotifications?.map?.((notif) => (
                             <div
                               key={notif.id}
                               onClick={() => {
@@ -527,7 +502,6 @@ export default function DoctorDashboard() {
           )}
         </main>
       </div>
-
       <AnimatePresence>
         {showToast && (
           <motion.div

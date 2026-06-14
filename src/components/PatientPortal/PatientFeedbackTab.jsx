@@ -15,7 +15,7 @@ function StarDisplay({ value, size = 'md' }) {
   const sz = { lg: 'w-6 h-6', md: 'w-5 h-5', sm: 'w-4 h-4', xs: 'w-3.5 h-3.5' }[size];
   return (
     <span className="flex items-center gap-0.5">
-      {[1,2,3,4,5].map(s => (
+      {[1,2,3,4,5]?.map?.(s => (
         <Star key={s} className={`${sz} ${s <= value ? 'fill-amber-400 text-amber-400' : 'fill-slate-200 text-slate-200'}`} />
       ))}
     </span>
@@ -51,7 +51,6 @@ function MyFeedbackCard({ fb }) {
     >
       {/* Header stripe */}
       <div className="h-1 bg-gradient-to-r from-amber-400 to-orange-400" />
-
       <div className="p-5">
         {/* Top row */}
         <div className="flex items-start justify-between gap-3 mb-3">
@@ -84,7 +83,7 @@ function MyFeedbackCard({ fb }) {
         {/* Images */}
         {fb.images?.length > 0 && (
           <div className="flex gap-2 mb-3">
-            {fb.images.map((img, i) => (
+            {fb.images?.map?.((img, i) => (
               <img key={i} src={img} alt="" className="w-14 h-14 rounded-xl object-cover border border-slate-200" />
             ))}
           </div>
@@ -118,7 +117,7 @@ function MyFeedbackCard({ fb }) {
               className="overflow-hidden mt-3"
             >
               <div className="grid grid-cols-2 gap-x-6 gap-y-2 bg-slate-50 border border-slate-100 rounded-xl p-3">
-                {CRITERIA_META.map(({ key, label, icon: Icon }) => {
+                {CRITERIA_META?.map?.(({ key, label, icon: Icon }) => {
                   const val = fb.criteriaRatings?.[key] || 0;
                   if (!val) return null;
                   return (
@@ -127,7 +126,7 @@ function MyFeedbackCard({ fb }) {
                         <Icon className="w-3 h-3" /> {label}
                       </span>
                       <div className="flex items-center gap-0.5">
-                        {[1,2,3,4,5].map(s => (
+                        {[1,2,3,4,5]?.map?.(s => (
                           <Star key={s} className={`w-3 h-3 ${s <= val ? 'fill-amber-400 text-amber-400' : 'fill-slate-200 text-slate-200'}`} />
                         ))}
                       </div>
@@ -180,9 +179,9 @@ export default function PatientFeedbackTab({ user }) {
   const [writeTarget, setWriteTarget] = useState(null);
 
   // Completed appointments that don't have feedback yet
-  const completedApts = appointments.filter(a => a.status === 'Đã khám' || a.status === 'Reviewed');
-  const pendingApts = completedApts.filter(a => !getFeedbackByAppointment(a.id));
-  const myFeedbacks = feedbacks.filter(f => f.patientId === patientId);
+  const completedApts = appointments?.filter?.(a => a.status === 'Đã khám' || a.status === 'Reviewed');
+  const pendingApts = completedApts?.filter?.(a => !getFeedbackByAppointment(a.id));
+  const myFeedbacks = feedbacks?.filter?.(f => f.patientId === patientId);
 
   const stats = getStats(myFeedbacks);
 
@@ -198,7 +197,6 @@ export default function PatientFeedbackTab({ user }) {
           <p className="text-xs text-slate-400 mt-0.5">Quản lý tất cả đánh giá bạn đã gửi</p>
         </div>
       </div>
-
       {/* Summary stats */}
       {completedApts.length > 0 && (
         <div className="grid grid-cols-3 gap-3">
@@ -217,7 +215,6 @@ export default function PatientFeedbackTab({ user }) {
           </div>
         </div>
       )}
-
       {/* Lịch sử khám bệnh (Examination History) */}
       <div>
         <h4 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
@@ -233,7 +230,7 @@ export default function PatientFeedbackTab({ user }) {
           </div>
         ) : (
           <div className="space-y-4">
-            {completedApts.map(apt => {
+            {completedApts?.map?.(apt => {
               const fb = getFeedbackByAppointment(apt.id);
               return (
                 <div key={apt.id} className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden hover:shadow-md transition-all">
@@ -280,7 +277,7 @@ export default function PatientFeedbackTab({ user }) {
                         
                         {fb.images?.length > 0 && (
                           <div className="flex gap-2">
-                            {fb.images.map((img, i) => (
+                            {fb.images?.map?.((img, i) => (
                               <img key={i} src={img} alt="" className="w-14 h-14 rounded-xl object-cover border border-slate-200" />
                             ))}
                           </div>
@@ -316,7 +313,6 @@ export default function PatientFeedbackTab({ user }) {
           </div>
         )}
       </div>
-
       {/* Write feedback modal */}
       <AnimatePresence>
         {writeTarget && (
