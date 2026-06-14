@@ -1,6 +1,5 @@
 import React from 'react';
 import { Brain, ScanFace } from 'lucide-react';
-import { mockAISkinResults } from '../../../../mockData';
 
 export default function AISkinAnalysis({ patientId }) {
   const fallbackResult = {
@@ -21,7 +20,7 @@ export default function AISkinAnalysis({ patientId }) {
   };
 
   // Try to find the latest AI result for the patient
-  const aiResult = mockAISkinResults?.find(r => r.patientId === patientId);
+  const aiResult = ([])?.find(r => r.patientId === patientId);
 
   if (!aiResult) {
     return (
@@ -43,7 +42,6 @@ export default function AISkinAnalysis({ patientId }) {
           Điểm tổng thể: {aiResult?.overallScore}/100
         </span>
       </div>
-
       <div className="flex flex-col gap-6">
         {/* Image Viewer with Overlay */}
         <div className="relative rounded-2xl overflow-hidden bg-slate-900 aspect-square sm:aspect-video flex items-center justify-center border border-slate-200/40 shadow-inner">
@@ -80,7 +78,7 @@ export default function AISkinAnalysis({ patientId }) {
 
         {/* Metrics */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {Object.entries(aiResult?.metrics || {}).map(([key, data]) => {
+          {Object.entries(aiResult?.metrics || {})?.map?.(([key, data]) => {
             // Determine colors based on score
             let colorClass = "bg-teal-500";
             let textClass = "text-teal-700";

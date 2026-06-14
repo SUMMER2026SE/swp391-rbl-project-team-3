@@ -41,7 +41,7 @@ export const NotificationModel = {
 
   markAllAsRead(recipientRole, recipientId = null) {
     const list = this.getAll();
-    const updated = list.map(n => {
+    const updated = list?.map?.(n => {
       const matchRole = n.recipientRole === recipientRole;
       const matchId = !recipientId || n.recipientId === recipientId || n.recipientId === 'all';
       if (matchRole && matchId) {

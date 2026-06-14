@@ -8,27 +8,10 @@ const ROLE_DASHBOARD_MAP = {
   DOCTOR: '/dashboard/doctor',
   RECEPTIONIST: '/dashboard/receptionist',
   TECHNICIAN: '/dashboard/technician',
-  PATIENT: '/',
-};
-
-const ROLE_DISPLAY_NAMES = {
-  ADMIN: 'Quản trị viên',
-  DOCTOR: 'Bác sĩ',
-  RECEPTIONIST: 'Lễ tân',
-  TECHNICIAN: 'Kỹ thuật viên',
-  PATIENT: 'Bệnh nhân',
+  PATIENT: '/profile',
 };
 
 export function AuthProvider({ children }) {
-  const [mockUser, setMockUser] = useState(() => {
-    try {
-      const stored = sessionStorage.getItem('dermasmart_mock_user');
-      return stored ? JSON.parse(stored) : null;
-    } catch {
-      return null;
-    }
-  });
-
   const [session, setSession] = useState(null);
 
   useEffect(() => {
@@ -43,56 +26,20 @@ export function AuthProvider({ children }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Mock user profiles per role — dùng để demo đúng dữ liệu mẫu
-  const MOCK_PROFILES = {
-    PATIENT: {
-      id: 'pat-01',
-      name: 'Lê Minh Khôi',
-      phone: '0901 234 567',
-      email: 'leminhkhoi@gmail.com',
-      gender: 'Nam',
-      dob: '1995-03-15',
-      address: '45 Nguyễn Huệ, Quận 1, TP. Hồ Chí Minh',
-      avatar: 'https://i.pravatar.cc/150?u=pat01',
-    },
-    DOCTOR: {
-      id: 'doc-01',
-      name: 'BS. CKII. Trần Văn A',
-    },
-    RECEPTIONIST: {
-      id: 'staff-01',
-      name: 'Lễ tân Hoàng Anh',
-    },
-    TECHNICIAN: {
-      id: 'tech-01',
-      name: 'KTV. Lê Thị C',
-    },
-    ADMIN: {
-      id: 'admin-01',
-      name: 'Quản trị viên',
-    },
-  };
-
-  const login = (role, customUserData = null) => {
-    const profile = MOCK_PROFILES[role] || {};
-    const newUser = customUserData || {
-      id: profile.id || `mock-${role.toLowerCase()}-${Date.now()}`,
-      name: profile.name || ROLE_DISPLAY_NAMES[role] || role,
-      role,
-      ...profile,
-    };
-    setMockUser(newUser);
-    sessionStorage.setItem('dermasmart_mock_user', JSON.stringify(newUser));
-    return ROLE_DASHBOARD_MAP[role] || '/';
+  const login = () => {
+    console.warn("login() bypass removed. Please use real Supabase auth.");
+    return '/';
   };
 
   const logout = async () => {
-    setMockUser(null);
-    sessionStorage.removeItem('dermasmart_mock_user');
     try {
       await AuthModel.signOut();
     } catch (e) {
       console.error('Logout error:', e);
+    } finally {
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.replace('/');
     }
   };
 
@@ -100,15 +47,11 @@ export function AuthProvider({ children }) {
     return ROLE_DASHBOARD_MAP[role] || '/';
   };
 
-  // Determine active user
   let activeUser = null;
   const isResettingPassword = sessionStorage.getItem('isResettingPassword') === 'true';
 
-  if (mockUser) {
-    activeUser = mockUser;
-  } else if (session?.user && !isResettingPassword) {
+  if (session?.user && !isResettingPassword) {
     const role = session.user.user_metadata?.role || 'PATIENT';
-
     activeUser = {
       id: session.user.id,
       name: session.user.user_metadata?.full_name || session.user.email,

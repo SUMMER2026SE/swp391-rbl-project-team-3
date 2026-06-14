@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AuthModel } from '../models/AuthModel';
-import { mockEmployees } from '../mockData';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
 
@@ -166,10 +165,14 @@ export function useAuthController(onSuccessCallback = null) {
       if (onSuccessCallback) onSuccessCallback();
     } catch (error) {
       console.error('Logout error:', error.message);
+    } finally {
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.replace('/');
     }
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e, fromPath = null) => {
     if (e) e.preventDefault();
     if (pendingRequestRef.current) return;
     pendingRequestRef.current = true;
@@ -265,7 +268,7 @@ export function useAuthController(onSuccessCallback = null) {
         // Check local mock employee database
         const savedEmployees = localStorage.getItem('admin-employees');
         const localEmployees = savedEmployees ? JSON.parse(savedEmployees) : [];
-        const allEmployees = [...localEmployees, ...mockEmployees];
+        const allEmployees = [...localEmployees, ...([])];
 
         const foundEmp = allEmployees.find(
           emp => emp.email?.toLowerCase().trim() === normalizedEmail
@@ -305,7 +308,13 @@ export function useAuthController(onSuccessCallback = null) {
           if (onSuccessCallback) {
             onSuccessCallback();
           } else {
-            navigate(path, { replace: true });
+            if (fromPath) {
+              navigate(fromPath, { replace: true });
+            } else if (engRole === 'PATIENT') {
+              navigate('/', { replace: true });
+            } else {
+              navigate(path, { replace: true });
+            }
           }
         } else {
           // Real Supabase Authentication
@@ -324,20 +333,29 @@ export function useAuthController(onSuccessCallback = null) {
               return;
             }
 
-            let finalRole = authResult.role;
-            switch (userData.role_id) {
-              case 1: finalRole = 'ADMIN'; break;
-              case 2: finalRole = 'DOCTOR'; break;
-              case 3: finalRole = 'TECHNICIAN'; break;
-              case 4: finalRole = 'RECEPTIONIST'; break;
-              case 5: finalRole = 'PATIENT'; break;
-            }
+            let finalRole = 'PATIENT';
+            const currentRole = Number(userData.role_id);
+            if (currentRole === 1) finalRole = 'ADMIN';
+            else if (currentRole === 2) finalRole = 'DOCTOR';
+            else if (currentRole === 3) finalRole = 'TECHNICIAN';
+            else if (currentRole === 4) finalRole = 'RECEPTIONIST';
+            else if (currentRole === 5) finalRole = 'PATIENT';
 
-            const path = login(finalRole);
+            login(finalRole);
+
             if (onSuccessCallback) {
               onSuccessCallback();
             } else {
-              navigate(path, { replace: true });
+              if (fromPath) {
+                navigate(fromPath, { replace: true });
+                return;
+              }
+              if (currentRole === 1) { navigate('/dashboard/admin'); return; }
+              if (currentRole === 2) { navigate('/dashboard/doctor'); return; }
+              if (currentRole === 3) { navigate('/dashboard/technician'); return; }
+              if (currentRole === 4) { navigate('/dashboard/receptionist'); return; }
+              if (currentRole === 5) { navigate('/'); return; }
+              navigate('/'); // Default fallback
             }
           }
         }

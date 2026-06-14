@@ -11,7 +11,7 @@ function StarDisplay({ value, size = 'sm' }) {
   const sz = { lg: 'w-6 h-6', md: 'w-4 h-4', sm: 'w-3.5 h-3.5', xs: 'w-3 h-3' }[size] || 'w-3.5 h-3.5';
   return (
     <span className="flex items-center gap-0.5">
-      {[1,2,3,4,5].map(s => (
+      {[1,2,3,4,5]?.map?.(s => (
         <Star key={s} className={`${sz} ${s <= value ? 'fill-amber-400 text-amber-400' : 'fill-slate-200 text-slate-200'}`} />
       ))}
     </span>
@@ -29,7 +29,7 @@ const CRITERIA_META = [
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function DoctorFeedbackView({ doctorId }) {
   const { feedbacks, getStats } = useFeedbackController({ doctorId });
-  const published = feedbacks.filter(f => f.status === 'published');
+  const published = feedbacks?.filter?.(f => f.status === 'published');
   const stats = getStats(published);
   const [showAll, setShowAll] = useState(false);
   const displayed = showAll ? published : published.slice(0, 5);
@@ -45,7 +45,6 @@ export default function DoctorFeedbackView({ doctorId }) {
         <h2 className="text-xl font-bold text-slate-900">Đánh giá của bệnh nhân</h2>
         <p className="text-sm text-slate-500 mt-1">Xem phản hồi từ bệnh nhân về chất lượng khám chữa bệnh</p>
       </div>
-
       {/* Overall Score + Distribution */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Big score */}
@@ -62,7 +61,7 @@ export default function DoctorFeedbackView({ doctorId }) {
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
           <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Phân bổ sao</p>
           <div className="space-y-2">
-            {[5,4,3,2,1].map(star => {
+            {[5,4,3,2,1]?.map?.(star => {
               const count = stats.distribution[star] || 0;
               const pct = stats.total > 0 ? (count / stats.total) * 100 : 0;
               return (
@@ -80,14 +79,13 @@ export default function DoctorFeedbackView({ doctorId }) {
           </div>
         </div>
       </div>
-
       {/* Criteria Averages */}
       <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
         <p className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
           <TrendingUp className="w-4 h-4 text-teal-500" /> Điểm trung bình theo tiêu chí
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {CRITERIA_META.map(({ key, label, icon: Icon, color }) => {
+          {CRITERIA_META?.map?.(({ key, label, icon: Icon, color }) => {
             const val = stats.criteria[key] ? Math.round(stats.criteria[key] * 10) / 10 : 0;
             return (
               <div key={key} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
@@ -109,7 +107,6 @@ export default function DoctorFeedbackView({ doctorId }) {
           })}
         </div>
       </div>
-
       {/* Reviews list */}
       <div>
         <div className="flex items-center justify-between mb-4">
@@ -120,7 +117,7 @@ export default function DoctorFeedbackView({ doctorId }) {
 
         <div className="space-y-4">
           {displayed.length > 0 ? (
-            displayed.map((fb, i) => (
+            displayed?.map?.((fb, i) => (
               <motion.div key={fb.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
                 className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
                 <div className="flex items-start justify-between gap-3 mb-3">
@@ -141,7 +138,7 @@ export default function DoctorFeedbackView({ doctorId }) {
                 {/* Images */}
                 {fb.images?.length > 0 && (
                   <div className="flex gap-2 mt-3">
-                    {fb.images.map((img, j) => (
+                    {fb.images?.map?.((img, j) => (
                       <img key={j} src={img} alt="" className="w-14 h-14 rounded-xl object-cover border border-slate-200" />
                     ))}
                   </div>
@@ -157,7 +154,7 @@ export default function DoctorFeedbackView({ doctorId }) {
 
                 {/* Criteria summary */}
                 <div className="mt-3 flex flex-wrap gap-1.5">
-                  {CRITERIA_META.map(({ key, label }) => {
+                  {CRITERIA_META?.map?.(({ key, label }) => {
                     const v = fb.criteriaRatings?.[key] || 0;
                     if (!v) return null;
                     return (

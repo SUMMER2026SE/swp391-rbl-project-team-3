@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useAuthController } from '../controllers/useAuthController';
 import '../index.css';
+import logo from '../assets/logo.png';
 
 function AuthModal({ isOpen, onClose, defaultIsRegistering = false }) {
   const {
@@ -83,7 +84,7 @@ function AuthModal({ isOpen, onClose, defaultIsRegistering = false }) {
         </button>
 
         <div className="login-header" style={{ marginBottom: '2rem', textAlign: 'center' }}>
-          <img alt="DermaSmart Logo" src="https://lh3.googleusercontent.com/aida/ADBb0uiddj6CdMnqYQ2NQ2gNS__JGsBgPQWx2cgzMSUjV-6mD0NUuXFqjDCciD2rRfG3yqpqUjf6On86BpH61ioEIsnVMniDu-5fwQXKsOXQoruC848chIGCD7shN3ZsBjRvT53vJrLxxTuEAdPuXpXKSNO6j6a71dIrnJB8tr2RDReTT12L_lXF_dcmvbMwcKN8ZxtZXya1gRZ0XvNcjzSEqMuR6j0onUQdFNslqPU3afB12kawSdIxa55oCB5k" style={{ height: '40px', width: 'auto', objectFit: 'contain', marginBottom: '1.5rem' }} />
+          <img alt="DermaSmart Logo" src={logo} style={{ height: '80px', width: 'auto', objectFit: 'contain', marginBottom: '1.5rem' }} />
           <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#ffffff', marginBottom: '0.5rem', letterSpacing: '-0.025em' }}>
             {isForgotPass ? (isOtpVerified ? 'Đặt lại mật khẩu mới' : (isVerifyingOtp ? 'Xác thực mã OTP' : 'Khôi phục mật khẩu')) : (isRegistering ? 'Tạo tài khoản mới' : 'Đăng nhập')}
           </h2>

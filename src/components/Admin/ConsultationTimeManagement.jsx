@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Clock, Plus, Save, Search } from 'lucide-react';
-import { doctors } from '../../mockData';
+import { useDoctors } from '../../hooks/useDoctors';
 
 export default function ConsultationTimeManagement() {
-    const doctorOptions = doctors?.map((doctor) => doctor.name) || ['BS. Nguyễn Văn A'];
+    const { doctors } = useDoctors();
+    const doctorOptions = doctors.length > 0 ? doctors.map((doctor) => doctor.name) : ['BS. Nguyễn Văn A'];
 
     const [slots, setSlots] = useState(() => {
         const saved = localStorage.getItem('admin-consultation-slots');
@@ -35,14 +36,13 @@ export default function ConsultationTimeManagement() {
     };
 
     const updateSlot = (id, field, value) => {
-        const nextSlots = slots.map((slot) => slot.id === id ? { ...slot, [field]: value } : slot);
+        const nextSlots = slots?.map?.((slot) => slot.id === id ? { ...slot, [field]: value } : slot);
         saveSlots(nextSlots);
     };
 
-    const filteredSlots = slots.filter((slot) =>
+    const filteredSlots = slots?.filter?.((slot) =>
         slot.doctorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        slot.date.includes(searchTerm)
-    );
+        slot.date.includes(searchTerm));
 
     return (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
@@ -50,7 +50,6 @@ export default function ConsultationTimeManagement() {
                 <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">Khung giờ khám</h2>
                 <p className="text-slate-500 text-sm font-medium mt-1">Tạo và cập nhật consultation time slot cho bệnh nhân đặt lịch.</p>
             </div>
-
             <div className="backdrop-blur-xl bg-white/75 border border-white/80 shadow-[0_15px_40px_rgba(0,0,0,0.05)] rounded-[2rem] p-8">
                 <div className="flex items-center gap-2 mb-6 pb-4 border-b border-slate-200/50"><Plus className="w-5 h-5 text-indigo-600" /><h3 className="font-extrabold text-lg text-slate-800">Tạo khung giờ khám</h3></div>
                 <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
@@ -62,7 +61,6 @@ export default function ConsultationTimeManagement() {
                     <button onClick={createSlot} className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-sky-500 text-white rounded-2xl font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-200"><Save className="w-4 h-4" /> Tạo slot</button>
                 </div>
             </div>
-
             <div className="backdrop-blur-xl bg-white/75 border border-white/80 shadow-[0_15px_40px_rgba(0,0,0,0.05)] rounded-[2rem] overflow-hidden">
                 <div className="p-6 border-b border-slate-200/50 flex flex-col md:flex-row justify-between gap-4 bg-white/40">
                     <div className="flex items-center gap-2"><Clock className="w-5 h-5 text-indigo-600" /><h3 className="font-extrabold text-lg text-slate-800">Danh sách slot</h3></div>
@@ -73,7 +71,7 @@ export default function ConsultationTimeManagement() {
                     <table className="w-full text-left">
                         <thead className="bg-slate-100/50"><tr><th className="px-8 py-5 text-xs font-bold text-slate-500 uppercase">Bác sĩ</th><th className="px-8 py-5 text-xs font-bold text-slate-500 uppercase">Ngày</th><th className="px-8 py-5 text-xs font-bold text-slate-500 uppercase">Giờ</th><th className="px-8 py-5 text-xs font-bold text-slate-500 uppercase">Trạng thái</th></tr></thead>
                         <tbody className="divide-y divide-slate-100">
-                        {filteredSlots.map((slot) => (
+                        {filteredSlots?.map?.((slot) => (
                             <tr key={slot.id} className="hover:bg-slate-50/80">
                                 <td className="px-8 py-5"><Select value={slot.doctorName} onChange={(v) => updateSlot(slot.id, 'doctorName', v)} options={doctorOptions} /></td>
                                 <td className="px-8 py-5"><Input type="date" value={slot.date} onChange={(v) => updateSlot(slot.id, 'date', v)} /></td>
@@ -93,5 +91,5 @@ function Input({ value, onChange, type = 'text' }) {
     return <input type={type} value={value} onChange={(e) => onChange(e.target.value)} className="w-full bg-white border border-slate-200 rounded-2xl py-3 px-4 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400" />;
 }
 function Select({ value, onChange, options }) {
-    return <select value={value} onChange={(e) => onChange(e.target.value)} className="w-full bg-white border border-slate-200 rounded-2xl py-3 px-4 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400">{options.map((option) => <option key={option}>{option}</option>)}</select>;
+    return <select value={value} onChange={(e) => onChange(e.target.value)} className="w-full bg-white border border-slate-200 rounded-2xl py-3 px-4 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400">{options?.map?.((option) => <option key={option}>{option}</option>)}</select>;
 }

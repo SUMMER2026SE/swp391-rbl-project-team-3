@@ -57,13 +57,12 @@ export default function LiveChatDrawer({ patient, isOpen, onClose, messages, onS
   // Filter messages related to this patient
   // Show messages where senderId === patient.id OR receiverId === patient.id
   // Also fallback: if the database has simple mock messages, we associate them with the active patient if patientId is not specified
-  const chatHistory = (messages || []).filter(msg => 
+  const chatHistory = (messages || [])?.filter?.(msg => 
     msg.patientId === patient?.id || 
     msg.senderId === patient?.id || 
     msg.receiverId === patient?.id ||
     // For pat-01, show all mock messages as it's the primary demo user
-    (patient?.id === 'pat-01' && (msg.senderId === 'bot' || msg.senderId === 'staff-01' || msg.senderId === 'pat-01'))
-  );
+    (patient?.id === 'pat-01' && (msg.senderId === 'bot' || msg.senderId === 'staff-01' || msg.senderId === 'pat-01')));
 
   return (
     <AnimatePresence>
@@ -209,7 +208,7 @@ export default function LiveChatDrawer({ patient, isOpen, onClose, messages, onS
                 </div>
               )}
 
-              {(chatHistory || []).map((msg) => {
+              {(chatHistory || [])?.map?.((msg) => {
                 const isPatient = msg.senderRole === 'PATIENT';
                 const isAI = msg.senderRole === 'BOT';
                 
@@ -256,7 +255,7 @@ export default function LiveChatDrawer({ patient, isOpen, onClose, messages, onS
 
             {/* Quick Canned Responses Drawer Row */}
             <div className="px-4 py-2 border-t border-slate-100 bg-white shrink-0 flex items-center gap-1.5 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-              {cannedTemplates.map((template, index) => (
+              {cannedTemplates?.map?.((template, index) => (
                 <button
                   key={index}
                   onClick={() => setInputValue(template)}

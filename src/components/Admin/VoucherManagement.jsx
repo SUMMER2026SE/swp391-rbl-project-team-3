@@ -7,7 +7,6 @@ import {
   ChevronDown, Filter,
 } from 'lucide-react';
 import { useVoucherController } from '../../controllers/useVoucherController';
-import { mockServices } from '../../mockData';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const STATUS_STYLES = {
@@ -114,7 +113,7 @@ function VoucherFormModal({ initial, onClose, onSave }) {
     setForm(p => ({
       ...p,
       applicableServices: p.applicableServices.includes(svcId)
-        ? p.applicableServices.filter(s => s !== svcId)
+        ? p.applicableServices?.filter?.(s => s !== svcId)
         : [...p.applicableServices, svcId],
     }));
   };
@@ -207,7 +206,7 @@ function VoucherFormModal({ initial, onClose, onSave }) {
             <div>
               <label className={labelCls}>Loại giảm giá <span className="text-rose-400">*</span></label>
               <div className="flex gap-2">
-                {['Percentage', 'Fixed'].map(t => (
+                {['Percentage', 'Fixed']?.map?.(t => (
                   <button
                     key={t} type="button"
                     onClick={() => set('discountType', t)}
@@ -304,7 +303,7 @@ function VoucherFormModal({ initial, onClose, onSave }) {
                 { tag: 'Kỷ niệm thành lập',             emoji: '🎂', label: 'Kỷ niệm thành lập' },
                 { tag: 'Black Friday',                  emoji: '🖤', label: 'Black Friday' },
                 { tag: 'Mùa hè',                        emoji: '☀️', label: 'Mùa hè' },
-              ].map(opt => {
+              ]?.map?.(opt => {
                 const isSelected = (form.eventTag || null) === opt.tag;
                 return (
                   <button
@@ -333,7 +332,7 @@ function VoucherFormModal({ initial, onClose, onSave }) {
                 {form.applicableServices.length === 0 ? '(Tất cả dịch vụ)' : `(${form.applicableServices.length} dịch vụ)`}
               </span>
             </label>            <div className="grid grid-cols-2 gap-2">
-              {mockServices.map(svc => {
+              {([])?.map?.(svc => {
                 const checked = form.applicableServices.includes(svc.id);
                 return (
                   <button
@@ -441,7 +440,7 @@ function VoucherCard({ v, onEdit, onToggle, onDelete, onCopy, idx }) {
   const isActive = displayStatus === 'Hoạt động';
   const isExpiredOrFull = displayStatus === 'Hết hạn' || displayStatus === 'Hết lượt';
   const serviceNames = v.applicableServices.length > 0
-    ? v.applicableServices.map(id => mockServices.find(s => s.id === id)?.name || id).join(', ')
+    ? v.applicableServices?.map?.(id => ([]).find(s => s.id === id)?.name || id).join(', ')
     : 'Tất cả dịch vụ';
 
   const eventStyle = v.eventTag ? (EVENT_STYLES[v.eventTag] || EVENT_STYLES['Mùa hè']) : null;
@@ -625,7 +624,7 @@ export default function VoucherManagement() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  const filtered = vouchers.filter(v => {
+  const filtered = vouchers?.filter?.(v => {
     const q = search.toLowerCase();
     const display = computeVoucherStatus(v);
     const matchSearch = !q || v.code.toLowerCase().includes(q) || v.name.toLowerCase().includes(q) || (v.eventTag || '').toLowerCase().includes(q);
@@ -635,8 +634,8 @@ export default function VoucherManagement() {
   });
 
   // Group: event vouchers on top
-  const eventVouchers  = filtered.filter(v => !!v.eventTag);
-  const normalVouchers = filtered.filter(v => !v.eventTag);
+  const eventVouchers  = filtered?.filter?.(v => !!v.eventTag);
+  const normalVouchers = filtered?.filter?.(v => !v.eventTag);
 
   const handleSave = (form) => {
     if (editTarget) {
@@ -686,7 +685,6 @@ export default function VoucherManagement() {
           <Plus className="w-4 h-4" /> Tạo voucher mới
         </button>
       </div>
-
       {/* Stats row */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {[
@@ -695,7 +693,7 @@ export default function VoucherManagement() {
           { label: 'Tạm dừng',       value: stats.paused,     color: 'amber',   icon: Clock },
           { label: 'Hết hạn',        value: stats.expired,    color: 'rose',    icon: AlertCircle },
           { label: 'Tổng lượt dùng', value: stats.totalUsage, color: 'sky',     icon: TrendingUp },
-        ].map((s, i) => (
+        ]?.map?.((s, i) => (
           <motion.div
             key={s.label}
             initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
@@ -712,7 +710,6 @@ export default function VoucherManagement() {
           </motion.div>
         ))}
       </div>
-
       {/* Filter bar */}
       <div className="flex flex-wrap gap-3 items-center bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
         <div className="relative flex-1 min-w-52">
@@ -730,7 +727,7 @@ export default function VoucherManagement() {
             { key: 'all',    label: 'Tất cả' },
             { key: 'event',  label: '🎉 Sự kiện' },
             { key: 'normal', label: '🏷️ Thường' },
-          ].map(t => (
+          ]?.map?.(t => (
             <button
               key={t.key}
               onClick={() => setFilterType(t.key)}
@@ -747,7 +744,7 @@ export default function VoucherManagement() {
 
         {/* Status filter */}
         <div className="flex items-center gap-1.5 flex-wrap">
-          {['all', 'Hoạt động', 'Tạm dừng', 'Hết hạn', 'Hết lượt'].map(s => (
+          {['all', 'Hoạt động', 'Tạm dừng', 'Hết hạn', 'Hết lượt']?.map?.(s => (
             <button
               key={s}
               onClick={() => setFilterStatus(s)}
@@ -766,7 +763,6 @@ export default function VoucherManagement() {
           {filtered.length}/{vouchers.length} voucher
         </span>
       </div>
-
       {/* ── Event Vouchers section ── */}
       {eventVouchers.length > 0 && (
         <div>
@@ -779,7 +775,7 @@ export default function VoucherManagement() {
             <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-            {eventVouchers.map((v, idx) => (
+            {eventVouchers?.map?.((v, idx) => (
               <VoucherCard
                 key={v.id} v={v} idx={idx}
                 onEdit={(v) => { setEditTarget(v); setShowForm(true); }}
@@ -791,7 +787,6 @@ export default function VoucherManagement() {
           </div>
         </div>
       )}
-
       {/* ── Regular Vouchers section ── */}
       {normalVouchers.length > 0 && (
         <div>
@@ -806,7 +801,7 @@ export default function VoucherManagement() {
             </div>
           )}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-            {normalVouchers.map((v, idx) => (
+            {normalVouchers?.map?.((v, idx) => (
               <VoucherCard
                 key={v.id} v={v} idx={idx}
                 onEdit={(v) => { setEditTarget(v); setShowForm(true); }}
@@ -818,7 +813,6 @@ export default function VoucherManagement() {
           </div>
         </div>
       )}
-
       {/* Empty state */}
       {filtered.length === 0 && (
         <div className="text-center py-16 bg-white border border-dashed border-slate-200 rounded-2xl">
@@ -833,7 +827,6 @@ export default function VoucherManagement() {
           </button>
         </div>
       )}
-
       {/* Modals */}
       <AnimatePresence>
         {(showForm || editTarget) && (
@@ -844,7 +837,6 @@ export default function VoucherManagement() {
           />
         )}
       </AnimatePresence>
-
       <AnimatePresence>
         {deleteTarget && (
           <DeleteModal
@@ -855,7 +847,6 @@ export default function VoucherManagement() {
           />
         )}
       </AnimatePresence>
-
       <AnimatePresence>
         {toast && (
           <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />

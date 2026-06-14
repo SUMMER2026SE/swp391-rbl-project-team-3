@@ -142,7 +142,6 @@ function OverviewTab({ record }) {
           </div>
         </div>
       </Section>
-
       {/* Thông tin khám bệnh */}
       <Section icon={<Stethoscope className="w-4 h-4" />} title="Thông tin khám bệnh" accent="emerald">
         <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-0 divide-y divide-slate-100">
@@ -160,14 +159,12 @@ function OverviewTab({ record }) {
           </div>
         </div>
       </Section>
-
       {/* Triệu chứng */}
       <Section icon={<AlertCircle className="w-4 h-4" />} title="Triệu chứng lâm sàng" accent="amber">
         <div className="bg-white border border-slate-200 rounded-2xl p-4">
           <p className="text-sm text-slate-700 leading-relaxed">{record.symptoms || '—'}</p>
         </div>
       </Section>
-
       {/* Sinh hiệu */}
       {record.vitalSigns && (
         <Section icon={<Activity className="w-4 h-4" />} title="Sinh hiệu" accent="rose">
@@ -180,7 +177,7 @@ function OverviewTab({ record }) {
                 { label: 'Nhịp tim', value: record.vitalSigns.pulse },
                 { label: 'Nhiệt độ', value: record.vitalSigns.temperature },
                 { label: 'SpO2', value: record.vitalSigns.spo2 },
-              ].map((v) => (
+              ]?.map?.((v) => (
                 <div key={v.label} className="bg-slate-50 rounded-xl p-3 text-center border border-slate-100">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{v.label}</p>
                   <p className="text-sm font-bold text-slate-800 mt-1">{v.value || '—'}</p>
@@ -190,7 +187,6 @@ function OverviewTab({ record }) {
           </div>
         </Section>
       )}
-
       {/* Chẩn đoán */}
       <Section icon={<ClipboardList className="w-4 h-4" />} title="Chẩn đoán" accent="violet">
         <div className="bg-white border border-slate-200 rounded-2xl p-4">
@@ -211,7 +207,6 @@ function OverviewTab({ record }) {
           )}
         </div>
       </Section>
-
       {/* Ghi chú */}
       {(record.notes || record.technicianNotes) && (
         <Section icon={<MessageSquare className="w-4 h-4" />} title="Ghi chú" accent="teal">
@@ -291,11 +286,10 @@ function AIAnalysisTab({ record }) {
           <p className="text-xs text-slate-500 mt-1">Ngày phân tích: {ai.analysisDate} • {ai.analyzedBy}</p>
         </div>
       </div>
-
       {/* Metrics */}
       <Section icon={<Brain className="w-4 h-4" />} title="Chỉ số da chi tiết" accent="violet">
         <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-4">
-          {ai.metrics.map((m) => (
+          {ai.metrics?.map?.((m) => (
             <div key={m.label}>
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-2">
@@ -319,7 +313,6 @@ function AIAnalysisTab({ record }) {
           ))}
         </div>
       </Section>
-
       {/* Recommendation */}
       {ai.recommendation && (
         <div className="bg-violet-50 border border-violet-200 rounded-2xl p-4">
@@ -375,7 +368,7 @@ function TreatmentTab({ record }) {
             {/* Steps */}
             <div className="space-y-2.5 mb-4">
               <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Các bước thực hiện</p>
-              {plan.steps.map((s) => (
+              {plan.steps?.map?.((s) => (
                 <div key={s.step} className="flex items-start gap-3">
                   <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
                     {s.step}
@@ -392,7 +385,7 @@ function TreatmentTab({ record }) {
                   <AlertCircle className="w-3.5 h-3.5" /> Lưu ý & Hạn chế
                 </p>
                 <ul className="space-y-1">
-                  {plan.restrictions.map((r, i) => (
+                  {plan.restrictions?.map?.((r, i) => (
                     <li key={i} className="text-xs text-amber-800 flex items-start gap-1.5">
                       <span className="text-amber-500 mt-0.5 shrink-0">•</span> {r}
                     </li>
@@ -413,12 +406,11 @@ function TreatmentTab({ record }) {
           </div>
         </Section>
       )}
-
       {/* Lịch sử thủ thuật */}
       {history.length > 0 && (
         <Section icon={<Wrench className="w-4 h-4" />} title="Thủ thuật đã thực hiện" accent="sky">
           <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3">
-            {history.map((h, i) => (
+            {history?.map?.((h, i) => (
               <div key={h.id} className={`flex gap-3 ${i < history.length - 1 ? 'pb-3 border-b border-slate-100' : ''}`}>
                 <div className="w-8 h-8 rounded-xl bg-sky-50 border border-sky-100 text-sky-600 flex items-center justify-center shrink-0">
                   <Wrench className="w-3.5 h-3.5" />
@@ -469,7 +461,7 @@ function PrescriptionTab({ record }) {
 
   return (
     <div className="space-y-4">
-      {prescriptions.map((p, i) => (
+      {prescriptions?.map?.((p, i) => (
         <motion.div
           key={i}
           initial={{ opacity: 0, y: 10 }}
@@ -559,8 +551,7 @@ function ImagesTab({ record }) {
         <Image className="w-3.5 h-3.5 text-sky-500 shrink-0" />
         Click vào "Trước" / "Sau" để chuyển đổi ảnh từng vùng điều trị.
       </p>
-
-      {images.map((img) => {
+      {images?.map?.((img) => {
         const mode = viewMode[img.id] || 'before';
         return (
           <div key={img.id} className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
@@ -616,12 +607,10 @@ function ImagesTab({ record }) {
           </div>
         );
       })}
-
       {/* Split compare view */}
       <div className="text-center">
         <p className="text-xs text-slate-400 italic">* Hình ảnh minh họa từ hồ sơ điều trị của phòng khám.</p>
       </div>
-
       {/* Lightbox */}
       <AnimatePresence>
         {activeImg && (
@@ -683,7 +672,7 @@ function FollowUpTab({ record }) {
         {/* Vertical line */}
         <div className="absolute left-5 top-6 bottom-6 w-0.5 bg-slate-200" />
 
-        {followUps.map((fu, i) => (
+        {followUps?.map?.((fu, i) => (
           <motion.div
             key={fu.id}
             initial={{ opacity: 0, x: -15 }}
@@ -803,7 +792,7 @@ export default function MedicalRecordDetailModal({ record, onClose }) {
 
           {/* ── Tab Bar ── */}
           <div className="flex gap-1 px-4 pt-3 pb-1 overflow-x-auto shrink-0 border-b border-slate-100">
-            {TABS.map((tab) => (
+            {TABS?.map?.((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}

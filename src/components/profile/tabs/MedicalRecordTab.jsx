@@ -118,7 +118,6 @@ export default function MedicalRecordTab({ profile }) {
           Bản tổng hợp sức khỏe của bạn — chỉ xem. Liên hệ phòng khám để cập nhật.
         </p>
       </div>
-
       {/* ── 1. Vital strip ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <VitalCard icon={Droplets} label="Nhóm máu" value={vitals?.bloodType} accent="text-rose-500" tint="bg-rose-50" />
@@ -126,7 +125,6 @@ export default function MedicalRecordTab({ profile }) {
         <VitalCard icon={Ruler} label="Chiều cao" value={vitals?.height} accent="text-sky-500" tint="bg-sky-50" />
         <VitalCard icon={HeartPulse} label="Huyết áp" value={vitals?.bloodPressure} accent="text-emerald-500" tint="bg-emerald-50" />
       </div>
-
       {/* ── 2. Allergies + family history ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Allergies alert */}
@@ -144,7 +142,7 @@ export default function MedicalRecordTab({ profile }) {
           </div>
           {hasAllergies ? (
             <div className="flex flex-wrap gap-2 mt-4 max-h-[120px] overflow-y-auto pr-2 glass-scrollbar">
-              {vitals.allergies.map((a) => (
+              {vitals.allergies?.map?.((a) => (
                 <span key={a} className="text-sm font-bold px-3 py-1.5 rounded-full bg-white/80 text-rose-600 border border-rose-100 whitespace-nowrap">
                   {a}
                 </span>
@@ -172,7 +170,6 @@ export default function MedicalRecordTab({ profile }) {
           </div>
         </div>
       </div>
-
       {/* ── 3. Medical history (progressive) ── */}
       <Section icon={ClipboardList} title="Tiền sử bệnh án" subtitle="Bệnh lý nền về da & mãn tính"
         accent="text-amber-600" tint="bg-amber-50" index={2}>
@@ -200,7 +197,6 @@ export default function MedicalRecordTab({ profile }) {
           <EmptyState text="Chưa ghi nhận tiền sử bệnh lý." />
         )}
       </Section>
-
       {/* ── 4. Clinical timeline (progressive) ── */}
       <Section icon={Stethoscope} title="Lịch sử khám bệnh" subtitle="Dòng thời gian các lần khám"
         accent="text-sky-600" tint="bg-sky-50" index={3}>
@@ -211,7 +207,7 @@ export default function MedicalRecordTab({ profile }) {
               <span className="absolute left-[18px] top-3 bottom-3 w-[3px] rounded-full
                                bg-gradient-to-b from-primary via-sky-400/70 to-transparent
                                shadow-[0_0_14px_rgba(0,104,95,0.35)]" />
-              {headVisits.map(renderVisit)}
+              {headVisits?.map?.(renderVisit)}
               <AnimatePresence initial={false}>
                 {showAllVisits && tailVisits.length > 0 && (
                   <motion.div
@@ -222,7 +218,7 @@ export default function MedicalRecordTab({ profile }) {
                     transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
                     className="overflow-hidden space-y-4"
                   >
-                    {tailVisits.map(renderVisit)}
+                    {tailVisits?.map?.(renderVisit)}
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -246,7 +242,6 @@ export default function MedicalRecordTab({ profile }) {
           <EmptyState text="Chưa có lịch sử khám bệnh." />
         )}
       </Section>
-
       {/* ── 5. Active treatments ── */}
       <Section icon={Sparkles} title="Phác đồ điều trị hiện tại" subtitle="Liệu trình đang hoạt động & tiến độ"
         accent="text-emerald-600" tint="bg-emerald-50" index={4}>
@@ -291,7 +286,6 @@ export default function MedicalRecordTab({ profile }) {
           <EmptyState text="Hiện không có liệu trình điều trị nào đang hoạt động." />
         )}
       </Section>
-
       {/* Prescription / record detail modal */}
       <AnimatePresence>
         {selected && <MedicalRecordDetailModal record={selected} onClose={() => setSelected(null)} />}

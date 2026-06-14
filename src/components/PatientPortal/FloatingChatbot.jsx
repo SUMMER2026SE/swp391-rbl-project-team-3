@@ -1,10 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, X, Send, Bot, Headphones, ChevronLeft, MessageSquare } from 'lucide-react';
-import { mockChatMessages } from '../../mockData';
 import { useAuth } from '../../context/AuthContext';
 import { ChatModel, ReceptionistChatModel } from '../../models/ChatModel';
-import { doctors } from '../../mockData';
 
 export default function FloatingChatbot({ onBookAppointment, onAIScan }) {
   const { user } = useAuth();
@@ -121,7 +119,7 @@ export default function FloatingChatbot({ onBookAppointment, onAIScan }) {
     { label: '💊 Liệu trình', action: () => {} },
   ];
 
-  const filteredMessages = messages.filter((msg) => mode === 'AI' ? msg.mode === 'AI' : msg.mode === 'Live');
+  const filteredMessages = messages?.filter?.((msg) => mode === 'AI' ? msg.mode === 'AI' : msg.mode === 'Live');
 
   return (
     <div className="fixed bottom-6 right-6 z-[100]">
@@ -143,7 +141,6 @@ export default function FloatingChatbot({ onBookAppointment, onAIScan }) {
           </motion.button>
         )}
       </AnimatePresence>
-
       {/* ── Chat Window ── */}
       <AnimatePresence>
         {isOpen && (
@@ -218,7 +215,7 @@ export default function FloatingChatbot({ onBookAppointment, onAIScan }) {
                 </div>
               )}
 
-              {filteredMessages.map((msg) => {
+              {filteredMessages?.map?.((msg) => {
                 const isPatient = msg.senderRole === 'PATIENT';
                 return (
                   <div key={msg.id} className={`flex flex-col ${isPatient ? 'items-end' : 'items-start'}`}>
@@ -244,7 +241,7 @@ export default function FloatingChatbot({ onBookAppointment, onAIScan }) {
             <div className="px-3 py-2 flex gap-1.5 overflow-x-auto shrink-0 bg-slate-50/30 border-t border-slate-100"
               style={{ scrollbarWidth: 'none' }}
             >
-              {quickActions.map((qa, idx) => (
+              {quickActions?.map?.((qa, idx) => (
                 <button
                   key={idx}
                   onClick={qa.action}

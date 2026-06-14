@@ -58,7 +58,7 @@ export default function PersonalInfoTab({ profile, onSaved }) {
     setIsEditing(false);
   }, [buildInitial]);
 
-  const editableKeys = fields.filter((f) => f.editable).map((f) => f.key);
+  const editableKeys = fields?.filter((f) => f.editable)?.map?.((f) => f.key);
 
   const handleChange = (key, val) => {
     setFormData((prev) => ({ ...prev, [key]: val }));
@@ -127,7 +127,6 @@ export default function PersonalInfoTab({ profile, onSaved }) {
           </button>
         )}
       </div>
-
       {/* Localized alert banner (inside the glass card) */}
       <AnimatePresence>
         {alert && (
@@ -147,10 +146,9 @@ export default function PersonalInfoTab({ profile, onSaved }) {
           </motion.div>
         )}
       </AnimatePresence>
-
       {/* Fields */}
       <div className="glass-3d-soft rounded-2xl p-6 space-y-5">
-        {fields.map((f) => (
+        {fields?.map?.((f) => (
           <ProfileField
             key={f.key}
             fieldKey={f.key}
@@ -165,7 +163,6 @@ export default function PersonalInfoTab({ profile, onSaved }) {
           />
         ))}
       </div>
-
       {/* Edit-mode actions */}
       <AnimatePresence>
         {isEditing && (

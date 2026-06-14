@@ -33,20 +33,14 @@ import {
   Stethoscope,
   Star,
 } from 'lucide-react';
-import { 
-  mockAppointments, 
-  mockPatients, 
-  mockChatMessages, 
-  doctors, 
-  mockServices, 
-  mockTimeSlots 
-} from '../mockData';
 import LiveChatDrawer from '../components/Receptionist/LiveChatDrawer';
 import ReceptionistFeedbackView from '../components/Receptionist/ReceptionistFeedbackView';
+import logo from '../assets/logo.png';
 import { NotificationModel } from '../models/NotificationModel';
 import ReceptionistChatTab from '../components/Receptionist/ReceptionistChatTab';
 import { ReceptionistChatModel } from '../models/ChatModel';
 import LiquidSidebarMenu from '../components/ui/LiquidSidebarMenu';
+import { useDoctors } from '../hooks/useDoctors';
 
 const navItems = [
   { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard },
@@ -79,6 +73,7 @@ const staggerContainer = {
 
 export default function ReceptionistDashboard() {
   const { user, logout } = useAuth();
+  const { doctors } = useDoctors();
   const navigate = useNavigate();
   const [isScrolled, setIsScrolled] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -96,7 +91,7 @@ export default function ReceptionistDashboard() {
     cancelAppointment 
   } = useAppointmentController();
 
-  const [patients, setPatients] = useState(mockPatients);
+  const [patients, setPatients] = useState(([]));
   const [chatMessages, setChatMessages] = useState([]);
   const [toast, setToast] = useState(null);
 
@@ -123,10 +118,9 @@ export default function ReceptionistDashboard() {
   }, []);
 
   const receptionistId = user?.id || 'staff-01';
-  const myNotifications = notifications.filter(n => 
-    n.recipientRole === 'RECEPTIONIST' && (n.recipientId === receptionistId || n.recipientId === 'all')
-  );
-  const unreadCount = myNotifications.filter(n => !n.isRead).length;
+  const myNotifications = notifications?.filter?.(n => 
+    n.recipientRole === 'RECEPTIONIST' && (n.recipientId === receptionistId || n.recipientId === 'all'));
+  const unreadCount = myNotifications?.filter?.(n => !n.isRead).length;
 
   const handleMarkAllRead = () => {
     NotificationModel.markAllAsRead('RECEPTIONIST', receptionistId);
@@ -154,19 +148,19 @@ export default function ReceptionistDashboard() {
     if (isAddOpen) {
       const saved = localStorage.getItem('admin-services');
       if (saved) {
-        const parsed = JSON.parse(saved).map(s => ({
+        const parsed = JSON.parse(saved)?.map(s => ({
           id: s.id,
           name: s.name,
           price: typeof s.price === 'number' ? `${s.price.toLocaleString('vi-VN')} VNĐ` : s.price,
           description: s.description,
           status: s.status
-        })).filter(s => s.status === 'Hoạt động');
+        }))?.filter?.(s => s.status === 'Hoạt động');
         setServicesList(parsed);
         if (parsed.length > 0 && !parsed.some(s => s.name === newApt.service)) {
           setNewApt(prev => ({ ...prev, service: parsed[0].name }));
         }
       } else {
-        setServicesList(mockServices);
+        setServicesList(([]));
       }
     }
   }, [isAddOpen]);
@@ -192,13 +186,13 @@ export default function ReceptionistDashboard() {
 
   // ─── DYNAMIC STATISTICS CALCULATIONS ────────────────────────────────────
   // "Bệnh nhân đang chờ" (Paid but not checked in yet)
-  const waitingCount = (appointments || []).filter(a => a.status === 'Paid').length;
+  const waitingCount = (appointments || [])?.filter?.(a => a.status === 'Paid').length;
   
   // "Lịch hẹn hôm nay" (Total non-cancelled appointments)
-  const todayAppointmentsCount = (appointments || []).filter(a => a.status !== 'Cancelled').length;
+  const todayAppointmentsCount = (appointments || [])?.filter?.(a => a.status !== 'Cancelled').length;
   
   // "Thanh toán chờ xử lý" (Pending appointments)
-  const pendingPaymentsCount = (appointments || []).filter(a => a.status === 'Pending').length;
+  const pendingPaymentsCount = (appointments || [])?.filter?.(a => a.status === 'Pending').length;
 
   // ─── INTERACTIVE ACTIONS ────────────────────────────────────────────────
   
@@ -232,6 +226,10 @@ export default function ReceptionistDashboard() {
     }
 
     const doctor = doctors.find(d => d.name === newApt.doctorName) || doctors[0];
+    if (!doctor) {
+      showToast("Chưa có bác sĩ nào trong hệ thống. Vui lòng thêm bác sĩ trước khi tạo lịch hẹn.", "error");
+      return;
+    }
     const patientId = `pat-${Date.now()}`;
 
     // Create a new patient object
@@ -333,22 +331,19 @@ export default function ReceptionistDashboard() {
 
   // ─── FILTER DATA BASED ON SEARCH ────────────────────────────────────────
   // Today's waiting list (status: 'Paid' or 'Completed')
-  const todayAppointments = (appointments || []).filter(a => 
-    a.status === 'Paid' || a.status === 'Completed'
-  );
+  const todayAppointments = (appointments || [])?.filter?.(a => 
+    a.status === 'Paid' || a.status === 'Completed');
 
-  const filteredWaiting = (todayAppointments || []).filter(a => 
+  const filteredWaiting = (todayAppointments || [])?.filter?.(a => 
     a.patient_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    a.service_name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+    a.service_name?.toLowerCase().includes(searchTerm.toLowerCase()));
 
   // Pending booking requests (status: 'Pending')
-  const bookingRequests = (appointments || []).filter(a => a.status === 'Pending');
+  const bookingRequests = (appointments || [])?.filter?.(a => a.status === 'Pending');
   
-  const filteredRequests = (bookingRequests || []).filter(a => 
+  const filteredRequests = (bookingRequests || [])?.filter?.(a => 
     a.patient_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    a.service_name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+    a.service_name?.toLowerCase().includes(searchTerm.toLowerCase()));
 
   return (
     <div className="min-h-screen bg-slate-50 relative overflow-x-hidden flex w-full font-sans antialiased text-slate-800">
@@ -368,25 +363,18 @@ export default function ReceptionistDashboard() {
           animation: float-reverse 20s ease-in-out infinite;
         }
       `}</style>
-
       {/* Pristine Medical Mesh Gradients */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
         <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-emerald-300/15 blur-[120px] bg-mesh-blob-1"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] rounded-full bg-sky-300/15 blur-[120px] bg-mesh-blob-2"></div>
       </div>
-
       {/* Unified Glass Sidebar */}
       <aside className="hidden md:flex backdrop-blur-2xl bg-white/60 border-r border-white/50 w-64 fixed h-full z-40 flex-col py-8 px-4 justify-between">
         <div>
           {/* Logo Brand */}
-          <div className="px-4 mb-8 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-teal-500 to-sky-500 flex items-center justify-center text-white font-bold shadow-md shadow-teal-500/10">
-              DS
-            </div>
-            <div>
-              <h1 className="font-bold text-lg text-slate-900 tracking-tight leading-none">DermaSmart</h1>
-              <span className="text-[11px] text-slate-500 font-medium">Clinic Management</span>
-            </div>
+          <div className="px-4 mb-10 flex flex-col items-start gap-1">
+            <img src={logo} alt="DermaSmart Logo" className="h-16 w-auto object-contain" />
+            <span className="text-[11px] text-slate-500 font-medium">Clinic Management</span>
           </div>
 
           {/* New Appointment Button */}
@@ -428,7 +416,6 @@ export default function ReceptionistDashboard() {
           </button>
         </div>
       </aside>
-
       {/* Main Content Area */}
       <div className="flex-1 md:ml-64 flex flex-col h-screen overflow-y-auto z-10" onScroll={handleScroll}>
         
@@ -517,7 +504,7 @@ export default function ReceptionistDashboard() {
                         {myNotifications.length === 0 ? (
                           <p className="text-xs text-slate-400 italic text-center py-4">Chưa có thông báo nào.</p>
                         ) : (
-                          myNotifications.map((notif) => (
+                          myNotifications?.map?.((notif) => (
                             <div 
                               key={notif.id}
                               onClick={() => {
@@ -664,7 +651,7 @@ export default function ReceptionistDashboard() {
               <div className="mt-4 w-full bg-slate-200/50 rounded-full h-1.5 overflow-hidden">
                 <div 
                   className="bg-emerald-500 h-full rounded-full transition-all duration-500" 
-                  style={{ width: `${Math.min(100, ((appointments || []).filter(a => a.status === 'Completed').length / (todayAppointmentsCount || 1)) * 100)}%` }}
+                  style={{ width: `${Math.min(100, ((appointments || [])?.filter?.(a => a.status === 'Completed').length / (todayAppointmentsCount || 1)) * 100)}%` }}
                 ></div>
               </div>
             </div>
@@ -719,7 +706,7 @@ export default function ReceptionistDashboard() {
                     </p>
                   </div>
                 ) : (
-                  (filteredWaiting || []).map((apt, index) => {
+                  (filteredWaiting || [])?.map?.((apt, index) => {
                     const isCheckedIn = apt.status === 'Completed';
                     
                     return (
@@ -828,7 +815,7 @@ export default function ReceptionistDashboard() {
                     </p>
                   </div>
                 ) : (
-                  (filteredRequests || []).map((apt) => (
+                  (filteredRequests || [])?.map?.((apt) => (
                     <div 
                       key={apt.appointment_id}
                       className="backdrop-blur-xl bg-white/50 border border-white/70 shadow-[0_4px_20px_rgba(0,0,0,0.02)] rounded-2xl p-4 hover:shadow-md transition-all border-l-4 border-l-sky-500 relative flex flex-col"
@@ -955,7 +942,6 @@ export default function ReceptionistDashboard() {
           </AnimatePresence>
         </main>
       </div>
-
       {/* ─── LIVE CHAT DRAWER INTEGRATION ──────────────────────────────────── */}
       <LiveChatDrawer 
         patient={activeChatPatient}
@@ -967,7 +953,6 @@ export default function ReceptionistDashboard() {
         messages={chatMessages}
         onSendMessage={handleSendMessage}
       />
-
       {/* ─── MANUAL APPOINTMENT CREATION MODAL ──────────────────────────────── */}
       <AnimatePresence>
         {isAddOpen && (
@@ -1055,7 +1040,7 @@ export default function ReceptionistDashboard() {
                       onChange={(e) => setNewApt(prev => ({ ...prev, time: e.target.value }))}
                       className="bg-slate-50/60 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 text-xs font-medium text-slate-800 cursor-pointer"
                     >
-                      {(mockTimeSlots || []).map(slot => (
+                      {(([]) || [])?.map?.(slot => (
                         <option key={slot} value={slot}>{slot}</option>
                       ))}
                     </select>
@@ -1071,7 +1056,7 @@ export default function ReceptionistDashboard() {
                     onChange={(e) => setNewApt(prev => ({ ...prev, service: e.target.value }))}
                     className="bg-slate-50/60 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 text-xs font-medium text-slate-800 cursor-pointer"
                   >
-                    {(servicesList || []).map(svc => (
+                    {(servicesList || [])?.map?.(svc => (
                       <option key={svc.id} value={svc.name}>{svc.name} - ({svc.price})</option>
                     ))}
                   </select>
@@ -1086,7 +1071,7 @@ export default function ReceptionistDashboard() {
                     onChange={(e) => setNewApt(prev => ({ ...prev, doctorName: e.target.value }))}
                     className="bg-slate-50/60 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 text-xs font-medium text-slate-800 cursor-pointer"
                   >
-                    {(doctors || []).map(doc => (
+                    {(doctors || [])?.map?.(doc => (
                       <option key={doc.id} value={doc.name}>{doc.name} - ({doc.title})</option>
                     ))}
                   </select>
@@ -1126,7 +1111,6 @@ export default function ReceptionistDashboard() {
           </>
         )}
       </AnimatePresence>
-
       {/* ─── CUSTOM ANIMATED TOAST NOTIFICATION ─────────────────────────────── */}
       <AnimatePresence>
         {toast && (

@@ -307,11 +307,11 @@ function RescheduleModal({ apt, onClose, onConfirm, rescheduleError }) {
     }
   };
 
-  const handleConfirmPayment = () => {
+  const handleConfirmPayment = async () => {
     if (isSubmittingRef.current) return;
     isSubmittingRef.current = true;
     
-    const res = onConfirm(newDate, newTime);
+    const res = await onConfirm(newDate, newTime);
     if (res && res.success) {
       setStep('success');
       window.dispatchEvent(new CustomEvent('show-toast', {
@@ -805,19 +805,19 @@ export default function AppointmentsTab() {
     (a) => a.status === 'Đã khám' || a.status === 'Đã hủy' || a.status === 'Reviewed'
   );
 
-  const handleConfirmCancel = () => {
+  const handleConfirmCancel = async () => {
     if (cancelTarget) {
       setCancelError('');
-      const res = cancelAppointment(cancelTarget.id);
+      const res = await cancelAppointment(cancelTarget.id);
       if (res.success) setCancelTarget(null);
       else setCancelError(res.error);
     }
   };
 
-  const handleConfirmReschedule = (newDate, newTime) => {
+  const handleConfirmReschedule = async (newDate, newTime) => {
     if (rescheduleTarget) {
       setRescheduleError('');
-      const res = rescheduleAppointment(rescheduleTarget.id, newDate, newTime);
+      const res = await rescheduleAppointment(rescheduleTarget.id, newDate, newTime);
       if (!res.success) setRescheduleError(res.error);
       return res;
     }

@@ -6,13 +6,9 @@ import {
   Database, User, UserCog, Wrench, ChevronDown, ChevronUp,
   BarChart3, TrendingDown, Award, XCircle,
 } from 'lucide-react';
-import {
-  mockSystemLogs,
-  mockUserActivityLogs,
-  mockAppointments,
-  mockServices,
-  doctors,
-} from '../../mockData';
+
+
+import { useDoctors } from '../../hooks/useDoctors';
 
 const RevenueStatistics = lazy(() => import('./RevenueStatistics'));
 
@@ -56,19 +52,19 @@ function ServiceReportTab() {
       const s = localStorage.getItem('dermasmart_appointments');
       const parsed = s ? JSON.parse(s) : null;
       // Force update if we added new mock data
-      if (parsed && parsed.length >= mockAppointments.length) return parsed;
-      if (parsed && parsed.length < mockAppointments.length) {
-          localStorage.setItem('dermasmart_appointments', JSON.stringify(mockAppointments));
-          return mockAppointments;
+      if (parsed && parsed.length >= ([]).length) return parsed;
+      if (parsed && parsed.length < ([]).length) {
+          localStorage.setItem('dermasmart_appointments', JSON.stringify(([])));
+          return ([]);
       }
-      return mockAppointments;
-    } catch { return mockAppointments; }
+      return ([]);
+    } catch { return ([]); }
   }, []);
 
   // Filter by period
   const apts = useMemo(() => {
     const now = new Date('2026-06-09');
-    return allApts.filter(a => {
+    return allApts?.filter?.(a => {
       if (period === 'Tất cả') return true;
       const d = new Date(a.date);
       if (period === 'Tháng') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
@@ -97,12 +93,12 @@ function ServiceReportTab() {
 
   // Monthly trend — last 6 months for top 3 services (uses filtered apts for consistency)
   const MONTHS = ['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6'];
-  const top3 = serviceStats.slice(0, 3).map(s => s.name);
+  const top3 = serviceStats.slice(0, 3)?.map?.(s => s.name);
   const monthlyTrend = useMemo(() => {
-    return MONTHS.map((label, mi) => {
+    return MONTHS?.map?.((label, mi) => {
       const row = { label };
       top3.forEach(svc => {
-        row[svc] = apts.filter(a => {
+        row[svc] = apts?.filter?.(a => {
           const m = new Date(a.date).getMonth();
           return m === mi && a.service === svc && a.status !== 'Đã hủy';
         }).length;
@@ -125,7 +121,7 @@ function ServiceReportTab() {
     return val;
   };
 
-  const maxTrendVal = Math.max(1, ...monthlyTrend.map(row => Math.max(...top3.map(n => row[n] || 0))));
+  const maxTrendVal = Math.max(1, ...monthlyTrend?.map?.(row => Math.max(...top3?.map?.(n => row[n] || 0))));
 
   const syncedTop4 = useMemo(() => {
     if (serviceStats.length <= 4) return serviceStats;
@@ -149,7 +145,7 @@ function ServiceReportTab() {
           <p className="text-xs text-slate-500 mt-0.5">Thống kê lượt sử dụng, doanh thu và xu hướng theo dịch vụ</p>
         </div>
         <div className="flex bg-indigo-50/50 border border-indigo-100 rounded-full p-0.5 gap-0.5">
-          {['Tất cả', 'Tháng', 'Quý', 'Năm'].map(p => (
+          {['Tất cả', 'Tháng', 'Quý', 'Năm']?.map?.(p => (
             <button key={p} onClick={() => setPeriod(p)}
               className={`px-3 py-1 rounded-full text-[10px] font-semibold transition-all border-none outline-none cursor-pointer ${
                 period === p ? 'bg-white text-indigo-700 shadow-sm' : 'bg-transparent text-slate-500 hover:text-slate-700'}`}>
@@ -158,7 +154,6 @@ function ServiceReportTab() {
           ))}
         </div>
       </div>
-
       {/* KPI cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
@@ -166,7 +161,7 @@ function ServiceReportTab() {
           { label: 'LƯỢT HOÀN THÀNH',value: totalDone,             color: '#10b981', lightColor: '#a7f3d0', iconColor: 'text-emerald-500', iconBg: 'bg-emerald-100/50', icon: CheckCircle2 },
           { label: 'TỶ LỆ HỦY',      value: `${cancelRate}%`,     color: '#ef4444', lightColor: '#fecaca', iconColor: 'text-rose-500', iconBg: 'bg-rose-100/50', icon: XCircle },
           { label: 'DOANH THU DV',   value: fmtVND(totalRev),     color: '#b45309', lightColor: '#fde68a', iconColor: 'text-amber-600', iconBg: 'bg-amber-100/50', icon: TrendingUp },
-        ].map((c, i) => (
+        ]?.map?.((c, i) => (
           <motion.div key={c.label} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
             className="bg-white rounded-[18px] p-3.5 shadow-sm relative flex flex-col justify-between min-h-[120px]"
             style={{ 
@@ -187,7 +182,6 @@ function ServiceReportTab() {
           </motion.div>
         ))}
       </div>
-
       {/* 2 Main Sections */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         {/* Top dịch vụ sử dụng nhiều nhất (Vertical Bar Chart) */}
@@ -201,8 +195,8 @@ function ServiceReportTab() {
                <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs pb-8">Chưa có dữ liệu</div>
             ) : (
                (() => {
-                 const maxDone = Math.max(...syncedTop4.map(x => x.done), 1);
-                 return syncedTop4.map((s, i) => {
+                 const maxDone = Math.max(...syncedTop4?.map?.(x => x.done), 1);
+                 return syncedTop4?.map?.((s, i) => {
                    const heightPct = (s.done / maxDone) * 100;
                    const barOpacity = i === 0 ? 1 : i === 1 ? 0.85 : i === 2 ? 0.7 : 0.45;
                    return (
@@ -239,8 +233,8 @@ function ServiceReportTab() {
             <span className="text-sm font-bold text-slate-800">Doanh thu theo dịch vụ</span>
           </div>
           <div className="space-y-4">
-            {syncedTop4.map((s, i) => {
-              const maxRev = Math.max(...syncedTop4.map(x => x.revenue), 1);
+            {syncedTop4?.map?.((s, i) => {
+              const maxRev = Math.max(...syncedTop4?.map?.(x => x.revenue), 1);
               const pct = maxRev > 0 ? (s.revenue / maxRev) * 100 : 0;
               return (
                 <div key={s.name}>
@@ -268,7 +262,6 @@ function ServiceReportTab() {
           </div>
         </div>
       </div>
-
       {/* Monthly trend */}
       <div className="bg-white border border-slate-100 rounded-[18px] p-4 shadow-sm">
         <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
@@ -277,7 +270,7 @@ function ServiceReportTab() {
             <span className="text-sm font-bold text-slate-800">Xu hướng sử dụng dịch vụ theo tháng</span>
           </div>
           <div className="flex items-center gap-3">
-            {top3.map((name, i) => (
+            {top3?.map?.((name, i) => (
               <span key={name} className="flex items-center gap-1 text-[10px] font-bold text-slate-700">
                 <span className="w-2 h-2 rounded-full inline-block" style={{ background: TREND_COLORS[i] }} />
                 {name}
@@ -289,7 +282,7 @@ function ServiceReportTab() {
           <div className="w-full h-[225px] mt-3">
             <svg viewBox="0 0 800 300" className="w-full h-full drop-shadow-sm">
               {/* Grid lines */}
-              {[0, 1, 2, 3, 4].map(step => {
+              {[0, 1, 2, 3, 4]?.map?.(step => {
                 const y = 240 - (step / 4) * 200;
                 return (
                   <g key={step}>
@@ -302,20 +295,20 @@ function ServiceReportTab() {
               })}
 
               {/* X Axis labels */}
-              {monthlyTrend.map((row, i) => (
+              {monthlyTrend?.map?.((row, i) => (
                 <text key={i} x={80 + (i * 128)} y="270" fontSize="13" fill="#64748b" textAnchor="middle" fontWeight="bold">
                   {row.label}
                 </text>
               ))}
 
               {/* Lines */}
-              {top3.map((name, i) => {
-                const pts = monthlyTrend.map((row, index) => ({
+              {top3?.map?.((name, i) => {
+                const pts = monthlyTrend?.map?.((row, index) => ({
                   x: 80 + (index * 128),
                   y: 240 - ((row[name] || 0) / maxTrendVal) * 200,
                   val: row[name] || 0
                 }));
-                const d = `M ${pts.map(p => `${p.x},${p.y}`).join(' L ')}`;
+                const d = `M ${pts?.map?.(p => `${p.x},${p.y}`).join(' L ')}`;
                 return (
                   <g key={name}>
                     <motion.path
@@ -329,7 +322,7 @@ function ServiceReportTab() {
                       strokeLinecap="round"
                       strokeLinejoin="round"
                     />
-                    {pts.map((p, j) => (
+                    {pts?.map?.((p, j) => (
                       <motion.circle
                         key={j}
                         initial={{ scale: 0 }}
@@ -344,7 +337,7 @@ function ServiceReportTab() {
                       />
                     ))}
                     {/* Tooltip values above circles */}
-                    {pts.map((p, j) => (
+                    {pts?.map?.((p, j) => (
                       p.val > 0 && (
                         <motion.text
                           key={`txt-${j}`}
@@ -380,22 +373,23 @@ function ServiceReportTab() {
 // TAB 2 — Báo cáo lịch hẹn
 // ══════════════════════════════════════════════════════════════════════════════
 function AppointmentReportTab() {
+  const { doctors } = useDoctors();
   const [filterDoctor, setFilterDoctor] = useState('all');
 
   const allApts = useMemo(() => {
-    try { const s = localStorage.getItem('dermasmart_appointments'); return s ? JSON.parse(s) : mockAppointments; }
-    catch { return mockAppointments; }
+    try { const s = localStorage.getItem('dermasmart_appointments'); return s ? JSON.parse(s) : ([]); }
+    catch { return ([]); }
   }, []);
 
   const apts = useMemo(() =>
-    filterDoctor === 'all' ? allApts : allApts.filter(a => a.doctorId === filterDoctor),
+    filterDoctor === 'all' ? allApts : allApts?.filter?.(a => a.doctorId === filterDoctor),
   [allApts, filterDoctor]);
 
   const total     = apts.length;
-  const done      = apts.filter(a => a.status === 'Đã khám').length;
-  const cancelled = apts.filter(a => a.status === 'Đã hủy').length;
-  const pending   = apts.filter(a => ['Đang chờ','Đã xác nhận','Chờ xác nhận'].includes(a.status)).length;
-  const online    = apts.filter(a => a.notes?.includes('Portal') || a.notes?.includes('website')).length;
+  const done      = apts?.filter?.(a => a.status === 'Đã khám').length;
+  const cancelled = apts?.filter?.(a => a.status === 'Đã hủy').length;
+  const pending   = apts?.filter?.(a => ['Đang chờ','Đã xác nhận','Chờ xác nhận'].includes(a.status)).length;
+  const online    = apts?.filter?.(a => a.notes?.includes('Portal') || a.notes?.includes('website')).length;
 
   // By month
   const byMonth = useMemo(() => {
@@ -407,17 +401,17 @@ function AppointmentReportTab() {
       if (a.status === 'Đã khám') m[key].done++;
       if (a.status === 'Đã hủy')  m[key].cancelled++;
     });
-    return Object.entries(m).sort((a,b) => a[0].localeCompare(b[0])).map(([k,v]) => ({ month: k, ...v }));
+    return Object.entries(m).sort((a,b) => a[0].localeCompare(b[0]))?.map?.(([k,v]) => ({ month: k, ...v }));
   }, [apts]);
 
   // Peak hours
   const byHour = useMemo(() => {
     const m = {};
     apts.forEach(a => { if (a.time) { m[a.time] = (m[a.time] || 0) + 1; } });
-    return Object.entries(m).sort((a,b) => b[1]-a[1]).slice(0,6).map(([t,c]) => ({ time: t, count: c }));
+    return Object.entries(m).sort((a,b) => b[1]-a[1]).slice(0,6)?.map?.(([t,c]) => ({ time: t, count: c }));
   }, [apts]);
 
-  const maxHour = Math.max(...byHour.map(h => h.count), 1);
+  const maxHour = Math.max(...byHour?.map?.(h => h.count), 1);
 
   return (
     <div className="space-y-6">
@@ -429,10 +423,9 @@ function AppointmentReportTab() {
         <select value={filterDoctor} onChange={e => setFilterDoctor(e.target.value)}
           className="px-3 py-2.5 text-sm bg-white border border-slate-200 rounded-xl outline-none cursor-pointer shadow-sm">
           <option value="all">Tất cả bác sĩ</option>
-          {doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+          {doctors?.map?.(d => <option key={d.id} value={d.id}>{d.name}</option>)}
         </select>
       </div>
-
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {[
@@ -441,7 +434,7 @@ function AppointmentReportTab() {
           { label: 'Đã hủy',        value: cancelled,             color: 'rose',    icon: XCircle },
           { label: 'Đang chờ',      value: pending,               color: 'amber',   icon: Clock },
           { label: 'Đặt online',    value: `${online}`,           color: 'sky',     icon: TrendingUp },
-        ].map((c, i) => (
+        ]?.map?.((c, i) => (
           <motion.div key={c.label} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
             className={`bg-${c.color}-50 border border-${c.color}-100 rounded-2xl p-4 shadow-sm text-center`}>
             <c.icon className={`w-5 h-5 text-${c.color}-500 mx-auto mb-1.5`} />
@@ -450,7 +443,6 @@ function AppointmentReportTab() {
           </motion.div>
         ))}
       </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Monthly breakdown */}
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
@@ -460,8 +452,8 @@ function AppointmentReportTab() {
           </div>
           {byMonth.length > 0 ? (
             <div className="space-y-3">
-              {byMonth.map((row, i) => {
-                const maxT = Math.max(...byMonth.map(r => r.total), 1);
+              {byMonth?.map?.((row, i) => {
+                const maxT = Math.max(...byMonth?.map?.(r => r.total), 1);
                 return (
                   <div key={row.month}>
                     <div className="flex items-center justify-between text-xs mb-1">
@@ -488,7 +480,7 @@ function AppointmentReportTab() {
           </div>
           {byHour.length > 0 ? (
             <div className="space-y-3">
-              {byHour.map((h, i) => (
+              {byHour?.map?.((h, i) => (
                 <div key={h.time} className="flex items-center gap-3">
                   <span className="text-xs font-bold text-slate-600 w-12 shrink-0">{h.time}</span>
                   <MiniBar pct={(h.count/maxHour)*100} color={i === 0 ? '#f59e0b' : '#6366f1'} />
@@ -507,24 +499,25 @@ function AppointmentReportTab() {
 // TAB 3 — Báo cáo nhân viên
 // ══════════════════════════════════════════════════════════════════════════════
 function EmployeeReportTab() {
+  const { doctors } = useDoctors();
   const allApts = useMemo(() => {
-    try { const s = localStorage.getItem('dermasmart_appointments'); return s ? JSON.parse(s) : mockAppointments; }
-    catch { return mockAppointments; }
+    try { const s = localStorage.getItem('dermasmart_appointments'); return s ? JSON.parse(s) : ([]); }
+    catch { return ([]); }
   }, []);
 
   const docStats = useMemo(() => {
-    return doctors.map(doc => {
-      const mine = allApts.filter(a => a.doctorId === doc.id);
-      const done = mine.filter(a => a.status === 'Đã khám');
-      const cancelled = mine.filter(a => a.status === 'Đã hủy');
-      const patients = new Set(done.map(a => a.patientId)).size;
+    return doctors?.map?.(doc => {
+      const mine = allApts?.filter?.(a => a.doctorId === doc.id);
+      const done = mine?.filter?.(a => a.status === 'Đã khám');
+      const cancelled = mine?.filter?.(a => a.status === 'Đã hủy');
+      const patients = new Set(done?.map?.(a => a.patientId)).size;
       const revenue = done.reduce((s, a) => s + parseFee(a.fee), 0);
       const completionRate = mine.length > 0 ? ((done.length / mine.length) * 100).toFixed(0) : 0;
       return { doc, total: mine.length, done: done.length, cancelled: cancelled.length, patients, revenue, completionRate };
     }).sort((a, b) => b.revenue - a.revenue);
   }, [allApts]);
 
-  const maxRev = Math.max(...docStats.map(d => d.revenue), 1);
+  const maxRev = Math.max(...docStats?.map?.(d => d.revenue), 1);
 
   return (
     <div className="space-y-6">
@@ -532,10 +525,9 @@ function EmployeeReportTab() {
         <h3 className="text-lg font-bold text-slate-900">Báo cáo Nhân viên</h3>
         <p className="text-xs text-slate-500 mt-0.5">Hiệu suất làm việc, số bệnh nhân và doanh thu của từng bác sĩ / KTV</p>
       </div>
-
       {/* Doctor cards */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {docStats.map((d, i) => (
+        {docStats?.map?.((d, i) => (
           <motion.div key={d.doc.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}
             className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all">
             <div className="flex items-start gap-3 mb-4">
@@ -544,7 +536,7 @@ function EmployeeReportTab() {
                 <p className="text-sm font-bold text-slate-800 truncate">{d.doc.name}</p>
                 <p className="text-xs text-slate-500 truncate">{d.doc.title}</p>
                 <div className="flex items-center gap-1 mt-1">
-                  {[0,1,2,3,4].map(s => (
+                  {[0,1,2,3,4]?.map?.(s => (
                     <span key={s} className={`text-[10px] ${s < Math.round(d.doc.rating) ? 'text-amber-400' : 'text-slate-200'}`}>★</span>
                   ))}
                   <span className="text-[10px] text-slate-400 ml-1">{d.doc.rating}</span>
@@ -557,7 +549,7 @@ function EmployeeReportTab() {
                 { label: 'Hoàn thành', value: d.done, cls: 'bg-emerald-50 text-emerald-700' },
                 { label: 'Bệnh nhân', value: d.patients, cls: 'bg-sky-50 text-sky-700' },
                 { label: 'Tỷ lệ HT', value: `${d.completionRate}%`, cls: 'bg-teal-50 text-teal-700' },
-              ].map(item => (
+              ]?.map?.(item => (
                 <div key={item.label} className={`rounded-xl p-2 text-center ${item.cls}`}>
                   <p className="text-lg font-black">{item.value}</p>
                   <p className="text-[10px] font-semibold text-slate-500">{item.label}</p>
@@ -588,13 +580,13 @@ function SystemActivityTab() {
   const [filterRole, setFilterRole]   = useState('all');
   const [filterCat, setFilterCat]     = useState('all'); // patient category filter
 
-  const sysFiltered = useMemo(() => mockSystemLogs.filter(l => {
+  const sysFiltered = useMemo(() => ([])?.filter?.(l => {
     const q = search.toLowerCase();
     return (!q || l.action.toLowerCase().includes(q) || l.details.toLowerCase().includes(q) || l.actor.toLowerCase().includes(q))
         && (filterSev === 'all' || l.severity === filterSev);
   }), [search, filterSev]);
 
-  const actFiltered = useMemo(() => mockUserActivityLogs.filter(l => {
+  const actFiltered = useMemo(() => ([])?.filter?.(l => {
     const q = search.toLowerCase();
     const matchQ    = !q || l.userName.toLowerCase().includes(q) || l.details.toLowerCase().includes(q) || l.action.toLowerCase().includes(q);
     const matchRole = filterRole === 'all' || l.role === filterRole;
@@ -607,13 +599,13 @@ function SystemActivityTab() {
 
   // Stats for patient actions
   const patientStats = useMemo(() => {
-    const pts = mockUserActivityLogs.filter(l => l.role === 'PATIENT');
+    const pts = ([])?.filter?.(l => l.role === 'PATIENT');
     return {
-      booking:     pts.filter(l => l.category === 'booking').length,
-      cancel:      pts.filter(l => l.category === 'cancel').length,
-      reschedule:  pts.filter(l => l.category === 'reschedule').length,
-      payment:     pts.filter(l => l.category === 'payment').length,
-      ai_scan:     pts.filter(l => l.category === 'ai_scan').length,
+      booking:     pts?.filter?.(l => l.category === 'booking').length,
+      cancel:      pts?.filter?.(l => l.category === 'cancel').length,
+      reschedule:  pts?.filter?.(l => l.category === 'reschedule').length,
+      payment:     pts?.filter?.(l => l.category === 'payment').length,
+      ai_scan:     pts?.filter?.(l => l.category === 'ai_scan').length,
     };
   }, []);
 
@@ -657,11 +649,11 @@ function SystemActivityTab() {
 
   // Staff-specific stat counts
   const staffStats = useMemo(() => ({
-    staff_record:       mockUserActivityLogs.filter(l => l.category === 'staff_record').length,
-    staff_prescription: mockUserActivityLogs.filter(l => l.category === 'staff_prescription').length,
-    staff_treatment:    mockUserActivityLogs.filter(l => l.category === 'staff_treatment').length,
-    staff_confirm:      mockUserActivityLogs.filter(l => l.category === 'staff_confirm').length,
-    staff_patient_edit: mockUserActivityLogs.filter(l => l.category === 'staff_patient_edit').length,
+    staff_record:       ([])?.filter?.(l => l.category === 'staff_record').length,
+    staff_prescription: ([])?.filter?.(l => l.category === 'staff_prescription').length,
+    staff_treatment:    ([])?.filter?.(l => l.category === 'staff_treatment').length,
+    staff_confirm:      ([])?.filter?.(l => l.category === 'staff_confirm').length,
+    staff_patient_edit: ([])?.filter?.(l => l.category === 'staff_patient_edit').length,
   }), []);
 
   return (
@@ -670,10 +662,9 @@ function SystemActivityTab() {
         <h3 className="text-lg font-bold text-slate-900">Nhật ký hệ thống & hoạt động</h3>
         <p className="text-xs text-slate-500 mt-0.5">Theo dõi sự kiện hệ thống và hành động của người dùng</p>
       </div>
-
       {/* Inner tabs */}
       <div className="flex gap-2">
-        {[['system','Nhật ký hệ thống'],['activity','Hoạt động người dùng']].map(([k,l]) => (
+        {[['system','Nhật ký hệ thống'],['activity','Hoạt động người dùng']]?.map?.(([k,l]) => (
           <button key={k} onClick={() => setActiveInner(k)}
             className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all border-none cursor-pointer ${
               activeInner === k ? 'bg-indigo-500 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
@@ -681,7 +672,6 @@ function SystemActivityTab() {
           </button>
         ))}
       </div>
-
       {/* Patient activity stats (only show in activity tab) */}
       {activeInner === 'activity' && (
         <div className="space-y-3">
@@ -691,12 +681,12 @@ function SystemActivityTab() {
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             {[
-              { key:'all',        label:'Tất cả',         value: mockUserActivityLogs.length, cls:'bg-slate-50 border-slate-200 text-slate-700',     icon: Activity },
+              { key:'all',        label:'Tất cả',         value: ([]).length, cls:'bg-slate-50 border-slate-200 text-slate-700',     icon: Activity },
               { key:'booking',    label:'Đặt lịch',       value: patientStats.booking,        cls:'bg-emerald-50 border-emerald-200 text-emerald-700', icon: Calendar },
               { key:'cancel',     label:'Hủy / Đổi lịch', value: patientStats.cancel + patientStats.reschedule, cls:'bg-rose-50 border-rose-200 text-rose-700', icon: XCircle },
               { key:'payment',    label:'Thanh toán',     value: patientStats.payment,        cls:'bg-indigo-50 border-indigo-200 text-indigo-700',   icon: TrendingUp },
               { key:'ai_scan',    label:'AI Skin Analysis',value: patientStats.ai_scan,       cls:'bg-violet-50 border-violet-200 text-violet-700',   icon: Database },
-            ].map((c, i) => (
+            ]?.map?.((c, i) => (
               <motion.div key={c.key} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
                 onClick={() => { setFilterCat(c.key); setFilterRole('all'); }}
                 className={`border rounded-2xl p-3 text-center cursor-pointer hover:shadow-sm transition-all ${c.cls} ${filterCat === c.key ? 'ring-2 ring-offset-1 ring-amber-400' : ''}`}>
@@ -718,7 +708,7 @@ function SystemActivityTab() {
               { key:'staff_treatment',    label:'KQ điều trị',      value: staffStats.staff_treatment,    cls:'bg-sky-50 border-sky-200 text-sky-700',          icon: Activity },
               { key:'staff_confirm',      label:'Xác nhận lịch hẹn',value: staffStats.staff_confirm,      cls:'bg-purple-50 border-purple-200 text-purple-700', icon: CheckCircle2 },
               { key:'staff_patient_edit', label:'Sửa TT bệnh nhân', value: staffStats.staff_patient_edit, cls:'bg-pink-50 border-pink-200 text-pink-700',       icon: UserCog },
-            ].map((c, i) => (
+            ]?.map?.((c, i) => (
               <motion.div key={c.key} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 + 0.25 }}
                 onClick={() => { setFilterCat(c.key); setFilterRole('all'); }}
                 className={`border rounded-2xl p-3 text-center cursor-pointer hover:shadow-sm transition-all ${c.cls} ${filterCat === c.key ? 'ring-2 ring-offset-1 ring-emerald-400' : ''}`}>
@@ -730,7 +720,6 @@ function SystemActivityTab() {
           </div>
         </div>
       )}
-
       {/* Search + filter */}
       <div className="flex flex-wrap gap-3 items-center bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
         <div className="relative flex-1 min-w-48">
@@ -743,26 +732,25 @@ function SystemActivityTab() {
           <select value={filterSev} onChange={e => setFilterSev(e.target.value)}
             className="px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none cursor-pointer">
             <option value="all">Tất cả mức độ</option>
-            {['Success','Info','Warning','Error'].map(s => <option key={s} value={s}>{s}</option>)}
+            {['Success','Info','Warning','Error']?.map?.(s => <option key={s} value={s}>{s}</option>)}
           </select>
         ) : (
           <select value={filterRole} onChange={e => { setFilterRole(e.target.value); setFilterCat('all'); }}
             className="px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none cursor-pointer">
             <option value="all">Tất cả vai trò</option>
-            {['ADMIN','DOCTOR','RECEPTIONIST','TECHNICIAN','PATIENT'].map(r => <option key={r} value={r}>{r}</option>)}
+            {['ADMIN','DOCTOR','RECEPTIONIST','TECHNICIAN','PATIENT']?.map?.(r => <option key={r} value={r}>{r}</option>)}
           </select>
         )}
         <span className="text-xs text-slate-400 ml-auto">
           {activeInner === 'system' ? sysFiltered.length : actFiltered.length} mục
         </span>
       </div>
-
       {/* List */}
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
         {activeInner === 'system' ? (
           sysFiltered.length > 0 ? (
             <div className="divide-y divide-slate-100">
-              {sysFiltered.map((log, i) => (
+              {sysFiltered?.map?.((log, i) => (
                 <motion.div key={log.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.02 }}
                   className="flex items-start gap-4 px-5 py-4 hover:bg-slate-50/60 transition-colors">
                   <div className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${SEV_DOT[log.severity] || 'bg-slate-400'}`} />
@@ -787,7 +775,7 @@ function SystemActivityTab() {
         ) : (
           actFiltered.length > 0 ? (
             <div className="divide-y divide-slate-100">
-              {actFiltered.map((log, i) => {
+              {actFiltered?.map?.((log, i) => {
                 const actionMeta = ACTION_META[log.action];
                 const ActionIcon = actionMeta?.icon;
                 return (
@@ -881,11 +869,12 @@ function loadAppointments() {
       }
     }
   } catch { /* ignore */ }
-  return mockAppointments;
+  return ([]);
 }
 
 // ── Sub: Chi tiết lịch hẹn ──────────────────────────────────────────────────
 function AptDetailTab({ allApts }) {
+  const { doctors } = useDoctors();
   const [search, setSearch]       = useState('');
   const [filterDoc, setFilterDoc] = useState('all');
   const [expandId, setExpandId]   = useState(null);
@@ -895,7 +884,7 @@ function AptDetailTab({ allApts }) {
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    return apts.filter(a =>
+    return apts?.filter?.(a =>
       a && (
         !q
         || (a.patientName||'').toLowerCase().includes(q)
@@ -903,8 +892,7 @@ function AptDetailTab({ allApts }) {
         || (a.service||'').toLowerCase().includes(q)
         || (a.id||'').toLowerCase().includes(q)
       )
-      && (filterDoc === 'all' || a.doctorId === filterDoc)
-    ).sort((a,b) => (b.date||'').localeCompare(a.date||''));
+      && (filterDoc === 'all' || a.doctorId === filterDoc)).sort((a,b) => (b.date||'').localeCompare(a.date||''));
   }, [apts, search, filterDoc]);
 
   return (
@@ -920,16 +908,15 @@ function AptDetailTab({ allApts }) {
         <select value={filterDoc} onChange={e => setFilterDoc(e.target.value)}
           className="px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none cursor-pointer">
           <option value="all">Tất cả bác sĩ</option>
-          {doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+          {doctors?.map?.(d => <option key={d.id} value={d.id}>{d.name}</option>)}
         </select>
         <span className="text-xs text-slate-400 font-medium ml-auto">{filtered.length} lịch hẹn</span>
       </div>
-
       {/* List */}
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
         {filtered.length > 0 ? (
           <div className="divide-y divide-slate-100">
-            {filtered.map((apt, i) => {
+            {filtered?.map?.((apt, i) => {
               const isExp = expandId === apt.id;
               const st = aptStatusStyle(apt.status);
               return (
@@ -952,7 +939,6 @@ function AptDetailTab({ allApts }) {
                       {isExp ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
                     </div>
                   </div>
-
                   {/* Expanded detail */}
                   <AnimatePresence>
                     {isExp && (
@@ -976,7 +962,7 @@ function AptDetailTab({ allApts }) {
                             { label: 'Đơn thuốc',       value: apt.prescription || '—' },
                             { label: 'Ghi chú',         value: apt.notes || '—' },
                             apt.voucherId ? { label: 'Ưu đãi', value: `Tiết kiệm ${Number(apt.discount||0).toLocaleString('vi-VN')}đ` } : null,
-                          ].filter(Boolean).map((f, fi) => (
+                          ]?.filter(Boolean)?.map?.((f, fi) => (
                             <div key={fi} className="bg-white border border-slate-100 rounded-xl p-3 shadow-sm">
                               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">{f.label}</p>
                               <p className="text-xs font-semibold text-slate-700 break-words">{f.value}</p>
@@ -1003,6 +989,7 @@ function AptDetailTab({ allApts }) {
 
 // ── Sub: Trạng thái lịch hẹn ────────────────────────────────────────────────
 function AptStatusTab({ allApts }) {
+  const { doctors } = useDoctors();
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterDoc, setFilterDoc]       = useState('all');
   const [search, setSearch]             = useState('');
@@ -1019,12 +1006,12 @@ function AptStatusTab({ allApts }) {
     return m;
   }, [apts]);
 
-  const paidCount   = useMemo(() => apts.filter(a => a?.paymentStatus === 'Đã thanh toán').length, [apts]);
-  const unpaidCount = useMemo(() => apts.filter(a => a?.paymentStatus === 'Chưa thanh toán' && a?.status !== 'Đã hủy').length, [apts]);
+  const paidCount   = useMemo(() => apts?.filter?.(a => a?.paymentStatus === 'Đã thanh toán').length, [apts]);
+  const unpaidCount = useMemo(() => apts?.filter?.(a => a?.paymentStatus === 'Chưa thanh toán' && a?.status !== 'Đã hủy').length, [apts]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    let list = apts.filter(a => {
+    let list = apts?.filter?.(a => {
       if (!a) return false;
       const matchQ = !q || (a.patientName||'').toLowerCase().includes(q) || (a.doctorName||'').toLowerCase().includes(q);
       return matchQ && (filterStatus === 'all' || a.status === filterStatus) && (filterDoc === 'all' || a.doctorId === filterDoc);
@@ -1038,7 +1025,7 @@ function AptStatusTab({ allApts }) {
     <div className="space-y-4">
       {/* Status summary cards — dùng inline style tránh purge */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        {ALL_STATUSES.map((status, i) => {
+        {ALL_STATUSES?.map?.((status, i) => {
           const s = aptStatusStyle(status);
           const isActive = filterStatus === status;
           return (
@@ -1055,7 +1042,6 @@ function AptStatusTab({ allApts }) {
           );
         })}
       </div>
-
       {/* Payment quick stats */}
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-center gap-3">
@@ -1073,7 +1059,6 @@ function AptStatusTab({ allApts }) {
           </div>
         </div>
       </div>
-
       {/* Filters */}
       <div className="flex flex-wrap gap-3 items-center bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
         <div className="relative flex-1 min-w-48">
@@ -1085,12 +1070,12 @@ function AptStatusTab({ allApts }) {
         <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
           className="px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none cursor-pointer">
           <option value="all">Tất cả trạng thái</option>
-          {ALL_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+          {ALL_STATUSES?.map?.(s => <option key={s} value={s}>{s}</option>)}
         </select>
         <select value={filterDoc} onChange={e => setFilterDoc(e.target.value)}
           className="px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none cursor-pointer">
           <option value="all">Tất cả bác sĩ</option>
-          {doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+          {doctors?.map?.(d => <option key={d.id} value={d.id}>{d.name}</option>)}
         </select>
         <select value={sortBy} onChange={e => setSortBy(e.target.value)}
           className="px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none cursor-pointer">
@@ -1099,12 +1084,11 @@ function AptStatusTab({ allApts }) {
         </select>
         <span className="text-xs text-slate-400 font-medium ml-auto">{filtered.length}/{allApts.length}</span>
       </div>
-
       {/* List */}
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
         {filtered.length > 0 ? (
           <div className="divide-y divide-slate-100">
-            {filtered.map((apt, i) => {
+            {filtered?.map?.((apt, i) => {
               const st = aptStatusStyle(apt.status);
               return (
                 <motion.div key={apt.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.02 }}
@@ -1150,7 +1134,7 @@ function AppointmentViewHub() {
         {[
           { id: 'detail', label: 'Chi tiết lịch hẹn',   icon: ChevronDown },
           { id: 'status', label: 'Trạng thái lịch hẹn',  icon: CheckCircle2 },
-        ].map(t => {
+        ]?.map?.(t => {
           const Icon = t.icon;
           return (
             <button key={t.id} onClick={() => setSub(t.id)}
@@ -1168,7 +1152,6 @@ function AppointmentViewHub() {
           {allApts.length} lịch hẹn
         </span>
       </div>
-
       <AnimatePresence mode="wait">
         <motion.div key={sub}
           initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
@@ -1202,7 +1185,7 @@ function SystemReportHub() {
     <div className="space-y-5">
       {/* Inner sub-tab bar */}
       <div className="flex gap-1 bg-slate-100 rounded-2xl p-1.5 flex-wrap">
-        {SYSTEM_SUBTABS.map(t => {
+        {SYSTEM_SUBTABS?.map?.(t => {
           const Icon = t.icon;
           return (
             <button key={t.id} onClick={() => setSub(t.id)}
@@ -1217,7 +1200,6 @@ function SystemReportHub() {
           );
         })}
       </div>
-
       {/* Sub content */}
       <AnimatePresence mode="wait">
         <motion.div key={sub}
@@ -1241,10 +1223,9 @@ export default function ReportsPage() {
         <h2 className="text-2xl font-bold text-slate-900">Doanh thu & Báo cáo</h2>
         <p className="text-sm text-slate-500 mt-1">Tổng hợp báo cáo toàn hệ thống phòng khám</p>
       </div>
-
       {/* Main tab bar */}
       <div className="flex gap-1 bg-slate-100 rounded-2xl p-1.5 flex-wrap">
-        {TABS.map(tab => {
+        {TABS?.map?.(tab => {
           const Icon = tab.icon;
           return (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
@@ -1259,7 +1240,6 @@ export default function ReportsPage() {
           );
         })}
       </div>
-
       {/* Content */}
       <AnimatePresence mode="wait">
         <motion.div key={activeTab}

@@ -11,6 +11,104 @@ const CLASS_MAP = {
     "normal_skin": { name: "Da thường (Khỏe mạnh)", color: "from-emerald-500 to-teal-600", bg: "bg-emerald-50 text-emerald-700 border-emerald-100" }
 };
 
+const analyzeSkinImage = (img) => {
+    try {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 100;
+        canvas.height = 100;
+        ctx.drawImage(img, 0, 0, 100, 100);
+        const imgData = ctx.getImageData(0, 0, 100, 100);
+        const data = imgData.data;
+        
+        let redPixels = 0;
+        let darkPixels = 0;
+        let yellowPixels = 0;
+        let totalBrightness = 0;
+        
+        for (let i = 0; i < data.length; i += 4) {
+            const r = data[i];
+            const g = data[i+1];
+            const b = data[i+2];
+            
+            const brightness = (r + g + b) / 3;
+            totalBrightness += brightness;
+            
+            // Sắc đỏ (mụn, viêm da)
+            if (r > 130 && (r - g) > 40 && (r - b) > 40) {
+                redPixels++;
+            }
+            
+            // Sắc tối/sạm màu (thâm, nám, tàn nhang)
+            if (brightness < 110 && r > 40 && g > 30 && b > 20) {
+                darkPixels++;
+            }
+            
+            // Sắc vàng/bóng nhờn (lỗ chân lông to, bã nhờn)
+            if (r > 150 && g > 130 && b < 100) {
+                yellowPixels++;
+            }
+        }
+        
+        const pixelCount = data.length / 4;
+        const redRatio = redPixels / pixelCount;
+        const darkRatio = darkPixels / pixelCount;
+        const yellowRatio = yellowPixels / pixelCount;
+        const avgBrightness = totalBrightness / pixelCount;
+        
+        console.log("Phân tích pixel da:", { redRatio, darkRatio, yellowRatio, avgBrightness });
+        
+        if (redRatio > 0.08) {
+            return {
+                predicted_class: "acne",
+                confidence: Math.min(0.78 + redRatio * 0.8, 0.98)
+            };
+        } else if (darkRatio > 0.22) {
+            return {
+                predicted_class: "dark_spots",
+                confidence: Math.min(0.75 + darkRatio * 0.6, 0.97)
+            };
+        } else if (yellowRatio > 0.15) {
+            return {
+                predicted_class: "pores",
+                confidence: Math.min(0.77 + yellowRatio * 0.7, 0.96)
+            };
+        } else if (avgBrightness < 110) {
+            return {
+                predicted_class: "blackheads",
+                confidence: 0.82
+            };
+        } else if (avgBrightness > 180) {
+            return {
+                predicted_class: "normal_skin",
+                confidence: 0.93
+            };
+        } else {
+            return {
+                predicted_class: "wrinkles",
+                confidence: 0.84
+            };
+        }
+    } catch (e) {
+        console.error("Lỗi phân tích pixel ảnh:", e);
+        return null;
+    }
+};
+
+const getDeterministicFallback = (file) => {
+    const fileKey = `${file.name}-${file.size}`;
+    let hash = 0;
+    for (let i = 0; i < fileKey.length; i++) {
+        hash = (hash << 5) - hash + fileKey.charCodeAt(i);
+        hash |= 0;
+    }
+    const absHash = Math.abs(hash);
+    const skinClasses = ["acne", "blackheads", "dark_spots", "pores", "wrinkles", "normal_skin"];
+    const predicted_class = skinClasses[absHash % skinClasses.length];
+    const confidence = 0.80 + (absHash % 16) / 100;
+    return { predicted_class, confidence };
+};
+
 export default function FreeSkinScanModal({ isOpen, onClose, onBookAppointment }) {
     const [image, setImage] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -62,8 +160,53 @@ export default function FreeSkinScanModal({ isOpen, onClose, onBookAppointment }
                 setActiveTab('original');
             }
         } catch (err) {
-            console.error("Lỗi soi da AI:", err);
-            setError("Không thể kết nối đến máy chủ phân tích da. Vui lòng thử lại sau hoặc liên hệ bộ phận hỗ trợ.");
+            console.warn("Lỗi kết nối đến máy chủ AI thực tế, kích hoạt chế độ mô phỏng:", err);
+            
+            // Giả lập thời gian phân tích của AI (1.5 giây)
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            
+            const objectUrl = URL.createObjectURL(file);
+            
+            // Load ảnh vào đối tượng Image để phân tích pixel
+            const img = new Image();
+            img.src = objectUrl;
+            await new Promise((resolve) => {
+                img.onload = resolve;
+                img.onerror = resolve;
+            });
+            
+            let prediction = null;
+            try {
+                prediction = analyzeSkinImage(img);
+            } catch (pErr) {
+                console.error("Lỗi khi phân tích pixel ảnh:", pErr);
+            }
+            
+            // Nếu không phân tích được bằng canvas, dùng thuật toán băm (hash) để đảm bảo tính nhất quán
+            if (!prediction) {
+                prediction = getDeterministicFallback(file);
+            }
+            
+            const recommendations = {
+                acne: "Khuyến nghị làm sạch sâu bằng sữa rửa mặt chứa Acid Salicylic (BHA) 2%, kết hợp gel chấm mụn chứa Benzoyl Peroxide hoặc Adapalene. Hãy uống đủ nước và hạn chế thức khuya.",
+                blackheads: "Khuyến nghị sử dụng tẩy tế bào chết hóa học chứa BHA 2% từ 2-3 lần/tuần, kết hợp mặt nạ đất sét để hút bã nhờn dư thừa. Dưỡng ẩm nhẹ dịu dạng gel.",
+                dark_spots: "Khuyến nghị bổ sung Serum Vitamin C, Niacinamide hoặc Arbutin vào chu trình dưỡng da buổi sáng. Bắt buộc sử dụng kem chống nắng quang phổ rộng SPF 50+ hàng ngày.",
+                pores: "Khuyến nghị tập trung làm sạch sâu, sử dụng serum chứa Niacinamide (Vitamin B3) 10% giúp điều tiết dầu và thu nhỏ lỗ chân lông. Tránh bít tắc.",
+                wrinkles: "Khuyến nghị bắt đầu sử dụng Retinol 0.5% hoặc Peptide vào ban đêm để kích thích sản sinh collagen. Chú trọng dưỡng ẩm sâu với Hyaluronic Acid.",
+                normal_skin: "Làn da của bạn rất khỏe mạnh và có độ ẩm tốt. Hãy duy trì chu trình chăm sóc cơ bản gồm: Làm sạch - Dưỡng ẩm nhẹ nhàng - Chống nắng đầy đủ hàng ngày."
+            };
+
+            setImage(objectUrl);
+            setAiResults({
+                predicted_class: prediction.predicted_class,
+                confidence: prediction.confidence,
+                recommendation: recommendations[prediction.predicted_class] || "Làn da khỏe mạnh.",
+                cropped: true,
+                annotated_url: objectUrl,
+                cropped_url: objectUrl,
+                isDemo: true
+            });
+            setActiveTab('annotated');
         } finally {
             setIsLoading(false);
             e.target.value = null;
@@ -226,6 +369,15 @@ export default function FreeSkinScanModal({ isOpen, onClose, onBookAppointment }
                                             </span>
                                         </div>
                                     </div>
+
+                                    {aiResults.isDemo && (
+                                        <div className="bg-amber-50/70 border border-amber-200/60 rounded-xl p-3 text-[11px] leading-normal text-amber-800 flex items-start gap-2 shadow-sm">
+                                            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                                            <div>
+                                                <strong>Chế độ Mô phỏng:</strong> Máy chủ phân tích da (AI server) đang ngoại tuyến. Hệ thống tự động tạo kết quả để hiển thị thử nghiệm.
+                                            </div>
+                                        </div>
+                                    )}
 
                                     {/* Confidence bar */}
                                     <div>

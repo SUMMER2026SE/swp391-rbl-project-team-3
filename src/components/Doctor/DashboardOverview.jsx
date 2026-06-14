@@ -9,10 +9,10 @@ export default function DashboardOverview({ doctorId }) {
   const [todayAppointments, setTodayAppointments] = useState([]);
 
   useEffect(() => {
-    const fetchAppointments = () => {
-      const all = AppointmentModel.getAll();
+    const fetchAppointments = async () => {
+      const all = await AppointmentModel.getAll();
       setTodayAppointments(
-        all.filter(apt => apt?.doctorId === doctorId && apt?.date === today)
+        all?.filter?.(apt => (apt?.doctorId === doctorId || apt?.doctor_id === doctorId) && apt?.date === today)
       );
     };
 
@@ -25,13 +25,11 @@ export default function DashboardOverview({ doctorId }) {
 
   const totalPatientsToday = todayAppointments.length;
   
-  const waitingPatients = todayAppointments.filter(
+  const waitingPatients = todayAppointments?.filter?.(
     apt => apt?.status === 'Đã xác nhận' || apt?.status === 'Chờ xác nhận' || apt?.status === 'Đang chờ'
   ).length;
 
-  const completedPatients = todayAppointments.filter(
-    apt => apt?.status === 'Đã khám'
-  ).length;
+  const completedPatients = todayAppointments?.filter?.(apt => apt?.status === 'Đã khám').length;
 
   // Mock pending AI results
   const pendingAIResults = 2;

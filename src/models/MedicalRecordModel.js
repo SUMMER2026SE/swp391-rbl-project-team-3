@@ -1,58 +1,59 @@
-import { mockMedicalRecords, mockPatients } from '../mockData';
+import { supabase } from '../supabaseClient';
 
 export const MedicalRecordModel = {
-  /**
-   * Lấy tất cả hồ sơ bệnh án
-   */
-  getAll() {
-    return mockMedicalRecords;
-  },
-
-  /**
-   * Lấy hồ sơ theo bệnh nhân.
-   * Fallback về pat-01 nếu không tìm thấy record nào cho patientId đó
-   * (phục vụ tài khoản Supabase thực khi chưa có dữ liệu riêng).
-   */
-  getByPatientId(patientId) {
-    const found = mockMedicalRecords.filter(r => r.patientId === patientId);
-    if (found.length > 0) return found;
-    // Fallback: trả về hồ sơ mẫu của pat-01 để demo
-    return mockMedicalRecords.filter(r => r.patientId === 'pat-01');
-  },
-
-  /**
-   * Lấy hồ sơ theo ID
-   */
-  getById(recordId) {
-    return mockMedicalRecords.find(r => r.id === recordId) || null;
-  },
-
-  /**
-   * Lấy thông tin bệnh nhân kèm theo hồ sơ
-   */
-  getWithPatientInfo(recordId) {
-    const record = this.getById(recordId);
-    if (!record) return null;
-
-    const patient = mockPatients.find(p => p.id === record.patientId);
-    return {
-      ...record,
-      patientInfo: patient || record.patient || null,
-    };
-  },
-
-  /**
-   * Tính tuổi từ ngày sinh
-   */
-  calculateAge(dob) {
-    if (!dob) return '—';
-    const today = new Date();
-    const birth = new Date(dob);
-    let age = today.getFullYear() - birth.getFullYear();
-    const m = today.getMonth() - birth.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
-      age--;
+  async getAll() {
+    try {
+      const { data, error } = await supabase
+        .from('medical_records')
+        .select('*, patient:patient_profiles(*), doctor:doctor_profiles(*)');
+      if (error) throw error;
+      return data || [];
+    } catch (e) {
+      console.warn('Supabase fetch error (medical_records):', e.message);
+      return [];
     }
-    return age;
   },
+
+  async getByPatientId(patientId) {
+    try {
+      const { data, error } = await supabase
+        .from('medical_records')
+        .select('*, doctor:doctor_profiles(*)')
+        .eq('patient_id', patientId);
+      if (error) throw error;
+      return data || [];
+    } catch (e) {
+      console.warn('Supabase fetch error (medical_records by patient):', e.message);
+      return [];
+    }
+  },
+
+  async getById(id) {
+    try {
+      const { data, error } = await supabase
+        .from('medical_records')
+        .select('*, patient:patient_profiles(*), doctor:doctor_profiles(*)')
+        .eq('id', id)
+        .single();
+      if (error) throw error;
+      return data;
+    } catch (e) {
+      console.warn('Supabase fetch error (medical_record by id):', e.message);
+      return null;
+    }
+  },
+
+  async create(recordData) {
+    try {
+      const { data, error } = await supabase
+        .from('medical_records')
+        .insert([recordData])
+        .select();
+      if (error) throw error;
+      return data[0];
+    } catch (e) {
+      console.warn('Supabase create error (medical_records):', e.message);
+      return null;
+    }
+  }
 };

@@ -13,7 +13,7 @@ function StarDisplay({ value, size = 'sm' }) {
   const sz = size === 'lg' ? 'w-5 h-5' : size === 'md' ? 'w-4 h-4' : 'w-3.5 h-3.5';
   return (
     <span className="flex items-center gap-0.5">
-      {[1,2,3,4,5].map(s => (
+      {[1,2,3,4,5]?.map?.(s => (
         <Star key={s} className={`${sz} ${s <= value ? 'fill-amber-400 text-amber-400' : 'fill-slate-200 text-slate-200'}`} />
       ))}
     </span>
@@ -124,19 +124,16 @@ function FeedbackCard({ fb, onStatusChange, onReply }) {
           </span>
         </div>
       </div>
-
       {/* Comment */}
       <p className="text-sm text-slate-700 leading-relaxed mb-3 line-clamp-2">{fb.comment}</p>
-
       {/* Images */}
       {fb.images?.length > 0 && (
         <div className="flex gap-1.5 mb-3">
-          {fb.images.map((img, i) => (
+          {fb.images?.map?.((img, i) => (
             <img key={i} src={img} alt="" className="w-12 h-12 rounded-lg object-cover border border-slate-200" />
           ))}
         </div>
       )}
-
       {/* Admin reply */}
       {fb.adminReply && (
         <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-3 mb-3">
@@ -144,7 +141,6 @@ function FeedbackCard({ fb, onStatusChange, onReply }) {
           <p className="text-xs text-indigo-800">{fb.adminReply.text}</p>
         </div>
       )}
-
       {/* Criteria (expandable) */}
       <button onClick={() => setExpanded(!expanded)}
         className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1 mb-3 border-none bg-transparent cursor-pointer">
@@ -156,7 +152,7 @@ function FeedbackCard({ fb, onStatusChange, onReply }) {
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden mb-3">
             <div className="grid grid-cols-2 gap-x-4 gap-y-2 bg-slate-50 rounded-xl p-3">
-              {CRITERIA_META.map(({ key, label, color }) => (
+              {CRITERIA_META?.map?.(({ key, label, color }) => (
                 <div key={key} className="flex items-center justify-between gap-2">
                   <span className="text-[10px] font-semibold text-slate-500">{label}</span>
                   <StarDisplay value={fb.criteriaRatings?.[key] || 0} size="xs" />
@@ -166,7 +162,6 @@ function FeedbackCard({ fb, onStatusChange, onReply }) {
           </motion.div>
         )}
       </AnimatePresence>
-
       {/* Actions */}
       <div className="flex gap-2 flex-wrap">
         <button onClick={() => onReply(fb)}
@@ -205,7 +200,7 @@ export default function FeedbackDashboard() {
   const [replyTarget, setReplyTarget] = useState(null);
 
   // Filter
-  const filtered = feedbacks.filter(f => {
+  const filtered = feedbacks?.filter?.(f => {
     const matchSearch = search === '' ||
       (f.patientName || '').toLowerCase().includes(search.toLowerCase()) ||
       (f.doctorName || '').toLowerCase().includes(search.toLowerCase()) ||
@@ -215,7 +210,7 @@ export default function FeedbackDashboard() {
     return matchSearch && matchStatus && matchRating;
   });
 
-  const stats = getStats(feedbacks.filter(f => f.status === 'published'));
+  const stats = getStats(feedbacks?.filter?.(f => f.status === 'published'));
 
   const handleReplySubmit = (text) => {
     replyToFeedback(replyTarget.id, text);
@@ -264,15 +259,14 @@ export default function FeedbackDashboard() {
         <h2 className="text-2xl font-bold text-slate-900">Quản lý Đánh giá</h2>
         <p className="text-sm text-slate-500 mt-1">Theo dõi và quản lý phản hồi từ bệnh nhân</p>
       </div>
-
       {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Tổng đánh giá', value: stats.total, icon: MessageSquare, color: 'indigo', sub: 'đã ghi nhận' },
           { label: 'Điểm trung bình', value: stats.avg > 0 ? `${stats.avg}★` : '—', icon: Star, color: 'amber', sub: 'trên thang 5 sao' },
           { label: 'Tỷ lệ hài lòng', value: stats.total > 0 ? `${Math.round(((stats.distribution[4] + stats.distribution[5]) / stats.total) * 100)}%` : '—', icon: ThumbsUp, color: 'emerald', sub: '4-5 sao' },
-          { label: 'Chờ phản hồi', value: feedbacks.filter(f => !f.adminReply && f.status === 'published').length, icon: Reply, color: 'rose', sub: 'chưa được trả lời' },
-        ].map((s, i) => {
+          { label: 'Chờ phản hồi', value: feedbacks?.filter?.(f => !f.adminReply && f.status === 'published').length, icon: Reply, color: 'rose', sub: 'chưa được trả lời' },
+        ]?.map?.((s, i) => {
           const colors = CARD_COLORS[s.color] || CARD_COLORS.indigo;
           return (
             <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
@@ -287,7 +281,6 @@ export default function FeedbackDashboard() {
           );
         })}
       </div>
-
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Rating Distribution */}
@@ -296,7 +289,7 @@ export default function FeedbackDashboard() {
             <BarChart3 className="w-4 h-4 text-indigo-500" /> Phân bổ đánh giá sao
           </h4>
           <div className="space-y-2">
-            {[5,4,3,2,1].map(star => {
+            {[5,4,3,2,1]?.map?.(star => {
               const count = stats.distribution[star] || 0;
               const pct = stats.total > 0 ? (count / stats.total) * 100 : 0;
               return (
@@ -322,7 +315,7 @@ export default function FeedbackDashboard() {
             <TrendingUp className="w-4 h-4 text-emerald-500" /> Điểm trung bình theo tiêu chí
           </h4>
           <div className="space-y-3">
-            {CRITERIA_META.map(({ key, label, icon: Icon, color }) => (
+            {CRITERIA_META?.map?.(({ key, label, icon: Icon, color }) => (
               <div key={key}>
                 <div className="flex items-center justify-between mb-1">
                   <span className={`text-xs font-semibold flex items-center gap-1.5 ${COLOR_BADGE[color].split(' ')[1]}`}>
@@ -335,7 +328,6 @@ export default function FeedbackDashboard() {
           </div>
         </div>
       </div>
-
       {/* Filter Bar */}
       <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-wrap gap-3 items-center">
         <div className="relative flex-1 min-w-48">
@@ -357,7 +349,7 @@ export default function FeedbackDashboard() {
 
         <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
           <span className="text-xs text-slate-500 mr-1">Lọc sao:</span>
-          {[0,1,2,3,4,5].map(r => (
+          {[0,1,2,3,4,5]?.map?.(r => (
             <button key={r} onClick={() => setFilterRating(r === filterRating ? 0 : r)}
               className={`px-2 py-0.5 rounded-lg text-xs font-bold border-none cursor-pointer transition-all ${filterRating === r && r > 0 ? 'bg-amber-400 text-white' : r === 0 ? 'bg-slate-100 text-slate-500 hover:bg-slate-200' : 'bg-transparent text-slate-500 hover:bg-amber-50'}`}>
               {r === 0 ? 'Tất cả' : `${r}★`}
@@ -369,11 +361,10 @@ export default function FeedbackDashboard() {
           {filtered.length} / {feedbacks.length} đánh giá
         </span>
       </div>
-
       {/* Feedback List */}
       <div className="space-y-4">
         {filtered.length > 0 ? (
-          filtered.map(fb => (
+          filtered?.map?.(fb => (
             <FeedbackCard
               key={fb.id}
               fb={fb}
@@ -388,7 +379,6 @@ export default function FeedbackDashboard() {
           </div>
         )}
       </div>
-
       {/* Reply Modal */}
       <AnimatePresence>
         {replyTarget && (

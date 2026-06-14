@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, Send, MessageSquare, User, Clock, Phone, Mail } from 'lucide-react';
-import { mockPatients } from '../../mockData';
 import { ReceptionistChatModel } from '../../models/ChatModel';
 
 export default function ReceptionistChatTab() {
@@ -24,31 +23,31 @@ export default function ReceptionistChatTab() {
     const allMsgs = ReceptionistChatModel.getAllMessages();
 
     // 1. Find all unique patientIds that have messages
-    const uniquePatientIds = [...new Set(allMsgs.map(msg => msg.patientId).filter(Boolean))];
+    const uniquePatientIds = [...new Set(allMsgs?.map(msg => msg.patientId)?.filter?.(Boolean))];
 
     // 2. Process each unique patient
-    const processedPatients = uniquePatientIds.map(patientId => {
-      const patMsgs = allMsgs.filter(msg => msg.patientId === patientId);
+    const processedPatients = uniquePatientIds?.map?.(patientId => {
+      const patMsgs = allMsgs?.filter?.(msg => msg.patientId === patientId);
       
       // Find latest message for this patient
       const sortedMsgs = [...patMsgs].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
       const latestMsg = sortedMsgs[0] || null;
 
-      // Try to find matching patient in mockPatients
-      const mockPat = mockPatients.find(p => p.id === patientId);
+      // Try to find matching patient in ([])
+      const patientMatch = ([]).find(p => p.id === patientId);
 
       let fullName = 'Bệnh nhân';
       let phone = 'Chưa có SĐT';
       let email = 'Chưa có Email';
       let avatar = `https://i.pravatar.cc/150?u=${patientId}`;
 
-      if (mockPat) {
-        fullName = mockPat.fullName;
-        phone = mockPat.phone || 'Chưa có SĐT';
-        email = mockPat.email || 'Chưa có Email';
-        avatar = mockPat.avatar || avatar;
+      if (([])) {
+        fullName = ([]).fullName;
+        phone = ([]).phone || 'Chưa có SĐT';
+        email = ([]).email || 'Chưa có Email';
+        avatar = ([]).avatar || avatar;
       } else {
-        // Not in mockPatients (e.g. registered user or guest)
+        // Not in ([]) (e.g. registered user or guest)
         // Find any message sent by the patient to resolve their name
         const patientSentMsg = patMsgs.find(msg => msg.senderRole === 'PATIENT');
         if (patientSentMsg) {
@@ -130,16 +129,14 @@ export default function ReceptionistChatTab() {
     }
   };
 
-  const filteredPatients = patientsList.filter(pat => 
+  const filteredPatients = patientsList?.filter?.(pat => 
     pat.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    pat.phone.includes(searchTerm)
-  );
+    pat.phone.includes(searchTerm));
 
   const selectedPatient = patientsList.find(p => p.id === selectedPatientId);
 
   return (
     <div className="w-full h-[calc(100vh-160px)] backdrop-blur-2xl bg-white/70 border border-white/60 shadow-[0_20px_50px_rgba(0,0,0,0.05)] rounded-[2.5rem] overflow-hidden flex flex-col md:flex-row">
-      
       {/* Left Pane: Patients Sidebar */}
       <div className="w-full md:w-80 shrink-0 border-r border-slate-200/50 flex flex-col h-full bg-slate-50/40">
         {/* Search */}
@@ -163,7 +160,7 @@ export default function ReceptionistChatTab() {
               Không tìm thấy bệnh nhân nào.
             </div>
           ) : (
-            filteredPatients.map(pat => {
+            filteredPatients?.map?.(pat => {
               const isActive = pat.id === selectedPatientId;
               const hasNew = pat.hasChat && pat.latestMsgText !== 'Chưa có tin nhắn nào';
               
@@ -208,7 +205,6 @@ export default function ReceptionistChatTab() {
           )}
         </div>
       </div>
-
       {/* Right Pane: Active Chat Conversation */}
       <div className="flex-grow flex flex-col h-full bg-white/40">
         {selectedPatientId && selectedPatient ? (
@@ -243,7 +239,7 @@ export default function ReceptionistChatTab() {
                   <p className="text-[10px] mt-1 text-slate-400 font-medium">Nhập tin nhắn bên dưới để hỗ trợ bệnh nhân.</p>
                 </div>
               ) : (
-                conversation.map(msg => {
+                conversation?.map?.(msg => {
                   const isPatient = msg.senderRole === 'PATIENT';
                   const isAI = msg.senderRole === 'BOT';
                   return (
@@ -308,7 +304,6 @@ export default function ReceptionistChatTab() {
           </div>
         )}
       </div>
-
     </div>
   );
 }

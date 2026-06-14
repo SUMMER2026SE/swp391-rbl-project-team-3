@@ -3,24 +3,32 @@ import { AppointmentModel } from '../models/AppointmentModel';
 import { DoctorModel } from '../models/DoctorModel';
 
 export function useAppointmentController(patientId = null) {
-  // Read state initially
-  const [appointments, setAppointments] = useState(() => {
-    return patientId 
-      ? AppointmentModel.getByPatientId(patientId)
-      : AppointmentModel.getAllAppointments();
-  });
-  const [payments, setPayments] = useState(() => AppointmentModel.getAllPayments());
+  const [appointments, setAppointments] = useState([]);
+  const [payments, setPayments] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const refreshState = useCallback(() => {
-    setAppointments(
-      patientId
-        ? AppointmentModel.getByPatientId(patientId)
-        : AppointmentModel.getAllAppointments()
-    );
-    setPayments(AppointmentModel.getAllPayments());
+  const refreshState = useCallback(async () => {
+    try {
+      setLoading(true);
+      const apts = patientId
+        ? await AppointmentModel.getByPatientId(patientId)
+        : await AppointmentModel.getAllAppointments();
+      setAppointments(apts || []);
+
+      const pmts = await AppointmentModel.getAllPayments();
+      setPayments(pmts || []);
+    } catch (e) {
+      console.warn('Failed to load appointments/payments:', e.message);
+    } finally {
+      setLoading(false);
+    }
   }, [patientId]);
 
   // Keep state in sync with localStorage updates via custom events
+  useEffect(() => {
+    refreshState();
+  }, [refreshState]);
+
   useEffect(() => {
     const handleUpdate = () => {
       refreshState();
@@ -49,16 +57,20 @@ export function useAppointmentController(patientId = null) {
   }, []);
 
   // Standard booking (with validation - from patient portal)
-  const bookAppointment = useCallback((bookingData) => {
+  const bookAppointment = useCallback(async (bookingData) => {
     try {
       // Check if it's the rich bookingData format from patient portal or flat format
       if (bookingData.doctorId && bookingData.date && bookingData.time) {
-        const newApt = AppointmentModel.book(bookingData);
+        const validation = await AppointmentModel.validateBooking(bookingData);
+        if (!validation.valid) {
+          return { success: false, error: validation.error };
+        }
+        const newApt = await AppointmentModel.book(bookingData);
         refreshState();
         return { success: true, appointment: newApt };
       } else {
         // Fallback to simpler addAppointment
-        const newApt = AppointmentModel.addAppointment(bookingData);
+        const newApt = await AppointmentModel.addAppointment(bookingData);
         refreshState();
         return newApt;
       }
@@ -74,16 +86,16 @@ export function useAppointmentController(patientId = null) {
     return updatedApt;
   }, [refreshState]);
 
-  const cancelAppointment = useCallback((appointmentId) => {
+  const cancelAppointment = useCallback(async (appointmentId) => {
     try {
       // First try rich cancel method
-      const updatedApt = AppointmentModel.cancel(appointmentId);
+      const updatedApt = await AppointmentModel.cancel(appointmentId);
       refreshState();
       return { success: true, appointment: updatedApt };
     } catch (e) {
       // Fallback: update status to Cancelled or check if it throws
       try {
-        const cancelledApt = AppointmentModel.updateAppointmentStatus(appointmentId, 'Cancelled');
+        const cancelledApt = await AppointmentModel.updateAppointmentStatus(appointmentId, 'Cancelled');
         refreshState();
         return cancelledApt;
       } catch (err) {
@@ -131,8 +143,23 @@ export function useAppointmentController(patientId = null) {
 
   // Check if a slot is booked
   const isSlotBooked = useCallback((docId, date, time) => {
-    return AppointmentModel.isTimeSlotBooked(docId, date, time);
-  }, []);
+    if (!Array.isArray(appointments)) return false;
+    const isBooked = appointments.some(
+      a =>
+        String(a.doctor_id || a.doctorId) === String(docId) &&
+        a.date === date &&
+        a.time === time &&
+        a.status !== 'Đã hủy'
+    );
+    if (isBooked) return true;
+
+    // Check locks
+    const lockedListStr = localStorage.getItem('dermasmart_locked_slots') || '[]';
+    let lockedList = [];
+    try { lockedList = JSON.parse(lockedListStr); } catch (e) {}
+    const activeLocks = lockedList?.filter?.(l => l.lockedUntil > Date.now());
+    return activeLocks.some(l => String(l.doctorId) === String(docId) && l.date === date && l.time === time);
+  }, [appointments]);
 
   // Get doctor schedules and filter out booked slots for UI display
   const getAvailableSlots = useCallback((docId, date) => {
@@ -143,7 +170,7 @@ export function useAppointmentController(patientId = null) {
     }
 
     // Find doctor's name
-    const doc = DoctorModel.getAllDoctors().find(d => d.id === docId);
+    const doc = DoctorModel.getAllDoctorsSync().find(d => String(d.id || d.user_id) === String(docId));
     const docName = doc ? doc.name : '';
 
     // Read Admin consultation slots
@@ -165,10 +192,10 @@ export function useAppointmentController(patientId = null) {
     };
 
     // Filter slots for this doctor and date
-    const dailySlots = adminSlots.filter(s => s.doctorName === docName && s.date === date);
+    const dailySlots = adminSlots?.filter?.(s => s.doctorName === docName && s.date === date);
 
     if (dailySlots.length > 0) {
-      return dailySlots.map(s => ({
+      return dailySlots?.map?.(s => ({
         time: s.startTime,
         isBooked: isPastSlot(s.startTime) || s.status === 'Đã đặt' || s.status === 'Đã hủy' || isSlotBooked(docId, date, s.startTime)
       }));
@@ -181,15 +208,19 @@ export function useAppointmentController(patientId = null) {
       "15:30", "16:00", "16:30",
     ];
 
-    return standardSlots.map(time => ({
+    return standardSlots?.map?.(time => ({
       time,
       isBooked: isPastSlot(time) || isSlotBooked(docId, date, time)
     }));
   }, [isSlotBooked]);
 
-  const addDirectAppointment = useCallback((apt) => {
+  const addDirectAppointment = useCallback(async (apt) => {
     try {
-      const newApt = AppointmentModel.addDirect(apt);
+      const validation = await AppointmentModel.validateBooking(apt);
+      if (!validation.valid) {
+        return { success: false, error: validation.error };
+      }
+      const newApt = await AppointmentModel.addDirect(apt);
       refreshState();
       return { success: true, appointment: newApt };
     } catch (e) {
@@ -197,9 +228,9 @@ export function useAppointmentController(patientId = null) {
     }
   }, [refreshState]);
 
-  const rescheduleAppointment = useCallback((appointmentId, newDate, newTime) => {
+  const rescheduleAppointment = useCallback(async (appointmentId, newDate, newTime) => {
     try {
-      const updatedApt = AppointmentModel.reschedule(appointmentId, newDate, newTime);
+      const updatedApt = await AppointmentModel.reschedule(appointmentId, newDate, newTime);
       refreshState();
       return { success: true, appointment: updatedApt };
     } catch (e) {
@@ -210,6 +241,7 @@ export function useAppointmentController(patientId = null) {
   return {
     appointments,
     payments,
+    loading,
     getPatientAppointments,
     getAllAppointments,
     getAppointmentDetails,

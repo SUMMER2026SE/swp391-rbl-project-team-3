@@ -70,9 +70,8 @@ export default function TreatmentProgressTracker({ appointment }) {
                 <Activity className="w-5 h-5 text-teal-600" />
                 <h3 className="font-extrabold text-lg text-slate-900">Theo dõi tiến trình điều trị</h3>
             </div>
-
             <div className="space-y-3 mb-5 max-h-56 overflow-y-auto pr-1 custom-scrollbar">
-                {progressList.map((item) => (
+                {progressList?.map?.((item) => (
                     <div key={item.id} className="p-4 rounded-2xl border border-slate-200/60 bg-white/60 shadow-sm">
                         <div className="flex justify-between items-start gap-3 mb-2">
                             <div>
@@ -90,7 +89,6 @@ export default function TreatmentProgressTracker({ appointment }) {
                     </div>
                 ))}
             </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
                 <input
                     value={form.title}
@@ -108,7 +106,6 @@ export default function TreatmentProgressTracker({ appointment }) {
                     <option>Hoàn thành</option>
                 </select>
             </div>
-
             <textarea
                 value={form.note}
                 onChange={(e) => setForm({ ...form, note: e.target.value })}
@@ -116,7 +113,6 @@ export default function TreatmentProgressTracker({ appointment }) {
                 placeholder="Nhập ghi chú: mức độ cải thiện, phản ứng thuốc, triệu chứng còn lại..."
                 rows="3"
             />
-
             <button
                 type="button"
                 onClick={handleAddProgress}

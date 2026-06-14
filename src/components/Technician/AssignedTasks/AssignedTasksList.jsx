@@ -79,7 +79,6 @@ const AssignedTasksList = ({ tasks, onExecuteTask, onReviewTask }) => {
           </span>
         </div>
       </div>
-
       {/* Table */}
       <div className="overflow-x-auto">
         <table className="w-full">
@@ -103,7 +102,7 @@ const AssignedTasksList = ({ tasks, onExecuteTask, onReviewTask }) => {
             </tr>
           </thead>
           <tbody className="divide-y divide-white/20">
-            {taskList.map((task, index) => {
+            {taskList?.map?.((task, index) => {
               const isCompleted = task?.status === 'Đã hoàn thành';
               const isPending = task?.status === 'Chờ thực hiện';
 
@@ -130,14 +129,12 @@ const AssignedTasksList = ({ tasks, onExecuteTask, onReviewTask }) => {
                           {task?.patientName || 'Không rõ'}
                         </p>
                         <p className="text-xs text-slate-500 mt-0.5">
-                          {[task?.gender, task?.age ? `${task.age} tuổi` : null]
-                            .filter(Boolean)
+                          {[task?.gender, task?.age ? `${task.age} tuổi` : null]?.filter?.(Boolean)
                             .join(' · ') || '—'}
                         </p>
                       </div>
                     </div>
                   </td>
-
                   {/* Chỉ định */}
                   <td className="px-6 py-4">
                     <div className="min-w-0">
@@ -154,7 +151,6 @@ const AssignedTasksList = ({ tasks, onExecuteTask, onReviewTask }) => {
                       )}
                     </div>
                   </td>
-
                   {/* Thời gian yêu cầu */}
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
@@ -164,7 +160,6 @@ const AssignedTasksList = ({ tasks, onExecuteTask, onReviewTask }) => {
                       </span>
                     </div>
                   </td>
-
                   {/* Trạng thái */}
                   <td className="px-6 py-4">
                     {isPending && (
@@ -186,7 +181,6 @@ const AssignedTasksList = ({ tasks, onExecuteTask, onReviewTask }) => {
                       </span>
                     )}
                   </td>
-
                   {/* Hành động */}
                   <td className="px-6 py-4 text-right">
                     {isPending && (

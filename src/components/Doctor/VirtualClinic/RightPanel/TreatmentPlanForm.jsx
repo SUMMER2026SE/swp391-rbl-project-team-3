@@ -12,7 +12,7 @@ export default function TreatmentPlanForm({
 
   const handleToggle = (service) => {
     if (selectedServices.includes(service)) {
-      onServicesChange && onServicesChange(selectedServices.filter((s) => s !== service));
+      onServicesChange && onServicesChange(selectedServices?.filter?.((s) => s !== service));
     } else {
       onServicesChange && onServicesChange([...selectedServices, service]);
     }
@@ -24,12 +24,11 @@ export default function TreatmentPlanForm({
         <FileText className="w-5 h-5 text-teal-600" />
         <h3 className="font-extrabold text-lg text-slate-900">Kế hoạch Điều trị</h3>
       </div>
-      
       <div className="space-y-4">
         <div>
           <label className="block text-xs font-bold text-slate-700 mb-2">Chỉ định dịch vụ phòng khám</label>
           <div className="grid grid-cols-2 gap-3">
-            {services.map((service, idx) => {
+            {services?.map?.((service, idx) => {
               const checked = selectedServices.includes(service);
               return (
                 <label 

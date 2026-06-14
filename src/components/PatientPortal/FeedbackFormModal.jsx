@@ -15,7 +15,7 @@ function StarRating({ value, onChange, size = 'md', readOnly = false }) {
 
   return (
     <div className="flex items-center gap-1">
-      {[1, 2, 3, 4, 5].map((star) => (
+      {[1, 2, 3, 4, 5]?.map?.((star) => (
         <button
           key={star}
           type="button"
@@ -117,7 +117,7 @@ export default function FeedbackFormModal({ apt, onClose, onSubmitted }) {
         overallRating,
         criteriaRatings,
         comment: comment.trim(),
-        images: images.map(i => i.url),
+        images: images?.map?.(i => i.url),
       };
       const res = submitFeedback(payload);
       if (res.success) {
@@ -172,7 +172,7 @@ export default function FeedbackFormModal({ apt, onClose, onSubmitted }) {
           {/* Step indicator */}
           {step < 3 && (
             <div className="flex items-center gap-2 px-6 py-3 border-b border-slate-100 shrink-0">
-              {[1, 2].map((s) => (
+              {[1, 2]?.map?.((s) => (
                 <div key={s} className="flex items-center gap-2">
                   <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
                     step === s ? 'bg-amber-400 text-white shadow-md shadow-amber-400/30' :
@@ -217,7 +217,7 @@ export default function FeedbackFormModal({ apt, onClose, onSubmitted }) {
                   <div>
                     <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Đánh giá theo tiêu chí</p>
                     <div className="space-y-2">
-                      {CRITERIA.map(({ key, label, icon: Icon, color, desc }) => {
+                      {CRITERIA?.map?.(({ key, label, icon: Icon, color, desc }) => {
                         const c = COLOR_MAP[color];
                         return (
                           <div key={key} className={`flex items-center gap-3 p-3 rounded-xl border ${c.bg} ${c.border}`}>
@@ -273,12 +273,12 @@ export default function FeedbackFormModal({ apt, onClose, onSubmitted }) {
                       Ảnh trước/sau điều trị (tuỳ chọn, tối đa 3 ảnh)
                     </label>
                     <div className="flex gap-2 flex-wrap">
-                      {images.map((img, i) => (
+                      {images?.map?.((img, i) => (
                         <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden border border-slate-200 group">
                           <img src={img.url} alt="" className="w-full h-full object-cover" />
                           <button
                             type="button"
-                            onClick={() => setImages(prev => prev.filter((_, idx) => idx !== i))}
+                            onClick={() => setImages(prev => prev?.filter?.((_, idx) => idx !== i))}
                             className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all border-none cursor-pointer"
                           >
                             <Trash2 className="w-4 h-4 text-white" />
@@ -370,7 +370,7 @@ export default function FeedbackFormModal({ apt, onClose, onSubmitted }) {
                     Đánh giá của bạn đã được ghi nhận và giúp chúng tôi cải thiện chất lượng dịch vụ.
                   </p>
                   <div className="mt-4 flex items-center gap-1">
-                    {[1,2,3,4,5].map(s => (
+                    {[1,2,3,4,5]?.map?.(s => (
                       <Star key={s} className={`w-6 h-6 ${s <= overallRating ? 'fill-amber-400 text-amber-400' : 'fill-slate-200 text-slate-200'}`} />
                     ))}
                   </div>

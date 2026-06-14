@@ -6,70 +6,7 @@ import {
   Check
 } from 'lucide-react';
 
-const mockTransactions = (() => {
-  const base = [
-    { id: 1, date: '11/06/2026', time: '09:30', service: 'Gói Trẻ hóa da Meso 5 buổi', doctor: 'BS. CKII. Trần Văn A', type: 'GÓI LIỆU TRÌNH', method: 'Chuyển khoản', amount: 12500000 },
-    { id: 2, date: '11/06/2026', time: '10:15', service: 'Xét nghiệm máu tổng quát', doctor: 'KTV. Nguyễn Văn C', type: 'XÉT NGHIỆM', method: 'Thẻ ngân hàng', amount: 850000 },
-    { id: 3, date: '11/06/2026', time: '11:00', service: 'Khám da liễu tổng quát', doctor: 'ThS. BS. Nguyễn Thị B', type: 'KHÁM BỆNH', method: 'Tiền mặt', amount: 500000 },
-    { id: 4, date: '11/06/2026', time: '13:45', service: 'Gói trị mụn chuyên sâu', doctor: 'BS. CKI. Trần Thanh T', type: 'GÓI LIỆU TRÌNH', method: 'Chuyển khoản', amount: 4200000 },
-    { id: 5, date: '11/06/2026', time: '14:30', service: 'Khám và soi da', doctor: 'ThS. BS. Nguyễn Thị B', type: 'KHÁM BỆNH', method: 'Thẻ ngân hàng', amount: 800000 },
-    { id: 6, date: '10/06/2026', time: '09:00', service: 'Xét nghiệm nội tiết', doctor: 'KTV. Lê Thị D', type: 'XÉT NGHIỆM', method: 'Chuyển khoản', amount: 650000 },
-    { id: 7, date: '10/06/2026', time: '15:15', service: 'Gói Tiêm Filler vùng má', doctor: 'BS. CKII. Trần Văn A', type: 'GÓI LIỆU TRÌNH', method: 'Chuyển khoản', amount: 8000000 },
-    { id: 8, date: '09/06/2026', time: '10:00', service: 'Khám tư vấn mụn', doctor: 'BS. Lê Văn M', type: 'KHÁM BỆNH', method: 'Tiền mặt', amount: 300000 },
-    { id: 9, date: '09/06/2026', time: '16:00', service: 'Gói trị nám 3 buổi', doctor: 'ThS. BS. Nguyễn Thị B', type: 'GÓI LIỆU TRÌNH', method: 'Chuyển khoản', amount: 6000000 },
-    { id: 10, date: '08/06/2026', time: '14:00', service: 'Sinh thiết da', doctor: 'KTV. Nguyễn Văn C', type: 'XÉT NGHIỆM', method: 'Thẻ ngân hàng', amount: 1200000 },
-    { id: 11, date: '15/05/2026', time: '09:00', service: 'Gói Điều trị Nám Laser', doctor: 'ThS. BS. Nguyễn Thị B', type: 'GÓI LIỆU TRÌNH', method: 'Chuyển khoản', amount: 48500000 },
-    { id: 12, date: '10/04/2026', time: '14:00', service: 'Khám phục hồi da', doctor: 'BS. CKII. Trần Văn A', type: 'KHÁM BỆNH', method: 'Tiền mặt', amount: 32000000 },
-    { id: 13, date: '20/12/2025', time: '10:00', service: 'Khám da liễu', doctor: 'BS. Lê Văn M', type: 'KHÁM BỆNH', method: 'Thẻ ngân hàng', amount: 185000000 },
-    { id: 14, date: '10/01/2026', time: '10:00', service: 'Khám mụn', doctor: 'BS. Lê Văn M', type: 'KHÁM BỆNH', method: 'Tiền mặt', amount: 42000000 },
-    { id: 15, date: '14/02/2026', time: '09:30', service: 'Gói Chăm sóc da', doctor: 'ThS. BS. Nguyễn Thị B', type: 'GÓI LIỆU TRÌNH', method: 'Chuyển khoản', amount: 28000000 },
-    { id: 16, date: '25/03/2026', time: '15:00', service: 'Xét nghiệm dị ứng', doctor: 'KTV. Lê Thị D', type: 'XÉT NGHIỆM', method: 'Thẻ ngân hàng', amount: 55000000 },
-    { id: 17, date: '20/08/2025', time: '11:00', service: 'Gói Trị mụn Laser', doctor: 'BS. CKII. Trần Văn A', type: 'GÓI LIỆU TRÌNH', method: 'Chuyển khoản', amount: 145000000 },
-    { id: 18, date: '15/08/2024', time: '14:00', service: 'Khám theo dõi bệnh lý', doctor: 'BS. CKI. Trần Thanh T', type: 'KHÁM BỆNH', method: 'Thẻ ngân hàng', amount: 350000000 },
-    { id: 19, date: '10/05/2023', time: '09:00', service: 'Xét nghiệm vi nấm', doctor: 'KTV. Nguyễn Văn C', type: 'XÉT NGHIỆM', method: 'Tiền mặt', amount: 280000000 },
-  ];
-
-  const services = [
-    { service: 'Khám da liễu tổng quát', type: 'KHÁM BỆNH', amount: 500000 },
-    { service: 'Gói trị mụn chuyên sâu', type: 'GÓI LIỆU TRÌNH', amount: 4200000 },
-    { service: 'Xét nghiệm máu tổng quát', type: 'XÉT NGHIỆM', amount: 850000 },
-    { service: 'Khám tư vấn mụn', type: 'KHÁM BỆNH', amount: 300000 },
-    { service: 'Gói Tiêm Filler vùng má', type: 'GÓI LIỆU TRÌNH', amount: 8000000 },
-    { service: 'Khám phục hồi da', type: 'KHÁM BỆNH', amount: 1200000 },
-    { service: 'Gói Trẻ hóa da Meso 5 buổi', type: 'GÓI LIỆU TRÌNH', amount: 12500000 },
-    { service: 'Xét nghiệm nội tiết', type: 'XÉT NGHIỆM', amount: 650000 },
-    { service: 'Gói trị nám 3 buổi', type: 'GÓI LIỆU TRÌNH', amount: 6000000 },
-  ];
-  const doctors = ['BS. CKII. Trần Văn A', 'ThS. BS. Nguyễn Thị B', 'BS. CKI. Trần Thanh T', 'BS. Lê Văn M'];
-  const techs = ['KTV. Nguyễn Văn C', 'KTV. Lê Thị D'];
-  const methods = ['Chuyển khoản', 'Thẻ ngân hàng', 'Tiền mặt'];
-
-  for (let i = 20; i <= 50; i++) {
-    const srv = services[i % services.length];
-    const doc = srv.type === 'XÉT NGHIỆM' ? techs[i % techs.length] : doctors[i % doctors.length];
-    
-    // Sinh ngày ngẫu nhiên trong tháng 6 hoặc tháng 5 năm 2026
-    const m = i % 2 === 0 ? 6 : 5;
-    const d = (i % 28) + 1;
-    const dateStr = `${d.toString().padStart(2, '0')}/${m.toString().padStart(2, '0')}/2026`;
-    
-    const h = (i % 8) + 9;
-    const min = ['00', '15', '30', '45'][i % 4];
-    
-    base.push({
-      id: i,
-      date: dateStr,
-      time: `${h.toString().padStart(2, '0')}:${min}`,
-      service: srv.service,
-      doctor: doc,
-      type: srv.type,
-      method: methods[i % methods.length],
-      amount: srv.amount
-    });
-  }
-  
-  return base;
-})();
+const transactions = [];
 
 const formatCurrency = (value) => {
   return new Intl.NumberFormat('vi-VN').format(value);
@@ -127,7 +64,7 @@ const FilterDropdown = ({ label, icon: Icon, options, value, onChange, placehold
                 {placeholder}
                 {value === 'all' && <Check className="w-3.5 h-3.5" />}
               </button>
-              {options.map(opt => (
+              {options?.map?.(opt => (
                 <button 
                   key={opt}
                   onClick={() => { onChange(opt); setIsOpen(false); }}
@@ -152,9 +89,9 @@ export default function RevenueStatistics() {
   const [type, setType] = useState('all');
   const [showAll, setShowAll] = useState(false);
 
-  const doctors = useMemo(() => [...new Set(mockTransactions.map(t => t.doctor).filter(d => d !== '—'))], []);
-  const methods = useMemo(() => [...new Set(mockTransactions.map(t => t.method))], []);
-  const types = useMemo(() => [...new Set(mockTransactions.map(t => t.type))], []);
+  const doctors = useMemo(() => [...new Set(transactions?.map(t => t.doctor)?.filter?.(d => d !== '—'))], []);
+  const methods = useMemo(() => [...new Set(transactions?.map?.(t => t.method))], []);
+  const types = useMemo(() => [...new Set(transactions?.map?.(t => t.type))], []);
 
   const filteredData = useMemo(() => {
     const currentDay = 11;
@@ -162,7 +99,7 @@ export default function RevenueStatistics() {
     const currentYear = 2026;
     const currentQuarter = Math.floor(currentMonth / 3);
 
-    return mockTransactions.filter(t => {
+    return transactions?.filter?.(t => {
       if (doctor !== 'all' && t.doctor !== doctor) return false;
       if (method !== 'all' && t.method !== method) return false;
       if (type !== 'all' && t.type !== type) return false;
@@ -190,14 +127,14 @@ export default function RevenueStatistics() {
 
   const totalRevenue = filteredData.reduce((sum, t) => sum + t.amount, 0);
   const totalTransactions = filteredData.length;
-  const uniqueDaysCount = new Set(filteredData.map(t => t.date)).size;
+  const uniqueDaysCount = new Set(filteredData?.map?.(t => t.date)).size;
   const avgRevenue = period === 'Ngày' 
     ? (totalTransactions > 0 ? totalRevenue / totalTransactions : 0)
     : (uniqueDaysCount > 0 ? totalRevenue / uniqueDaysCount : 0);
   
-  const treatmentRevenue = filteredData.filter(t => t.type === 'GÓI LIỆU TRÌNH').reduce((sum, t) => sum + t.amount, 0);
-  const consultRevenue = filteredData.filter(t => t.type === 'KHÁM BỆNH').reduce((sum, t) => sum + t.amount, 0);
-  const testRevenue = filteredData.filter(t => t.type === 'XÉT NGHIỆM').reduce((sum, t) => sum + t.amount, 0);
+  const treatmentRevenue = filteredData?.filter?.(t => t.type === 'GÓI LIỆU TRÌNH').reduce((sum, t) => sum + t.amount, 0);
+  const consultRevenue = filteredData?.filter?.(t => t.type === 'KHÁM BỆNH').reduce((sum, t) => sum + t.amount, 0);
+  const testRevenue = filteredData?.filter?.(t => t.type === 'XÉT NGHIỆM').reduce((sum, t) => sum + t.amount, 0);
 
   const pctTreatment = totalRevenue > 0 ? Math.round((treatmentRevenue / totalRevenue) * 100) : 0;
   const pctConsult = totalRevenue > 0 ? Math.round((consultRevenue / totalRevenue) * 100) : 0;
@@ -218,8 +155,9 @@ export default function RevenueStatistics() {
     filteredData.forEach(t => {
       if (t.doctor !== '—') stats[t.doctor] = (stats[t.doctor] || 0) + t.amount;
     });
-    return Object.entries(stats)
-      .map(([name, amount]) => ({ name, amount, pct: totalRevenue > 0 ? (amount / totalRevenue) * 100 : 0 }))
+    return Object.entries(stats)?.map?.(
+      ([name, amount]) => ({ name, amount, pct: totalRevenue > 0 ? (amount / totalRevenue) * 100 : 0 })
+    )
       .sort((a, b) => b.amount - a.amount);
   }, [filteredData, totalRevenue, doctors]);
 
@@ -229,13 +167,14 @@ export default function RevenueStatistics() {
     filteredData.forEach(t => {
       stats[t.method] = (stats[t.method] || 0) + t.amount;
     });
-    return Object.entries(stats)
-      .map(([name, amount]) => ({ name, amount, pct: totalRevenue > 0 ? (amount / totalRevenue) * 100 : 0 }))
+    return Object.entries(stats)?.map?.(
+      ([name, amount]) => ({ name, amount, pct: totalRevenue > 0 ? (amount / totalRevenue) * 100 : 0 })
+    )
       .sort((a, b) => b.amount - a.amount);
   }, [filteredData, totalRevenue, methods]);
 
   const chartData = useMemo(() => {
-    const rawFiltered = mockTransactions.filter(t => {
+    const rawFiltered = transactions?.filter?.(t => {
       if (doctor !== 'all' && t.doctor !== doctor) return false;
       if (method !== 'all' && t.method !== method) return false;
       if (type !== 'all' && t.type !== type) return false;
@@ -253,7 +192,7 @@ export default function RevenueStatistics() {
           if (hours[hour] !== undefined) hours[hour] += t.amount;
         }
       });
-      rawData = Object.keys(hours).map(h => ({ label: h, value: hours[h] }));
+      rawData = Object.keys(hours)?.map?.(h => ({ label: h, value: hours[h] }));
     } else if (period === 'Tuần') {
       const days = { '05/06': 0, '06/06': 0, '07/06': 0, '08/06': 0, '09/06': 0, '10/06': 0, '11/06': 0 };
       rawFiltered.forEach(t => {
@@ -261,7 +200,7 @@ export default function RevenueStatistics() {
         const dayLabel = `${dd}/${mm}`;
         if (days[dayLabel] !== undefined) days[dayLabel] += t.amount;
       });
-      rawData = Object.keys(days).map(d => ({ label: d, value: days[d] }));
+      rawData = Object.keys(days)?.map?.(d => ({ label: d, value: days[d] }));
     } else if (period === 'Tháng') {
       const months = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
       rawFiltered.forEach(t => {
@@ -272,7 +211,7 @@ export default function RevenueStatistics() {
           months[txMonth] += t.amount;
         }
       });
-      rawData = Object.keys(months).map(m => ({ label: `Tháng ${m}`, value: months[m] }));
+      rawData = Object.keys(months)?.map?.(m => ({ label: `Tháng ${m}`, value: months[m] }));
     } else if (period === 'Quý') {
       const quarters = { 'Q3/25': 0, 'Q4/25': 0, 'Q1/26': 0, 'Q2/26': 0 };
       rawFiltered.forEach(t => {
@@ -283,7 +222,7 @@ export default function RevenueStatistics() {
         const qLabel = `Q${txQuarter}/${txYear.toString().slice(2)}`;
         if (quarters[qLabel] !== undefined) quarters[qLabel] += t.amount;
       });
-      rawData = Object.keys(quarters).map(q => ({ label: q, value: quarters[q] }));
+      rawData = Object.keys(quarters)?.map?.(q => ({ label: q, value: quarters[q] }));
     } else {
       const years = { '2023': 0, '2024': 0, '2025': 0, '2026': 0 };
       rawFiltered.forEach(t => {
@@ -291,11 +230,11 @@ export default function RevenueStatistics() {
         const yLabel = txYear.toString();
         if (years[yLabel] !== undefined) years[yLabel] += t.amount;
       });
-      rawData = Object.keys(years).map(y => ({ label: y, value: years[y] }));
+      rawData = Object.keys(years)?.map?.(y => ({ label: y, value: years[y] }));
     }
 
-    const maxVal = Math.max(...rawData.map(d => d.value), 1);
-    return rawData.map(d => ({
+    const maxVal = Math.max(...rawData?.map?.(d => d.value), 1);
+    return rawData?.map?.(d => ({
       label: d.label,
       height: d.value === 0 ? 0 : Math.max((d.value / maxVal) * 100, 12),
       highlight: d.value > 0
@@ -319,7 +258,9 @@ export default function RevenueStatistics() {
     const headers = ["Ngay", "Gio", "Dich vu/San pham", "Bac si", "Loai", "Phuong thuc", "So tien (VND)"];
     const csvContent = [
       headers.join(","),
-      ...filteredData.map(t => `"${t.date}","${t.time}","${t.service}","${t.doctor}","${t.type}","${t.method}",${t.amount}`)
+      ...filteredData?.map?.(
+        t => `"${t.date}","${t.time}","${t.service}","${t.doctor}","${t.type}","${t.method}",${t.amount}`
+      )
     ].join("\n");
 
     const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -364,7 +305,7 @@ export default function RevenueStatistics() {
           <p className="text-[11px] text-slate-500 mt-1">Tổng quan thu nhập từ khám bệnh, xét nghiệm và gói liệu trình điều trị</p>
         </div>
         <div className="flex bg-slate-50 border border-slate-200 rounded-full p-1 gap-1">
-          {['Ngày', 'Tuần', 'Tháng', 'Quý', 'Năm'].map(p => (
+          {['Ngày', 'Tuần', 'Tháng', 'Quý', 'Năm']?.map?.(p => (
             <button
               key={p}
               onClick={() => setPeriod(p)}
@@ -377,7 +318,6 @@ export default function RevenueStatistics() {
           ))}
         </div>
       </div>
-
       {/* ── Filters ── */}
       <div className="flex flex-wrap gap-2.5 items-center relative z-40">
         <FilterDropdown icon={ListFilter} options={doctors} value={doctor} onChange={setDoctor} placeholder="Tất cả BS / KTV" />
@@ -387,7 +327,6 @@ export default function RevenueStatistics() {
           <Download className="w-3.5 h-3.5" /> Xuất báo cáo CSV
         </button>
       </div>
-
       {/* ── KPI Cards ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mt-1 relative z-30">
         <div className="border border-slate-200 rounded-3xl p-4 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex flex-col hover:shadow-md transition-shadow min-h-[130px]">
@@ -462,7 +401,6 @@ export default function RevenueStatistics() {
           </div>
         </div>
       </div>
-
       {/* ── Charts Row ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 relative z-20">
         <div className="lg:col-span-2 border border-slate-200 rounded-3xl p-4 bg-white shadow-sm flex flex-col">
@@ -484,7 +422,7 @@ export default function RevenueStatistics() {
             )}
           </div>
           <div className="flex-1 flex items-end justify-between gap-2 mt-auto pt-4">
-            {chartData.map((d) => (
+            {chartData?.map?.((d) => (
               <div key={d.label} className="flex-1 flex flex-col items-center gap-1.5">
                 <div className={`w-6 md:w-8 ${d.highlight ? 'bg-indigo-600' : 'bg-slate-200'} rounded-t-full transition-all duration-500`} style={{ height: `${d.height}px` }}></div>
                 <span className={`text-[10px] font-bold ${d.highlight ? 'text-indigo-600' : 'text-slate-400'}`}>{d.label}</span>
@@ -536,7 +474,6 @@ export default function RevenueStatistics() {
           </div>
         </div>
       </div>
-
       {/* ── Middle Row ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 relative z-10">
         <div className="border border-slate-200 rounded-3xl p-4 bg-white shadow-sm flex flex-col justify-between">
@@ -544,7 +481,7 @@ export default function RevenueStatistics() {
             <h3 className="text-[13px] font-bold text-slate-900">Doanh thu theo bác sĩ</h3>
           </div>
           <div className="space-y-4">
-            {doctorStats.length > 0 ? doctorStats.map((ds, i) => (
+            {doctorStats.length > 0 ? doctorStats?.map?.((ds, i) => (
               <div key={ds.name}>
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-xs font-bold text-slate-800">{ds.name}</span>
@@ -566,7 +503,7 @@ export default function RevenueStatistics() {
             <h3 className="text-[13px] font-bold text-slate-900">Phương thức thanh toán</h3>
           </div>
           <div className="space-y-3">
-            {methodStats.length > 0 ? methodStats.map(ms => {
+            {methodStats.length > 0 ? methodStats?.map?.(ms => {
               const Icon = getMethodIcon(ms.name);
               const color = getMethodColor(ms.name);
               return (
@@ -592,7 +529,6 @@ export default function RevenueStatistics() {
           </div>
         </div>
       </div>
-
       {/* ── Table Chi tiết giao dịch ── */}
       <div className="border border-slate-200 rounded-3xl bg-white overflow-hidden shadow-sm relative z-0">
         <div className="px-4 py-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
@@ -614,7 +550,7 @@ export default function RevenueStatistics() {
               </tr>
             </thead>
             <tbody>
-              {displayedTransactions.length > 0 ? displayedTransactions.map((tx, i) => {
+              {displayedTransactions.length > 0 ? displayedTransactions?.map?.((tx, i) => {
                 const Icon = getMethodIcon(tx.method);
                 return (
                   <tr key={i} className="border-b border-slate-50 last:border-b-0 hover:bg-slate-50/80 transition-colors">

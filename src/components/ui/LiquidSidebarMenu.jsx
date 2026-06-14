@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 export default function LiquidSidebarMenu({ items, activeId, onChange, isSidebarExpanded }) {
   return (
     <nav className="space-y-1.5 w-full">
-      {items.map((item) => {
+      {items?.map?.((item) => {
         const Icon = item.icon;
         const isActive = activeId === item.id;
 

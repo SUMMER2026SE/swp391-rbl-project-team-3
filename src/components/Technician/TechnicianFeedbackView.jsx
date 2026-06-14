@@ -9,15 +9,14 @@ export default function TechnicianFeedbackView({ technicianId }) {
   const resolvedId = technicianId || 'doc-03';
   const { feedbacks, getStats } = useFeedbackController();
 
-  const ownPublished = feedbacks.filter(f => f.doctorId === resolvedId && f.status === 'published');
-  const visibleFeedbacks = feedbacks.filter(
+  const ownPublished = feedbacks?.filter?.(f => f.doctorId === resolvedId && f.status === 'published');
+  const visibleFeedbacks = feedbacks?.filter?.(
     f => f.status === 'published' && (f.doctorId === resolvedId || f.isPublic === true)
   );
   const stats = getStats(ownPublished);
 
-  const technicianCriteria = CRITERIA_META.filter(c =>
-    ['technician', 'treatmentEffect', 'waitingTime', 'facility'].includes(c.key)
-  );
+  const technicianCriteria = CRITERIA_META?.filter?.(c =>
+    ['technician', 'treatmentEffect', 'waitingTime', 'facility'].includes(c.key));
 
   return (
     <div className="space-y-6">
@@ -25,7 +24,6 @@ export default function TechnicianFeedbackView({ technicianId }) {
         <h2 className="text-xl font-bold text-slate-900">Đánh giá từ bệnh nhân</h2>
         <p className="text-sm text-slate-500 mt-1">Phản hồi về kỹ năng thực hiện và chất lượng dịch vụ của bạn</p>
       </div>
-
       {/* Score cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
@@ -61,7 +59,7 @@ export default function TechnicianFeedbackView({ technicianId }) {
             color: 'teal',
             icon: ThumbsUp,
           },
-        ].map((s, i) => {
+        ]?.map?.((s, i) => {
           const CARD_COLORS = {
             amber: { bg: 'bg-amber-50', border: 'border-amber-100', text: 'text-amber-500', val: 'text-amber-700' },
             sky: { bg: 'bg-sky-50', border: 'border-sky-100', text: 'text-sky-500', val: 'text-sky-700' },
@@ -85,7 +83,6 @@ export default function TechnicianFeedbackView({ technicianId }) {
           );
         })}
       </div>
-
       {/* Technician-specific criteria */}
       {stats.total > 0 && (
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
@@ -93,7 +90,7 @@ export default function TechnicianFeedbackView({ technicianId }) {
             <TrendingUp className="w-4 h-4 text-emerald-500" /> Điểm tiêu chí liên quan
           </p>
           <div className="grid grid-cols-2 gap-3">
-            {technicianCriteria.map(({ key, label, icon: Icon, color }) => {
+            {technicianCriteria?.map?.(({ key, label, icon: Icon, color }) => {
               const val = stats.criteria[key]
                 ? Math.round(stats.criteria[key] * 10) / 10
                 : 0;
@@ -120,7 +117,6 @@ export default function TechnicianFeedbackView({ technicianId }) {
           </div>
         </div>
       )}
-
       {/* Feedback list */}
       <div>
         <p className="text-sm font-bold text-slate-700 mb-3">
@@ -128,7 +124,7 @@ export default function TechnicianFeedbackView({ technicianId }) {
         </p>
         {visibleFeedbacks.length > 0 ? (
           <div className="space-y-4">
-            {visibleFeedbacks.map(fb => (
+            {visibleFeedbacks?.map?.(fb => (
               <FeedbackCard
                 key={fb.id}
                 fb={fb}
