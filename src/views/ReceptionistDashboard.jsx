@@ -120,6 +120,10 @@ export default function ReceptionistDashboard() {
   
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const receptionistId = user?.id || 'staff-01';
+  const myNotifications = notifications?.filter?.(n => 
+    n.recipientRole === 'RECEPTIONIST' && (n.recipientId === receptionistId || n.recipientId === 'all'));
+  const unreadCount = myNotifications?.filter?.(n => !n.isRead).length;
 
   useEffect(() => {
     const fetchNotifications = async () => {
@@ -139,11 +143,6 @@ export default function ReceptionistDashboard() {
     window.addEventListener('notifications-updated', handleUpdate);
     return () => window.removeEventListener('notifications-updated', handleUpdate);
   }, []);
-
-  const receptionistId = user?.id || 'staff-01';
-  const myNotifications = notifications?.filter?.(n => 
-    n.recipientRole === 'RECEPTIONIST' && (n.recipientId === receptionistId || n.recipientId === 'all'));
-  const unreadCount = myNotifications?.filter?.(n => !n.isRead).length;
 
   const handleMarkAllRead = () => {
     NotificationModel.markAllAsRead('RECEPTIONIST', receptionistId);

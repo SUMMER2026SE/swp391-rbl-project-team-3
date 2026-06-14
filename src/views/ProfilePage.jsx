@@ -28,6 +28,22 @@ import AppointmentsTab from '../components/PatientPortal/AppointmentsTab';
 import PatientFeedbackTab from '../components/PatientPortal/PatientFeedbackTab';
 import { ProfileModel } from '../models/ProfileModel';
 
+import doctorBg from '../assets/doctor.png';
+import patientBg from '../assets/patient.png';
+import techBg from '../assets/tech.png';
+import adminBg from '../assets/admin.png';
+import receptionBg from '../assets/reception.png';
+
+const getProfileBackground = (role) => {
+  if (!role) return patientBg;
+  const normalizedRole = role.toLowerCase();
+  if (normalizedRole.includes('doctor')) return doctorBg;
+  if (normalizedRole.includes('tech')) return techBg;
+  if (normalizedRole.includes('admin')) return adminBg;
+  if (normalizedRole.includes('reception')) return receptionBg;
+  return patientBg;
+};
+
 const tabContentVariants = {
   hidden: { opacity: 0, y: 16, scale: 0.99 },
   visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', damping: 28, stiffness: 200 } },
@@ -123,85 +139,91 @@ export default function ProfilePage() {
     );
   }
 
+  const profileBgImage = getProfileBackground(user?.role);
+
   return (
-    <div className="min-h-screen font-sans antialiased relative bg-[url('https://images.unsplash.com/photo-1557682250-33bd709cbe85?q=80&w=2029&auto=format&fit=crop')] bg-cover bg-fixed bg-center">
-      {/* Premium glowing canvas: soften the photo into a frosted mesh */}
-      <div className="absolute inset-0 bg-background/80 backdrop-blur-3xl" />
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-15%] left-[-8%] w-[45vw] h-[45vw] rounded-full bg-emerald-300/20 blur-[140px]" />
-        <div className="absolute bottom-[-15%] right-[-8%] w-[55vw] h-[55vw] rounded-full bg-sky-300/20 blur-[150px]" />
-        <div className="absolute top-[30%] left-[45%] w-[35vw] h-[35vw] rounded-full bg-teal-200/20 blur-[120px]" />
-      </div>
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Layer 1 (Image) */}
+      <div 
+        className="absolute inset-0 bg-cover bg-center transition-all duration-1000 z-0" 
+        style={{ backgroundImage: profileBgImage ? `url("${profileBgImage}")` : 'none', backgroundColor: '#f8fafc' }} 
+      />
 
-      {/* Top bar */}
-      <div className="relative z-10 max-w-[1400px] mx-auto px-5 sm:px-8 pt-6 flex items-center gap-4">
-        <button
-          onClick={() => navigate(-1)}
-          className="p-2.5 rounded-xl glass-3d-soft text-on-surface-variant hover:text-primary transition-all
-                     active:scale-95 cursor-pointer border-none"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <div>
-          <h1 className="text-xl font-extrabold text-on-surface tracking-tight">Hồ sơ cá nhân</h1>
-          <p className="text-xs text-on-surface-variant/70">Quản lý thông tin & hồ sơ của bạn</p>
-        </div>
-      </div>
+      {/* Layer 2 (Global Frosted Diffusion) */}
+      <div className="absolute inset-0 bg-slate-900/15 backdrop-blur-lg z-10" />
 
-      {/* Bento grid */}
-      <motion.div
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ type: 'spring', damping: 26, stiffness: 110 }}
-        className="relative z-10 max-w-[1400px] mx-auto px-5 sm:px-8 py-6 grid grid-cols-1 md:grid-cols-12 gap-6 items-start"
-      >
-        {/* Left — sticky identity card */}
-        <div className="md:col-span-4 md:sticky md:top-6">
-          <ProfileSummaryCard profile={profile} onAvatarChange={handleAvatarChange} />
-        </div>
-
-        {/* Right — tabs + dynamic content */}
-        <div className="md:col-span-8 space-y-5">
-          <ProfileTabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
-
-          <div className="glass-3d rounded-[2rem] p-6 sm:p-8 min-h-[460px]">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={activeTab}
-                variants={tabContentVariants}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-              >
-                {activeTab === 'personal' && <PersonalInfoTab profile={profile} onSaved={handleProfileSaved} />}
-                {activeTab === 'settings' && <AccountSettingsTab />}
-                {activeTab === 'insights' && <StaffInsightsTab profile={profile} />}
-                {activeTab === 'appointments' && <AppointmentsTab />}
-                {activeTab === 'records' && <MedicalRecordTab profile={profile} />}
-                {activeTab === 'feedback' && <PatientFeedbackTab user={user} />}
-                {activeTab === 'activity_log' && (
-                  <div className="text-center py-12 border-2 border-dashed border-slate-200 rounded-2xl bg-white/40 backdrop-blur-sm">
-                    <Activity className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-                    <p className="text-slate-500 font-medium">Nhật ký hoạt động hệ thống đang được cập nhật.</p>
-                  </div>
-                )}
-                {activeTab === 'permissions' && (
-                  <div className="text-center py-12 border-2 border-dashed border-slate-200 rounded-2xl bg-white/40 backdrop-blur-sm">
-                    <ShieldCheck className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-                    <p className="text-slate-500 font-medium">Bảng điều khiển phân quyền sẽ xuất hiện tại đây.</p>
-                  </div>
-                )}
-                {activeTab === 'work_schedule' && (
-                  <div className="text-center py-12 border-2 border-dashed border-slate-200 rounded-2xl bg-white/40 backdrop-blur-sm">
-                    <CalendarDays className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-                    <p className="text-slate-500 font-medium">Lịch làm việc và ca trực đang được đồng bộ.</p>
-                  </div>
-                )}
-              </motion.div>
-            </AnimatePresence>
+      {/* Layer 3: Content Wrapper */}
+      <div className="relative z-20 w-full max-w-7xl mx-auto p-4 md:p-8">
+        {/* Top bar */}
+        <div className="flex items-center gap-4 mb-6">
+          <button
+            onClick={() => navigate(-1)}
+            className="p-2.5 rounded-xl glass-3d-soft text-on-surface-variant hover:text-primary transition-all
+                       active:scale-95 cursor-pointer border-none"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div>
+            <h1 className="text-xl font-extrabold text-on-surface tracking-tight">Hồ sơ cá nhân</h1>
+            <p className="text-xs text-on-surface-variant/70">Quản lý thông tin & hồ sơ của bạn</p>
           </div>
         </div>
-      </motion.div>
+
+        {/* Bento grid */}
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: 'spring', damping: 26, stiffness: 110 }}
+          className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start"
+        >
+          {/* Left — sticky identity card */}
+          <div className="md:col-span-4 md:sticky md:top-6">
+            <ProfileSummaryCard profile={profile} onAvatarChange={handleAvatarChange} />
+          </div>
+
+          {/* Right — tabs + dynamic content */}
+          <div className="md:col-span-8 space-y-5">
+            <ProfileTabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
+
+            <div className="glass-3d rounded-[2rem] p-6 sm:p-8 min-h-[460px]">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeTab}
+                  variants={tabContentVariants}
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                >
+                  {activeTab === 'personal' && <PersonalInfoTab profile={profile} onSaved={handleProfileSaved} />}
+                  {activeTab === 'settings' && <AccountSettingsTab />}
+                  {activeTab === 'insights' && <StaffInsightsTab profile={profile} />}
+                  {activeTab === 'appointments' && <AppointmentsTab />}
+                  {activeTab === 'records' && <MedicalRecordTab profile={profile} />}
+                  {activeTab === 'feedback' && <PatientFeedbackTab user={user} />}
+                  {activeTab === 'activity_log' && (
+                    <div className="text-center py-12 border-2 border-dashed border-slate-200 rounded-2xl bg-white/40 backdrop-blur-sm">
+                      <Activity className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                      <p className="text-slate-500 font-medium">Nhật ký hoạt động hệ thống đang được cập nhật.</p>
+                    </div>
+                  )}
+                  {activeTab === 'permissions' && (
+                    <div className="text-center py-12 border-2 border-dashed border-slate-200 rounded-2xl bg-white/40 backdrop-blur-sm">
+                      <ShieldCheck className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                      <p className="text-slate-500 font-medium">Bảng điều khiển phân quyền sẽ xuất hiện tại đây.</p>
+                    </div>
+                  )}
+                  {activeTab === 'work_schedule' && (
+                    <div className="text-center py-12 border-2 border-dashed border-slate-200 rounded-2xl bg-white/40 backdrop-blur-sm">
+                      <CalendarDays className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                      <p className="text-slate-500 font-medium">Lịch làm việc và ca trực đang được đồng bộ.</p>
+                    </div>
+                  )}
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          </div>
+        </motion.div>
+      </div>
     </div>
   );
 }

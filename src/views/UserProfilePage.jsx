@@ -40,6 +40,12 @@ import { useMedicalRecordController } from '../controllers/useMedicalRecordContr
 import PatientFeedbackTab from '../components/PatientPortal/PatientFeedbackTab';
 import { NotificationModel } from '../models/NotificationModel';
 
+import doctorBg from '../assets/doctor.png';
+import patientBg from '../assets/patient.png';
+import techBg from '../assets/tech.png';
+import adminBg from '../assets/admin.png';
+import receptionBg from '../assets/reception.png';
+
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -548,8 +554,21 @@ function MedicalRecordsTab({ user }) {
 
 // ─── Main UserProfilePage Component ──────────────────────────────────────────
 
+const getProfileBackground = (role) => {
+  if (!role) return patientBg;
+  const normalizedRole = role.toLowerCase();
+  if (normalizedRole.includes('doctor')) return doctorBg;
+  if (normalizedRole.includes('tech')) return techBg;
+  if (normalizedRole.includes('admin')) return adminBg;
+  if (normalizedRole.includes('reception')) return receptionBg;
+  return 'https://images.pexels.com/photos/7578803/pexels-photo-7578803.jpeg';
+};
+
 export default function UserProfilePage() {
   const { user } = useAuth();
+  const role = user?.role || 'PATIENT';
+  const profileBgImage = getProfileBackground(role);
+
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('personal');
   const [notifications, setNotifications] = useState([]);
@@ -582,8 +601,6 @@ export default function UserProfilePage() {
     NotificationModel.markAllAsRead('PATIENT', user?.id);
   };
 
-  const role = user?.role || 'PATIENT';
-
   // Build tabs based on role
   const tabs = [
     { id: 'personal', label: 'Thông tin cá nhân', icon: <User className="w-4 h-4" /> },
@@ -600,6 +617,8 @@ export default function UserProfilePage() {
   const handleBack = () => {
     navigate(-1);
   };
+
+  console.log('DermaSmart Debug - Current Role:', role, '| Computed Bg Image URL:', profileBgImage);
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans antialiased relative">
@@ -698,20 +717,41 @@ export default function UserProfilePage() {
         initial="hidden"
         animate="visible"
       >
-        <div className="w-full max-w-4xl mx-auto backdrop-blur-3xl bg-white/80 border border-white shadow-2xl rounded-[2.5rem] overflow-hidden flex flex-col md:flex-row min-h-[600px]">
+        <div className="w-full max-w-4xl mx-auto backdrop-blur-3xl bg-white/80 border border-white shadow-2xl rounded-[2.5rem] overflow-hidden flex flex-col min-h-[600px]">
 
-          {/* Left Sidebar / Tab Menu */}
-          <div className="md:w-56 shrink-0 backdrop-blur-xl bg-slate-50/40 border-b md:border-b-0 md:border-r border-slate-200/50 p-4 md:p-6 flex md:flex-col gap-2 overflow-x-auto md:overflow-visible">
-            <div className="hidden md:block mb-6">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-400 to-sky-500 flex items-center justify-center text-white text-2xl font-bold shadow-md shadow-teal-500/15 mx-auto overflow-hidden">
-                {user?.avatar
-                  ? <img src={user.avatar} alt="avatar" className="w-full h-full object-cover" />
-                  : (user?.name || 'U').charAt(0).toUpperCase()
-                }
+          {/* Profile Banner */}
+          <div className="w-full h-48 sm:h-64 relative rounded-t-2xl overflow-hidden shadow-sm">
+            {/* Layer 1: Background Image */}
+            <div 
+              className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-all duration-500 ease-in-out will-change-transform z-0" 
+              style={{ backgroundImage: profileBgImage ? `url("${profileBgImage}")` : 'none', backgroundColor: '#e2e8f0' }}
+            />
+            {/* Layer 2: Frosted glass overlay layer (bg-gradient-to-t) */}
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-slate-900/40 z-10"></div>
+            
+            {/* Layer 3: Elevate existing children (like Edit buttons or Back buttons) */}
+            <div className="relative z-20 w-full h-full p-6 flex flex-col justify-end">
+              <div className="bg-rose-600 text-white font-mono text-[10px] p-2 break-all mb-4 rounded-md shadow-lg border border-rose-400 z-50 relative">
+                DEBUG URL: {typeof profileBgImage === 'object' ? JSON.stringify(profileBgImage) : String(profileBgImage)}
               </div>
-              <p className="text-center mt-3 text-sm font-bold text-slate-800 truncate">{user?.name || 'User'}</p>
-              <p className="text-center text-[11px] text-slate-400 font-medium">{ROLE_DISPLAY_NAMES[role]}</p>
+              <div className="flex items-center gap-4">
+                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-teal-400 to-sky-500 flex items-center justify-center text-white text-3xl font-bold shadow-xl shadow-black/20 overflow-hidden border-2 border-white/20">
+                  {user?.avatar
+                    ? <img src={user.avatar} alt="avatar" className="w-full h-full object-cover" />
+                    : (user?.name || 'U').charAt(0).toUpperCase()
+                  }
+                </div>
+                <div>
+                  <h2 className="text-2xl font-extrabold text-white tracking-tight">{user?.name || 'User'}</h2>
+                  <p className="text-sm font-medium text-slate-200 mt-1">{ROLE_DISPLAY_NAMES[role]}</p>
+                </div>
+              </div>
             </div>
+          </div>
+
+          <div className="flex flex-col md:flex-row flex-1">
+            {/* Left Sidebar / Tab Menu */}
+            <div className="md:w-56 shrink-0 backdrop-blur-xl bg-slate-50/40 border-b md:border-b-0 md:border-r border-slate-200/50 p-4 md:p-6 flex md:flex-col gap-2 overflow-x-auto md:overflow-visible">
 
             {(Array.isArray(tabs) ? tabs : []).map((tab) => (
               <button
@@ -758,6 +798,7 @@ export default function UserProfilePage() {
                 </motion.div>
               )}
             </AnimatePresence>
+          </div>
           </div>
         </div>
       </motion.div>

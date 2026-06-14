@@ -50,6 +50,10 @@ export default function DoctorDashboard() {
   const navigate = useNavigate();
 
   // State-based routing
+  const [currentDoctorId, setCurrentDoctorId] = useState(
+    (user?.id && typeof user.id === 'string' && user.id.startsWith('doc-')) ? user.id : 'doc-01'
+  );
+  const doctorId = currentDoctorId;
   const [activeTab, setActiveTab] = useState('overview');
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [activeAppointment, setActiveAppointment] = useState(null);
@@ -57,6 +61,9 @@ export default function DoctorDashboard() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [appointments, setAppointments] = useState([]);
+  const [showToast, setShowToast] = useState(false);
+  const [doctorsList, setDoctorsList] = useState([]);
+  const [activeDoctor, setActiveDoctor] = useState(null);
 
   useEffect(() => {
     const loadApts = async () => {
@@ -65,12 +72,6 @@ export default function DoctorDashboard() {
     };
     loadApts();
   }, [currentDoctorId]);
-  const [showToast, setShowToast] = useState(false);
-  const [currentDoctorId, setCurrentDoctorId] = useState(
-    (user?.id && typeof user.id === 'string' && user.id.startsWith('doc-')) ? user.id : 'doc-01'
-  );
-  const [doctorsList, setDoctorsList] = useState([]);
-  const [activeDoctor, setActiveDoctor] = useState(null);
 
   useEffect(() => {
     const loadDoctors = async () => {
@@ -116,8 +117,6 @@ export default function DoctorDashboard() {
       setShowToast(false);
     }, 3000);
   };
-
-  const doctorId = currentDoctorId;
 
   useEffect(() => {
     const fetchNotifications = async () => {
