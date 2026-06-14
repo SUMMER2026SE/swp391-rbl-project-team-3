@@ -475,5 +475,10 @@ export const AppointmentModel = {
     } catch (e) {
       console.warn('Failed to lock slot:', e.message);
     }
+  },
+
+  updatePatientName(patientId, newName) {
+    // No-op in Supabase version since patient name is fetched dynamically from users/profiles
+    return;
   }
 };
