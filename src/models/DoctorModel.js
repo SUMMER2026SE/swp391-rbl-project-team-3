@@ -27,7 +27,7 @@ export const DoctorModel = {
       const { data, error } = await supabase
         .from('doctor_profiles')
         .select('*, user:users(*)')
-        .eq('user_id', id)
+        .eq('doctor_id', id)
         .single();
       
       if (error) throw error;
@@ -53,7 +53,7 @@ export const DoctorModel = {
       const { data, error } = await supabase
         .from('doctor_profiles')
         .update({ rating: newRating, reviews_count: newCount })
-        .eq('user_id', id)
+        .eq('doctor_id', id)
         .select();
 
       if (error) throw error;

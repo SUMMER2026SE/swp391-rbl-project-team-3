@@ -1,0 +1,212 @@
+/* =================================================================
+   DermaSmart AI — Liquid Glass Chat Overlay
+   Layer strategy (read before editing):
+     .lg-backdrop  -> STATIC heavy blur + dim. Only opacity animates.
+     .lg-plasma    -> LIGHT animated colour. transform-only keyframes,
+                      mix-blend-mode: screen for luminous (never muddy) glow.
+     .lg-content   -> The UI. Lives above plasma, unaffected by the blend.
+   Never animate backdrop-filter or filter radius — keep them constant so the
+   compositor can cache the rasterised blur and only move cheap transforms.
+   ================================================================= */
+
+.lg-root {
+  /* Own stacking context so mix-blend-mode is contained and predictable */
+  isolation: isolate;
+}
+
+/* ---- Layer 0 : frosted, dimmed view of the page behind ---- */
+.lg-backdrop {
+  position: absolute;
+  inset: 0;
+  /* Dim, NOT paint-over: a translucent dark wash lets the page read through */
+  background:
+    radial-gradient(150% 130% at 50% 0%, rgba(4, 8, 28, 0.74) 0%, rgba(3, 6, 22, 0.85) 55%, rgba(2, 4, 16, 0.92) 100%);
+  -webkit-backdrop-filter: blur(40px) saturate(130%);
+  backdrop-filter: blur(40px) saturate(130%);
+  /* Promote to its own cached layer: the heavy blur is rasterised once and
+     is NOT recomputed when the edge rim animates above it. */
+  transform: translateZ(0);
+  will-change: opacity;
+}
+
+/* ---- Layer 1 : plasma energy at the screen edges ---- */
+.lg-plasma {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  /* screen blend => colours add up to luminous light over the dark backdrop */
+  mix-blend-mode: screen;
+  /* Confine the glow to the extreme edges so the centre stays dark &
+     readable. Without this the screen-blended blobs wash out the dim. */
+  -webkit-mask-image: radial-gradient(ellipse 72% 72% at 50% 50%, transparent 28%, rgba(0,0,0,0.55) 58%, #000 100%);
+  mask-image: radial-gradient(ellipse 72% 72% at 50% 50%, transparent 28%, rgba(0,0,0,0.55) 58%, #000 100%);
+}
+
+/* =================================================================
+   EDGE BORDER SYSTEM — the continuous, rotating Apple-Intelligence
+   colour rim that hugs the absolute edge of the screen.
+   Sits ABOVE the backdrop/plasma, BELOW the chat content.
+   ----------------------------------------------------------------
+   Perf technique: a conic gradient is painted ONLY into the 6px
+   `border` via `border-image`, and its angle is swept with a
+   registered `@property` custom prop. The repaint is confined to the
+   thin border band — no full-screen mask, no full-screen gradient —
+   so it never forces the heavy static backdrop-filter to recompute.
+   `@property` is required: without registering --edge-angle as an
+   <angle>, the conic `from` value can't interpolate and won't rotate.
+   ================================================================= */
+@property --edge-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.lg-edge {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5; /* above backdrop(0)/plasma — content layer is z-10 */
+  /* Isolate so the rim repaints in its OWN compositor layer and can
+     never invalidate the expensive static backdrop-filter below. */
+  isolation: isolate;
+  contain: strict;
+}
+
+.lg-edge-border-system {
+  position: absolute;
+  inset: 0;
+  border: 6px solid transparent; /* thickness */
+  border-image: conic-gradient(
+    from var(--edge-angle),
+    rgba(255, 149, 0, 0) 0deg,
+    #FF9500 48deg,
+    #F888FF 100deg,
+    #A476FF 164deg,
+    #4E98FF 220deg,
+    #58E4FF 292deg,
+    rgba(255, 149, 0, 0) 360deg
+  ) 1;
+  /* soft luminous bloom around the rim — cheap, single composite pass */
+  filter: drop-shadow(0 0 7px rgba(120, 160, 255, 0.5));
+  animation: edgeRotate 9s linear infinite;
+  will-change: --edge-angle;
+}
+
+@keyframes edgeRotate {
+  to { --edge-angle: 360deg; }
+}
+
+.lg-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.85;
+  will-change: transform;
+}
+
+/* Each blob is anchored OFF an edge so only its glow bleeds inward,
+   keeping the screen centre clean for reading. */
+.lg-blob--cyan {
+  top: -22vh; left: -16vw;
+  width: 60vw; height: 60vw;
+  background: radial-gradient(circle, rgba(34, 211, 238, 0.9) 0%, rgba(34, 211, 238, 0) 68%);
+  animation: lg-drift-a 17s ease-in-out infinite;
+}
+.lg-blob--blue {
+  top: -26vh; right: -18vw;
+  width: 62vw; height: 62vw;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.85) 0%, rgba(59, 130, 246, 0) 68%);
+  animation: lg-drift-b 21s ease-in-out infinite;
+}
+.lg-blob--violet {
+  top: 30vh; right: -24vw;
+  width: 55vw; height: 55vw;
+  background: radial-gradient(circle, rgba(167, 139, 250, 0.85) 0%, rgba(167, 139, 250, 0) 68%);
+  animation: lg-drift-c 19s ease-in-out infinite;
+}
+.lg-blob--pink {
+  bottom: -28vh; left: 18vw;
+  width: 58vw; height: 58vw;
+  background: radial-gradient(circle, rgba(244, 114, 182, 0.8) 0%, rgba(244, 114, 182, 0) 68%);
+  animation: lg-drift-d 23s ease-in-out infinite;
+}
+.lg-blob--orange {
+  bottom: -24vh; left: -20vw;
+  width: 52vw; height: 52vw;
+  background: radial-gradient(circle, rgba(251, 146, 60, 0.75) 0%, rgba(251, 146, 60, 0) 68%);
+  animation: lg-drift-e 25s ease-in-out infinite;
+}
+
+/* transform-only drifts => GPU composited, no layout, no repaint */
+@keyframes lg-drift-a {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%      { transform: translate3d(8vw, 6vh, 0) scale(1.12); }
+}
+@keyframes lg-drift-b {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1.05); }
+  50%      { transform: translate3d(-7vw, 8vh, 0) scale(0.95); }
+}
+@keyframes lg-drift-c {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%      { transform: translate3d(-9vw, -6vh, 0) scale(1.15); }
+}
+@keyframes lg-drift-d {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1.08); }
+  50%      { transform: translate3d(6vw, -7vh, 0) scale(0.92); }
+}
+@keyframes lg-drift-e {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%      { transform: translate3d(9vw, -5vh, 0) scale(1.1); }
+}
+
+/* ---- glass surfaces inside the content layer ---- */
+.lg-glass {
+  background: rgba(255, 255, 255, 0.10);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.lg-bubble-in {
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.20);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+/* breathing avatar orb */
+@keyframes lg-orb-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.45), 0 0 22px rgba(167, 139, 250, 0.6); }
+  50%      { box-shadow: 0 0 0 8px rgba(56, 189, 248, 0), 0 0 30px rgba(167, 139, 250, 0.85); }
+}
+.lg-orb {
+  animation: lg-orb-pulse 2.8s ease-in-out infinite;
+}
+
+/* typing dots */
+@keyframes lg-typing {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30%           { transform: translateY(-4px); opacity: 1; }
+}
+.lg-typing-dot { animation: lg-typing 1.2s ease-in-out infinite; }
+.lg-typing-dot:nth-child(2) { animation-delay: 0.18s; }
+.lg-typing-dot:nth-child(3) { animation-delay: 0.36s; }
+
+/* slim luminous scrollbar */
+.lg-scroll::-webkit-scrollbar { width: 5px; }
+.lg-scroll::-webkit-scrollbar-track { background: transparent; }
+.lg-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+}
+.lg-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.38); }
+.lg-scroll { scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.22) transparent; }
+
+/* hide horizontal scrollbar on the chip rail */
+.lg-no-scrollbar::-webkit-scrollbar { display: none; }
+.lg-no-scrollbar { scrollbar-width: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lg-blob, .lg-orb, .lg-typing-dot, .lg-edge-border-system { animation: none !important; }
+}

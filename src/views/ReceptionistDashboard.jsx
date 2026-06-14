@@ -97,13 +97,25 @@ export default function ReceptionistDashboard() {
 
   // Poll receptionist messages from ReceptionistChatModel to keep state synchronized
   useEffect(() => {
-    const fetchMsgs = () => {
-      const msgs = ReceptionistChatModel.getAllMessages();
-      setChatMessages(msgs);
+    let active = true;
+
+    const fetchMsgs = async () => {
+      try {
+        const msgs = await ReceptionistChatModel.getAllMessages();
+        if (active) {
+          setChatMessages(msgs || []);
+        }
+      } catch (err) {
+        console.error("Error fetching receptionist messages:", err);
+      }
     };
+
     fetchMsgs();
     const interval = setInterval(fetchMsgs, 2000);
-    return () => clearInterval(interval);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
   }, []);
   
   const [notifications, setNotifications] = useState(() => NotificationModel.getAll());
@@ -301,32 +313,44 @@ export default function ReceptionistDashboard() {
   };
 
   // 6. Handle sending message from receptionist
-  const handleSendMessage = (patientId, text) => {
-    const newMsg = ReceptionistChatModel.addMessage({
-      senderId: 'staff-01', // Receptionist ID
-      senderName: 'Lễ tân Hoàng Anh',
-      senderRole: 'RECEPTIONIST',
-      text: text,
-      mode: 'Live',
-      patientId: patientId
-    });
-    
-    setChatMessages(prev => [...prev, newMsg]);
-
-    // Simulate patient response after 1.5s to show rich interactivity
-    setTimeout(() => {
-      const activePatient = (patients || []).find(p => p.id === patientId);
-      const replyMsg = ReceptionistChatModel.addMessage({
-        senderId: patientId,
-        senderName: activePatient ? activePatient.fullName : 'Bệnh nhân',
-        senderRole: 'PATIENT',
-        text: `Dạ vâng ạ, cảm ơn lễ tân đã hỗ trợ nhiệt tình!`,
+  const handleSendMessage = async (patientId, text) => {
+    try {
+      const newMsg = await ReceptionistChatModel.addMessage({
+        senderId: 'staff-01', // Receptionist ID
+        senderName: 'Lễ tân Hoàng Anh',
+        senderRole: 'RECEPTIONIST',
+        text: text,
         mode: 'Live',
         patientId: patientId
       });
-      setChatMessages(prev => [...prev, replyMsg]);
-      showToast(`Tin nhắn mới từ bệnh nhân ${activePatient ? activePatient.fullName : 'Bệnh nhân'}`, 'info');
-    }, 1500);
+      
+      if (newMsg) {
+        setChatMessages(prev => [...prev, newMsg]);
+      }
+
+      // Simulate patient response after 1.5s to show rich interactivity
+      setTimeout(async () => {
+        try {
+          const activePatient = (patients || []).find(p => p.id === patientId);
+          const replyMsg = await ReceptionistChatModel.addMessage({
+            senderId: patientId,
+            senderName: activePatient ? activePatient.fullName : 'Bệnh nhân',
+            senderRole: 'PATIENT',
+            text: `Dạ vâng ạ, cảm ơn lễ tân đã hỗ trợ nhiệt tình!`,
+            mode: 'Live',
+            patientId: patientId
+          });
+          if (replyMsg) {
+            setChatMessages(prev => [...prev, replyMsg]);
+            showToast(`Tin nhắn mới từ bệnh nhân ${activePatient ? activePatient.fullName : 'Bệnh nhân'}`, 'info');
+          }
+        } catch (err) {
+          console.error("Failed to add automated patient reply:", err);
+        }
+      }, 1500);
+    } catch (err) {
+      console.error("Failed to send message from receptionist:", err);
+    }
   };
 
   // ─── FILTER DATA BASED ON SEARCH ────────────────────────────────────────

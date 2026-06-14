@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DoctorModel } from '../models/DoctorModel';
 import { VoucherModel } from '../models/VoucherModel';
+import { useDoctors } from '../hooks/useDoctors';
 import ChangePasswordModal from './ChangePasswordModal';
 import FreeSkinScanModal from '../components/FreeSkinScanModal';
 import FloatingChatbot from '../components/PatientPortal/FloatingChatbot';
@@ -177,7 +177,9 @@ function LandingPage({ user, onLogout }) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   
   const navigate = useNavigate();
-  const [doctorsList, setDoctorsList] = useState([]);
+  // Doctors come from the shared, normalized hook (same source the dashboards
+  // use) so the showcase renders correct fields when real data is available.
+  const { doctors: doctorsList } = useDoctors();
   const [activeVouchers, setActiveVouchers] = useState([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
 
@@ -185,9 +187,6 @@ function LandingPage({ user, onLogout }) {
     async function loadData() {
       try {
         setIsLoadingData(true);
-        const docs = await DoctorModel.getAllDoctors();
-        setDoctorsList(docs);
-
         const allVouchers = await VoucherModel.getAllVouchers();
         const today = new Date().toISOString().split('T')[0];
         const active = allVouchers?.filter?.(v =>

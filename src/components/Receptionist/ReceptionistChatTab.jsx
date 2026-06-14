@@ -19,107 +19,139 @@ export default function ReceptionistChatTab() {
   }, [conversation, selectedPatientId]);
 
   // Load patient list and their latest messages with the receptionist
-  const loadPatientsAndChats = () => {
-    const allMsgs = ReceptionistChatModel.getAllMessages();
+  const loadPatientsAndChats = async () => {
+    try {
+      const allMsgs = await ReceptionistChatModel.getAllMessages();
 
-    // 1. Find all unique patientIds that have messages
-    const uniquePatientIds = [...new Set(allMsgs?.map(msg => msg.patientId)?.filter?.(Boolean))];
+      // 1. Find all unique patientIds that have messages
+      const uniquePatientIds = [...new Set(allMsgs?.map(msg => msg.patientId)?.filter?.(Boolean))];
 
-    // 2. Process each unique patient
-    const processedPatients = uniquePatientIds?.map?.(patientId => {
-      const patMsgs = allMsgs?.filter?.(msg => msg.patientId === patientId);
-      
-      // Find latest message for this patient
-      const sortedMsgs = [...patMsgs].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-      const latestMsg = sortedMsgs[0] || null;
+      // 2. Process each unique patient
+      const processedPatients = uniquePatientIds?.map?.(patientId => {
+        const patMsgs = allMsgs?.filter?.(msg => msg.patientId === patientId);
+        
+        // Find latest message for this patient
+        const sortedMsgs = [...patMsgs].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        const latestMsg = sortedMsgs[0] || null;
 
-      // Try to find matching patient in ([])
-      const patientMatch = ([]).find(p => p.id === patientId);
+        // Try to find matching patient in ([])
+        const patientMatch = ([]).find(p => p.id === patientId);
 
-      let fullName = 'Bệnh nhân';
-      let phone = 'Chưa có SĐT';
-      let email = 'Chưa có Email';
-      let avatar = `https://i.pravatar.cc/150?u=${patientId}`;
+        let fullName = 'Bệnh nhân';
+        let phone = 'Chưa có SĐT';
+        let email = 'Chưa có Email';
+        let avatar = `https://i.pravatar.cc/150?u=${patientId}`;
 
-      if (([])) {
-        fullName = ([]).fullName;
-        phone = ([]).phone || 'Chưa có SĐT';
-        email = ([]).email || 'Chưa có Email';
-        avatar = ([]).avatar || avatar;
-      } else {
-        // Not in ([]) (e.g. registered user or guest)
-        // Find any message sent by the patient to resolve their name
-        const patientSentMsg = patMsgs.find(msg => msg.senderRole === 'PATIENT');
-        if (patientSentMsg) {
-          fullName = patientSentMsg.senderName;
-        } else if (patientId === 'pat-guest') {
-          fullName = 'Khách viếng thăm';
+        if (([])) {
+          fullName = ([]).fullName;
+          phone = ([]).phone || 'Chưa có SĐT';
+          email = ([]).email || 'Chưa có Email';
+          avatar = ([]).avatar || avatar;
+        } else {
+          // Not in ([]) (e.g. registered user or guest)
+          // Find any message sent by the patient to resolve their name
+          const patientSentMsg = patMsgs.find(msg => msg.senderRole === 'PATIENT');
+          if (patientSentMsg) {
+            fullName = patientSentMsg.senderName;
+          } else if (patientId === 'pat-guest') {
+            fullName = 'Khách viếng thăm';
+          }
         }
-      }
 
-      return {
-        id: patientId,
-        fullName,
-        phone,
-        email,
-        avatar,
-        latestMsgText: latestMsg ? latestMsg.text : 'Chưa có tin nhắn',
-        latestMsgTime: latestMsg ? new Date(latestMsg.timestamp) : null,
-        hasChat: true
-      };
-    });
+        return {
+          id: patientId,
+          fullName,
+          phone,
+          email,
+          avatar,
+          latestMsgText: latestMsg ? latestMsg.text : 'Chưa có tin nhắn',
+          latestMsgTime: latestMsg ? new Date(latestMsg.timestamp) : null,
+          hasChat: true
+        };
+      });
 
-    // Sort patients by latest message time descending
-    processedPatients.sort((a, b) => {
-      if (!a.latestMsgTime) return 1;
-      if (!b.latestMsgTime) return -1;
-      return b.latestMsgTime - a.latestMsgTime;
-    });
+      // Sort patients by latest message time descending
+      processedPatients.sort((a, b) => {
+        if (!a.latestMsgTime) return 1;
+        if (!b.latestMsgTime) return -1;
+        return b.latestMsgTime - a.latestMsgTime;
+      });
 
-    setPatientsList(processedPatients);
+      setPatientsList(processedPatients);
+    } catch (err) {
+      console.error("Failed to load patients and chats:", err);
+    }
   };
 
   // Initial load and polling for patient list & current active conversation
   useEffect(() => {
-    loadPatientsAndChats();
+    let active = true;
 
-    const interval = setInterval(() => {
-      loadPatientsAndChats();
-      if (selectedPatientId) {
-        const msgs = ReceptionistChatModel.getMessagesForPatient(selectedPatientId);
-        setConversation(msgs);
+    const fetchAll = async () => {
+      await loadPatientsAndChats();
+      if (selectedPatientId && active) {
+        try {
+          const msgs = await ReceptionistChatModel.getMessagesForPatient(selectedPatientId);
+          if (active) setConversation(msgs || []);
+        } catch (err) {
+          console.error("Error fetching patient messages:", err);
+        }
       }
-    }, 2000); // 2s polling
+    };
 
-    return () => clearInterval(interval);
+    fetchAll();
+
+    const interval = setInterval(fetchAll, 2000); // 2s polling
+
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
   }, [selectedPatientId]);
 
   // Load conversation when selected patient changes
   useEffect(() => {
-    if (selectedPatientId) {
-      const msgs = ReceptionistChatModel.getMessagesForPatient(selectedPatientId);
-      setConversation(msgs);
-    } else {
-      setConversation([]);
-    }
+    let active = true;
+    const loadConversation = async () => {
+      if (selectedPatientId) {
+        try {
+          const msgs = await ReceptionistChatModel.getMessagesForPatient(selectedPatientId);
+          if (active) setConversation(msgs || []);
+        } catch (err) {
+          console.error("Error loading conversation:", err);
+        }
+      } else {
+        setConversation([]);
+      }
+    };
+    loadConversation();
+    return () => { active = false; };
   }, [selectedPatientId]);
 
-  const handleSend = (e) => {
+  const handleSend = async (e) => {
     if (e) e.preventDefault();
     if (!inputValue.trim() || !selectedPatientId) return;
 
-    const newMsg = ReceptionistChatModel.addMessage({
-      senderId: 'staff-01',
-      senderName: 'Lễ tân Hoàng Anh',
-      senderRole: 'RECEPTIONIST',
-      text: inputValue.trim(),
-      mode: 'Live',
-      patientId: selectedPatientId
-    });
-
-    setConversation(prev => [...prev, newMsg]);
+    const currentText = inputValue.trim();
     setInputValue('');
-    loadPatientsAndChats();
+
+    try {
+      const newMsg = await ReceptionistChatModel.addMessage({
+        senderId: 'staff-01',
+        senderName: 'Lễ tân Hoàng Anh',
+        senderRole: 'RECEPTIONIST',
+        text: currentText,
+        mode: 'Live',
+        patientId: selectedPatientId
+      });
+
+      if (newMsg) {
+        setConversation(prev => [...prev, newMsg]);
+      }
+      await loadPatientsAndChats();
+    } catch (err) {
+      console.error("Failed to send message:", err);
+    }
   };
 
   const handleKeyDown = (e) => {

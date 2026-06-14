@@ -70,32 +70,48 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
   // Polling for messages between doctor and current patient
   useEffect(() => {
     if (!isChatOpen || !appointment) return;
+    let active = true;
 
-    const fetchMsgs = () => {
-      const msgs = ChatModel.getMessagesBetween(patientId, doctorId);
-      setConversation(msgs);
+    const fetchMsgs = async () => {
+      try {
+        const msgs = await ChatModel.getMessagesBetween(patientId, doctorId);
+        if (active) setConversation(msgs || []);
+      } catch (err) {
+        console.error("Error fetching doctor messages:", err);
+      }
     };
 
     fetchMsgs();
     const interval = setInterval(fetchMsgs, 2000);
-    return () => clearInterval(interval);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
   }, [isChatOpen, patientId, doctorId, appointment]);
 
-  const handleSend = (e) => {
+  const handleSend = async (e) => {
     if (e) e.preventDefault();
     if (!inputValue.trim()) return;
 
-    const newMsg = ChatModel.addMessage({
-      senderId: doctorId,
-      senderName: activeDoctor?.name || 'Bác sĩ',
-      senderRole: 'DOCTOR',
-      receiverId: patientId,
-      receiverName: patientName,
-      text: inputValue.trim()
-    });
-
-    setConversation(prev => [...prev, newMsg]);
+    const currentText = inputValue.trim();
     setInputValue('');
+
+    try {
+      const newMsg = await ChatModel.addMessage({
+        senderId: doctorId,
+        senderName: activeDoctor?.name || 'Bác sĩ',
+        senderRole: 'DOCTOR',
+        receiverId: patientId,
+        receiverName: patientName,
+        text: currentText
+      });
+
+      if (newMsg) {
+        setConversation(prev => [...prev, newMsg]);
+      }
+    } catch (err) {
+      console.error("Failed to send doctor message:", err);
+    }
   };
 
   const handleKeyDown = (e) => {
