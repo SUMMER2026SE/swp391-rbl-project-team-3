@@ -88,7 +88,7 @@ function AppointmentCard({ apt, index, isUpcoming, onCancel, onReschedule, onVie
           <CreditCard className="w-3.5 h-3.5 text-sky-500" />
           {apt.fee}
         </span>
-        <StatusBadge text={apt.paymentStatus} type="payment" />
+        {apt.paymentStatus && <StatusBadge text={apt.paymentStatus} type="payment" />}
         {/* Show star rating if feedback exists */}
         {existingFeedback && (
           <span className="flex items-center gap-0.5">
@@ -170,7 +170,9 @@ function AppointmentCard({ apt, index, isUpcoming, onCancel, onReschedule, onVie
 // ─── Reschedule Confirmation Modal ───────────────────────────────────────────
 
 function RescheduleModal({ apt, onClose, onConfirm, rescheduleError }) {
-  const { getAvailableSlots, canCancel, lockSlot } = useAppointmentController();
+  const { getAvailableSlots, isWithin24h, lockSlot } = useAppointmentController();
+  // Surcharge applies only when the CURRENT appointment is within 24h of now.
+  const within24h = isWithin24h(apt.date || apt.appointment_date, apt.time || apt.start_time);
   const [newDate, setNewDate] = useState('');
   const [newTime, setNewTime] = useState('');
   
@@ -271,11 +273,11 @@ function RescheduleModal({ apt, onClose, onConfirm, rescheduleError }) {
 
   const handleProceedToPayment = () => {
     if (newDate && newTime && isDoctorWorkingOnDay) {
-      if (canCancel(apt)) {
-        // Free reschedule
+      if (!within24h) {
+        // Free reschedule (not within 24h of the current appointment)
         handleConfirmPayment();
       } else {
-        // Requires payment
+        // Within 24h → requires the 50k surcharge payment
         setLocalError('');
         setStep('payment');
         setTimeLeft(300);
@@ -314,7 +316,7 @@ function RescheduleModal({ apt, onClose, onConfirm, rescheduleError }) {
     if (res && res.success) {
       setStep('success');
       window.dispatchEvent(new CustomEvent('show-toast', {
-        detail: { message: canCancel(apt) ? 'Đổi lịch hẹn thành công!' : 'Thanh toán phụ phí thành công!', type: 'success' }
+        detail: { message: within24h ? 'Thanh toán phụ phí thành công!' : 'Đổi lịch hẹn thành công!', type: 'success' }
       }));
       setTimeout(() => {
         isSubmittingRef.current = false;
@@ -375,7 +377,7 @@ function RescheduleModal({ apt, onClose, onConfirm, rescheduleError }) {
                 </div>
               )}
 
-              {!canCancel(apt) && (
+              {within24h && (
                 <div className="mb-4 p-3.5 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5 text-xs text-amber-700 font-semibold leading-relaxed">
                   <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
                   <div>
@@ -459,7 +461,7 @@ function RescheduleModal({ apt, onClose, onConfirm, rescheduleError }) {
                       : 'bg-slate-300 cursor-not-allowed shadow-none'
                   }`}
                 >
-                  {canCancel(apt) ? 'Xác nhận đổi lịch' : 'Thanh toán phụ phí'}
+                  {within24h ? 'Thanh toán phụ phí' : 'Xác nhận đổi lịch'}
                 </button>
                 <button
                   onClick={onClose}
@@ -797,19 +799,30 @@ export default function AppointmentsTab() {
   const [viewTarget, setViewTarget] = useState(null);
   const [writeFeedbackTarget, setWriteFeedbackTarget] = useState(null);
 
+  // Date-aware split: an *active* appointment only counts as "upcoming" while
+  // its date hasn't passed; once the date is in the past it moves to history
+  // (overdue) instead of lingering in "sắp tới" forever.
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const ACTIVE_STATUSES = ['Đã xác nhận', 'Chờ xác nhận', 'Đang chờ', 'Pending'];
+  const TERMINAL_STATUSES = ['Đã khám', 'Đã hủy', 'Reviewed'];
+  const aptDate = (a) => a.date || a.appointment_date || '';
+  const isActive = (a) => ACTIVE_STATUSES.includes(a.status);
+  const isTerminal = (a) => TERMINAL_STATUSES.includes(a.status);
+
   const upcoming = appointments.filter(
-    (a) => a.status === 'Đã xác nhận' || a.status === 'Chờ xác nhận' || a.status === 'Đang chờ' || a.status === 'Pending'
+    (a) => isActive(a) && aptDate(a) >= todayStr
   ).sort((a, b) => {
-    const strA = `${a.date || a.appointment_date || ''}T${a.time || a.start_time || ''}`;
-    const strB = `${b.date || b.appointment_date || ''}T${b.time || b.start_time || ''}`;
+    const strA = `${aptDate(a)}T${a.time || a.start_time || ''}`;
+    const strB = `${aptDate(b)}T${b.time || b.start_time || ''}`;
     return strA.localeCompare(strB);
   });
-  
+
   const past = appointments.filter(
-    (a) => a.status === 'Đã khám' || a.status === 'Đã hủy' || a.status === 'Reviewed'
+    (a) => isTerminal(a) || (isActive(a) && aptDate(a) < todayStr)
   ).sort((a, b) => {
-    const strA = `${a.date || a.appointment_date || ''}T${a.time || a.start_time || ''}`;
-    const strB = `${b.date || b.appointment_date || ''}T${b.time || b.start_time || ''}`;
+    const strA = `${aptDate(a)}T${a.time || a.start_time || ''}`;
+    const strB = `${aptDate(b)}T${b.time || b.start_time || ''}`;
     return strB.localeCompare(strA);
   });
 
@@ -820,22 +833,6 @@ export default function AppointmentsTab() {
       if (res.success) setCancelTarget(null);
       else setCancelError(res.error);
     }
-  };
-
-  const openRescheduleModal = async (apt) => {
-    setSelectedApt(apt);
-    setRescheduleDate('');
-    setRescheduleTime('');
-    setRescheduleReason('');
-    
-    try {
-      const freshSchedules = await DoctorScheduleModel.getAllShifts();
-      if (freshSchedules) setAdminSchedules(freshSchedules);
-    } catch (e) {
-      console.warn("Could not fetch fresh schedules", e);
-    }
-    
-    setIsRescheduleModalOpen(true);
   };
 
   const handleConfirmReschedule = async (newDate, newTime) => {

@@ -16,9 +16,10 @@ for (const line of envLines) {
 
 const supabase = createClient(url, key);
 
-async function fetchSchema() {
-  const { error } = await supabase.from('appointments').insert([{}]);
-  console.log("Empty Insert Error:", error);
+async function run() {
+  const { data, error } = await supabase.from('users').select('*');
+  console.log("Users Data:", data);
+  console.log("Users Error:", error);
 }
 
-fetchSchema();
+run();

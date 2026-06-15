@@ -279,6 +279,12 @@ export function useAppointmentController(patientId = null) {
     }
   }, [refreshState]);
 
+  // Validate a booking payload BEFORE taking payment (date/time, doctor schedule,
+  // double-booking, patient limits). Returns { valid, error }.
+  const validateBooking = useCallback((bookingData) => {
+    return AppointmentModel.validateBooking(bookingData);
+  }, []);
+
   const rescheduleAppointment = useCallback(async (appointmentId, newDate, newTime) => {
     try {
       const updatedApt = await AppointmentModel.reschedule(appointmentId, newDate, newTime);
@@ -307,9 +313,11 @@ export function useAppointmentController(patientId = null) {
     updateAppointmentStatus,
     addDirectAppointment,
     rescheduleAppointment,
+    validateBooking,
     isSlotBooked,
     getAvailableSlots,
     canCancel: AppointmentModel.canCancel,
+    isWithin24h: AppointmentModel.isWithin24h.bind(AppointmentModel),
     lockSlot: AppointmentModel.lockSlot.bind(AppointmentModel)
   };
 }

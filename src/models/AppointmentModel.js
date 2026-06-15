@@ -1,7 +1,48 @@
 import { supabase } from '../supabaseClient';
 import { DoctorModel } from './DoctorModel';
 
+// Map legacy/English status codes onto the Vietnamese vocabulary the whole UI
+// is built around, so seed rows (e.g. 'CONFIRMED') stay visible & consistent.
+const STATUS_NORMALIZE_MAP = {
+  PENDING: 'Đang chờ',
+  CONFIRMED: 'Đã xác nhận',
+  CHECKED_IN: 'Đang chờ',
+  CHECKEDIN: 'Đang chờ',
+  COMPLETED: 'Đã khám',
+  EXAMINED: 'Đã khám',
+  DONE: 'Đã khám',
+  CANCELLED: 'Đã hủy',
+  CANCELED: 'Đã hủy',
+  PAID: 'Đã thanh toán',
+  REVIEWED: 'Reviewed',
+};
+
 export const AppointmentModel = {
+  normalizeStatus(status) {
+    if (!status) return status;
+    return STATUS_NORMALIZE_MAP[String(status).toUpperCase()] || status;
+  },
+
+  // Add `minutes` to a "HH:mm[:ss]" string, returning "HH:mm".
+  addMinutesToTime(timeStr, minutes = 30) {
+    if (!timeStr) return timeStr;
+    const [h, m] = String(timeStr).split(':').map(Number);
+    const total = (h || 0) * 60 + (m || 0) + minutes;
+    const hh = Math.floor((total % 1440) / 60);
+    const mm = total % 60;
+    return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+  },
+
+  // True when the given appointment date/time is in the future but within 24h.
+  isWithin24h(dateStr, timeStr) {
+    if (!dateStr) return false;
+    const [y, mo, d] = String(dateStr).split('-').map(Number);
+    const [h = 0, mi = 0] = String(timeStr || '00:00').split(':').map(Number);
+    const apptMs = new Date(y, (mo || 1) - 1, d || 1, h, mi).getTime();
+    const diff = apptMs - Date.now();
+    return diff >= 0 && diff <= 24 * 60 * 60 * 1000;
+  },
+
   mapAppointment(row) {
     if (!row) return null;
     const doctors = DoctorModel.getAllDoctorsSync?.() || [];
@@ -10,9 +51,9 @@ export const AppointmentModel = {
       ...row,
       id: row.appointment_id || row.id,
       doctorName: doc ? doc.name : 'Bác sĩ',
-      patientName: 'Bệnh nhân', // Fallback or could fetch patient name
+      patientName: row.patient_name || row.patientName || 'Bệnh nhân',
       reason: row.reason,
-      status: row.status,
+      status: this.normalizeStatus(row.status),
       createdAt: row.created_at,
       service: row.service || 'Khám da liễu tổng quát',
       fee: row.fee || '300,000 VNĐ',
@@ -163,6 +204,7 @@ export const AppointmentModel = {
   },
 
   async book(bookingData) {
+    const startTime = bookingData.time;
     const dbPayload = {
       doctor_id: bookingData.doctorId || bookingData.doctor_id,
       patient_id: bookingData.patientId || bookingData.patient_id,
@@ -170,30 +212,38 @@ export const AppointmentModel = {
       fee: bookingData.fee,
       status: bookingData.status || 'Đã xác nhận',
       appointment_date: bookingData.date,
-      start_time: bookingData.time,
-      end_time: bookingData.time,
+      start_time: startTime,
+      end_time: this.addMinutesToTime(startTime, 30),
       reason: bookingData.notes || 'Khám bệnh',
     };
     const newApt = await this.create(dbPayload);
     if (newApt && (bookingData.bookingFee || bookingData.fee)) {
-      // Also record the payment
+      const deposit = bookingData.bookingFee
+        || (typeof bookingData.fee === 'string' ? parseInt(bookingData.fee.replace(/\D/g, ''), 10) : bookingData.fee)
+        || 50000;
+      // Record the booking deposit. Raw row exposes `appointment_id` (not `id`),
+      // and the deposit is partial — it must NOT flip the appointment to paid.
       await this.addPayment({
-        appointment_id: newApt.id,
+        appointment_id: newApt.appointment_id || newApt.id,
         patient_id: dbPayload.patient_id,
-        amount: bookingData.bookingFee || (typeof bookingData.fee === 'string' ? parseInt(bookingData.fee.replace(/\D/g, '')) : bookingData.fee) || 50000,
-        method: 'QR Code',
-      });
+        voucher_id: bookingData.voucherId ?? null,
+        total_amount: deposit,
+        discount_amount: bookingData.discount || 0,
+        final_amount: deposit,
+        payment_method: 'QR Code',
+      }, { markAppointmentPaid: false });
     }
     return newApt;
   },
 
   async addAppointment(aptData) {
+    const startTime = aptData.start_time || aptData.time;
     const dbPayload = {
       doctor_id: aptData.doctor_id || aptData.doctorId,
       patient_id: aptData.patient_id || aptData.patientId,
       appointment_date: aptData.appointment_date || aptData.date,
-      start_time: aptData.start_time || aptData.time,
-      end_time: aptData.end_time || aptData.time,
+      start_time: startTime,
+      end_time: aptData.end_time || this.addMinutesToTime(startTime, 30),
       reason: aptData.reason || aptData.notes || 'Khám bệnh',
       service: aptData.service_name || aptData.service,
       fee: aptData.fee || '300,000 VNĐ',
@@ -209,7 +259,7 @@ export const AppointmentModel = {
       patient_id: apt.patient_id || apt.patientId,
       appointment_date: apt.date || apt.appointment_date,
       start_time: timeStr,
-      end_time: timeStr,
+      end_time: this.addMinutesToTime(timeStr, 30),
       reason: 'Khám bệnh',
       service: apt.service || apt.service_name,
       fee: apt.fee || '300,000 VNĐ',
@@ -245,21 +295,41 @@ export const AppointmentModel = {
     return this.updateStatus(appointmentId, 'Đã hủy');
   },
 
-  async addPayment(payData) {
+  async addPayment(payData, options = {}) {
+    const { markAppointmentPaid = true } = options;
     try {
-      const { data, error } = await supabase
-        .from('payments')
-        .insert([{
-          appointment_id: payData.appointment_id || payData.appointmentId,
-          patient_id: payData.patient_id || payData.patientId,
-          amount: payData.final_amount || payData.amount,
-          method: payData.payment_method || payData.method || 'QR Code',
-          status: 'Paid'
-        }])
-        .select();
+      const appointmentId = payData.appointment_id || payData.appointmentId || null;
+      const finalAmount = payData.final_amount ?? payData.amount ?? payData.total_amount ?? 0;
+      const totalAmount = payData.total_amount ?? payData.amount ?? finalAmount;
+      const discountAmount = payData.discount_amount ?? payData.discount ?? 0;
+      const method = payData.payment_method || payData.method || 'QR Code';
+
+      // payments.voucher_id is an integer FK — only send it when numeric.
+      const rawVoucher = payData.voucher_id ?? payData.voucherId;
+      const voucherId = Number.isFinite(Number(rawVoucher)) && rawVoucher !== null && rawVoucher !== ''
+        ? Number(rawVoucher)
+        : null;
+
+      const row = {
+        appointment_id: appointmentId,
+        patient_id: payData.patient_id || payData.patientId,
+        receptionist_id: payData.receptionist_id ?? null,
+        voucher_id: voucherId,
+        total_amount: totalAmount,
+        discount_amount: discountAmount,
+        final_amount: finalAmount,
+        payment_method: method,
+        payment_status: 'PAID',
+        paid_at: new Date().toISOString(),
+        // legacy duplicate columns kept in sync for older readers
+        method,
+        status: 'Paid',
+      };
+
+      const { data, error } = await supabase.from('payments').insert([row]).select();
       if (error) throw error;
-      if (payData.appointment_id || payData.appointmentId) {
-        await this.updateStatus(payData.appointment_id || payData.appointmentId, 'Đã thanh toán');
+      if (appointmentId && markAppointmentPaid) {
+        await this.updateStatus(appointmentId, 'Đã thanh toán');
       }
       return data[0];
     } catch (e) {
@@ -447,27 +517,37 @@ export const AppointmentModel = {
       if (isPatientBusy) throw new Error(`Bạn đã có một lịch hẹn khác vào khung giờ ${newTime} ngày ${newDate}.`);
     }
 
-    // Surcharge
-    const isCloseToTime = !this.canCancel(apt.status);
-    let surchargeMessage = '';
-    if (isCloseToTime) {
-      surchargeMessage = ' (Đã thanh toán phụ phí 50.000 VNĐ đổi lịch sát giờ)';
-    }
+    // Surcharge applies when the CURRENT appointment is within 24h of now.
+    const isCloseToTime = this.isWithin24h(apt.date || apt.appointment_date, apt.time || apt.start_time);
 
-    const history = apt.history || [];
-    history.push({
-      action: 'RESCHEDULE',
-      timestamp: new Date().toISOString(),
-      details: `Đổi lịch khám từ [${apt.date || apt.appointment_date} ${apt.time || apt.start_time}] sang [${newDate} ${newTime}]. Số lần đổi: ${currentCount + 1}/2.${surchargeMessage}`,
-      feeUpdated: false,
-    });
-
-    return this.update(appointmentId, { 
+    const baseUpdate = {
       appointment_date: newDate,
       start_time: newTime,
-      end_time: newTime,
-      status: 'Đã xác nhận'
-    });
+      end_time: this.addMinutesToTime(newTime, 30),
+      status: 'Đã xác nhận',
+    };
+    // Track the reschedule count so the "max 2 reschedules" rule can be enforced.
+    // The `reschedule_count` column may not exist yet (see migration); if the
+    // update is rejected for the unknown column, retry without it so reschedule
+    // still works and tracking switches on automatically once migrated.
+    let updated = await this.update(appointmentId, { ...baseUpdate, reschedule_count: currentCount + 1 });
+    if (!updated) {
+      updated = await this.update(appointmentId, baseUpdate);
+    }
+
+    // Record the 50k reschedule surcharge as a real payment (partial — does
+    // not flip the appointment lifecycle status).
+    if (isCloseToTime) {
+      await this.addPayment({
+        appointment_id: appointmentId,
+        patient_id: apt.patient_id || apt.patientId,
+        total_amount: 50000,
+        final_amount: 50000,
+        payment_method: 'QR Code',
+      }, { markAppointmentPaid: false });
+    }
+
+    return updated;
   },
 
   canCancel(status) {

@@ -15,9 +15,18 @@ for (const line of envLines) {
 
 async function getOpenAPI() {
     const res = await fetch(`${url}/rest/v1/?apikey=${key}`);
-    const json = await res.json();
-    const tableDef = json.definitions['doctor_shifts'];
-    console.log(JSON.stringify(tableDef, null, 2));
+    console.log("Status:", res.status);
+    const text = await res.text();
+    console.log("Raw text snippet:", text.substring(0, 500));
+    try {
+      const json = JSON.parse(text);
+      console.log("JSON Keys:", Object.keys(json));
+      if (json.definitions) {
+        console.log("Definitions keys:", Object.keys(json.definitions));
+      }
+    } catch (e) {
+      console.log("Error parsing:", e.message);
+    }
 }
 
 getOpenAPI();

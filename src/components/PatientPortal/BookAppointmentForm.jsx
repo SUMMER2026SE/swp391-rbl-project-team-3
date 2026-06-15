@@ -162,7 +162,7 @@ function PriceSummary({ originalAmount, bestVoucher }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function BookAppointmentForm({ isOpen, onClose }) {
   const { user } = useAuth();
-  const { bookAppointment, getAvailableSlots, isSlotBooked, lockSlot } = useAppointmentController(user?.id);
+  const { bookAppointment, getAvailableSlots, isSlotBooked, lockSlot, validateBooking } = useAppointmentController(user?.id);
   const { getAutoApplicable, incrementUsage } = useVoucherController();
   const { doctors, loading: loadingDocs } = useDoctors();
 
@@ -281,16 +281,7 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  const localServiceCategories = [
-    { id: 'cat-01', name: 'Khám da liễu tổng quát' },
-    { id: 'cat-02', name: 'Điều trị mụn & sẹo rỗ' },
-    { id: 'cat-03', name: 'Trị nám, tàn nhang & đốm nâu' },
-    { id: 'cat-04', name: 'Trẻ hóa & chống lão hóa da' },
-    { id: 'cat-05', name: 'Điều trị viêm da, vảy nến, eczema' },
-    { id: 'cat-06', name: 'Thẩm mỹ & chăm sóc da chuyên sâu' },
-    { id: 'cat-07', name: 'Soi da & tư vấn AI' },
-  ];
-  const categoriesToUse = typeof serviceCategories !== 'undefined' && Array.isArray(serviceCategories) ? serviceCategories : localServiceCategories;
+  const categoriesToUse = serviceCategories;
   const selectedCategoryData = categoriesToUse.find(c => c.id === selectedCategory);
 
   // Ngày tối thiểu = hôm nay
@@ -401,7 +392,7 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
   const isFormComplete = selectedCategory && selectedDate && selectedTime && isContactInfoComplete && finalDoctorId;
 
   // ── Submit Form to Payment Step ──────────────────────────────────────────────
-  const handleProceedToPayment = (e) => {
+  const handleProceedToPayment = async (e) => {
     e.preventDefault();
     if (!isFormComplete) return;
     setErrorMessage('');
@@ -427,6 +418,15 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
       paymentStatus: 'Đã thanh toán một phần (Giữ chỗ)',
       status: 'Đang chờ'
     };
+
+    // Validate BEFORE taking the deposit so a patient is never charged for an
+    // invalid booking (past slot, slot just taken, >2 upcoming, etc.).
+    const validation = await validateBooking(bookingPayload);
+    if (!validation.valid) {
+      setErrorMessage(validation.error);
+      setSelectedTime('');
+      return;
+    }
 
     setPaymentPayload(bookingPayload);
     setStep('payment');
