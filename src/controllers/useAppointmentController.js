@@ -11,6 +11,7 @@ export function useAppointmentController(patientId = null) {
   const refreshState = useCallback(async () => {
     try {
       setLoading(true);
+      await DoctorModel.getAllDoctors(); // Ensure doctors are cached for mapping
       const apts = patientId
         ? await AppointmentModel.getByPatientId(patientId)
         : await AppointmentModel.getAllAppointments();
@@ -67,11 +68,17 @@ export function useAppointmentController(patientId = null) {
           return { success: false, error: validation.error };
         }
         const newApt = await AppointmentModel.book(bookingData);
+        if (!newApt) {
+           return { success: false, error: 'Không thể lưu lịch hẹn vào cơ sở dữ liệu (Có thể do lỗi phân quyền RLS trên Supabase).' };
+        }
         refreshState();
         return { success: true, appointment: newApt };
       } else {
         // Fallback to simpler addAppointment
         const newApt = await AppointmentModel.addAppointment(bookingData);
+        if (!newApt) {
+           return { success: false, error: 'Không thể lưu lịch hẹn (Lỗi RLS).' };
+        }
         refreshState();
         return newApt;
       }
@@ -193,20 +200,21 @@ export function useAppointmentController(patientId = null) {
   }, [appointments]);
 
   // Get doctor schedules and filter out booked slots for UI display
-  const getAvailableSlots = useCallback((docId, date) => {
-    const dayOfWeek = AppointmentModel.getLocalDayOfWeek(date);
-    const workingDays = AppointmentModel.getDoctorWorkingDays(docId);
-    if (workingDays.length > 0 && !workingDays.includes(dayOfWeek)) {
-      return [];
+  const getAvailableSlots = useCallback((docId, date, providedSchedules = []) => {
+    // Read Admin schedules (from provided args or fallback)
+    const savedSchedules = localStorage.getItem('admin-doctor-schedules');
+    const fallbackSchedules = savedSchedules ? JSON.parse(savedSchedules) : [];
+    const adminSchedules = providedSchedules.length > 0 ? providedSchedules : fallbackSchedules;
+
+    // Filter schedules for this doctor and date
+    const dailySchedules = adminSchedules.filter(s => 
+      String(s.doctorId || s.doctor_id) === String(docId) && 
+      (s.date === date || s.work_date === date)
+    );
+
+    if (dailySchedules.length === 0) {
+      return []; // Doctor is not scheduled to work on this day
     }
-
-    // Find doctor's name
-    const doc = DoctorModel.getAllDoctorsSync().find(d => String(d.id || d.user_id) === String(docId));
-    const docName = doc ? doc.name : '';
-
-    // Read Admin consultation slots
-    const savedSlots = localStorage.getItem('admin-consultation-slots');
-    const adminSlots = savedSlots ? JSON.parse(savedSlots) : [];
 
     // Helper to check if a time slot is in the past
     const todayDate = new Date();
@@ -222,27 +230,39 @@ export function useAppointmentController(patientId = null) {
       return false;
     };
 
-    // Filter slots for this doctor and date
-    const dailySlots = adminSlots?.filter?.(s => s.doctorName === docName && s.date === date);
+    const slots = [];
+    
+    dailySchedules.forEach(schedule => {
+      const startTimeStr = schedule.startTime || schedule.start_time;
+      const endTimeStr = schedule.endTime || schedule.end_time;
+      
+      if (!startTimeStr || !endTimeStr) return;
 
-    if (dailySlots.length > 0) {
-      return dailySlots?.map?.(s => ({
-        time: s.startTime,
-        isBooked: isPastSlot(s.startTime) || s.status === 'Đã đặt' || s.status === 'Đã hủy' || isSlotBooked(docId, date, s.startTime)
-      }));
-    }
+      const startParts = startTimeStr.split(':').map(Number);
+      const endParts = endTimeStr.split(':').map(Number);
+      let currentMin = startParts[0] * 60 + startParts[1];
+      const endMin = endParts[0] * 60 + endParts[1];
 
-    // Fallback: Default standard slots if Admin hasn't generated specific slots
-    const standardSlots = [
-      "08:00", "08:30", "09:00", "09:30", "10:00", "10:30",
-      "11:00", "11:30", "13:30", "14:00", "14:30", "15:00",
-      "15:30", "16:00", "16:30",
-    ];
+      while (currentMin < endMin) {
+        const h = Math.floor(currentMin / 60).toString().padStart(2, '0');
+        const m = (currentMin % 60).toString().padStart(2, '0');
+        const timeStr = `${h}:${m}`;
+        
+        // Ensure we don't add duplicates if schedules overlap
+        if (!slots.some(s => s.time === timeStr)) {
+          slots.push({
+            time: timeStr,
+            isBooked: isPastSlot(timeStr) || isSlotBooked(docId, date, timeStr)
+          });
+        }
+        currentMin += 30; // 30-minute intervals
+      }
+    });
 
-    return standardSlots?.map?.(time => ({
-      time,
-      isBooked: isPastSlot(time) || isSlotBooked(docId, date, time)
-    }));
+    // Sort slots chronologically
+    slots.sort((a, b) => a.time.localeCompare(b.time));
+
+    return slots;
   }, [isSlotBooked]);
 
   const addDirectAppointment = useCallback(async (apt) => {

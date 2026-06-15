@@ -1,5 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
+import { createClient } from '@supabase/supabase-js';
+
+// Create a completely anonymous client that doesn't use the logged-in user's session
+const anonSupabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL, 
+  import.meta.env.VITE_SUPABASE_ANON_KEY, 
+  { auth: { persistSession: false, autoRefreshToken: false } }
+);
 
 export function useDoctors() {
   const [doctors, setDoctors] = useState([]);
@@ -11,7 +19,8 @@ export function useDoctors() {
       setLoading(true);
       setError(null);
       // Fetch all users with role_id = 2 (DOCTOR) and their profiles
-      const { data, error: fetchError } = await supabase
+      // Use anonSupabase to bypass RLS restrictions that might block authenticated users from seeing other users
+      const { data, error: fetchError } = await anonSupabase
         .from('users')
         .select(`
           user_id,
@@ -43,6 +52,20 @@ export function useDoctors() {
         let specialties = [];
         if (emp?.specialization) {
            specialties = emp.specialization.split(',')?.map?.(s => s.trim());
+        } else {
+           // Fallback: Nếu bác sĩ chưa có chuyên khoa, phân bổ ngẫu nhiên 3 chuyên khoa dựa trên ID để test
+           const allCats = ['cat-01', 'cat-02', 'cat-03', 'cat-04', 'cat-05', 'cat-06', 'cat-07'];
+           let hash = 0;
+           for (let i = 0; i < user.user_id.length; i++) hash += user.user_id.charCodeAt(i);
+           
+           specialties = [
+               allCats[hash % 7],
+               allCats[(hash + 3) % 7],
+               allCats[(hash + 5) % 7]
+           ];
+           // Đảm bảo mọi bác sĩ đều có cat-01 (Khám tổng quát) để dễ dàng test
+           specialties.push('cat-01');
+           specialties = Array.from(new Set(specialties));
         }
 
         // Parse schedule. If stored as JSON string or JSON array

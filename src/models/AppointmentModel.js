@@ -2,18 +2,30 @@ import { supabase } from '../supabaseClient';
 import { DoctorModel } from './DoctorModel';
 
 export const AppointmentModel = {
+  mapAppointment(row) {
+    if (!row) return null;
+    const doctors = DoctorModel.getAllDoctorsSync?.() || [];
+    const doc = doctors.find(d => String(d.id || d.user_id) === String(row.doctor_id));
+    return {
+      ...row,
+      id: row.appointment_id || row.id,
+      doctorName: doc ? doc.name : 'Bác sĩ',
+      patientName: 'Bệnh nhân', // Fallback or could fetch patient name
+      reason: row.reason,
+      status: row.status,
+      createdAt: row.created_at,
+      service: row.service || 'Khám da liễu tổng quát',
+      fee: row.fee || '300,000 VNĐ',
+      date: row.appointment_date,
+      time: (row.start_time || '').substring(0, 5),
+    };
+  },
+
   async getAll() {
     try {
-      const { data, error } = await supabase
-        .from('appointments')
-        .select(`
-          *,
-          patient:patient_profiles(*),
-          doctor:doctor_profiles(*),
-          service:services(*)
-        `);
+      const { data, error } = await supabase.from('appointments').select('*');
       if (error) throw error;
-      return data || [];
+      return (data || []).map(r => this.mapAppointment(r));
     } catch (e) {
       console.warn('Supabase fetch error (appointments):', e.message);
       return [];
@@ -22,12 +34,9 @@ export const AppointmentModel = {
 
   async getByPatientId(patientId) {
     try {
-      const { data, error } = await supabase
-        .from('appointments')
-        .select('*, doctor:doctor_profiles(*), service:services(*)')
-        .eq('patient_id', patientId);
+      const { data, error } = await supabase.from('appointments').select('*').eq('patient_id', patientId);
       if (error) throw error;
-      return data || [];
+      return (data || []).map(r => this.mapAppointment(r));
     } catch (e) {
       console.warn('Supabase fetch error (appointments by patient):', e.message);
       return [];
@@ -36,12 +45,9 @@ export const AppointmentModel = {
 
   async getByDoctorId(doctorId) {
     try {
-      const { data, error } = await supabase
-        .from('appointments')
-        .select('*, patient:patient_profiles(*), service:services(*)')
-        .eq('doctor_id', doctorId);
+      const { data, error } = await supabase.from('appointments').select('*').eq('doctor_id', doctorId);
       if (error) throw error;
-      return data || [];
+      return (data || []).map(r => this.mapAppointment(r));
     } catch (e) {
       console.warn('Supabase fetch error (appointments by doctor):', e.message);
       return [];
@@ -50,13 +56,9 @@ export const AppointmentModel = {
 
   async getById(id) {
     try {
-      const { data, error } = await supabase
-        .from('appointments')
-        .select('*, patient:patient_profiles(*), doctor:doctor_profiles(*), service:services(*)')
-        .eq('id', id)
-        .single();
+      const { data, error } = await supabase.from('appointments').select('*').eq('appointment_id', id).single();
       if (error) throw error;
-      return data;
+      return this.mapAppointment(data);
     } catch (e) {
       console.warn('Supabase fetch error (appointment by id):', e.message);
       return null;
@@ -65,12 +67,9 @@ export const AppointmentModel = {
 
   async getByDate(date) {
     try {
-      const { data, error } = await supabase
-        .from('appointments')
-        .select('*, patient:patient_profiles(*), doctor:doctor_profiles(*), service:services(*)')
-        .eq('date', date);
+      const { data, error } = await supabase.from('appointments').select('*').eq('appointment_date', date);
       if (error) throw error;
-      return data || [];
+      return (data || []).map(r => this.mapAppointment(r));
     } catch (e) {
       console.warn('Supabase fetch error (appointments by date):', e.message);
       return [];
@@ -96,10 +95,10 @@ export const AppointmentModel = {
       const { data, error } = await supabase
         .from('appointments')
         .update(updates)
-        .eq('id', id)
+        .eq('appointment_id', id)
         .select();
       if (error) throw error;
-      return data[0];
+      return this.mapAppointment(data[0]);
     } catch (e) {
       console.warn('Supabase update error (appointments):', e.message);
       return null;
@@ -114,11 +113,11 @@ export const AppointmentModel = {
     try {
       const { data, error } = await supabase
         .from('appointments')
-        .select('time')
-        .eq('date', date)
+        .select('start_time')
+        .eq('appointment_date', date)
         .eq('doctor_id', doctorId);
       if (error) throw error;
-      return (data || [])?.map?.(a => a.time);
+      return (data || [])?.map?.(a => (a.start_time || '').substring(0, 5));
     } catch (e) {
       console.warn('Supabase fetch error (locked slots):', e.message);
       return [];
@@ -167,38 +166,54 @@ export const AppointmentModel = {
     const dbPayload = {
       doctor_id: bookingData.doctorId || bookingData.doctor_id,
       patient_id: bookingData.patientId || bookingData.patient_id,
-      date: bookingData.date,
-      time: bookingData.time,
       service: bookingData.service,
       fee: bookingData.fee,
-      notes: bookingData.notes,
-      status: bookingData.status || 'Pending'
+      status: bookingData.status || 'Đã xác nhận',
+      appointment_date: bookingData.date,
+      start_time: bookingData.time,
+      end_time: bookingData.time,
+      reason: bookingData.notes || 'Khám bệnh',
     };
-    return this.create(dbPayload);
+    const newApt = await this.create(dbPayload);
+    if (newApt && (bookingData.bookingFee || bookingData.fee)) {
+      // Also record the payment
+      await this.addPayment({
+        appointment_id: newApt.id,
+        patient_id: dbPayload.patient_id,
+        amount: bookingData.bookingFee || (typeof bookingData.fee === 'string' ? parseInt(bookingData.fee.replace(/\D/g, '')) : bookingData.fee) || 50000,
+        method: 'QR Code',
+      });
+    }
+    return newApt;
   },
 
   async addAppointment(aptData) {
     const dbPayload = {
       doctor_id: aptData.doctor_id || aptData.doctorId,
       patient_id: aptData.patient_id || aptData.patientId,
-      date: aptData.appointment_date || aptData.date,
-      time: aptData.start_time || aptData.time,
+      appointment_date: aptData.appointment_date || aptData.date,
+      start_time: aptData.start_time || aptData.time,
+      end_time: aptData.end_time || aptData.time,
+      reason: aptData.reason || aptData.notes || 'Khám bệnh',
       service: aptData.service_name || aptData.service,
       fee: aptData.fee || '300,000 VNĐ',
-      status: aptData.status || 'Pending'
+      status: aptData.status || 'Đã xác nhận',
     };
     return this.create(dbPayload);
   },
 
   async addDirect(apt) {
+    const timeStr = apt.time || apt.start_time;
     const dbPayload = {
       doctor_id: apt.doctor_id || apt.doctorId,
       patient_id: apt.patient_id || apt.patientId,
-      date: apt.date || apt.appointment_date,
-      time: apt.time || apt.start_time,
+      appointment_date: apt.date || apt.appointment_date,
+      start_time: timeStr,
+      end_time: timeStr,
+      reason: 'Khám bệnh',
       service: apt.service || apt.service_name,
       fee: apt.fee || '300,000 VNĐ',
-      status: apt.status || 'Pending'
+      status: apt.status || 'Đã xác nhận'
     };
     return this.create(dbPayload);
   },
@@ -209,10 +224,13 @@ export const AppointmentModel = {
     if (updatedFields.doctor_id !== undefined) dbPayload.doctor_id = updatedFields.doctor_id;
     if (updatedFields.patientId !== undefined) dbPayload.patient_id = updatedFields.patientId;
     if (updatedFields.patient_id !== undefined) dbPayload.patient_id = updatedFields.patient_id;
-    if (updatedFields.date !== undefined) dbPayload.date = updatedFields.date;
-    if (updatedFields.appointment_date !== undefined) dbPayload.date = updatedFields.appointment_date;
-    if (updatedFields.time !== undefined) dbPayload.time = updatedFields.time;
-    if (updatedFields.start_time !== undefined) dbPayload.time = updatedFields.start_time;
+    
+    if (updatedFields.date !== undefined) { dbPayload.appointment_date = updatedFields.date; }
+    if (updatedFields.appointment_date !== undefined) { dbPayload.appointment_date = updatedFields.appointment_date; }
+    
+    if (updatedFields.time !== undefined) { dbPayload.start_time = updatedFields.time; dbPayload.end_time = updatedFields.time; }
+    if (updatedFields.start_time !== undefined) { dbPayload.start_time = updatedFields.start_time; dbPayload.end_time = updatedFields.start_time; }
+    
     if (updatedFields.status !== undefined) dbPayload.status = updatedFields.status;
     if (updatedFields.fee !== undefined) dbPayload.fee = updatedFields.fee;
 
@@ -445,16 +463,15 @@ export const AppointmentModel = {
     });
 
     return this.update(appointmentId, { 
-      date: newDate, 
-      time: newTime, 
-      status: 'Chờ xác nhận',
-      rescheduleCount: currentCount + 1,
-      history
+      appointment_date: newDate,
+      start_time: newTime,
+      end_time: newTime,
+      status: 'Đã xác nhận'
     });
   },
 
   canCancel(status) {
-    return status === 'Chờ xác nhận' || status === 'Đang chờ' || status === 'Pending';
+    return status === 'Đã xác nhận' || status === 'Chờ xác nhận' || status === 'Đang chờ' || status === 'Pending';
   },
 
   lockSlot(doctorId, dateStr, timeStr, durationMinutes = 5) {

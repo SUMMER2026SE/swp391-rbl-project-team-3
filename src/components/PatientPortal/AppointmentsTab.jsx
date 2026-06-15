@@ -186,26 +186,24 @@ function RescheduleModal({ apt, onClose, onConfirm, rescheduleError }) {
   const todayDate = new Date();
   const minDate = `${todayDate.getFullYear()}-${(todayDate.getMonth() + 1).toString().padStart(2, '0')}-${todayDate.getDate().toString().padStart(2, '0')}`;
 
-  const selectedDoctorData = DoctorModel.getAllDoctors().find((d) => d.id === apt.doctorId);
+  const [adminSchedules, setAdminSchedules] = useState([]);
+  
+  useEffect(() => {
+    import('../../models/DoctorScheduleModel').then(module => {
+      module.DoctorScheduleModel.getAllShifts().then(data => setAdminSchedules(data));
+    });
+  }, []);
+
+  const selectedDoctorData = DoctorModel.getAllDoctorsSync?.().find((d) => String(d.id || d.user_id) === String(apt.doctorId || apt.doctor_id));
 
   let isDoctorWorkingOnDay = true;
-  let doctorScheduleText = '';
   if (selectedDoctorData && newDate) {
-    const parts = newDate.split('-');
-    const selectDateObj = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-    const dayOfWeek = selectDateObj.getDay();
-
-    const DAY_MAP = {
-      'Chủ Nhật': 0, 'Thứ Hai': 1, 'Thứ Ba': 2, 'Thứ Tư': 3, 'Thứ Năm': 4, 'Thứ Sáu': 5, 'Thứ Bảy': 6,
-    };
-
-    const workingDays = selectedDoctorData.schedule.map(s => DAY_MAP[s.day] !== undefined ? DAY_MAP[s.day] : -1).filter(d => d !== -1);
-    isDoctorWorkingOnDay = workingDays.includes(dayOfWeek);
-    doctorScheduleText = selectedDoctorData.schedule.map(s => s.day).join(', ');
+    isDoctorWorkingOnDay = adminSchedules.some(s => String(s.doctor_id || s.doctorId) === String(apt.doctorId || apt.doctor_id) && (s.work_date === newDate || s.date === newDate));
   }
 
-  const slots = (apt.doctorId && newDate && isDoctorWorkingOnDay)
-    ? getAvailableSlots(apt.doctorId, newDate)
+  const docId = apt.doctorId || apt.doctor_id;
+  const slots = (docId && newDate && isDoctorWorkingOnDay)
+    ? getAvailableSlots(docId, newDate, adminSchedules)
     : [];
 
   // Handle PayOS Success properly avoiding stale closures
@@ -284,13 +282,14 @@ function RescheduleModal({ apt, onClose, onConfirm, rescheduleError }) {
 
         // Lock slot immediately for 5 minutes during the payment process
         try {
+          const docId = apt.doctorId || apt.doctor_id;
           const lockedListStr = localStorage.getItem('dermasmart_locked_slots') || '[]';
           let lockedList = [];
           try { lockedList = JSON.parse(lockedListStr); } catch (e) {}
           
-          const filteredList = lockedList.filter(l => !(String(l.doctorId) === String(apt.doctorId) && l.date === newDate && l.time === newTime));
+          const filteredList = lockedList.filter(l => !(String(l.doctorId) === String(docId) && l.date === newDate && l.time === newTime));
           filteredList.push({
-            doctorId: apt.doctorId,
+            doctorId: docId,
             date: newDate,
             time: newTime,
             lockedUntil: Date.now() + 5 * 60 * 1000 // 5 minutes
@@ -298,7 +297,7 @@ function RescheduleModal({ apt, onClose, onConfirm, rescheduleError }) {
           localStorage.setItem('dermasmart_locked_slots', JSON.stringify(filteredList));
           
           if (lockSlot) {
-            lockSlot(apt.doctorId, newDate, newTime, 5);
+            lockSlot(docId, newDate, newTime, 5);
           }
         } catch (err) {
           console.error('Error locking slot immediately:', err);
@@ -415,8 +414,8 @@ function RescheduleModal({ apt, onClose, onConfirm, rescheduleError }) {
                   />
                   {selectedDoctorData && newDate && !isDoctorWorkingOnDay && (
                     <div className="mt-2 text-xs text-rose-500 font-semibold flex items-center gap-1.5">
-                      <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                      Bác sĩ không trực ngày này. Lịch trực: {doctorScheduleText}.
+                        <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                        Bác sĩ không có lịch làm việc vào ngày này. Vui lòng chọn ngày khác.
                     </div>
                   )}
                 </div>
@@ -799,11 +798,20 @@ export default function AppointmentsTab() {
   const [writeFeedbackTarget, setWriteFeedbackTarget] = useState(null);
 
   const upcoming = appointments.filter(
-    (a) => a.status === 'Đã xác nhận' || a.status === 'Chờ xác nhận' || a.status === 'Đang chờ'
-  );
+    (a) => a.status === 'Đã xác nhận' || a.status === 'Chờ xác nhận' || a.status === 'Đang chờ' || a.status === 'Pending'
+  ).sort((a, b) => {
+    const strA = `${a.date || a.appointment_date || ''}T${a.time || a.start_time || ''}`;
+    const strB = `${b.date || b.appointment_date || ''}T${b.time || b.start_time || ''}`;
+    return strA.localeCompare(strB);
+  });
+  
   const past = appointments.filter(
     (a) => a.status === 'Đã khám' || a.status === 'Đã hủy' || a.status === 'Reviewed'
-  );
+  ).sort((a, b) => {
+    const strA = `${a.date || a.appointment_date || ''}T${a.time || a.start_time || ''}`;
+    const strB = `${b.date || b.appointment_date || ''}T${b.time || b.start_time || ''}`;
+    return strB.localeCompare(strA);
+  });
 
   const handleConfirmCancel = async () => {
     if (cancelTarget) {
@@ -812,6 +820,22 @@ export default function AppointmentsTab() {
       if (res.success) setCancelTarget(null);
       else setCancelError(res.error);
     }
+  };
+
+  const openRescheduleModal = async (apt) => {
+    setSelectedApt(apt);
+    setRescheduleDate('');
+    setRescheduleTime('');
+    setRescheduleReason('');
+    
+    try {
+      const freshSchedules = await DoctorScheduleModel.getAllShifts();
+      if (freshSchedules) setAdminSchedules(freshSchedules);
+    } catch (e) {
+      console.warn("Could not fetch fresh schedules", e);
+    }
+    
+    setIsRescheduleModalOpen(true);
   };
 
   const handleConfirmReschedule = async (newDate, newTime) => {

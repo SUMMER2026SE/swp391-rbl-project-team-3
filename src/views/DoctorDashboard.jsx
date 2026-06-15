@@ -50,9 +50,7 @@ export default function DoctorDashboard() {
   const navigate = useNavigate();
 
   // State-based routing
-  const [currentDoctorId, setCurrentDoctorId] = useState(
-    (user?.id && typeof user.id === 'string' && user.id.startsWith('doc-')) ? user.id : 'doc-01'
-  );
+  const [currentDoctorId, setCurrentDoctorId] = useState(user?.id || '');
   const doctorId = currentDoctorId;
   const [activeTab, setActiveTab] = useState('overview');
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -66,6 +64,7 @@ export default function DoctorDashboard() {
   const [activeDoctor, setActiveDoctor] = useState(null);
 
   useEffect(() => {
+    if (!currentDoctorId) return;
     const loadApts = async () => {
       const data = await AppointmentModel.getByDoctorId(currentDoctorId);
       setAppointments(data);
@@ -117,6 +116,7 @@ export default function DoctorDashboard() {
       setShowToast(false);
     }, 3000);
   };
+
 
   useEffect(() => {
     const fetchNotifications = async () => {

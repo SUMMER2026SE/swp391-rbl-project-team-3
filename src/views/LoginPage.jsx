@@ -29,9 +29,14 @@ function LoginPage() {
   } = useAuthController();
 
   return (
-    <div 
-      className="min-h-screen w-full flex items-center justify-center bg-cover bg-center bg-no-repeat relative overflow-hidden"
-      style={{ backgroundImage: `url(${bgImage})` }}
+    <div
+      className="min-h-screen bg-background text-on-background selection:bg-primary/20 selection:text-primary overflow-x-hidden antialiased flex flex-col font-body-md relative"
+      style={{
+        backgroundImage: `url(${bgImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed',
+      }}
     >
 
       {/* Dynamic Floating Glass/Blur Orbs */}

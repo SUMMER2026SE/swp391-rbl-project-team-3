@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Calendar, Check, Clock, XCircle } from 'lucide-react';
 import { DoctorModel } from '../../models/DoctorModel';
+import { DoctorScheduleModel } from '../../models/DoctorScheduleModel';
 
 export default function WorkSchedule({ doctorId }) {
     const doctor =
@@ -11,13 +12,23 @@ export default function WorkSchedule({ doctorId }) {
         [doctor?.id]
     );
 
-    const doctorSchedules =
-        doctor?.schedule?.map((shift, index) => ({
-            id: shift.id || `shift-${index}`,
-            day: shift.day,
-            date: shift.date || '',
-            hours: shift.hours,
-        })) || [];
+    const [doctorSchedules, setDoctorSchedules] = useState([]);
+
+    React.useEffect(() => {
+        const fetchSchedules = async () => {
+            const data = await DoctorScheduleModel.getShiftsByDoctor(doctorId);
+            const formatted = data.map(s => ({
+                id: s.id,
+                day: s.day_of_week,
+                date: s.work_date,
+                hours: `${s.start_time ? s.start_time.slice(0,5) : ''} - ${s.end_time ? s.end_time.slice(0,5) : ''}`,
+                room: s.room,
+                status: s.status
+            }));
+            setDoctorSchedules(formatted);
+        };
+        fetchSchedules();
+    }, [doctorId]);
 
     const [confirmedShifts, setConfirmedShifts] = useState(() => {
         const saved = localStorage.getItem(storageKey);
@@ -37,12 +48,15 @@ export default function WorkSchedule({ doctorId }) {
         });
     };
 
-    const handleConfirmShift = (shift) => {
+    const handleConfirmShift = async (shift) => {
         const shiftKey = `${shift.id}-${shift.date}-${shift.hours}`;
 
-        if (confirmedShifts[shiftKey]) {
+        if (confirmedShifts[shiftKey] || shift.status === 'Đã xác nhận') {
             return;
         }
+
+        // Call database to update the status
+        await DoctorScheduleModel.updateShift(shift.id, { status: 'Đã xác nhận' });
 
         const nextConfirmedShifts = {
             ...confirmedShifts,
@@ -51,6 +65,9 @@ export default function WorkSchedule({ doctorId }) {
 
         setConfirmedShifts(nextConfirmedShifts);
         localStorage.setItem(storageKey, JSON.stringify(nextConfirmedShifts));
+        
+        // Update local state to reflect the change immediately
+        setDoctorSchedules(prev => prev.map(s => s.id === shift.id ? { ...s, status: 'Đã xác nhận' } : s));
         setConfirmingShiftKey(null);
     };
 
@@ -68,12 +85,12 @@ export default function WorkSchedule({ doctorId }) {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {doctorSchedules?.map?.((shift) => {
                     const shiftKey = `${shift.id}-${shift.date}-${shift.hours}`;
-                    const isConfirmed = !!confirmedShifts[shiftKey];
+                    const isConfirmed = !!confirmedShifts[shiftKey] || shift.status === 'Đã xác nhận';
 
                     return (
                         <div
                             key={shiftKey}
-                            className="backdrop-blur-xl bg-white/40 border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.05)] rounded-[2rem] p-6 relative overflow-visible group min-h-[300px]"
+                            className={`backdrop-blur-xl bg-white/40 border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.05)] rounded-[2rem] p-6 relative overflow-visible group min-h-[300px] ${confirmingShiftKey === shiftKey ? 'z-50' : 'z-10'}`}
                         >
                             <div
                                 className={`absolute top-0 right-0 w-24 h-24 rounded-bl-full -z-10 transition-all duration-500 ${

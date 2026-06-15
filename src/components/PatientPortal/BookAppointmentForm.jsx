@@ -9,6 +9,7 @@ import { useAppointmentController } from '../../controllers/useAppointmentContro
 import { useVoucherController } from '../../controllers/useVoucherController';
 import { useAuth } from '../../context/AuthContext';
 import { useDoctors } from '../../hooks/useDoctors';
+import { DoctorScheduleModel } from '../../models/DoctorScheduleModel';
 import { createPaymentLink, getPaymentStatus } from '../../utils/payos';
 
 // ─── Service categories (static reference data) ───────────────────────────────
@@ -183,6 +184,15 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
   const [payosData, setPayosData]               = useState(null);
   const [orderCode, setOrderCode]               = useState(null);
   const [isPayOSPaid, setIsPayOSPaid]           = useState(false);
+  
+  const [adminSchedules, setAdminSchedules]     = useState([]);
+
+  // Fetch admin schedules
+  useEffect(() => {
+    if (isOpen) {
+      DoctorScheduleModel.getAllShifts().then(data => setAdminSchedules(data));
+    }
+  }, [isOpen]);
 
   // Reset khi modal mở
   useEffect(() => {
@@ -227,6 +237,10 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
         if (isSubscribed) setPayosData(data);
       } catch (err) {
         console.error("PayOS init error:", err);
+        if (isSubscribed) {
+          setErrorMessage("Không thể tạo mã QR thanh toán lúc này (Lỗi kết nối API PayOS). Vui lòng thử lại sau.");
+          setStep('form');
+        }
       }
     };
     initPayOS();
@@ -283,23 +297,16 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
   const todayDate = new Date();
   const minDate = `${todayDate.getFullYear()}-${(todayDate.getMonth() + 1).toString().padStart(2, '0')}-${todayDate.getDate().toString().padStart(2, '0')}`;
 
-  // ── Lọc Bác Sĩ & Khung Giờ ──
-  const DAY_MAP = { 'Chủ Nhật':0,'Thứ Hai':1,'Thứ Ba':2,'Thứ Tư':3,'Thứ Năm':4,'Thứ Sáu':5,'Thứ Bảy':6 };
-  
   const workingDocs = useMemo(() => {
     if (!selectedDate || !selectedCategory) return [];
-    const [y, m, d] = selectedDate.split('-')?.map?.(Number);
-    const dayOfWeek = new Date(y, m - 1, d).getDay();
     
     return doctors?.filter?.(doc => {
       // Chỉ lấy bác sĩ có chuyên môn phù hợp
       if (!doc.specialties.includes(selectedCategory)) return false;
-      // Bác sĩ phải có lịch trực vào thứ này
-      const wDays = doc.schedule?.map?.(s => DAY_MAP[s.day] ?? -1);
-      return wDays.includes(dayOfWeek);
+      // Bác sĩ phải có lịch phân công vào ngày này
+      return adminSchedules.some(s => String(s.doctor_id || s.doctorId) === String(doc.user_id || doc.id) && (s.work_date === selectedDate || s.date === selectedDate));
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDate, selectedCategory, doctors]);
+  }, [selectedDate, selectedCategory, doctors, adminSchedules]);
 
   const filteredDocs = (() => {
     if (!selectedTime) return workingDocs;
@@ -331,11 +338,23 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
       const booked = isSlotBooked(dId, dDate, dTime);
       // Check locks
       const locked = activeLocks.some(l => String(l.doctorId) === String(dId) && l.date === dDate && l.time === dTime);
-      return booked || locked;
+      
+      // Check if it fits the doctor's shift
+      let outsideShift = true;
+      const docShift = adminSchedules.find(s => String(s.doctor_id) === String(dId) && s.work_date === dDate);
+      if (docShift) {
+         const shiftStart = docShift.start_time.slice(0, 5);
+         const shiftEnd = docShift.end_time.slice(0, 5);
+         if (dTime >= shiftStart && dTime < shiftEnd) {
+             outsideShift = false;
+         }
+      }
+
+      return booked || locked || outsideShift;
     };
 
     if (selectedDoctor) {
-      const slots = getAvailableSlots(selectedDoctor, selectedDate);
+      const slots = getAvailableSlots(selectedDoctor, selectedDate, adminSchedules);
       return slots?.map?.(s => ({
         ...s,
         isBooked: isSlotActuallyBooked(selectedDoctor, selectedDate, s.time)
@@ -343,7 +362,7 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
     } else {
       const standardSlots = ["08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30"];
       return standardSlots.map(time => {
-        const isAllBooked = !workingDocs.some(doc => !isSlotActuallyBooked(doc.id, selectedDate, time));
+        const isAllBooked = !workingDocs.some(doc => !isSlotActuallyBooked(doc.user_id || doc.id, selectedDate, time));
         return {
           time,
           isBooked: isAllBooked || workingDocs.length === 0
@@ -354,8 +373,8 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
 
   // Lưu ý: Không ép buộc chọn bác sĩ, hệ thống có thể random assign nếu selectedDoctor rỗng, 
   // nhưng logic backend hiện cần doctorId. Nếu chưa có, lấy tự động 1 bác sĩ đầu tiên trống.
-  const finalDoctorId = selectedDoctor || (workingDocs.find(doc => !isSlotBooked(doc.id, selectedDate, selectedTime))?.id);
-  const finalDoctorData = finalDoctorId ? doctors.find(d => d.id === finalDoctorId) : null;
+  const finalDoctorId = selectedDoctor || (workingDocs.find(doc => !isSlotBooked(doc.user_id || doc.id, selectedDate, selectedTime))?.user_id) || (workingDocs.find(doc => !isSlotBooked(doc.user_id || doc.id, selectedDate, selectedTime))?.id);
+  const finalDoctorData = finalDoctorId ? doctors.find(d => String(d.user_id || d.id) === String(finalDoctorId)) : null;
 
   // ── Auto-apply voucher ──────────────────────────────────────────────────────
   const originalAmount = finalDoctorData ? parsePriceToNumber(finalDoctorData.consultationFee) : 0;
@@ -405,7 +424,8 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
         ? `Khách hàng đặt lịch khám qua cổng Portal.${bestVoucher ? ' Đã áp dụng ưu đãi.' : ''}`
         : `Khách vãng lai đăng ký qua website.${bestVoucher ? ' Đã áp dụng ưu đãi.' : ''}`,
       bookingFee: 50000,
-      paymentStatus: 'Đã thanh toán một phần (Giữ chỗ)'
+      paymentStatus: 'Đã thanh toán một phần (Giữ chỗ)',
+      status: 'Đang chờ'
     };
 
     setPaymentPayload(bookingPayload);

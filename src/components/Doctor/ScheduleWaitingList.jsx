@@ -2,13 +2,12 @@ import React from 'react';
 import { Clock, PlayCircle, Eye } from 'lucide-react';
 
 export default function ScheduleWaitingList({ doctorId, onStartExam, appointments = [] }) {
-  // Mock today's date
-  const today = "2026-06-05";
+  const today = new Date().toISOString().split('T')[0];
 
   const todayAppointments = [...appointments]?.filter?.(
-    (apt) => apt?.doctorId === doctorId && ['Đang chờ', 'Đã khám', 'Đã xác nhận'].includes(apt?.status)
+    (apt) => String(apt?.doctorId || apt?.doctor_id) === String(doctorId) && apt?.status !== 'Đã hủy'
   )
-    .sort((a, b) => a?.time.localeCompare(b?.time));
+    .sort((a, b) => (a?.time || '').localeCompare(b?.time || ''));
 
   const handleStartExam = (apt) => {
     if (onStartExam) {
