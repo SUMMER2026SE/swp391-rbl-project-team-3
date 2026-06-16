@@ -1,3 +1,4 @@
+// Dermatology Clinic Management System - Client Application Entry
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from './views/LoginPage';
