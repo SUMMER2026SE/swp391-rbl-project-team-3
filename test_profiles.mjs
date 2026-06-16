@@ -5,17 +5,10 @@ const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-async function checkRLS() {
-  const { data, error } = await supabase.rpc('get_policies', { table_name: 'appointments' });
-  console.log("RPC policies:", data, error);
-  
-  // Alternative: query pg_policies
-  const { data: policies, error: pError } = await supabase
-    .from('pg_policies')
-    .select('*')
-    .eq('tablename', 'appointments');
-    
-  console.log("pg_policies:", policies, pError);
+async function check() {
+  const { data, error } = await supabase.from('patient_profiles').select('*');
+  console.log("Patient profiles:", data);
+  console.log("Error:", error);
 }
 
-checkRLS();
+check();

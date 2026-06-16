@@ -5,17 +5,11 @@ const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-async function checkRLS() {
-  const { data, error } = await supabase.rpc('get_policies', { table_name: 'appointments' });
-  console.log("RPC policies:", data, error);
-  
-  // Alternative: query pg_policies
-  const { data: policies, error: pError } = await supabase
-    .from('pg_policies')
-    .select('*')
-    .eq('tablename', 'appointments');
-    
-  console.log("pg_policies:", policies, pError);
+async function check() {
+  const doctorId = 'b40d9e45-105b-49b2-af92-82746f1ab43e'; // Dr. Nguyễn Quang Nhựt
+  const { data, error } = await supabase.from('employee_profiles').select('*').eq('employee_id', doctorId);
+  console.log("Employee profiles:", data);
+  console.log("Error:", error);
 }
 
-checkRLS();
+check();

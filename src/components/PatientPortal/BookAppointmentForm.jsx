@@ -167,7 +167,7 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
   const { doctors, loading: loadingDocs } = useDoctors();
 
   const [selectedDate, setSelectedDate]         = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('cat-01');
   const [selectedDoctor, setSelectedDoctor]     = useState('');
   const [selectedTime, setSelectedTime]         = useState('');
   const [guestName, setGuestName]               = useState('');
@@ -198,7 +198,7 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
   useEffect(() => {
     if (isOpen) {
       setSelectedDate('');
-      setSelectedCategory('');
+      setSelectedCategory('cat-01');
       setSelectedDoctor('');
       setSelectedTime('');
       setGuestName('');
@@ -289,15 +289,13 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
   const minDate = `${todayDate.getFullYear()}-${(todayDate.getMonth() + 1).toString().padStart(2, '0')}-${todayDate.getDate().toString().padStart(2, '0')}`;
 
   const workingDocs = useMemo(() => {
-    if (!selectedDate || !selectedCategory) return [];
+    if (!selectedDate) return [];
     
     return doctors?.filter?.(doc => {
-      // Chỉ lấy bác sĩ có chuyên môn phù hợp
-      if (!doc.specialties.includes(selectedCategory)) return false;
       // Bác sĩ phải có lịch phân công vào ngày này
-      return adminSchedules.some(s => String(s.doctor_id || s.doctorId) === String(doc.user_id || doc.id) && (s.work_date === selectedDate || s.date === selectedDate));
+      return adminSchedules.some(s => String(s.doctor_id || s.doctorId) === String(doc.user_id || doc.id) && (s.work_date === selectedDate || s.date === selectedDate) && s.status === 'Đã xác nhận');
     });
-  }, [selectedDate, selectedCategory, doctors, adminSchedules]);
+  }, [selectedDate, doctors, adminSchedules]);
 
   const filteredDocs = (() => {
     if (!selectedTime) return workingDocs;
@@ -344,22 +342,35 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
       return booked || locked || outsideShift;
     };
 
+    let slotsToDisplay = [];
     if (selectedDoctor) {
       const slots = getAvailableSlots(selectedDoctor, selectedDate, adminSchedules);
-      return slots?.map?.(s => ({
+      slotsToDisplay = slots?.map?.(s => ({
         ...s,
         isBooked: isSlotActuallyBooked(selectedDoctor, selectedDate, s.time)
-      }));
+      })) || [];
     } else {
-      const standardSlots = ["08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30"];
-      return standardSlots.map(time => {
-        const isAllBooked = !workingDocs.some(doc => !isSlotActuallyBooked(doc.user_id || doc.id, selectedDate, time));
-        return {
-          time,
-          isBooked: isAllBooked || workingDocs.length === 0
-        };
+      // Find all unique slots available for any working doctor today
+      const allSlotsMap = new Map();
+      workingDocs.forEach(doc => {
+         const docId = doc.user_id || doc.id;
+         const docSlots = getAvailableSlots(docId, selectedDate, adminSchedules);
+         docSlots.forEach(s => {
+             if (!allSlotsMap.has(s.time)) {
+                 allSlotsMap.set(s.time, { time: s.time, isBooked: true });
+             }
+             // If AT LEAST ONE doctor is free for this slot, it is NOT booked globally
+             if (!isSlotActuallyBooked(docId, selectedDate, s.time)) {
+                 allSlotsMap.get(s.time).isBooked = false;
+             }
+         });
       });
+      slotsToDisplay = Array.from(allSlotsMap.values());
+      slotsToDisplay.sort((a, b) => a.time.localeCompare(b.time));
     }
+    
+    // Chỉ hiện các khung giờ có thể đặt được (không bị full/booked)
+    return slotsToDisplay.filter(slot => !slot.isBooked);
   })();
 
   // Lưu ý: Không ép buộc chọn bác sĩ, hệ thống có thể random assign nếu selectedDoctor rỗng, 
@@ -389,7 +400,7 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
     ? true
     : (guestName.trim() && guestPhone.trim() && guestEmail.trim());
   
-  const isFormComplete = selectedCategory && selectedDate && selectedTime && isContactInfoComplete && finalDoctorId;
+  const isFormComplete = selectedDate && selectedTime && isContactInfoComplete && finalDoctorId;
 
   // ── Submit Form to Payment Step ──────────────────────────────────────────────
   const handleProceedToPayment = async (e) => {
@@ -559,33 +570,9 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
                 />
               </div>
 
-              {/* 2. Category */}
-              <div>
-                <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                  <Stethoscope className="w-4 h-4 text-emerald-500" />
-                  Bước 2: Chọn nhu cầu khám
-                </label>
-                <div className="relative">
-                  <select
-                    value={selectedCategory}
-                    onChange={e => { setSelectedCategory(e.target.value); setSelectedTime(''); setSelectedDoctor(''); }}
-                    required
-                    className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-emerald-500 text-slate-800 transition-colors appearance-none cursor-pointer text-sm pr-10"
-                  >
-                    <option value="">-- Chọn nhóm bệnh / nhu cầu --</option>
-                    {categoriesToUse.map(cat => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.name}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                </div>
-              </div>
-
-              {/* 3. Parallel Doctor & Time */}
+              {/* 2. Parallel Time */}
               <AnimatePresence>
-                {selectedDate && selectedCategory && (
+                {selectedDate && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
@@ -594,61 +581,19 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
                   >
                     {workingDocs.length === 0 ? (
                       <div className="text-sm text-rose-500 font-semibold flex items-center gap-2 justify-center py-4">
-                        <AlertTriangle className="w-4 h-4" /> Không có bác sĩ chuyên khoa này làm việc vào ngày đã chọn.
+                        <AlertTriangle className="w-4 h-4" /> Không có bác sĩ làm việc vào ngày đã chọn.
                       </div>
                     ) : (
                       <>
                         <div className="text-center bg-sky-100 text-sky-800 text-xs font-bold py-1.5 rounded-full mb-2 border border-sky-200">
-                          Bước 3: Chọn bác sĩ hoặc chọn khung giờ bạn muốn
-                        </div>
-                        {/* Doctor Select */}
-                        <div>
-                          <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                            <User className="w-4 h-4 text-sky-500" />
-                            Danh sách bác sĩ {selectedTime && "(Còn trống khung giờ trên)"}
-                          </label>
-                          <div className="flex flex-col gap-2">
-                            {loadingDocs ? (
-                              <div className="text-sm text-slate-500 italic p-3 text-center border rounded-xl border-slate-200">
-                                <span className="animate-pulse">Đang tải danh sách bác sĩ...</span>
-                              </div>
-                            ) : (
-                              <>
-                                {filteredDocs?.map?.(doc => (
-                                  <div
-                                    key={doc.id}
-                                    onClick={() => setSelectedDoctor(doc.id === selectedDoctor ? '' : doc.id)}
-                                    className={`flex items-center gap-3 p-3 border rounded-xl cursor-pointer transition-all ${
-                                      selectedDoctor === doc.id
-                                        ? 'bg-sky-50 border-sky-400 shadow-sm shadow-sky-500/10'
-                                        : 'bg-white border-slate-200 hover:border-sky-300'
-                                    }`}
-                                  >
-                                    <img src={doc.image} alt={doc.name} className="w-10 h-10 rounded-lg object-cover" />
-                                    <div className="flex-1 min-w-0">
-                                      <p className={`text-sm font-bold truncate ${selectedDoctor === doc.id ? 'text-sky-700' : 'text-slate-700'}`}>
-                                        {doc.name}
-                                      </p>
-                                      <p className="text-[10px] text-slate-500">{doc.title}</p>
-                                    </div>
-                                    {selectedDoctor === doc.id && <CheckCircle2 className="w-5 h-5 text-sky-500 shrink-0" />}
-                                  </div>
-                                ))}
-                                {filteredDocs.length === 0 && selectedTime && (
-                                  <div className="text-xs text-slate-500 italic p-2 text-center bg-white border border-slate-100 rounded-lg">
-                                    Không có bác sĩ nào trống khung giờ này.
-                                  </div>
-                                )}
-                              </>
-                            )}
-                          </div>
+                          Bước 2: Chọn khung giờ bạn muốn
                         </div>
 
                         {/* Time Select */}
                         <div>
                           <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
                             <Clock className="w-4 h-4 text-amber-500" />
-                            Các khung giờ {selectedDoctor ? "(Của bác sĩ này)" : "(Có thể đặt)"}
+                            Các khung giờ có thể đặt
                           </label>
                           <div className="grid grid-cols-4 gap-2">
                             {filteredSlots?.map?.(slot => (

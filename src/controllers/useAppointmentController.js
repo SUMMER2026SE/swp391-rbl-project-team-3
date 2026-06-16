@@ -215,7 +215,8 @@ export function useAppointmentController(patientId = null) {
     // Filter schedules for this doctor and date
     const dailySchedules = adminSchedules.filter(s => 
       String(s.doctorId || s.doctor_id) === String(docId) && 
-      (s.date === date || s.work_date === date)
+      (s.date === date || s.work_date === date) &&
+      s.status === 'Đã xác nhận'
     );
 
     if (dailySchedules.length === 0) {

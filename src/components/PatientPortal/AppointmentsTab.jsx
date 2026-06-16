@@ -200,7 +200,7 @@ function RescheduleModal({ apt, onClose, onConfirm, rescheduleError }) {
 
   let isDoctorWorkingOnDay = true;
   if (selectedDoctorData && newDate) {
-    isDoctorWorkingOnDay = adminSchedules.some(s => String(s.doctor_id || s.doctorId) === String(apt.doctorId || apt.doctor_id) && (s.work_date === newDate || s.date === newDate));
+    isDoctorWorkingOnDay = adminSchedules.some(s => String(s.doctor_id || s.doctorId) === String(apt.doctorId || apt.doctor_id) && (s.work_date === newDate || s.date === newDate) && s.status === 'Đã xác nhận');
   }
 
   const docId = apt.doctorId || apt.doctor_id;

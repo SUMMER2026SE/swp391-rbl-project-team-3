@@ -119,9 +119,25 @@ export const AppointmentModel = {
 
   async create(appointmentData) {
     try {
+      // If patient_id is null (Guest user), we must use a proxy UUID because
+      // the appointments table requires a non-null patient_id that exists in users.
+      // We use the receptionist's UUID as a proxy for all guests.
+      const proxyGuestId = '18504773-0f51-405a-aa32-70cae403be6e';
+      const actualPatientId = appointmentData.patient_id || proxyGuestId;
+
+      // Ensure patient exists in patient_profiles to satisfy foreign key constraints.
+      // We do a silent insert and ignore errors (e.g. if it already exists or RLS blocks it).
+      await supabase.from('patient_profiles').upsert([{ patient_id: actualPatientId }], { onConflict: 'patient_id' });
+
+      // Build safe payload
+      const dbPayload = {
+        ...appointmentData,
+        patient_id: actualPatientId
+      };
+
       const { data, error } = await supabase
         .from('appointments')
-        .insert([appointmentData])
+        .insert([dbPayload])
         .select();
       if (error) throw error;
       return data[0];
@@ -219,13 +235,13 @@ export const AppointmentModel = {
     
     let newApt;
     if (bookingData.holdAptId) {
-      newApt = await this.update(bookingData.holdAptId, dbPayload);
+      newApt = await this.update(bookingData.holdAptId, { status: bookingData.status || 'Đã xác nhận' });
       if (!newApt) newApt = await this.create(dbPayload);
     } else {
       newApt = await this.create(dbPayload);
     }
     
-    if (newApt && (bookingData.bookingFee || bookingData.fee)) {
+    if (newApt && (bookingData.bookingFee || bookingData.fee) && !bookingData.isHold) {
       const deposit = bookingData.bookingFee
         || (typeof bookingData.fee === 'string' ? parseInt(bookingData.fee.replace(/\D/g, ''), 10) : bookingData.fee)
         || 50000;
@@ -371,15 +387,23 @@ export const AppointmentModel = {
     }
 
     // Rule 2: Doctor must be working on that day
-    const dayOfWeek = this.getLocalDayOfWeek(date);
-    const workingDays = this.getDoctorWorkingDays(doctorId);
-    if (workingDays.length > 0 && !workingDays.includes(dayOfWeek)) {
-      const doc = DoctorModel.getAllDoctorsSync?.().find(d => String(d.id || d.user_id) === String(doctorId));
-      const scheduleStr = doc ? (typeof doc.schedule === 'string' ? JSON.parse(doc.schedule) : doc.schedule).map(s => s.day).join(', ') : '';
-      return {
-        valid: false,
-        error: `Bác sĩ không có lịch trực vào ngày này. Lịch làm việc của bác sĩ: ${scheduleStr}.`,
-      };
+    const { data: shifts } = await supabase
+      .from('doctor_shifts')
+      .select('*')
+      .eq('doctor_id', doctorId)
+      .eq('work_date', date);
+
+    if (!shifts || shifts.length === 0) {
+      const dayOfWeek = this.getLocalDayOfWeek(date);
+      const workingDays = this.getDoctorWorkingDays(doctorId);
+      if (workingDays.length > 0 && !workingDays.includes(dayOfWeek)) {
+        const doc = DoctorModel.getAllDoctorsSync?.().find(d => String(d.id || d.user_id) === String(doctorId));
+        const scheduleStr = doc ? (typeof doc.schedule === 'string' ? JSON.parse(doc.schedule) : doc.schedule).map(s => s.day).join(', ') : '';
+        return {
+          valid: false,
+          error: `Bác sĩ không có lịch trực vào ngày này. Lịch làm việc cố định của bác sĩ: ${scheduleStr}.`,
+        };
+      }
     }
 
     // Rule 3: No double booking for doctor
@@ -404,15 +428,18 @@ export const AppointmentModel = {
 
     // Rule 6: No double booking for patient
     const isPatientBusy = allAppointments.some(
-      a =>
-        a.status !== 'Đã hủy' &&
-        (a.date === date || a.appointment_date === date) &&
-        (a.time === time || a.start_time === time) &&
-        (
-          (patientId && (String(a.patient_id) === String(patientId) || String(a.patientId) === String(patientId))) ||
-          (patientPhone && a.patientPhone === patientPhone) ||
-          (patientEmail && a.patientEmail === patientEmail)
-        )
+      a => {
+        if (a.status === 'Đã hủy') return false;
+        if (bookingData.holdAptId && String(a.appointment_id || a.id) === String(bookingData.holdAptId)) return false;
+        if ((a.date === date || a.appointment_date === date) &&
+            (a.time === time || a.start_time === time) &&
+            (
+              (patientId && (String(a.patient_id) === String(patientId) || String(a.patientId) === String(patientId))) ||
+              (patientPhone && a.patientPhone === patientPhone) ||
+              (patientEmail && a.patientEmail === patientEmail)
+            )) return true;
+        return false;
+      }
     );
     if (isPatientBusy) {
       return {
@@ -427,7 +454,10 @@ export const AppointmentModel = {
       
       // Rule 4: Max 2 upcoming appointments
       const upcoming = patientAppointments.filter(
-        a => a.status === 'Đang chờ' || a.status === 'Đã xác nhận' || a.status === 'Chờ xác nhận' || a.status === 'Pending'
+        a => {
+          if (bookingData.holdAptId && String(a.appointment_id || a.id) === String(bookingData.holdAptId)) return false;
+          return a.status === 'Đang chờ' || a.status === 'Đã xác nhận' || a.status === 'Chờ xác nhận' || a.status === 'Pending';
+        }
       );
       if (upcoming.length >= 2) {
         return {
@@ -438,7 +468,11 @@ export const AppointmentModel = {
 
       // Rule 5: Cannot book the same doctor on the same day twice
       const sameDayDoc = patientAppointments.some(
-        a => String(a.doctor_id || a.doctorId) === String(doctorId) && (a.date === date || a.appointment_date === date) && a.status !== 'Đã hủy'
+        a => {
+          if (a.status === 'Đã hủy') return false;
+          if (bookingData.holdAptId && String(a.appointment_id || a.id) === String(bookingData.holdAptId)) return false;
+          return String(a.doctor_id || a.doctorId) === String(doctorId) && (a.date === date || a.appointment_date === date);
+        }
       );
       if (sameDayDoc) {
         return {
