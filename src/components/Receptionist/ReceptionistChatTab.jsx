@@ -34,28 +34,21 @@ export default function ReceptionistChatTab() {
         const sortedMsgs = [...patMsgs].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
         const latestMsg = sortedMsgs[0] || null;
 
-        // Try to find matching patient in ([])
-        const patientMatch = ([]).find(p => p.id === patientId);
-
+        // Resolve the display name from the patient's own messages. No external
+        // patients list is available in this component — the previous `([])`
+        // placeholder was an empty-array literal, which is ALWAYS truthy, so it
+        // entered the branch and overwrote `fullName` with `undefined`, crashing
+        // the search filter below (`pat.fullName.toLowerCase()`).
         let fullName = 'Bệnh nhân';
         let phone = 'Chưa có SĐT';
         let email = 'Chưa có Email';
         let avatar = `https://i.pravatar.cc/150?u=${patientId}`;
 
-        if (([])) {
-          fullName = ([]).fullName;
-          phone = ([]).phone || 'Chưa có SĐT';
-          email = ([]).email || 'Chưa có Email';
-          avatar = ([]).avatar || avatar;
-        } else {
-          // Not in ([]) (e.g. registered user or guest)
-          // Find any message sent by the patient to resolve their name
-          const patientSentMsg = patMsgs.find(msg => msg.senderRole === 'PATIENT');
-          if (patientSentMsg) {
-            fullName = patientSentMsg.senderName;
-          } else if (patientId === 'pat-guest') {
-            fullName = 'Khách viếng thăm';
-          }
+        const patientSentMsg = patMsgs.find(msg => msg.senderRole === 'PATIENT');
+        if (patientSentMsg && patientSentMsg.senderName) {
+          fullName = patientSentMsg.senderName;
+        } else if (patientId === 'pat-guest') {
+          fullName = 'Khách viếng thăm';
         }
 
         return {
@@ -161,9 +154,9 @@ export default function ReceptionistChatTab() {
     }
   };
 
-  const filteredPatients = patientsList?.filter?.(pat => 
-    pat.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    pat.phone.includes(searchTerm));
+  const filteredPatients = (patientsList || []).filter(pat =>
+    (pat.fullName || '').toLowerCase().includes((searchTerm || '').toLowerCase()) ||
+    (pat.phone || '').includes(searchTerm || ''));
 
   const selectedPatient = patientsList.find(p => p.id === selectedPatientId);
 

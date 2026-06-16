@@ -168,7 +168,7 @@ export function useAuthController(onSuccessCallback = null) {
     } finally {
       localStorage.clear();
       sessionStorage.clear();
-      window.location.replace('/');
+      window.location.replace('/login');
     }
   };
 
@@ -309,11 +309,17 @@ export function useAuthController(onSuccessCallback = null) {
             onSuccessCallback();
           } else {
             if (fromPath) {
-              navigate(fromPath, { replace: true });
+              window.location.href = fromPath;
             } else if (engRole === 'PATIENT') {
-              navigate('/', { replace: true });
+              window.location.href = '/';
             } else {
-              navigate(path, { replace: true });
+              const roleDashboard = {
+                ADMIN: '/dashboard/admin',
+                DOCTOR: '/dashboard/doctor',
+                TECHNICIAN: '/dashboard/technician',
+                RECEPTIONIST: '/dashboard/receptionist',
+              };
+              window.location.href = roleDashboard[engRole] || path || '/';
             }
           }
         } else {
@@ -347,15 +353,17 @@ export function useAuthController(onSuccessCallback = null) {
               onSuccessCallback();
             } else {
               if (fromPath) {
-                navigate(fromPath, { replace: true });
+                window.location.href = fromPath;
                 return;
               }
-              if (currentRole === 1) { navigate('/dashboard/admin'); return; }
-              if (currentRole === 2) { navigate('/dashboard/doctor'); return; }
-              if (currentRole === 3) { navigate('/dashboard/technician'); return; }
-              if (currentRole === 4) { navigate('/dashboard/receptionist'); return; }
-              if (currentRole === 5) { navigate('/'); return; }
-              navigate('/'); // Default fallback
+              const dashboardMap = {
+                1: '/dashboard/admin',
+                2: '/dashboard/doctor',
+                3: '/dashboard/technician',
+                4: '/dashboard/receptionist',
+                5: '/'
+              };
+              window.location.href = dashboardMap[currentRole] || '/';
             }
           }
         }

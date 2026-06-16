@@ -17,6 +17,7 @@ import {
 import { Key, LogOut, User, Ticket, Tag, Calendar, ArrowRight, ChevronDown } from 'lucide-react';
 import logo from '../assets/logo.png';
 import { supabase } from '../supabaseClient';
+import { useAuth } from '../context/AuthContext';
 
 import '../index.css';
 
@@ -51,6 +52,26 @@ const ROLE_MAP = {
   3: 'Kỹ thuật viên',
   4: 'Lễ tân',
   5: 'Bệnh nhân'
+};
+
+// String-keyed role display map (used when role is already resolved to a name)
+const ROLE_DISPLAY = {
+  ADMIN: 'Quản trị viên',
+  DOCTOR: 'Bác sĩ',
+  TECHNICIAN: 'Kỹ thuật viên',
+  RECEPTIONIST: 'Lễ tân',
+  PATIENT: 'Bệnh nhân',
+};
+
+// Maps numeric role_id → string role name (same mapping as AuthContext ROLE_BY_ID)
+const ROLE_ID_TO_NAME = { 1: 'ADMIN', 2: 'DOCTOR', 3: 'TECHNICIAN', 4: 'RECEPTIONIST', 5: 'PATIENT' };
+
+// Maps string role name → dashboard path
+const ROLE_DASHBOARD = {
+  ADMIN: '/dashboard/admin',
+  DOCTOR: '/dashboard/doctor',
+  TECHNICIAN: '/dashboard/technician',
+  RECEPTIONIST: '/dashboard/receptionist',
 };
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -159,7 +180,7 @@ const LOCAL_MOCK_VOUCHERS = [
   },
 ];
 
-function LandingPage({ user, onLogout }) {
+function LandingPage({ onLogout }) {
   const [scrolled, setScrolled] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -169,11 +190,12 @@ function LandingPage({ user, onLogout }) {
   const [selectedDoctor, setSelectedDoctor] = useState(null);
   const [bookingDocId, setBookingDocId] = useState(null);
 
-  // Context-aware authentication state variables
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userRole, setUserRole] = useState(null);
-  const [userFullName, setUserFullName] = useState('');
-  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+  // Consume global authentication state from AuthContext
+  const { user, loading: isLoadingAuth, logout } = useAuth();
+  const isLoggedIn = !!user;
+  const userFullName = user?.name || '';
+  const userRoleName = user?.role || null;
+
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   
   const navigate = useNavigate();
@@ -206,61 +228,20 @@ function LandingPage({ user, onLogout }) {
 
   const mobileMenuRef = useRef(null);
 
-  // Dynamic routing helper to direct users back to their respective dashboards
-  const getDashboardRoute = (roleId) => {
-    const currentRole = Number(roleId);
-    if (currentRole === 1) return '/dashboard/admin';
-    if (currentRole === 2) return '/dashboard/doctor';
-    if (currentRole === 3) return '/dashboard/technician';
-    if (currentRole === 4) return '/dashboard/receptionist';
-    if (currentRole === 5) return '/profile';
-    return '/';
+  // Dynamic routing helper using the resolved string role name
+  const getDashboardRoute = (roleName) => {
+    return ROLE_DASHBOARD[roleName] || '/profile';
   };
 
-  // Fetch authentication state, role ID, and full name on mount
-  useEffect(() => {
-    async function checkAuth() {
-      try {
-        setIsLoadingAuth(true);
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          setIsLoggedIn(true);
-          const { data: userData, error } = await supabase
-            .from('users')
-            .select('role_id, full_name')
-            .eq('user_id', session.user.id)
-            .maybeSingle();
-          if (userData && !error) {
-            setUserRole(userData.role_id);
-            setUserFullName(userData.full_name || '');
-          }
-        } else {
-          setIsLoggedIn(false);
-          setUserRole(null);
-          setUserFullName('');
-        }
-      } catch (err) {
-        console.error('Error fetching auth session on mount:', err);
-      } finally {
-        setIsLoadingAuth(false);
-      }
-    }
-    checkAuth();
-  }, []);
-
-  // Logout handler for Supabase session
   const handleSupabaseLogout = async () => {
     try {
-      await supabase.auth.signOut();
-      setIsLoggedIn(false);
-      setUserRole(null);
-      setUserFullName('');
+      if (onLogout) {
+        await onLogout();
+      } else {
+        await logout();
+      }
     } catch (err) {
       console.error('Logout error:', err);
-    } finally {
-      localStorage.clear();
-      sessionStorage.clear();
-      window.location.replace('/');
     }
   };
 
@@ -489,7 +470,7 @@ function LandingPage({ user, onLogout }) {
                         {userFullName}
                       </span>
                       <span className="text-slate-500 font-bold text-[10px] tracking-wider uppercase mt-1">
-                        {ROLE_MAP[Number(userRole)] || ''}
+                        {ROLE_DISPLAY[userRoleName] || ''}
                       </span>
                     </div>
 
@@ -508,12 +489,12 @@ function LandingPage({ user, onLogout }) {
                       Hồ sơ cá nhân
                     </button>
 
-                    {/* Menu Item: Không gian làm việc (Conditionally render ONLY if currentRole !== 5) */}
-                    {Number(userRole) > 0 && Number(userRole) !== 5 && (
+                    {/* Menu Item: Không gian làm việc — renders for all non-PATIENT staff */}
+                    {user && user.role && user.role !== 'PATIENT' && (
                       <button
                         onClick={() => {
                           setIsDropdownOpen(false);
-                          navigate(getDashboardRoute(userRole));
+                          navigate(`/dashboard/${user.role.toLowerCase()}`);
                         }}
                         className="hover:bg-white/20 hover:shadow-sm text-slate-800 border-none bg-transparent py-2.5 px-4 rounded-xl cursor-pointer flex items-center gap-3 text-sm font-semibold text-left transition-all duration-300 w-full hover:scale-[1.02] active:scale-95"
                       >
@@ -588,7 +569,7 @@ function LandingPage({ user, onLogout }) {
               {/* Mobile User Badge */}
               <div className="flex flex-col items-center justify-center pb-3 border-b border-white/10 text-center">
                 <span className="text-white font-semibold text-base">{userFullName}</span>
-                <span className="text-emerald-400 text-xs font-bold uppercase tracking-wider mt-1">{ROLE_MAP[Number(userRole)]}</span>
+                <span className="text-emerald-400 text-xs font-bold uppercase tracking-wider mt-1">{ROLE_DISPLAY[userRoleName] || ''}</span>
               </div>
 
               <button
@@ -598,9 +579,9 @@ function LandingPage({ user, onLogout }) {
                 Hồ sơ cá nhân
               </button>
 
-              {Number(userRole) > 0 && Number(userRole) !== 5 && (
+              {user && user.role && user.role !== 'PATIENT' && (
                 <button
-                  onClick={() => { navigate(getDashboardRoute(userRole)); setMobileMenuOpen(false); }}
+                  onClick={() => { navigate(`/dashboard/${user.role.toLowerCase()}`); setMobileMenuOpen(false); }}
                   className="w-full bg-white/10 hover:bg-white/20 backdrop-blur-md text-white border border-white/20 py-3 px-4 rounded-xl transition-all font-semibold text-sm cursor-pointer flex items-center justify-center gap-2"
                 >
                   Không gian làm việc

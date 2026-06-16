@@ -143,14 +143,14 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen relative overflow-hidden">
-      {/* Layer 1 (Image) */}
+      {/* Layer 1 (Image — fixed so it never shifts on tab/scroll changes) */}
       <div 
-        className="absolute inset-0 bg-cover bg-center transition-all duration-1000 z-0" 
+        className="fixed inset-0 bg-cover bg-center z-0" 
         style={{ backgroundImage: profileBgImage ? `url("${profileBgImage}")` : 'none', backgroundColor: '#f8fafc' }} 
       />
 
-      {/* Layer 2 (Global Frosted Diffusion) */}
-      <div className="absolute inset-0 bg-slate-900/15 backdrop-blur-lg z-10" />
+      {/* Layer 2 (Subtle tint — NO backdrop-blur so empty areas stay crisp) */}
+      <div className="fixed inset-0 bg-slate-900/15 z-10" />
 
       {/* Layer 3: Content Wrapper */}
       <div className="relative z-20 w-full max-w-7xl mx-auto p-4 md:p-8">

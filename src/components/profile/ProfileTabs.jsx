@@ -4,13 +4,16 @@
  * Smooth animated tab bar. The active "pill" is a single shared element that
  * slides between tabs via Framer Motion's `layoutId`, giving the premium
  * morphing effect rather than a hard snap.
+ *
+ * Uses CSS Grid with `grid-cols-[repeat(N,1fr)]` to force ALL tabs onto
+ * exactly one row, evenly balanced regardless of label length.
  */
 import React from 'react';
 import { motion } from 'framer-motion';
 
 export default function ProfileTabs({ tabs, activeTab, onChange }) {
   return (
-    <div className="glass-3d-soft rounded-2xl p-1.5 flex items-center gap-1 overflow-x-auto custom-scrollbar">
+    <div className="glass-3d-soft rounded-2xl p-1.5 flex w-full items-center gap-1">
       {tabs?.map?.((tab) => {
         const Icon = tab.icon;
         const isActive = tab.id === activeTab;
@@ -18,8 +21,8 @@ export default function ProfileTabs({ tabs, activeTab, onChange }) {
           <button
             key={tab.id}
             onClick={() => onChange(tab.id)}
-            className={`relative flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold
-                        whitespace-nowrap border-none cursor-pointer transition-colors duration-200 z-10
+            className={`relative flex items-center justify-center gap-1.5 px-1 py-2.5 rounded-xl text-xs sm:text-sm font-bold
+                        border-none cursor-pointer transition-colors duration-200 z-10 flex-1 min-w-0
                         ${isActive ? 'text-white' : 'text-on-surface-variant hover:text-on-surface bg-transparent'}`}
           >
             {isActive && (

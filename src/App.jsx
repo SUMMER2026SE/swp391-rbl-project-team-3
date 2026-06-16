@@ -24,6 +24,14 @@ function AppContent() {
     await logout();
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-10 h-10 rounded-full border-4 border-slate-200 border-t-sky-500 animate-spin" />
+      </div>
+    );
+  }
+
   const landingPageUser = user ? { 
     username: user.name,
     avatar: user.avatar 
@@ -34,17 +42,21 @@ function AppContent() {
       <Routes>
         <Route 
           path="/" 
-          element={<LandingPage user={landingPageUser} onLogout={handleLogout} />} 
+          element={
+            user && user.role !== 'PATIENT'
+              ? <Navigate to={getDashboardPath(user.role)} replace />
+              : <LandingPage user={landingPageUser} onLogout={handleLogout} />
+          } 
         />
         
         <Route
           path="/login"
-          element={loading ? <LoginPage /> : (!user ? <LoginPage /> : <Navigate to={getDashboardPath(user.role)} replace />)}
+          element={!user ? <LoginPage /> : <Navigate to={getDashboardPath(user.role)} replace />}
         />
 
         <Route
           path="/login-supabase"
-          element={loading ? <LoginPage /> : (!user ? <LoginPage /> : <Navigate to={getDashboardPath(user.role)} replace />)}
+          element={!user ? <LoginPage /> : <Navigate to={getDashboardPath(user.role)} replace />}
         />
 
         <Route 

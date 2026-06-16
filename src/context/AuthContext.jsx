@@ -94,7 +94,7 @@ export function AuthProvider({ children }) {
     } finally {
       localStorage.clear();
       sessionStorage.clear();
-      window.location.replace('/');
+      window.location.replace('/login');
     }
   };
 
@@ -107,24 +107,26 @@ export function AuthProvider({ children }) {
 
   // The role is only trustworthy once it's been resolved FOR THE CURRENT uid.
   const currentUid = session?.user?.id || null;
-  const roleReady = roleState.uid === currentUid && roleState.resolved;
+  const roleResolved = roleState.uid === currentUid && roleState.resolved;
 
   if (session?.user && !isResettingPassword) {
-    // Authoritative role from the DB once resolved; fall back to least-privilege
-    // PATIENT (never to the spoofable user_metadata role) for access decisions.
-    const role = roleReady ? (roleState.role || 'PATIENT') : 'PATIENT';
-    activeUser = {
-      id: session.user.id,
-      name: session.user.user_metadata?.full_name || session.user.email,
-      role: role,
-      avatar: session.user.user_metadata?.avatar_url,
-      isSupabase: true
-    };
+    if (roleResolved) {
+      // Authoritative role from the DB once resolved
+      const role = roleState.role || 'PATIENT';
+      activeUser = {
+        id: session.user.id,
+        name: session.user.user_metadata?.full_name || session.user.email,
+        role: role,
+        avatar: session.user.user_metadata?.avatar_url,
+        isSupabase: true
+      };
+    }
+    // If not roleResolved, activeUser remains null.
   }
 
   // Hold `loading` true until the authoritative role is known for THIS logged-in
   // user, so ProtectedRoute never grants/denies access on a stale/guessed role.
-  const effectiveLoading = loading || (!!session?.user && !isResettingPassword && !roleReady);
+  const effectiveLoading = loading || (!!session?.user && !isResettingPassword && !roleResolved);
 
   return (
     <AuthContext.Provider value={{ user: activeUser, session, loading: effectiveLoading, login, logout, getDashboardPath }}>
