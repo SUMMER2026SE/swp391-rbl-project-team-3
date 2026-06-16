@@ -1,13 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
-import { createClient } from '@supabase/supabase-js';
-
-// Create a completely anonymous client that doesn't use the logged-in user's session
-const anonSupabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL, 
-  import.meta.env.VITE_SUPABASE_ANON_KEY, 
-  { auth: { persistSession: false, autoRefreshToken: false } }
-);
+import { anonSupabase } from '../anonClient';
 
 export function useDoctors() {
   const [doctors, setDoctors] = useState([]);

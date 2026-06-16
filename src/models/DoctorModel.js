@@ -1,11 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
 import { supabase } from '../supabaseClient';
-
-const anonSupabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL, 
-  import.meta.env.VITE_SUPABASE_ANON_KEY, 
-  { auth: { persistSession: false, autoRefreshToken: false } }
-);
+import { anonSupabase } from '../anonClient';
 
 let cachedDoctors = [];
 

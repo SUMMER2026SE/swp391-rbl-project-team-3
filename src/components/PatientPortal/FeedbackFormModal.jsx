@@ -119,7 +119,7 @@ export default function FeedbackFormModal({ apt, onClose, onSubmitted }) {
         comment: comment.trim(),
         images: images?.map?.(i => i.url),
       };
-      const res = submitFeedback(payload);
+      const res = await submitFeedback(payload);
       if (res.success) {
         setStep(3);
         setTimeout(() => {
