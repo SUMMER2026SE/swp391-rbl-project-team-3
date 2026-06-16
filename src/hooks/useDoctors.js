@@ -68,14 +68,20 @@ export function useDoctors() {
            specialties = Array.from(new Set(specialties));
         }
 
-        // Parse schedule. If stored as JSON string or JSON array
+        // Parse schedule. Supports a JSON string/array OR a human-readable
+        // string like "T2 - T7, 08:00-17:00" (the actual seed format), which is
+        // NOT JSON — so only JSON.parse when it actually looks like JSON, and
+        // fall back to the default schedule below otherwise (no console spam).
         let schedule = [];
-        if (emp?.work_schedule) {
-            try {
-                schedule = typeof emp.work_schedule === 'string' ? JSON.parse(emp.work_schedule) : emp.work_schedule;
-            } catch (e) {
-                console.error("Failed to parse work schedule", e);
+        const ws = emp?.work_schedule;
+        if (Array.isArray(ws)) {
+            schedule = ws;
+        } else if (typeof ws === 'string') {
+            const trimmed = ws.trim();
+            if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+                try { schedule = JSON.parse(trimmed); } catch (e) { schedule = []; }
             }
+            // else: free-text schedule — leave empty so the default applies.
         }
 
         return {
@@ -104,7 +110,7 @@ export function useDoctors() {
         setDoctors(normalizedDoctors);
       }
     } catch (err) {
-      console.error('Lỗi khi tải danh sách bác sĩ:', err);
+      console.error('Lỗi khi tải danh sách bác sĩ:', err?.message || err);
       setError(err.message);
       setDoctors(([])); // fallback on error
     } finally {

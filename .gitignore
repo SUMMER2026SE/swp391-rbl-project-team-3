@@ -11,3 +11,5 @@ nbproject/
 inspect_db.js
 .vite/
 .claude/
+.agents/
+skills-lock.json

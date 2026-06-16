@@ -130,8 +130,8 @@ const AdminOverview = ({ onNavigate }) => {
           </div>
           
           <div className="space-y-5">
-            {(Array.isArray(logs) ? logs : []).map((log) => (
-              <div key={log.id} className="flex items-start p-5 rounded-2xl bg-white/80 border border-slate-100 shadow-sm hover:shadow-md transition-shadow group">
+            {(Array.isArray(logs) ? logs : []).map((log, index) => (
+              <div key={log.log_id ?? log.id ?? index} className="flex items-start p-5 rounded-2xl bg-white/80 border border-slate-100 shadow-sm hover:shadow-md transition-shadow group">
                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mr-5 ${log.severity === 'Success' ? 'bg-emerald-100 text-emerald-600' : 'bg-sky-100 text-sky-600'}`}>
                   {log.severity === 'Success' ? <Activity className="w-6 h-6" /> : <Users className="w-6 h-6" />}
                 </div>
