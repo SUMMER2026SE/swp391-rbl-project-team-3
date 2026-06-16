@@ -6,7 +6,6 @@ import {
   TrendingDown, Info, QrCode, Timer, CreditCard
 } from 'lucide-react';
 import { useAppointmentController } from '../../controllers/useAppointmentController';
-import { useVoucherController } from '../../controllers/useVoucherController';
 import { useAuth } from '../../context/AuthContext';
 import { useDoctors } from '../../hooks/useDoctors';
 import { DoctorScheduleModel } from '../../models/DoctorScheduleModel';
@@ -38,91 +37,8 @@ function formatVND(n) {
   return n.toLocaleString('vi-VN') + ' VNĐ';
 }
 
-// ─── Voucher Banner ───────────────────────────────────────────────────────────
-function VoucherBanner({ applicable }) {
-  const [showAll, setShowAll] = useState(false);
-  if (!applicable || applicable.length === 0) return null;
-
-  const best = applicable[0];
-  const rest = applicable.slice(1);
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: -8 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="rounded-2xl overflow-hidden border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50"
-    >
-      <div className="p-3.5">
-        <div className="flex items-start gap-2.5">
-          <div className="p-1.5 bg-emerald-500 rounded-lg shrink-0 mt-0.5">
-            <Ticket className="w-3.5 h-3.5 text-white" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs font-black text-emerald-800">
-                ✅ Tự động áp dụng: {best.voucher.eventEmoji || '🏷️'} {best.voucher.name}
-              </span>
-            </div>
-            <div className="flex items-center gap-2 mt-1 flex-wrap">
-              <span className="text-[10px] text-emerald-700 font-semibold">
-                {best.voucher.discountType === 'Percentage'
-                  ? `Giảm ${best.voucher.discountValue}%`
-                  : `Giảm ${formatVND(best.voucher.discountValue)}`}
-                {best.voucher.maxDiscountAmount > 0 && best.voucher.discountType === 'Percentage'
-                  ? ` (tối đa ${formatVND(best.voucher.maxDiscountAmount)})`
-                  : ''}
-              </span>
-            </div>
-          </div>
-          <div className="text-right shrink-0">
-            <p className="text-xs font-black text-emerald-700">-{formatVND(best.discount)}</p>
-          </div>
-        </div>
-      </div>
-      {rest.length > 0 && (
-        <>
-          <button
-            type="button"
-            onClick={() => setShowAll(p => !p)}
-            className="w-full text-[10px] font-bold text-emerald-600 py-1.5 border-t border-emerald-200 bg-emerald-100/50 hover:bg-emerald-100 transition-all cursor-pointer border-none flex items-center justify-center gap-1"
-          >
-            <Tag className="w-3 h-3" />
-            {showAll ? 'Ẩn' : `+${rest.length} ưu đãi khác cũng đang áp dụng`}
-          </button>
-          <AnimatePresence>
-            {showAll && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                className="overflow-hidden"
-              >
-                {rest?.map?.(r => (
-                  <div key={r.voucher.id} className="px-3.5 py-2.5 border-t border-emerald-100 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px]">{r.voucher.eventEmoji || '🏷️'}</span>
-                      <p className="text-[10px] font-bold text-slate-700 leading-none">{r.voucher.name}</p>
-                    </div>
-                    <span className="text-[10px] font-bold text-emerald-600 shrink-0">-{formatVND(r.discount)}</span>
-                  </div>
-                ))}
-                <div className="px-3.5 py-2 border-t border-emerald-200 bg-emerald-100/30">
-                  <p className="text-[10px] text-emerald-700 font-semibold flex items-center gap-1">
-                    <Info className="w-3 h-3" />
-                    Hệ thống tự chọn ưu đãi tốt nhất cho bạn.
-                  </p>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </>
-      )}
-    </motion.div>
-  );
-}
-
 // ─── Price Summary ────────────────────────────────────────────────────────────
-function PriceSummary({ originalAmount, bestVoucher }) {
+function PriceSummary({ originalAmount }) {
   if (!originalAmount) {
     return (
       <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-2">
@@ -140,21 +56,6 @@ function PriceSummary({ originalAmount, bestVoucher }) {
         <span>Giá dịch vụ</span>
         <span>{formatVND(originalAmount)}</span>
       </div>
-      {bestVoucher && bestVoucher.discount > 0 && (
-        <>
-          <div className="flex justify-between text-xs font-semibold text-emerald-600">
-            <span className="flex items-center gap-1">
-              <TrendingDown className="w-3 h-3" />
-              {bestVoucher.voucher.eventEmoji || '🏷️'} {bestVoucher.voucher.name}
-            </span>
-            <span>-{formatVND(bestVoucher.discount)}</span>
-          </div>
-          <div className="border-t border-slate-200 pt-2 flex justify-between font-black text-sm text-slate-900">
-            <span>Thanh toán</span>
-            <span className="text-emerald-600">{formatVND(bestVoucher.finalAmount)}</span>
-          </div>
-        </>
-      )}
     </div>
   );
 }
@@ -162,8 +63,8 @@ function PriceSummary({ originalAmount, bestVoucher }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function BookAppointmentForm({ isOpen, onClose }) {
   const { user } = useAuth();
-  const { bookAppointment, getAvailableSlots, isSlotBooked, lockSlot, holdSlot, validateBooking } = useAppointmentController(user?.id);
-  const { getAutoApplicable, incrementUsage } = useVoucherController();
+  const { appointments, bookAppointment, getAvailableSlots, isSlotBooked, lockSlot, holdSlot, validateBooking } = useAppointmentController(user?.id);
+  const isReturning = user && appointments && appointments.length > 0;
   const { doctors, loading: loadingDocs } = useDoctors();
 
   const [selectedDate, setSelectedDate]         = useState('');
@@ -378,20 +279,9 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
   const finalDoctorId = selectedDoctor || (workingDocs.find(doc => !isSlotBooked(doc.user_id || doc.id, selectedDate, selectedTime))?.user_id) || (workingDocs.find(doc => !isSlotBooked(doc.user_id || doc.id, selectedDate, selectedTime))?.id);
   const finalDoctorData = finalDoctorId ? doctors.find(d => String(d.user_id || d.id) === String(finalDoctorId)) : null;
 
-  // ── Auto-apply voucher ──────────────────────────────────────────────────────
+  // ── Service Fee ──
   const originalAmount = finalDoctorData ? parsePriceToNumber(finalDoctorData.consultationFee) : 0;
-
-  const applicableVouchers = useMemo(() => {
-    if (!selectedCategory || !originalAmount || !selectedDate) return [];
-    return getAutoApplicable(selectedCategory, originalAmount, selectedDate);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCategory, originalAmount, selectedDate]);
-
-  const bestVoucher = applicableVouchers[0] || null;
-
-  const finalFee = bestVoucher
-    ? formatVND(bestVoucher.finalAmount)
-    : finalDoctorData?.consultationFee || '300,000 VNĐ';
+  const finalFee = finalDoctorData?.consultationFee || '300,000 VNĐ';
 
   if (!isOpen) return null;
 
@@ -419,12 +309,9 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
       service: selectedCategoryData?.name || 'Khám Da Liễu',
       fee: finalFee,
       originalFee: finalDoctorData?.consultationFee || finalFee,
-      voucherId: bestVoucher?.voucher.id || null,
-      voucherCode: bestVoucher?.voucher.code || null,
-      discount: bestVoucher?.discount || 0,
       notes: user
-        ? `Khách hàng đặt lịch khám qua cổng Portal.${bestVoucher ? ' Đã áp dụng ưu đãi.' : ''}`
-        : `Khách vãng lai đăng ký qua website.${bestVoucher ? ' Đã áp dụng ưu đãi.' : ''}`,
+        ? `Khách hàng đặt lịch khám qua cổng Portal.`
+        : `Khách vãng lai đăng ký qua website.`,
       bookingFee: 50000,
       paymentStatus: 'Đã thanh toán một phần (Giữ chỗ)',
       status: 'Đang chờ'
@@ -483,9 +370,6 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
     
     const result = await bookAppointment(paymentPayload);
     if (result.success) {
-      if (bestVoucher) {
-        incrementUsage(bestVoucher.voucher.id);
-      }
       setStep('success');
       window.dispatchEvent(new CustomEvent('show-toast', {
         detail: { message: 'Thanh toán phí giữ chỗ thành công!', type: 'success' }
@@ -554,18 +438,40 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
             )}
 
             <div className="space-y-4">
+              {/* 0. Select Doctor (Returning Patients Only) */}
+              {isReturning && (
+                <div>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                    <User className="w-4 h-4 text-indigo-500" />
+                    Bước 1: Chọn bác sĩ (Tuỳ chọn)
+                  </label>
+                  <select
+                    value={selectedDoctor}
+                    onChange={e => setSelectedDoctor(e.target.value)}
+                    className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-emerald-500 text-slate-800 transition-colors cursor-pointer text-sm"
+                  >
+                    <option value="">Không chọn</option>
+                    {doctors?.map(doc => (
+                      <option key={doc.id || doc.user_id} value={doc.user_id || doc.id}>
+                        BS. {doc.name} {doc.specialties && doc.specialties.length > 0 ? `(${doc.specialties.join(', ')})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               {/* 1. Date */}
               <div>
                 <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
                   <Calendar className="w-4 h-4 text-teal-500" />
-                  Bước 1: Chọn ngày khám
+                  {isReturning ? 'Bước 2: Chọn ngày khám' : 'Bước 1: Chọn ngày khám'}
                 </label>
                 <input
                   type="date"
                   value={selectedDate}
                   min={minDate}
                   required
-                  onChange={e => { setSelectedDate(e.target.value); setSelectedTime(''); setSelectedDoctor(''); }}
+                  onChange={e => { setSelectedDate(e.target.value); setSelectedTime(''); }}
                   className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-emerald-500 text-slate-800 transition-colors cursor-pointer text-sm"
                 />
               </div>
@@ -583,10 +489,14 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
                       <div className="text-sm text-rose-500 font-semibold flex items-center gap-2 justify-center py-4">
                         <AlertTriangle className="w-4 h-4" /> Không có bác sĩ làm việc vào ngày đã chọn.
                       </div>
+                    ) : selectedDoctor && !workingDocs.some(d => String(d.user_id || d.id) === String(selectedDoctor)) ? (
+                      <div className="text-sm text-rose-500 font-semibold flex items-center gap-2 justify-center py-4">
+                        <AlertTriangle className="w-4 h-4" /> Bác sĩ bạn chọn không làm việc vào ngày này. Vui lòng chọn ngày khác hoặc bỏ chọn bác sĩ.
+                      </div>
                     ) : (
                       <>
                         <div className="text-center bg-sky-100 text-sky-800 text-xs font-bold py-1.5 rounded-full mb-2 border border-sky-200">
-                          Bước 2: Chọn khung giờ bạn muốn
+                          {isReturning ? 'Bước 3: Chọn khung giờ bạn muốn' : 'Bước 2: Chọn khung giờ bạn muốn'}
                         </div>
 
                         {/* Time Select */}
@@ -621,42 +531,11 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
                 )}
               </AnimatePresence>
 
-              {/* ── Auto-apply Voucher Banner ── */}
-              <AnimatePresence>
-                {selectedCategory && selectedDate && applicableVouchers.length > 0 && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -6 }}
-                  >
-                    <VoucherBanner applicable={applicableVouchers} />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* ── No voucher info ── */}
-              <AnimatePresence>
-                {selectedCategory && selectedDate && applicableVouchers.length === 0 && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="flex items-center gap-2 text-[11px] text-slate-400 font-medium px-1"
-                  >
-                    <Tag className="w-3.5 h-3.5 shrink-0" />
-                    Hiện không có ưu đãi nào áp dụng cho dịch vụ này.
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
               {/* ── Price Summary ── */}
               <AnimatePresence>
                 {selectedCategory && (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                    <PriceSummary
-                      originalAmount={originalAmount}
-                      bestVoucher={bestVoucher}
-                    />
+                    <PriceSummary originalAmount={originalAmount} />
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -810,26 +689,7 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
                 ? 'Xem và quản lý lịch khám tại trang cá nhân.'
                 : 'Lễ tân sẽ gọi điện xác nhận sớm nhất.'}
             </p>
-            {bestVoucher && originalAmount > 0 ? (
-              <div className="mt-4 bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3 text-sm space-y-1.5 text-left w-full max-w-xs mx-auto">
-                <div className="flex justify-between font-black text-slate-900 border-b border-slate-200 pb-1.5 mb-1.5">
-                  <span>Dự kiến thanh toán thêm</span>
-                  <span className="text-emerald-600">{formatVND(Math.max(0, bestVoucher.finalAmount - 50000))}</span>
-                </div>
-                <div className="flex justify-between text-slate-500 text-[11px]">
-                  <span>Chi phí gốc (bác sĩ)</span>
-                  <span>{formatVND(originalAmount)}</span>
-                </div>
-                <div className="flex justify-between text-emerald-600 font-semibold text-[11px]">
-                  <span>Voucher giảm giá</span>
-                  <span>-{formatVND(bestVoucher.discount)}</span>
-                </div>
-                <div className="flex justify-between text-slate-500 font-semibold text-[11px]">
-                  <span>Đã thanh toán (Cọc)</span>
-                  <span>-50.000 VNĐ</span>
-                </div>
-              </div>
-            ) : (
+            {(
               <div className="mt-4 bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3 text-sm space-y-1.5 text-left w-full max-w-xs mx-auto">
                 <div className="flex justify-between font-black text-slate-900 border-b border-slate-200 pb-1.5 mb-1.5">
                   <span>Dự kiến thanh toán thêm</span>

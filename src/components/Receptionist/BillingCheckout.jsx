@@ -340,7 +340,7 @@ export default function BillingCheckout({
                             <span className="font-extrabold text-sm text-slate-800 truncate">{a.patientName}</span>
                             {ready && !paid && (
                               <span className="text-[8px] font-black uppercase bg-amber-50 text-amber-600 border border-amber-200/60 rounded px-1 py-0.5">
-                                Sẵn sàng thu
+                                Đã khám xong
                               </span>
                             )}
                           </div>
@@ -611,13 +611,14 @@ function ReceiptModal({ receipt, onClose, receptionistId, showToast }) {
             onClick={onClose}
             className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100]"
           />
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.95, opacity: 0, y: 20 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 250 }}
-            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] max-w-md bg-white border border-slate-300 shadow-2xl rounded-3xl p-6 z-[101]"
-          >
+          <div className="fixed inset-0 z-[101] flex items-center justify-center p-4 pointer-events-none">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 250 }}
+              className="w-full max-w-md bg-white border border-slate-300 shadow-2xl rounded-3xl p-6 pointer-events-auto"
+            >
             <div id="rcp-print" className="bg-white p-4 text-xs font-mono text-slate-800 text-left space-y-4 border border-slate-100 rounded-2xl">
               <div className="text-center space-y-1">
                 <h4 className="font-extrabold text-sm uppercase tracking-wider text-slate-900">PHÒNG KHÁM DA LIỄU DERMASMART</h4>
@@ -679,6 +680,7 @@ function ReceiptModal({ receipt, onClose, receptionistId, showToast }) {
               </button>
             </div>
           </motion.div>
+          </div>
         </>
       )}
     </AnimatePresence>

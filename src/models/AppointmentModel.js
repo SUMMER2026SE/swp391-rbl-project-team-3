@@ -1,5 +1,6 @@
 import { supabase } from '../supabaseClient';
 import { DoctorModel } from './DoctorModel';
+import { PatientModel } from './PatientModel';
 
 // Map legacy/English status codes onto the Vietnamese vocabulary the whole UI
 // is built around, so seed rows (e.g. 'CONFIRMED') stay visible & consistent.
@@ -62,11 +63,48 @@ export const AppointmentModel = {
     };
   },
 
+  async populatePatientNames(data) {
+    if (!data || (Array.isArray(data) && data.length === 0)) return data;
+    const isArray = Array.isArray(data);
+    const rows = isArray ? data : [data];
+    
+    const patientIds = Array.from(new Set(rows.map(r => r.patient_id).filter(Boolean)));
+    if (patientIds.length === 0) return data;
+
+    let userMap = {};
+    try {
+      const { data: usersData } = await supabase.from('users').select('user_id, full_name').in('user_id', patientIds);
+      if (usersData) {
+        usersData.forEach(u => {
+          if (u.full_name) userMap[u.user_id] = u.full_name;
+        });
+      }
+    } catch (e) {}
+
+    rows.forEach(r => {
+      if (r.patient_id) {
+        if (userMap[r.patient_id]) {
+          r.patient_name = userMap[r.patient_id];
+        } else {
+          try {
+            const localPatient = PatientModel.getById(r.patient_id);
+            if (localPatient && localPatient.fullName) {
+               r.patient_name = localPatient.fullName;
+            }
+          } catch(e){}
+        }
+      }
+    });
+
+    return isArray ? rows : rows[0];
+  },
+
   async getAll() {
     try {
       const { data, error } = await supabase.from('appointments').select('*');
       if (error) throw error;
-      return (data || []).map(r => this.mapAppointment(r));
+      const populated = await this.populatePatientNames(data);
+      return (populated || []).map(r => this.mapAppointment(r));
     } catch (e) {
       console.warn('Supabase fetch error (appointments):', e.message);
       return [];
@@ -77,7 +115,8 @@ export const AppointmentModel = {
     try {
       const { data, error } = await supabase.from('appointments').select('*').eq('patient_id', patientId);
       if (error) throw error;
-      return (data || []).map(r => this.mapAppointment(r));
+      const populated = await this.populatePatientNames(data);
+      return (populated || []).map(r => this.mapAppointment(r));
     } catch (e) {
       console.warn('Supabase fetch error (appointments by patient):', e.message);
       return [];
@@ -88,7 +127,8 @@ export const AppointmentModel = {
     try {
       const { data, error } = await supabase.from('appointments').select('*').eq('doctor_id', doctorId);
       if (error) throw error;
-      return (data || []).map(r => this.mapAppointment(r));
+      const populated = await this.populatePatientNames(data);
+      return (populated || []).map(r => this.mapAppointment(r));
     } catch (e) {
       console.warn('Supabase fetch error (appointments by doctor):', e.message);
       return [];
@@ -99,7 +139,8 @@ export const AppointmentModel = {
     try {
       const { data, error } = await supabase.from('appointments').select('*').eq('appointment_id', id).single();
       if (error) throw error;
-      return this.mapAppointment(data);
+      const populated = await this.populatePatientNames(data);
+      return this.mapAppointment(populated);
     } catch (e) {
       console.warn('Supabase fetch error (appointment by id):', e.message);
       return null;
@@ -110,7 +151,8 @@ export const AppointmentModel = {
     try {
       const { data, error } = await supabase.from('appointments').select('*').eq('appointment_date', date);
       if (error) throw error;
-      return (data || []).map(r => this.mapAppointment(r));
+      const populated = await this.populatePatientNames(data);
+      return (populated || []).map(r => this.mapAppointment(r));
     } catch (e) {
       console.warn('Supabase fetch error (appointments by date):', e.message);
       return [];
@@ -224,6 +266,8 @@ export const AppointmentModel = {
     const dbPayload = {
       doctor_id: bookingData.doctorId || bookingData.doctor_id,
       patient_id: bookingData.patientId || bookingData.patient_id,
+      patient_name: bookingData.patientName || bookingData.patient_name,
+      patient_phone: bookingData.patientPhone || bookingData.patient_phone,
       service: bookingData.service,
       fee: bookingData.fee,
       status: bookingData.status || 'Đã xác nhận',
