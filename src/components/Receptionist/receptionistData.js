@@ -11,9 +11,14 @@
 // collide when an `appointment_id` is missing (the classic "undefined id key" bug).
 // ─────────────────────────────────────────────────────────────────────────────
 
-// The whole app's seed timeline treats this as "today" (kept consistent with the
-// rest of the portals so the queue actually shows the seeded appointments).
-export const TODAY_STR = '2026-06-01';
+// "Today" for the reception portal — the real current date (local), so the
+// queue/billing tabs reflect appointments actually scheduled for today, in sync
+// with the other portals which use the live Date. (Previously hardcoded to a
+// fixed seed date, which hid real same-day appointments.)
+export const TODAY_STR = (() => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+})();
 
 // Canonical appointment lifecycle vocabulary (Vietnamese), matching the strings
 // AppointmentModel.normalizeStatus emits. We do NOT invent new DB values.

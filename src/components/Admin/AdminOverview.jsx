@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp, Users, Ticket, Activity, ChevronRight, Zap, Shield } from 'lucide-react';
 import { SystemLogModel } from '../../models/SystemLogModel';
+import { supabase } from '../../supabaseClient';
 
 const AdminOverview = ({ onNavigate }) => {
   const [logs, setLogs] = useState([]);
+  const [metrics, setMetrics] = useState({ staff: 0, vouchers: 0, revenue: 0 });
 
   useEffect(() => {
     const fetchLogs = async () => {
@@ -25,6 +27,33 @@ const AdminOverview = ({ onNavigate }) => {
     return () => window.removeEventListener('system-logs-updated', handleUpdate);
   }, []);
 
+  // Real overview metrics: total staff, active vouchers, and this month's revenue.
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const [staffRes, voucherRes, payRes] = await Promise.all([
+          supabase.from('users').select('user_id', { count: 'exact', head: true }).neq('role_id', 5),
+          supabase.from('vouchers').select('voucher_id', { count: 'exact', head: true }).in('status', ['ACTIVE', 'Hoạt động']),
+          supabase.from('payments').select('final_amount, total_amount, paid_at'),
+        ]);
+        const now = new Date();
+        const revenue = (payRes.data || []).reduce((sum, p) => {
+          if (!p.paid_at) return sum;
+          const d = new Date(p.paid_at);
+          if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
+            return sum + Number(p.final_amount ?? p.total_amount ?? 0);
+          }
+          return sum;
+        }, 0);
+        if (active) setMetrics({ staff: staffRes.count || 0, vouchers: voucherRes.count || 0, revenue });
+      } catch (e) {
+        console.warn('Overview metrics fetch error:', e.message);
+      }
+    })();
+    return () => { active = false; };
+  }, []);
+
   const containerVariants = {
     hidden: { opacity: 0 },
     show: {
@@ -39,29 +68,29 @@ const AdminOverview = ({ onNavigate }) => {
   };
 
   const stats = [
-    { 
-      title: "Doanh thu tháng này", 
-      value: "150.000.000đ", 
-      icon: TrendingUp, 
+    {
+      title: "Doanh thu tháng này",
+      value: new Intl.NumberFormat('vi-VN').format(metrics.revenue) + 'đ',
+      icon: TrendingUp,
       gradient: "from-indigo-500 to-indigo-600",
       lightBg: "bg-indigo-50",
-      trend: "+12% so với tháng trước"
+      trend: "Tổng thu trong tháng"
     },
-    { 
-      title: "Tổng nhân sự", 
-      value: ([])?.length.toString() || "0", 
-      icon: Users, 
+    {
+      title: "Tổng nhân sự",
+      value: metrics.staff.toString(),
+      icon: Users,
       gradient: "from-sky-400 to-sky-500",
       lightBg: "bg-sky-50",
-      trend: "2 nhân sự mới"
+      trend: "Bác sĩ, KTV, lễ tân, quản trị"
     },
-    { 
-      title: "Voucher hoạt động", 
-      value: ([])?.filter(v => v.status === "Hoạt động").length.toString() || "0", 
-      icon: Ticket, 
+    {
+      title: "Voucher hoạt động",
+      value: metrics.vouchers.toString(),
+      icon: Ticket,
       gradient: "from-emerald-400 to-emerald-500",
       lightBg: "bg-emerald-50",
-      trend: "5 voucher sắp hết hạn"
+      trend: "Đang áp dụng"
     },
   ];
 

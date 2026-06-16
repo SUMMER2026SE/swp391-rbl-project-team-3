@@ -5,8 +5,8 @@ import {
   Download, ChevronDown, Landmark, CreditCard, ListFilter, BarChart2,
   Check
 } from 'lucide-react';
-
-const transactions = [];
+import { AppointmentModel } from '../../models/AppointmentModel';
+import { DoctorModel } from '../../models/DoctorModel';
 
 const formatCurrency = (value) => {
   return new Intl.NumberFormat('vi-VN').format(value);
@@ -83,20 +83,66 @@ const FilterDropdown = ({ label, icon: Icon, options, value, onChange, placehold
 };
 
 export default function RevenueStatistics() {
-  const [period, setPeriod] = useState('Ngày');
+  const [period, setPeriod] = useState('Tháng');
   const [doctor, setDoctor] = useState('all');
   const [method, setMethod] = useState('all');
   const [type, setType] = useState('all');
   const [showAll, setShowAll] = useState(false);
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const doctors = useMemo(() => [...new Set(transactions?.map(t => t.doctor)?.filter?.(d => d !== '—'))], []);
-  const methods = useMemo(() => [...new Set(transactions?.map?.(t => t.method))], []);
-  const types = useMemo(() => [...new Set(transactions?.map?.(t => t.type))], []);
+  // Pull real revenue from the payments table and shape it into the transaction
+  // model the charts expect ({ amount, date 'DD/MM/YYYY', time, method, doctor,
+  // service, type }). Doctor names come from the appointment + DoctorModel cache.
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        await DoctorModel.getAllDoctors(); // warm the name cache for mapAppointment
+        const [payments, appts] = await Promise.all([
+          AppointmentModel.getAllPayments(),
+          AppointmentModel.getAll(),
+        ]);
+        const apptById = new Map((appts || []).map(a => [String(a.appointment_id ?? a.id), a]));
+        const mapped = (payments || []).map(p => {
+          const apt = apptById.get(String(p.appointment_id));
+          const dt = new Date(p.paid_at || p.created_at || Date.now());
+          const dd = String(dt.getDate()).padStart(2, '0');
+          const mm = String(dt.getMonth() + 1).padStart(2, '0');
+          const svc = apt?.service || 'Khám da liễu';
+          const type = /liệu trình|gói/i.test(svc) ? 'GÓI LIỆU TRÌNH'
+            : /xét nghiệm|lab/i.test(svc) ? 'XÉT NGHIỆM' : 'KHÁM BỆNH';
+          return {
+            id: p.payment_id,
+            amount: Number(p.final_amount ?? p.total_amount ?? p.amount ?? 0),
+            date: `${dd}/${mm}/${dt.getFullYear()}`,
+            time: `${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`,
+            method: p.payment_method || p.method || 'Tiền mặt',
+            doctor: apt?.doctorName || '—',
+            service: svc,
+            type,
+          };
+        });
+        if (active) setTransactions(mapped);
+      } catch (e) {
+        console.warn('Revenue fetch error:', e.message);
+        if (active) setTransactions([]);
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => { active = false; };
+  }, []);
+
+  const doctors = useMemo(() => [...new Set(transactions?.map(t => t.doctor)?.filter?.(d => d !== '—'))], [transactions]);
+  const methods = useMemo(() => [...new Set(transactions?.map?.(t => t.method))], [transactions]);
+  const types = useMemo(() => [...new Set(transactions?.map?.(t => t.type))], [transactions]);
 
   const filteredData = useMemo(() => {
-    const currentDay = 11;
-    const currentMonth = 5; // 0-indexed (June)
-    const currentYear = 2026;
+    const now = new Date();
+    const currentDay = now.getDate();
+    const currentMonth = now.getMonth(); // 0-indexed
+    const currentYear = now.getFullYear();
     const currentQuarter = Math.floor(currentMonth / 3);
 
     return transactions?.filter?.(t => {
@@ -123,7 +169,7 @@ export default function RevenueStatistics() {
 
       return true;
     });
-  }, [doctor, method, type, period]);
+  }, [transactions, doctor, method, type, period]);
 
   const totalRevenue = filteredData.reduce((sum, t) => sum + t.amount, 0);
   const totalTransactions = filteredData.length;
@@ -182,12 +228,14 @@ export default function RevenueStatistics() {
     });
 
     let rawData = [];
-    const currentYear = 2026;
+    const nowC = new Date();
+    const currentYear = nowC.getFullYear();
+    const todayStr = `${String(nowC.getDate()).padStart(2, '0')}/${String(nowC.getMonth() + 1).padStart(2, '0')}/${currentYear}`;
 
     if (period === 'Ngày') {
       const hours = { '09:00': 0, '10:00': 0, '11:00': 0, '12:00': 0, '13:00': 0, '14:00': 0, '15:00': 0, '16:00': 0 };
       rawFiltered.forEach(t => {
-        if (t.date === '11/06/2026') {
+        if (t.date === todayStr) {
           const hour = t.time.split(':')[0] + ':00';
           if (hours[hour] !== undefined) hours[hour] += t.amount;
         }
@@ -239,7 +287,7 @@ export default function RevenueStatistics() {
       height: d.value === 0 ? 0 : Math.max((d.value / maxVal) * 100, 12),
       highlight: d.value > 0
     }));
-  }, [doctor, method, type, period]);
+  }, [transactions, doctor, method, type, period]);
 
   const getMethodIcon = (name) => {
     if (name.toLowerCase().includes('chuyển khoản')) return Landmark;
@@ -295,6 +343,15 @@ export default function RevenueStatistics() {
   const txTrend = getTrend('tx');
   const avgTrend = getTrend('avg');
   const pkgTrend = getTrend('pkg');
+
+  if (loading) {
+    return (
+      <div className="min-h-[320px] flex flex-col items-center justify-center gap-3 text-slate-400">
+        <div className="w-10 h-10 rounded-full border-4 border-slate-200 border-t-indigo-500 animate-spin" />
+        <p className="text-sm font-medium">Đang tải dữ liệu doanh thu…</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 bg-transparent pb-6 relative">
