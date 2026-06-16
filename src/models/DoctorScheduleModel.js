@@ -55,6 +55,23 @@ export const DoctorScheduleModel = {
   },
 
   /**
+   * Tạo nhiều ca làm việc cùng lúc
+   */
+  async createShifts(shiftsData) {
+    try {
+      const { data, error } = await supabase
+        .from('doctor_shifts')
+        .insert(shiftsData)
+        .select();
+      if (error) throw error;
+      return data;
+    } catch (e) {
+      console.warn('Supabase insert error (createShifts):', e.message);
+      throw e;
+    }
+  },
+
+  /**
    * Cập nhật ca làm việc
    */
   async updateShift(id, updates) {
@@ -69,6 +86,23 @@ export const DoctorScheduleModel = {
       return data;
     } catch (e) {
       console.warn('Supabase update error (updateShift):', e.message);
+      throw e;
+    }
+  },
+
+  /**
+   * Xóa / Thu hồi ca làm việc
+   */
+  async deleteShift(id) {
+    try {
+      const { error } = await supabase
+        .from('doctor_shifts')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+      return true;
+    } catch (e) {
+      console.warn('Supabase delete error (deleteShift):', e.message);
       throw e;
     }
   },

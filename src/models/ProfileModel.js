@@ -170,14 +170,14 @@ export const ProfileModel = {
       // Staff profile updates
       const { error: employeeError } = await supabase
         .from('employee_profiles')
-        .upsert({
-          employee_id: userId, // Primary key required for upsert
+        .update({
           specialization: profileData.specialization,
           degree: profileData.degree,
           experience_years: profileData.experienceYears ? parseInt(profileData.experienceYears, 10) : 0,
           department: profileData.department, 
           work_schedule: profileData.schedule, 
-        });
+        })
+        .eq('employee_id', userId);
 
       if (employeeError) throw employeeError;
 
@@ -185,11 +185,11 @@ export const ProfileModel = {
       if (role === 'DOCTOR') {
         const { error: doctorError } = await supabase
           .from('doctor_profiles')
-          .upsert({
-            doctor_id: userId, // Primary key required for upsert
+          .update({
             description: profileData.description,
             consultation_fee: profileData.consultationFee,
-          });
+          })
+          .eq('doctor_id', userId);
 
         if (doctorError) throw doctorError;
       }

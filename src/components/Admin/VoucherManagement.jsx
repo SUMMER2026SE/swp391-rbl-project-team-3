@@ -100,7 +100,9 @@ function VoucherFormModal({ initial, onClose, onSave }) {
     minOrderAmount: String(initial.minOrderAmount || ''),
     validFrom: initial.validFrom,
     validTo: initial.validTo,
-    applicableServices: initial.applicableServices || [],
+    applicableServices: Array.isArray(initial.applicableServices) 
+      ? initial.applicableServices 
+      : (initial.applicableServices ? (typeof initial.applicableServices === 'string' ? JSON.parse(initial.applicableServices || '[]') : []) : []),
     maxUsage: String(initial.maxUsage),
     perUserLimit: String(initial.perUserLimit || 1),
     eventTag: initial.eventTag || null,
@@ -118,11 +120,11 @@ function VoucherFormModal({ initial, onClose, onSave }) {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    const res = onSave(form);
-    if (!res.success) setError(res.error);
+    const res = await onSave(form);
+    if (!res?.success) setError(res?.error || 'Lỗi không xác định.');
   };
 
   const inputCls = "w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-800 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/20 transition-all";
@@ -439,8 +441,11 @@ function VoucherCard({ v, onEdit, onToggle, onDelete, onCopy, idx }) {
   const pct = usagePercent(v);
   const isActive = displayStatus === 'Hoạt động';
   const isExpiredOrFull = displayStatus === 'Hết hạn' || displayStatus === 'Hết lượt';
-  const serviceNames = v.applicableServices.length > 0
-    ? v.applicableServices?.map?.(id => ([]).find(s => s.id === id)?.name || id).join(', ')
+  const safeServices = Array.isArray(v.applicableServices) 
+    ? v.applicableServices 
+    : (typeof v.applicableServices === 'string' ? JSON.parse(v.applicableServices || '[]') : []);
+  const serviceNames = safeServices.length > 0
+    ? safeServices.map(id => ([]).find(s => s.id === id)?.name || id).join(', ')
     : 'Tất cả dịch vụ';
 
   const eventStyle = v.eventTag ? (EVENT_STYLES[v.eventTag] || EVENT_STYLES['Mùa hè']) : null;
@@ -637,27 +642,27 @@ export default function VoucherManagement() {
   const eventVouchers  = filtered?.filter?.(v => !!v.eventTag);
   const normalVouchers = filtered?.filter?.(v => !v.eventTag);
 
-  const handleSave = (form) => {
+  const handleSave = async (form) => {
     if (editTarget) {
-      const res = updateVoucher(editTarget.id, form);
+      const res = await updateVoucher(editTarget.id, form);
       if (res.success) { setEditTarget(null); showToast('Đã cập nhật voucher thành công!'); }
       return res;
     } else {
-      const res = createVoucher(form);
+      const res = await createVoucher(form);
       if (res.success) { setShowForm(false); showToast(`Đã tạo voucher ${res.voucher.code}!`); }
       return res;
     }
   };
 
-  const handleToggle = (id) => {
-    const res = toggleStatus(id);
+  const handleToggle = async (id) => {
+    const res = await toggleStatus(id);
     if (res.success) showToast('Đã cập nhật trạng thái voucher.');
     else showToast(res.error, 'error');
   };
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (!deleteTarget) return;
-    const res = deleteVoucher(deleteTarget.id);
+    const res = await deleteVoucher(deleteTarget.id);
     if (res.success) {
       setDeleteTarget(null);
       showToast('Đã xóa voucher.');

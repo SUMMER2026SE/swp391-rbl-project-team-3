@@ -47,7 +47,7 @@ const AdminDashboard = () => {
   const renderContent = () => {
     switch (activeTab) {
       case 'overview':
-        return <AdminOverview />;
+        return <AdminOverview onNavigate={setActiveTab} />;
       case 'employees':
         return <EmployeeManagement />;
       case 'services':
@@ -63,7 +63,7 @@ const AdminDashboard = () => {
       case 'reports':
         return <ReportsPage />;
       default:
-        return <AdminOverview />;
+        return <AdminOverview onNavigate={setActiveTab} />;
     }
   };
 

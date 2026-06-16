@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Clock, Plus, Save, Search } from 'lucide-react';
 import { useDoctors } from '../../hooks/useDoctors';
@@ -15,6 +15,17 @@ export default function ConsultationTimeManagement() {
     });
     const [form, setForm] = useState({ doctorName: doctorOptions[0], date: '', startTime: '08:00', endTime: '08:30', status: 'Trống' });
     const [searchTerm, setSearchTerm] = useState('');
+
+    useEffect(() => {
+        if (doctors.length > 0) {
+            setForm(prev => {
+                if (!doctors.find(d => d.name === prev.doctorName)) {
+                    return { ...prev, doctorName: doctors[0].name };
+                }
+                return prev;
+            });
+        }
+    }, [doctors]);
 
     const saveSlots = (nextSlots) => {
         setSlots(nextSlots);

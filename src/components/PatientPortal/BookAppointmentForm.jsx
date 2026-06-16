@@ -162,7 +162,7 @@ function PriceSummary({ originalAmount, bestVoucher }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function BookAppointmentForm({ isOpen, onClose }) {
   const { user } = useAuth();
-  const { bookAppointment, getAvailableSlots, isSlotBooked, lockSlot, validateBooking } = useAppointmentController(user?.id);
+  const { bookAppointment, getAvailableSlots, isSlotBooked, lockSlot, holdSlot, validateBooking } = useAppointmentController(user?.id);
   const { getAutoApplicable, incrementUsage } = useVoucherController();
   const { doctors, loading: loadingDocs } = useDoctors();
 
@@ -428,12 +428,18 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
       return;
     }
 
-    setPaymentPayload(bookingPayload);
-    setStep('payment');
-    setTimeLeft(300); // 5 minutes
-    
-    // Lock slot immediately for 5 minutes during the payment process
     try {
+      const holdApt = await holdSlot(bookingPayload);
+      if (holdApt) {
+        setPaymentPayload({
+          ...bookingPayload,
+          holdAptId: holdApt.appointment_id || holdApt.id
+        });
+      } else {
+        setPaymentPayload(bookingPayload);
+      }
+      
+      // Also lock locally for immediate UI feedback
       const lockedListStr = localStorage.getItem('dermasmart_locked_slots') || '[]';
       let lockedList = [];
       try { lockedList = JSON.parse(lockedListStr); } catch (e) {}
@@ -452,7 +458,11 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
       lockSlot(finalDoctorId, selectedDate, selectedTime, 5);
     } catch (err) {
       console.error('Error locking slot immediately:', err);
+      setPaymentPayload(bookingPayload);
     }
+    
+    setStep('payment');
+    setTimeLeft(300); // 5 minutes
   };
 
   // ── Confirm Payment ─────────────────────────────────────────────────────────

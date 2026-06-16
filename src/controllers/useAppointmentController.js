@@ -183,11 +183,17 @@ export function useAppointmentController(patientId = null) {
   const isSlotBooked = useCallback((docId, date, time) => {
     if (!Array.isArray(appointments)) return false;
     const isBooked = appointments.some(
-      a =>
-        String(a.doctor_id || a.doctorId) === String(docId) &&
-        a.date === date &&
-        a.time === time &&
-        a.status !== 'Đã hủy'
+      a => {
+        if (String(a.doctor_id || a.doctorId) !== String(docId)) return false;
+        if (a.date !== date && a.appointment_date !== date) return false;
+        if (a.time !== time && a.start_time !== time) return false;
+        if (a.status === 'Đã hủy') return false;
+        if (a.status === 'Đang giữ chỗ') {
+          const createdAt = new Date(a.created_at || Date.now()).getTime();
+          if (Date.now() - createdAt > 5 * 60 * 1000) return false;
+        }
+        return true;
+      }
     );
     if (isBooked) return true;
 
@@ -318,6 +324,22 @@ export function useAppointmentController(patientId = null) {
     getAvailableSlots,
     canCancel: AppointmentModel.canCancel,
     isWithin24h: AppointmentModel.isWithin24h.bind(AppointmentModel),
-    lockSlot: AppointmentModel.lockSlot.bind(AppointmentModel)
+    lockSlot: AppointmentModel.lockSlot.bind(AppointmentModel),
+    holdSlot: useCallback(async (bookingData) => {
+      const dbPayload = {
+        doctor_id: bookingData.doctorId,
+        patient_id: bookingData.patientId,
+        service: bookingData.service,
+        fee: bookingData.fee,
+        status: 'Đang giữ chỗ',
+        appointment_date: bookingData.date,
+        start_time: bookingData.time,
+        end_time: AppointmentModel.addMinutesToTime(bookingData.time, 30),
+        reason: bookingData.patientPhone || bookingData.patientEmail || 'Guest',
+      };
+      const holdApt = await AppointmentModel.create(dbPayload);
+      refreshState();
+      return holdApt;
+    }, [refreshState])
   };
 }

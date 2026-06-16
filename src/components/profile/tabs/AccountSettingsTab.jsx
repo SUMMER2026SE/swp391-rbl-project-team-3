@@ -7,6 +7,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Lock, Bell, Eye, EyeOff, Loader2, CheckCircle2, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { AuthModel } from '../../../models/AuthModel';
 
 function PasswordInput({ label, value, onChange, placeholder }) {
   const [show, setShow] = useState(false);
@@ -93,10 +94,13 @@ export default function AccountSettingsTab() {
     setLoading(true);
     setAlert(null);
     try {
-      await new Promise((r) => setTimeout(r, 1100));
+      await AuthModel.changePassword(pw.current, pw.next);
       if (!isMountedRef.current) return;
       setPw({ current: '', next: '', confirm: '' });
       setAlert({ type: 'success', msg: 'Đổi mật khẩu thành công!' });
+    } catch (err) {
+      if (!isMountedRef.current) return;
+      setAlert({ type: 'error', msg: err.message || 'Đã có lỗi xảy ra khi đổi mật khẩu.' });
     } finally {
       if (isMountedRef.current) setLoading(false);
     }

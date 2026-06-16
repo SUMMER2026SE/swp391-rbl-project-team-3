@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { TrendingUp, Users, Ticket, Activity, ChevronRight, Zap, Shield } from 'lucide-react';
 import { SystemLogModel } from '../../models/SystemLogModel';
 
-const AdminOverview = () => {
+const AdminOverview = ({ onNavigate }) => {
   const [logs, setLogs] = useState([]);
 
   useEffect(() => {
@@ -77,7 +77,10 @@ const AdminOverview = () => {
           <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">Tổng quan hệ thống</h2>
           <p className="text-slate-500 text-sm font-medium mt-1">Theo dõi các chỉ số quan trọng và hoạt động gần đây.</p>
         </div>
-        <button className="flex items-center px-5 py-2.5 bg-white border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 hover:bg-slate-50 shadow-sm transition-all group">
+        <button 
+          onClick={() => onNavigate && onNavigate('reports')}
+          className="flex items-center px-5 py-2.5 bg-white border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 hover:bg-slate-50 shadow-sm transition-all group"
+        >
           <Zap className="w-4 h-4 mr-2 text-amber-500 group-hover:scale-110 transition-transform" />
           Báo cáo nhanh
         </button>
@@ -118,7 +121,10 @@ const AdminOverview = () => {
               <Activity className="w-6 h-6 mr-3 text-indigo-500" />
               Hoạt động hệ thống
             </h3>
-            <button className="text-sm font-bold text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 px-4 py-2 rounded-xl transition-colors flex items-center">
+            <button 
+              onClick={() => onNavigate && onNavigate('reports')}
+              className="text-sm font-bold text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 px-4 py-2 rounded-xl transition-colors flex items-center"
+            >
               Xem tất cả <ChevronRight className="w-4 h-4 ml-1" />
             </button>
           </div>
@@ -161,11 +167,17 @@ const AdminOverview = () => {
            </div>
            
            <div className="space-y-4 relative z-10">
-             <button className="w-full py-4 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-2xl font-bold text-sm transition-all flex items-center justify-between px-5 border border-white/20 hover:border-white/40 group shadow-lg">
+             <button 
+               onClick={() => onNavigate && onNavigate('employees')}
+               className="w-full py-4 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-2xl font-bold text-sm transition-all flex items-center justify-between px-5 border border-white/20 hover:border-white/40 group shadow-lg"
+             >
                Thêm nhân viên mới
                <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
              </button>
-             <button className="w-full py-4 bg-black/20 hover:bg-black/30 backdrop-blur-md rounded-2xl font-bold text-sm transition-all flex items-center justify-between px-5 border border-white/5 hover:border-white/20 group">
+             <button 
+               onClick={() => onNavigate && onNavigate('vouchers')}
+               className="w-full py-4 bg-black/20 hover:bg-black/30 backdrop-blur-md rounded-2xl font-bold text-sm transition-all flex items-center justify-between px-5 border border-white/5 hover:border-white/20 group"
+             >
                Tạo Voucher Khuyến Mãi
                <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
              </button>

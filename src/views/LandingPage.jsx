@@ -633,7 +633,12 @@ function LandingPage({ user, onLogout }) {
         </div>
       )}
       {/* Hero Section */}
-      <section className="w-full min-h-screen relative flex items-center justify-center bg-[url('https://lh3.googleusercontent.com/aida-public/AB6AXuC7OT0v_iIuLuAj_638_No62Zj23gC1KQA7roRACzLjiLa5jYLAeKega8Dwb-SCFvAu5Wi76p09MdxZi4j754BX_lNLTfkZCLy5KVnCsbssI9kcKe7I1gyOu_UFP7ghIVcH8gTGb_kWawh0YavzsSvrhfktOTAUAg2pxD1M8u98KkgOAtzwFbpk4n96RScPsHIQbMA-3RuJ5zI46ePjON42HR0UcsNyVNnvLQ-x3ohlqvWYp2bCJhaXVe8-aGw1R2b7KpQ6Qj13ZEX8')] bg-cover bg-center bg-no-repeat bg-fixed overflow-hidden py-24 md:py-32">
+      <section className="w-full min-h-screen relative flex items-center justify-center overflow-hidden py-24 md:py-32">
+        <motion.div 
+          className="absolute inset-[-5%] z-[-2] bg-[url('https://lh3.googleusercontent.com/aida-public/AB6AXuC7OT0v_iIuLuAj_638_No62Zj23gC1KQA7roRACzLjiLa5jYLAeKega8Dwb-SCFvAu5Wi76p09MdxZi4j754BX_lNLTfkZCLy5KVnCsbssI9kcKe7I1gyOu_UFP7ghIVcH8gTGb_kWawh0YavzsSvrhfktOTAUAg2pxD1M8u98KkgOAtzwFbpk4n96RScPsHIQbMA-3RuJ5zI46ePjON42HR0UcsNyVNnvLQ-x3ohlqvWYp2bCJhaXVe8-aGw1R2b7KpQ6Qj13ZEX8')] bg-cover bg-center bg-no-repeat"
+          animate={{ y: [0, -25, 0] }}
+          transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
+        />
         {/* Animated Background Mesh Gradients */}
         <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
           <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-emerald-200/40 blur-[100px] opacity-20 animate-[float_15s_ease-in-out_infinite]" />
@@ -647,7 +652,7 @@ function LandingPage({ user, onLogout }) {
           initial="hidden"
           whileInView="visible"
           viewport={{ once: false, amount: 0.2 }}
-          className="relative z-10 w-[85vw] md:w-[80vw] max-w-6xl mx-auto bg-white/40 backdrop-blur-3xl border border-white/60 shadow-2xl rounded-[2.5rem] p-8 md:p-16 flex flex-col items-center text-center"
+          className="relative z-10 w-[85vw] md:w-[80vw] max-w-6xl mx-auto bg-white/40 backdrop-blur-md border border-white/60 shadow-2xl rounded-[2.5rem] p-8 md:p-16 flex flex-col items-center text-center"
         >
           {/* Top Tag */}
           <motion.div
@@ -1045,10 +1050,15 @@ function LandingPage({ user, onLogout }) {
       )}
       {/* Frosted Glass Showcase */}
       <section
-        className="w-full min-h-[600px] relative bg-fixed bg-center bg-cover flex items-center justify-center px-4 mt-12"
-        style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuATpqIKoVRl7pbivP-KIqn3TPymxL55zcg2m9ulYRdNEVVWWHKWDgGrOirVUvNF6-bbY-Snh17jZaI1zxpJJFHn7kZ_zcWda-zVuOv8TtMrB3wb2RZZ19uNbhN7NwcpDFyNuoA91FjUSsSUd2c2wPjZcaPZxLaSY7Dn8MlIS4BHuiNdLzj1yCLDPaTpr24iUQkcehOjH72t20QJw1YaLpD8kgkbK8eSjyyCZOLZgHB7WY-LxS_NJ6c-OO0XHpyyAhDIhFheTmEhIRMq')" }}
+        className="w-full min-h-[600px] relative flex items-center justify-center px-4 mt-12 overflow-hidden"
       >
-        <div className="absolute inset-0 bg-teal-900/20 backdrop-blur-2xl" />
+        <motion.div 
+          className="absolute inset-[-5%] z-[-2] bg-center bg-cover"
+          style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuATpqIKoVRl7pbivP-KIqn3TPymxL55zcg2m9ulYRdNEVVWWHKWDgGrOirVUvNF6-bbY-Snh17jZaI1zxpJJFHn7kZ_zcWda-zVuOv8TtMrB3wb2RZZ19uNbhN7NwcpDFyNuoA91FjUSsSUd2c2wPjZcaPZxLaSY7Dn8MlIS4BHuiNdLzj1yCLDPaTpr24iUQkcehOjH72t20QJw1YaLpD8kgkbK8eSjyyCZOLZgHB7WY-LxS_NJ6c-OO0XHpyyAhDIhFheTmEhIRMq')" }}
+          animate={{ y: [0, -25, 0] }}
+          transition={{ repeat: Infinity, duration: 7, ease: "easeInOut", delay: 1 }}
+        />
+        <div className="absolute inset-0 bg-teal-900/20 backdrop-blur-2xl z-[-1]" />
         <div className="reveal-glass z-10 bg-white/10 backdrop-blur-[48px] border border-white/30 shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] rounded-3xl p-8 md:p-16 max-w-4xl mx-auto text-center relative overflow-hidden bg-gradient-to-tr from-white/5 to-white/20">
           <h2 className="font-bold text-[32px] md:text-[48px] md:leading-[1.2] md:tracking-[-0.02em] text-white drop-shadow-md mb-6 leading-[1.3]">
             Tiêu Chuẩn Y Khoa - Tinh Hoa Công Nghệ

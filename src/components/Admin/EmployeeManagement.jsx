@@ -1,4 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
+import { supabase } from '../../supabaseClient';
+import { createClient } from '@supabase/supabase-js';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
@@ -15,8 +17,6 @@ import {
 } from 'lucide-react';
 
 const roles = ['Bác sĩ', 'Lễ tân', 'Kỹ thuật viên', 'Admin'];
-const departments = ['Da liễu', 'Lễ tân', 'Kỹ thuật', 'Quản trị'];
-const statuses = ['Hoạt động', 'Tạm khóa'];
 
 const EmployeeManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -33,8 +33,6 @@ const EmployeeManagement = () => {
     email: '',
     phone: '',
     role: 'Bác sĩ',
-    department: 'Da liễu',
-    status: 'Hoạt động',
   });
 
   const [editingEmployee, setEditingEmployee] = useState(null);
@@ -62,8 +60,6 @@ const EmployeeManagement = () => {
       email: '',
       phone: '',
       role: 'Bác sĩ',
-      department: 'Da liễu',
-      status: 'Hoạt động',
     });
   };
 
@@ -73,21 +69,59 @@ const EmployeeManagement = () => {
     setIsAddModalOpen(true);
   };
 
-  const handleCreateEmployee = () => {
+  const handleCreateEmployee = async () => {
     if (!form.name.trim() || !form.email.trim() || !form.phone.trim()) {
       alert('Vui lòng nhập đầy đủ họ tên, email và số điện thoại.');
       return;
     }
 
-    const newEmployee = {
-      id: `EMP-${Date.now()}`,
-      ...form,
-      initialPassword: generatedPassword,
-    };
+    try {
+      const tempSupabase = createClient(
+        import.meta.env.VITE_SUPABASE_URL,
+        import.meta.env.VITE_SUPABASE_ANON_KEY,
+        { auth: { persistSession: false } }
+      );
 
-    saveEmployees([newEmployee, ...employees]);
-    setIsAddModalOpen(false);
-    resetForm();
+      let roleEn = 'RECEPTIONIST';
+      if (form.role === 'Bác sĩ') roleEn = 'DOCTOR';
+      if (form.role === 'Kỹ thuật viên') roleEn = 'TECHNICIAN';
+      if (form.role === 'Admin') roleEn = 'ADMIN';
+
+      const { data, error } = await tempSupabase.auth.signUp({
+        email: form.email,
+        password: generatedPassword,
+        options: {
+          data: {
+            full_name: form.name,
+            phone: form.phone,
+            role: roleEn
+          }
+        }
+      });
+
+      if (error) {
+        if (error.message.includes('already registered')) {
+          alert('Email này đã được đăng ký!');
+        } else {
+          alert('Lỗi tạo tài khoản: ' + error.message);
+        }
+        return;
+      }
+
+      alert('Tạo tài khoản thành công! Nhân viên có thể đăng nhập bằng email và mật khẩu vừa tạo.');
+      const newEmployee = {
+        id: `EMP-${Date.now()}`,
+        ...form,
+        initialPassword: generatedPassword,
+      };
+
+      saveEmployees([newEmployee, ...employees]);
+      setIsAddModalOpen(false);
+      resetForm();
+    } catch (err) {
+      console.error(err);
+      alert('Đã xảy ra lỗi hệ thống.');
+    }
   };
 
   const handleOpenEditModal = (emp) => {
@@ -97,8 +131,6 @@ const EmployeeManagement = () => {
       email: emp.email || '',
       phone: emp.phone || '',
       role: emp.role || 'Bác sĩ',
-      department: emp.department || 'Da liễu',
-      status: emp.status || 'Hoạt động',
     });
     setIsEditModalOpen(true);
   };
@@ -177,7 +209,6 @@ const EmployeeManagement = () => {
               <th className="px-8 py-5 text-xs font-bold text-slate-500 uppercase tracking-wider">Nhân viên</th>
               <th className="px-8 py-5 text-xs font-bold text-slate-500 uppercase tracking-wider">Liên hệ</th>
               <th className="px-8 py-5 text-xs font-bold text-slate-500 uppercase tracking-wider">Vai trò</th>
-              <th className="px-8 py-5 text-xs font-bold text-slate-500 uppercase tracking-wider">Trạng thái</th>
               <th className="px-8 py-5 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Thao tác</th>
             </tr>
             </thead>
@@ -216,14 +247,6 @@ const EmployeeManagement = () => {
                     >
                       {roles?.map?.((role) => <option key={role}>{role}</option>)}
                     </select>
-                    <div className="text-xs font-semibold text-slate-500 mt-2">{emp.department}</div>
-                  </td>
-
-                  <td className="px-8 py-5">
-                  <span className={`inline-flex items-center px-3 py-1.5 text-xs font-bold rounded-xl border ${getStatusBadgeColor(emp.status)} shadow-sm`}>
-                    {emp.status === 'Hoạt động' ? <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" /> : <Lock className="w-3.5 h-3.5 mr-1.5" />}
-                    {emp.status}
-                  </span>
                   </td>
 
                   <td className="px-8 py-5 text-right">
@@ -271,7 +294,7 @@ const EmployeeManagement = () => {
       <EmployeeModal
           isOpen={isEditModalOpen}
           title="Cập nhật nhân viên"
-          subtitle="Cập nhật thông tin, phòng ban, vai trò và trạng thái làm việc"
+          subtitle="Cập nhật thông tin và vai trò"
           form={form}
           setForm={setForm}
           onClose={() => setIsEditModalOpen(false)}
@@ -321,12 +344,9 @@ function EmployeeModal({ isOpen, title, subtitle, form, setForm, generatedPasswo
                       <FormInput label="Số điện thoại" icon={Phone} type="tel" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} placeholder="090..." />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-5">
+                    <div className="grid grid-cols-1 gap-5">
                       <FormSelect label="Vai trò" value={form.role} onChange={(v) => setForm({ ...form, role: v })} options={roles} />
-                      <FormSelect label="Phòng ban" value={form.department} onChange={(v) => setForm({ ...form, department: v })} options={departments} />
                     </div>
-
-                    <FormSelect label="Trạng thái" value={form.status} onChange={(v) => setForm({ ...form, status: v })} options={statuses} />
 
                     {showPassword && (
                         <div className="p-5 bg-gradient-to-r from-indigo-50/80 to-sky-50/80 border border-indigo-100/60 rounded-2xl shadow-inner">

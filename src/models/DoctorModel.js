@@ -11,7 +11,7 @@ let cachedDoctors = [];
 
 function normalizeDoctor(user) {
   const emp = user.employee_profiles ? (Array.isArray(user.employee_profiles) ? user.employee_profiles[0] : user.employee_profiles) : {};
-  const doc = user.doctor_profiles ? (Array.isArray(user.doctor_profiles) ? user.doctor_profiles[0] : user.doctor_profiles) : {};
+  const doc = emp.doctor_profiles ? (Array.isArray(emp.doctor_profiles) ? emp.doctor_profiles[0] : emp.doctor_profiles) : {};
   
   let specialties = [];
   if (emp?.specialization) {
@@ -48,8 +48,7 @@ export const DoctorModel = {
           user_id,
           full_name,
           avatar_url,
-          employee_profiles (experience_years, specialization, work_schedule),
-          doctor_profiles (description, consultation_fee, rating, reviews_count)
+          employee_profiles (experience_years, specialization, work_schedule, doctor_profiles (description, consultation_fee, rating, reviews_count))
         `)
         .eq('role_id', 2)
         .eq('status', 'ACTIVE');
@@ -75,8 +74,7 @@ export const DoctorModel = {
           user_id,
           full_name,
           avatar_url,
-          employee_profiles (experience_years, specialization, work_schedule),
-          doctor_profiles (description, consultation_fee, rating, reviews_count)
+          employee_profiles (experience_years, specialization, work_schedule, doctor_profiles (description, consultation_fee, rating, reviews_count))
         `)
         .eq('role_id', 2)
         .eq('user_id', id)

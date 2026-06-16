@@ -29,13 +29,13 @@ export function useDoctors() {
           employee_profiles (
             experience_years,
             specialization,
-            work_schedule
-          ),
-          doctor_profiles (
-            description,
-            consultation_fee,
-            rating,
-            reviews_count
+            work_schedule,
+            doctor_profiles (
+              description,
+              consultation_fee,
+              rating,
+              reviews_count
+            )
           )
         `)
         .eq('role_id', 2)
@@ -46,7 +46,7 @@ export function useDoctors() {
       // Normalize data to match the format expected by the frontend
       const normalizedDoctors = (data || [])?.map?.(user => {
         const emp = user.employee_profiles ? (Array.isArray(user.employee_profiles) ? user.employee_profiles[0] : user.employee_profiles) : {};
-        const doc = user.doctor_profiles ? (Array.isArray(user.doctor_profiles) ? user.doctor_profiles[0] : user.doctor_profiles) : {};
+        const doc = emp.doctor_profiles ? (Array.isArray(emp.doctor_profiles) ? emp.doctor_profiles[0] : emp.doctor_profiles) : {};
         
         // Parse specialties: "cat-01, cat-02" -> ["cat-01", "cat-02"]
         let specialties = [];

@@ -216,7 +216,15 @@ export const AppointmentModel = {
       end_time: this.addMinutesToTime(startTime, 30),
       reason: bookingData.notes || 'Khám bệnh',
     };
-    const newApt = await this.create(dbPayload);
+    
+    let newApt;
+    if (bookingData.holdAptId) {
+      newApt = await this.update(bookingData.holdAptId, dbPayload);
+      if (!newApt) newApt = await this.create(dbPayload);
+    } else {
+      newApt = await this.create(dbPayload);
+    }
+    
     if (newApt && (bookingData.bookingFee || bookingData.fee)) {
       const deposit = bookingData.bookingFee
         || (typeof bookingData.fee === 'string' ? parseInt(bookingData.fee.replace(/\D/g, ''), 10) : bookingData.fee)
@@ -377,11 +385,18 @@ export const AppointmentModel = {
     // Rule 3: No double booking for doctor
     const allAppointments = await this.getAll();
     const isActuallyBooked = allAppointments.some(
-      a =>
-        String(a.doctor_id || a.doctorId) === String(doctorId) &&
-        (a.date === date || a.appointment_date === date) &&
-        (a.time === time || a.start_time === time) &&
-        a.status !== 'Đã hủy'
+      a => {
+        if (String(a.doctor_id || a.doctorId) !== String(doctorId)) return false;
+        if (a.date !== date && a.appointment_date !== date) return false;
+        if (a.time !== time && a.start_time !== time) return false;
+        if (a.status === 'Đã hủy') return false;
+        if (bookingData.holdAptId && String(a.appointment_id || a.id) === String(bookingData.holdAptId)) return false;
+        if (a.status === 'Đang giữ chỗ') {
+          const createdAt = new Date(a.created_at || Date.now()).getTime();
+          if (Date.now() - createdAt > 5 * 60 * 1000) return false;
+        }
+        return true;
+      }
     );
     if (isActuallyBooked) {
       return { valid: false, error: 'Khung giờ này đã được đặt trước cho bác sĩ này. Vui lòng chọn khung giờ khác.' };
