@@ -17,7 +17,7 @@ export default function LiquidSidebarMenu({ items, activeId, onChange, isSidebar
               } ${
                 isActive
                   ? 'text-emerald-700 font-bold'
-                  : 'text-slate-500 hover:text-slate-700 font-medium'
+                  : 'text-gray-700 hover:text-gray-900 font-medium'
               }`}
             >
               {isActive && (
@@ -29,7 +29,7 @@ export default function LiquidSidebarMenu({ items, activeId, onChange, isSidebar
               )}
               
               <span className={`relative z-10 flex items-center gap-3 ${!isSidebarExpanded ? 'justify-center w-full' : ''}`}>
-                <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-emerald-700' : 'text-slate-400 group-hover:text-slate-600'}`} />
+                <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-emerald-700' : 'text-gray-500 group-hover:text-gray-700'}`} />
                 
                 <AnimatePresence>
                   {isSidebarExpanded && (

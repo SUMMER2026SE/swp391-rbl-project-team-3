@@ -6,6 +6,7 @@ import {
   Database, User, UserCog, Wrench, ChevronDown, ChevronUp,
   BarChart3, TrendingDown, Award, XCircle,
 } from 'lucide-react';
+import GlassSelect from '../common/GlassSelect';
 
 
 import { useDoctors } from '../../hooks/useDoctors';
@@ -420,11 +421,9 @@ function AppointmentReportTab() {
           <h3 className="text-lg font-bold text-slate-900">Báo cáo Lịch hẹn</h3>
           <p className="text-xs text-slate-500 mt-0.5">Tổng quan trạng thái, xu hướng và khung giờ cao điểm</p>
         </div>
-        <select value={filterDoctor} onChange={e => setFilterDoctor(e.target.value)}
-          className="px-3 py-2.5 text-sm bg-white border border-slate-200 rounded-xl outline-none cursor-pointer shadow-sm">
-          <option value="all">Tất cả bác sĩ</option>
-          {doctors?.map?.(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-        </select>
+        <GlassSelect value={filterDoctor} onChange={setFilterDoctor}
+          options={[{ value: 'all', label: 'Tất cả bác sĩ' }, ...(doctors || []).map(d => ({ value: String(d.id), label: d.name }))]}
+          buttonClassName="px-3 py-2.5 text-sm" />
       </div>
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
@@ -729,17 +728,13 @@ function SystemActivityTab() {
             className="w-full pl-9 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-400" />
         </div>
         {activeInner === 'system' ? (
-          <select value={filterSev} onChange={e => setFilterSev(e.target.value)}
-            className="px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none cursor-pointer">
-            <option value="all">Tất cả mức độ</option>
-            {['Success','Info','Warning','Error']?.map?.(s => <option key={s} value={s}>{s}</option>)}
-          </select>
+          <GlassSelect value={filterSev} onChange={setFilterSev}
+            options={[{ value: 'all', label: 'Tất cả mức độ' }, ...['Success','Info','Warning','Error'].map(s => ({ value: s, label: s }))]}
+            buttonClassName="px-3 py-2.5 text-sm" />
         ) : (
-          <select value={filterRole} onChange={e => { setFilterRole(e.target.value); setFilterCat('all'); }}
-            className="px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none cursor-pointer">
-            <option value="all">Tất cả vai trò</option>
-            {['ADMIN','DOCTOR','RECEPTIONIST','TECHNICIAN','PATIENT']?.map?.(r => <option key={r} value={r}>{r}</option>)}
-          </select>
+          <GlassSelect value={filterRole} onChange={(v) => { setFilterRole(v); setFilterCat('all'); }}
+            options={[{ value: 'all', label: 'Tất cả vai trò' }, ...['ADMIN','DOCTOR','RECEPTIONIST','TECHNICIAN','PATIENT'].map(r => ({ value: r, label: r }))]}
+            buttonClassName="px-3 py-2.5 text-sm" />
         )}
         <span className="text-xs text-slate-400 ml-auto">
           {activeInner === 'system' ? sysFiltered.length : actFiltered.length} mục
@@ -905,11 +900,9 @@ function AptDetailTab({ allApts }) {
             placeholder="Tìm bệnh nhân, bác sĩ, dịch vụ, mã lịch hẹn..."
             className="w-full pl-9 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/20" />
         </div>
-        <select value={filterDoc} onChange={e => setFilterDoc(e.target.value)}
-          className="px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none cursor-pointer">
-          <option value="all">Tất cả bác sĩ</option>
-          {doctors?.map?.(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-        </select>
+        <GlassSelect value={filterDoc} onChange={setFilterDoc}
+          options={[{ value: 'all', label: 'Tất cả bác sĩ' }, ...(doctors || []).map(d => ({ value: String(d.id), label: d.name }))]}
+          buttonClassName="px-3 py-2.5 text-sm" />
         <span className="text-xs text-slate-400 font-medium ml-auto">{filtered.length} lịch hẹn</span>
       </div>
       {/* List */}
@@ -1067,21 +1060,15 @@ function AptStatusTab({ allApts }) {
             placeholder="Tìm bệnh nhân, bác sĩ..."
             className="w-full pl-9 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/20" />
         </div>
-        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-          className="px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none cursor-pointer">
-          <option value="all">Tất cả trạng thái</option>
-          {ALL_STATUSES?.map?.(s => <option key={s} value={s}>{s}</option>)}
-        </select>
-        <select value={filterDoc} onChange={e => setFilterDoc(e.target.value)}
-          className="px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none cursor-pointer">
-          <option value="all">Tất cả bác sĩ</option>
-          {doctors?.map?.(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-        </select>
-        <select value={sortBy} onChange={e => setSortBy(e.target.value)}
-          className="px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none cursor-pointer">
-          <option value="date-desc">Mới nhất trước</option>
-          <option value="date-asc">Cũ nhất trước</option>
-        </select>
+        <GlassSelect value={filterStatus} onChange={setFilterStatus}
+          options={[{ value: 'all', label: 'Tất cả trạng thái' }, ...(ALL_STATUSES || []).map(s => ({ value: s, label: s }))]}
+          buttonClassName="px-3 py-2.5 text-sm" />
+        <GlassSelect value={filterDoc} onChange={setFilterDoc}
+          options={[{ value: 'all', label: 'Tất cả bác sĩ' }, ...(doctors || []).map(d => ({ value: String(d.id), label: d.name }))]}
+          buttonClassName="px-3 py-2.5 text-sm" />
+        <GlassSelect value={sortBy} onChange={setSortBy}
+          options={[{ value: 'date-desc', label: 'Mới nhất trước' }, { value: 'date-asc', label: 'Cũ nhất trước' }]}
+          buttonClassName="px-3 py-2.5 text-sm" />
         <span className="text-xs text-slate-400 font-medium ml-auto">{filtered.length}/{allApts.length}</span>
       </div>
       {/* List */}

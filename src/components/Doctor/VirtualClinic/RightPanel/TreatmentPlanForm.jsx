@@ -1,5 +1,6 @@
 import React from 'react';
 import { FileText } from 'lucide-react';
+import GlassCheckbox from '../../../common/GlassCheckbox';
 
 export default function TreatmentPlanForm({
   selectedServices = [],
@@ -39,9 +40,7 @@ export default function TreatmentPlanForm({
                       : 'border-slate-200 bg-slate-50 cursor-pointer hover:bg-sky-50 text-slate-700'
                   }`}
                 >
-                  <input
-                    className="w-4 h-4 rounded text-sky-600 focus:ring-sky-500/30 border-slate-300 disabled:opacity-85"
-                    type="checkbox"
+                  <GlassCheckbox
                     checked={checked}
                     onChange={() => !isReviewMode && handleToggle(service)}
                     disabled={isReviewMode}

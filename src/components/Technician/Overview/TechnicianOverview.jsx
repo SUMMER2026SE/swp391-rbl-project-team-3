@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ClipboardList, CheckCircle2, Clock, TrendingUp } from 'lucide-react';
+import GlassCard, { GLASS_BASE, GLASS_HOVER, GLASS_TITLE } from '../../common/GlassCard';
 
 const TechnicianOverview = ({ tasks }) => {
     const pendingTasks = (Array.isArray(tasks) ? tasks : []).filter(t => t.status === "Chờ thực hiện")?.length || 0;
@@ -48,7 +49,7 @@ const TechnicianOverview = ({ tasks }) => {
         >
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {(Array.isArray(stats) ? stats : []).map((stat, idx) => (
-                    <div key={idx} className="backdrop-blur-xl bg-white/60 border border-white/80 shadow-[0_8px_30px_rgba(0,0,0,0.04)] rounded-3xl p-6 relative overflow-hidden group hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-all">
+                    <div key={idx} className={`${GLASS_BASE} ${GLASS_HOVER} p-6 relative overflow-hidden group h-full flex flex-col`}>
                         <div className="flex justify-between items-start mb-6">
                             <div className={`p-4 rounded-2xl ${stat.bg}`}>
                                 <stat.icon className={`w-8 h-8 ${stat.color}`} />
@@ -70,14 +71,14 @@ const TechnicianOverview = ({ tasks }) => {
                 ))}
             </div>
             
-            <div className="backdrop-blur-xl bg-white/60 border border-white/80 shadow-[0_8px_30px_rgba(0,0,0,0.04)] rounded-3xl p-6">
-                <h3 className="text-lg font-bold text-slate-800 mb-4 border-b border-slate-100 pb-4">Thông báo mới</h3>
-                <div className="flex items-center justify-center py-12 text-slate-400 italic">
+            <GlassCard>
+                <h3 className={`${GLASS_TITLE} mb-4 border-b border-slate-100 pb-4`}>Thông báo mới</h3>
+                <div className="flex items-center justify-center py-12 text-slate-500 italic">
                     <span className="bg-slate-50 px-4 py-2 rounded-full border border-slate-100 text-sm">
                         Chưa có thông báo nào trong hôm nay.
                     </span>
                 </div>
-            </div>
+            </GlassCard>
         </motion.div>
     );
 };

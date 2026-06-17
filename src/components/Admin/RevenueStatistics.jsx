@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { AppointmentModel } from '../../models/AppointmentModel';
 import { DoctorModel } from '../../models/DoctorModel';
+import { GLASS_BASE, GLASS_HOVER, GLASS_TITLE } from '../common/GlassCard';
 
 const formatCurrency = (value) => {
   return new Intl.NumberFormat('vi-VN').format(value);
@@ -45,7 +46,7 @@ const FilterDropdown = ({ label, icon: Icon, options, value, onChange, placehold
           {Icon && <Icon className="w-3.5 h-3.5 text-slate-500 shrink-0" />}
           <span className="truncate">{value === 'all' ? placeholder : value}</span>
         </div>
-        <ChevronDown className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`w-3.5 h-3.5 text-slate-500 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       <AnimatePresence>
         {isOpen && (
@@ -346,7 +347,7 @@ export default function RevenueStatistics() {
 
   if (loading) {
     return (
-      <div className="min-h-[320px] flex flex-col items-center justify-center gap-3 text-slate-400">
+      <div className="min-h-[320px] flex flex-col items-center justify-center gap-3 text-slate-500">
         <div className="w-10 h-10 rounded-full border-4 border-slate-200 border-t-indigo-500 animate-spin" />
         <p className="text-sm font-medium">Đang tải dữ liệu doanh thu…</p>
       </div>
@@ -356,11 +357,7 @@ export default function RevenueStatistics() {
   return (
     <div className="space-y-4 bg-transparent pb-6 relative">
       {/* ── Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-bold text-slate-900">Thống kê Doanh thu</h2>
-          <p className="text-[11px] text-slate-500 mt-1">Tổng quan thu nhập từ khám bệnh, xét nghiệm và gói liệu trình điều trị</p>
-        </div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-3">
         <div className="flex bg-slate-50 border border-slate-200 rounded-full p-1 gap-1">
           {['Ngày', 'Tuần', 'Tháng', 'Quý', 'Năm']?.map?.(p => (
             <button
@@ -386,7 +383,7 @@ export default function RevenueStatistics() {
       </div>
       {/* ── KPI Cards ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mt-1 relative z-30">
-        <div className="border border-slate-200 rounded-3xl p-4 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex flex-col hover:shadow-md transition-shadow min-h-[130px]">
+        <div className={`${GLASS_BASE} ${GLASS_HOVER} p-6 flex flex-col min-h-[130px]`}>
           <div className="flex items-start justify-between mb-4">
             <div className="p-2 bg-[#4F46E5] rounded-2xl text-white shadow-md shadow-indigo-500/20">
               <Banknote className="w-4 h-4" />
@@ -400,11 +397,11 @@ export default function RevenueStatistics() {
           <div className="mt-auto">
             <p className="text-[10px] font-semibold text-slate-500 mb-0.5">Tổng doanh thu</p>
             <p className="text-lg font-black text-slate-900 leading-tight mb-1 tracking-tight truncate">{formatCurrency(totalRevenue)} VNĐ</p>
-            <p className="text-[9px] text-slate-400 font-medium uppercase tracking-wider">Lọc theo {period.toLowerCase()}</p>
+            <p className="text-[9px] text-slate-500 font-medium uppercase tracking-wider">Lọc theo {period.toLowerCase()}</p>
           </div>
         </div>
 
-        <div className="border border-slate-200 rounded-3xl p-4 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex flex-col hover:shadow-md transition-shadow min-h-[130px]">
+        <div className={`${GLASS_BASE} ${GLASS_HOVER} p-6 flex flex-col min-h-[130px]`}>
           <div className="flex items-start justify-between mb-4">
             <div className="p-2 bg-[#059669] rounded-2xl text-white shadow-md shadow-emerald-700/20">
               <FileText className="w-4 h-4" />
@@ -418,11 +415,11 @@ export default function RevenueStatistics() {
           <div className="mt-auto">
             <p className="text-[10px] font-semibold text-slate-500 mb-0.5">Số giao dịch</p>
             <p className="text-lg font-black text-slate-900 leading-tight mb-1 tracking-tight">{formatNumber(totalTransactions)}</p>
-            <p className="text-[9px] text-slate-400 font-medium uppercase tracking-wider">Thanh toán hoàn tất</p>
+            <p className="text-[9px] text-slate-500 font-medium uppercase tracking-wider">Thanh toán hoàn tất</p>
           </div>
         </div>
 
-        <div className="border border-slate-200 rounded-3xl p-4 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex flex-col hover:shadow-md transition-shadow min-h-[130px]">
+        <div className={`${GLASS_BASE} ${GLASS_HOVER} p-6 flex flex-col min-h-[130px]`}>
           <div className="flex items-start justify-between mb-4">
             <div className="p-2 bg-[#9A5B1C] rounded-2xl text-white shadow-md shadow-[#9A5B1C]/20">
               <BarChart2 className="w-4 h-4" />
@@ -436,11 +433,11 @@ export default function RevenueStatistics() {
           <div className="mt-auto">
             <p className="text-[10px] font-semibold text-slate-500 mb-0.5">Doanh thu TB</p>
             <p className="text-lg font-black text-slate-900 leading-tight mb-1 tracking-tight">{formatCompactCurrency(avgRevenue)}</p>
-            <p className="text-[9px] text-slate-400 font-medium uppercase tracking-wider">{period === 'Ngày' ? 'TB mỗi giao dịch' : 'TB mỗi ngày'}</p>
+            <p className="text-[9px] text-slate-500 font-medium uppercase tracking-wider">{period === 'Ngày' ? 'TB mỗi giao dịch' : 'TB mỗi ngày'}</p>
           </div>
         </div>
 
-        <div className="border border-slate-200 rounded-3xl p-4 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex flex-col hover:shadow-md transition-shadow min-h-[130px]">
+        <div className={`${GLASS_BASE} ${GLASS_HOVER} p-6 flex flex-col min-h-[130px]`}>
           <div className="flex items-start justify-between mb-4">
             <div className="p-2 bg-[#6366F1] rounded-2xl text-white shadow-md shadow-indigo-500/20">
               <Package className="w-4 h-4" />
@@ -454,16 +451,16 @@ export default function RevenueStatistics() {
           <div className="mt-auto">
             <p className="text-[10px] font-semibold text-slate-500 mb-0.5">Gói liệu trình</p>
             <p className="text-lg font-black text-slate-900 leading-tight mb-1 tracking-tight">{formatCompactCurrency(treatmentRevenue)}</p>
-            <p className="text-[9px] text-slate-400 font-medium uppercase tracking-wider">Từ các gói điều trị</p>
+            <p className="text-[9px] text-slate-500 font-medium uppercase tracking-wider">Từ các gói điều trị</p>
           </div>
         </div>
       </div>
       {/* ── Charts Row ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 relative z-20">
-        <div className="lg:col-span-2 border border-slate-200 rounded-3xl p-4 bg-white shadow-sm flex flex-col">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 relative z-20">
+        <div className={`${GLASS_BASE} p-6 lg:col-span-2 flex flex-col`}>
           <div className="flex items-start justify-between mb-4">
             <div>
-              <h3 className="text-[13px] font-bold text-slate-900">{period === 'Ngày' ? 'Chi tiết doanh thu' : 'Xu hướng doanh thu'}</h3>
+              <h3 className={GLASS_TITLE}>{period === 'Ngày' ? 'Chi tiết doanh thu' : 'Xu hướng doanh thu'}</h3>
               <p className="text-[11px] font-medium text-slate-500 mt-0.5">
                 {period === 'Ngày' ? 'Doanh thu theo giờ (Ngày 11/06/2026)' :
                  period === 'Tuần' ? 'Doanh thu 7 ngày qua (Đến 11/06/2026)' :
@@ -482,15 +479,15 @@ export default function RevenueStatistics() {
             {chartData?.map?.((d) => (
               <div key={d.label} className="flex-1 flex flex-col items-center gap-1.5">
                 <div className={`w-6 md:w-8 ${d.highlight ? 'bg-indigo-600' : 'bg-slate-200'} rounded-t-full transition-all duration-500`} style={{ height: `${d.height}px` }}></div>
-                <span className={`text-[10px] font-bold ${d.highlight ? 'text-indigo-600' : 'text-slate-400'}`}>{d.label}</span>
+                <span className={`text-[10px] font-bold ${d.highlight ? 'text-indigo-600' : 'text-slate-500'}`}>{d.label}</span>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="border border-slate-200 rounded-3xl p-4 bg-white shadow-sm flex flex-col">
+        <div className={`${GLASS_BASE} p-6 flex flex-col`}>
           <div>
-            <h3 className="text-[13px] font-bold text-slate-900">Cơ cấu nguồn thu</h3>
+            <h3 className={GLASS_TITLE}>Cơ cấu nguồn thu</h3>
             <p className="text-[11px] text-slate-500 mt-0.5 mb-4">Phân bổ theo loại hình doanh thu</p>
           </div>
           <div className="flex-1 flex flex-col justify-center">
@@ -503,7 +500,7 @@ export default function RevenueStatistics() {
                   <circle cx="50" cy="50" r="40" fill="transparent" stroke="#ef4444" strokeWidth="16" strokeDasharray={`${testStroke} 251.2`} strokeDashoffset={testOffset} className="transition-all duration-700" />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-[8px] font-bold text-slate-400">TỔNG THU</span>
+                  <span className="text-[8px] font-bold text-slate-500">TỔNG THU</span>
                   <span className="text-lg font-black text-slate-900 leading-none mt-0.5">100%</span>
                 </div>
               </div>
@@ -532,10 +529,10 @@ export default function RevenueStatistics() {
         </div>
       </div>
       {/* ── Middle Row ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 relative z-10">
-        <div className="border border-slate-200 rounded-3xl p-4 bg-white shadow-sm flex flex-col justify-between">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 relative z-10">
+        <div className={`${GLASS_BASE} p-6 flex flex-col justify-between`}>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-[13px] font-bold text-slate-900">Doanh thu theo bác sĩ</h3>
+            <h3 className={GLASS_TITLE}>Doanh thu theo bác sĩ</h3>
           </div>
           <div className="space-y-4">
             {doctorStats.length > 0 ? doctorStats?.map?.((ds, i) => (
@@ -555,9 +552,9 @@ export default function RevenueStatistics() {
           </div>
         </div>
 
-        <div className="border border-slate-200 rounded-3xl p-4 bg-white shadow-sm flex flex-col justify-between">
+        <div className={`${GLASS_BASE} p-6 flex flex-col justify-between`}>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-[13px] font-bold text-slate-900">Phương thức thanh toán</h3>
+            <h3 className={GLASS_TITLE}>Phương thức thanh toán</h3>
           </div>
           <div className="space-y-3">
             {methodStats.length > 0 ? methodStats?.map?.(ms => {
@@ -587,9 +584,9 @@ export default function RevenueStatistics() {
         </div>
       </div>
       {/* ── Table Chi tiết giao dịch ── */}
-      <div className="border border-slate-200 rounded-3xl bg-white overflow-hidden shadow-sm relative z-0">
-        <div className="px-4 py-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
-          <h3 className="text-[13px] font-bold text-slate-900">Chi tiết giao dịch</h3>
+      <div className={`${GLASS_BASE} overflow-hidden relative z-0`}>
+        <div className="px-6 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
+          <h3 className={GLASS_TITLE}>Chi tiết giao dịch</h3>
           <span className="text-xs font-semibold text-slate-500">
             {totalTransactions} giao dịch <span className="mx-1.5 text-slate-300">•</span> <span className="text-indigo-600 font-bold">{formatCurrency(totalRevenue)} VNĐ</span>
           </span>
@@ -624,7 +621,7 @@ export default function RevenueStatistics() {
                       </span>
                     </td>
                     <td className="px-4 py-2.5 text-slate-600 font-medium flex items-center gap-1.5">
-                      <Icon className="w-3 h-3 text-slate-400" />
+                      <Icon className="w-3 h-3 text-slate-500" />
                       {tx.method}
                     </td>
                     <td className="px-4 py-2.5 text-right font-bold text-slate-900 whitespace-nowrap">{formatCurrency(tx.amount)} VNĐ</td>

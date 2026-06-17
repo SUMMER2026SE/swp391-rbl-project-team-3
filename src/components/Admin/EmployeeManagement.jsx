@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
 import { createClient } from '@supabase/supabase-js';
 import { motion, AnimatePresence } from 'framer-motion';
+import GlassSelect from '../common/GlassSelect';
 import {
   Search,
   Plus,
@@ -240,13 +241,12 @@ const EmployeeManagement = () => {
                   </td>
 
                   <td className="px-8 py-5">
-                    <select
+                    <GlassSelect
                         value={emp.role}
-                        onChange={(e) => handleQuickRoleChange(emp.id, e.target.value)}
-                        className={`inline-flex px-3 py-1.5 text-xs font-bold rounded-xl border ${getRoleBadgeColor(emp.role)} shadow-sm outline-none cursor-pointer`}
-                    >
-                      {roles?.map?.((role) => <option key={role}>{role}</option>)}
-                    </select>
+                        onChange={(v) => handleQuickRoleChange(emp.id, v)}
+                        options={roles || []}
+                        buttonClassName="px-3 py-1.5 text-xs font-bold"
+                    />
                   </td>
 
                   <td className="px-8 py-5 text-right">
@@ -404,13 +404,7 @@ function FormSelect({ label, value, onChange, options }) {
   return (
     <div>
       <label className="block text-sm font-bold text-slate-700 mb-2">{label}</label>
-      <select
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-full px-4 py-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 outline-none text-sm font-semibold transition-all appearance-none shadow-sm cursor-pointer"
-      >
-        {options?.map?.((option) => <option key={option}>{option}</option>)}
-      </select>
+      <GlassSelect value={value} onChange={onChange} options={options || []} className="w-full" buttonClassName="px-4 py-3.5 text-sm font-semibold" />
     </div>
   );
 }

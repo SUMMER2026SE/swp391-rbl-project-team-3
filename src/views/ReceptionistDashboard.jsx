@@ -5,6 +5,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { GLASS_INPUT } from '../components/common/GlassCard';
+import GlassSelect from '../components/common/GlassSelect';
 import {
   motion,
   AnimatePresence,
@@ -368,11 +370,11 @@ export default function ReceptionistDashboard() {
   const navShadow = useMotionTemplate`0 14px 40px rgba(2, 32, 29, ${shadowMV}), inset 0 1px 2px rgba(255,255,255,0.9), inset 0 0 0 1px rgba(255,255,255,${ringMV})`;
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50/40 overflow-hidden font-sans text-slate-800">
+    <div className="relative min-h-screen bg-gradient-to-br from-teal-50 via-emerald-100 to-cyan-50 overflow-hidden font-sans text-slate-800">
       {/* Animated mesh blobs */}
       <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute -top-32 -left-32 w-[520px] h-[520px] rounded-full bg-emerald-300/15 blur-[120px]" style={{ animation: 'float 18s ease-in-out infinite' }} />
-        <div className="absolute -bottom-40 -right-40 w-[480px] h-[480px] rounded-full bg-sky-300/15 blur-[120px]" style={{ animation: 'float-reverse 20s ease-in-out infinite' }} />
+        <div className="absolute -top-32 -left-32 w-[520px] h-[520px] rounded-full bg-emerald-400/30 blur-3xl" style={{ animation: 'float 18s ease-in-out infinite' }} />
+        <div className="absolute -bottom-40 -right-40 w-[480px] h-[480px] rounded-full bg-cyan-400/30 blur-3xl" style={{ animation: 'float-reverse 20s ease-in-out infinite' }} />
       </div>
       <style>{`
         @keyframes float { 0%,100%{transform:translate(0,0) scale(1);} 33%{transform:translate(30px,-40px) scale(1.05);} 66%{transform:translate(-20px,20px) scale(0.97);} }
@@ -383,7 +385,7 @@ export default function ReceptionistDashboard() {
       <motion.aside
         animate={{ width: isSidebarExpanded ? 256 : 80 }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        className="hidden md:flex backdrop-blur-2xl bg-white/30 border-r border-white/40 fixed h-full z-40 flex-col py-8 px-3 justify-between shadow-[4px_0_24px_rgba(0,0,0,0.03),inset_-1px_0_2px_rgba(255,255,255,0.7)] overflow-hidden"
+        className="hidden md:flex backdrop-blur-2xl bg-teal-900/10 border-r border-teal-900/10 fixed h-full z-40 flex-col py-8 px-3 justify-between shadow-[4px_0_24px_rgba(0,0,0,0.03),inset_-1px_0_2px_rgba(255,255,255,0.7)] overflow-hidden"
       >
         <div className="flex flex-col gap-6">
           <div className={`flex items-center ${isSidebarExpanded ? 'justify-between px-1' : 'justify-center'} min-h-[64px]`}>
@@ -391,7 +393,7 @@ export default function ReceptionistDashboard() {
               <>
                 <div className="flex flex-col items-start gap-1">
                   <img src={logo} alt="DermaSmart Logo" className="h-14 w-auto object-contain" />
-                  <span className="text-[10px] text-slate-400 whitespace-nowrap">Reception Portal</span>
+                  <span className="text-[10px] text-gray-500 whitespace-nowrap">Reception Portal</span>
                 </div>
                 <button onClick={() => setIsSidebarExpanded(false)} className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-emerald-600 transition-colors cursor-pointer" title="Thu gọn">
                   <PanelLeftClose className="w-5 h-5" />
@@ -459,13 +461,13 @@ export default function ReceptionistDashboard() {
             }}
             className="sticky mx-auto z-30 py-4 backdrop-blur-2xl"
           >
-            <div className="flex items-center justify-between gap-4 w-full">
+            <div className="relative flex items-center justify-between gap-4 w-full">
               <div className="flex items-center gap-4 flex-1">
                 <span className="font-black text-2xl text-emerald-600 md:hidden tracking-tight">DermaSmart</span>
-                <h1 className="text-xl md:text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-800 to-teal-500 tracking-tight whitespace-nowrap mr-4">
-                  {PAGE_TITLES[activeTab] || 'Tổng quan'}
-                </h1>
               </div>
+              <h1 className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-xl md:text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-teal-800 to-emerald-700 tracking-tight whitespace-nowrap pointer-events-none">
+                {PAGE_TITLES[activeTab] || 'Tổng quan'}
+              </h1>
 
               <div className="flex items-center gap-3">
                 <span className="hidden sm:inline-block font-semibold text-xs text-teal-700 py-1 px-3 bg-teal-50 border border-teal-200/40 rounded-full">
@@ -658,50 +660,51 @@ export default function ReceptionistDashboard() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="flex flex-col gap-1.5">
                     <label>Họ và tên <span className="text-rose-500">*</span></label>
-                    <input type="text" value={newApt.patientName} onChange={(e) => setNewApt({ ...newApt, patientName: e.target.value })} className="bg-white border border-slate-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 rounded-xl px-3 py-2.5 outline-none text-slate-800" placeholder="Nguyễn Văn A" />
+                    <input type="text" value={newApt.patientName} onChange={(e) => setNewApt({ ...newApt, patientName: e.target.value })} className={`${GLASS_INPUT} px-3 py-2.5`} placeholder="Nguyễn Văn A" />
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <label>Số điện thoại <span className="text-rose-500">*</span></label>
-                    <input type="tel" value={newApt.phone} onChange={(e) => setNewApt({ ...newApt, phone: e.target.value })} className="bg-white border border-slate-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 rounded-xl px-3 py-2.5 outline-none text-slate-800" placeholder="09xx xxx xxx" />
+                    <input type="tel" value={newApt.phone} onChange={(e) => setNewApt({ ...newApt, phone: e.target.value })} className={`${GLASS_INPUT} px-3 py-2.5`} placeholder="09xx xxx xxx" />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="flex flex-col gap-1.5">
                     <label>Ngày khám</label>
-                    <input type="date" value={newApt.date} onChange={(e) => setNewApt({ ...newApt, date: e.target.value })} className="bg-white border border-slate-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 rounded-xl px-3 py-2.5 outline-none text-slate-800" />
+                    <input type="date" value={newApt.date} onChange={(e) => setNewApt({ ...newApt, date: e.target.value })} className={`${GLASS_INPUT} px-3 py-2.5`} />
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <label>Giờ khám</label>
-                    <input type="time" value={newApt.time} onChange={(e) => setNewApt({ ...newApt, time: e.target.value })} className="bg-white border border-slate-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 rounded-xl px-3 py-2.5 outline-none text-slate-800" />
+                    <input type="time" value={newApt.time} onChange={(e) => setNewApt({ ...newApt, time: e.target.value })} className={`${GLASS_INPUT} px-3 py-2.5`} />
                   </div>
                 </div>
 
                 <div className="flex flex-col gap-1.5">
                   <label>Dịch vụ</label>
-                  <select value={newApt.service} onChange={(e) => setNewApt({ ...newApt, service: e.target.value })} className="bg-white border border-slate-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 rounded-xl px-3 py-2.5 outline-none text-slate-800">
-                    {servicesList.length === 0 ? (
-                      <option>Khám Da Liễu Tổng Quát</option>
-                    ) : (
-                      servicesList.map((s) => <option key={s.id ?? s.name} value={s.name}>{s.name}</option>)
-                    )}
-                  </select>
+                  <GlassSelect
+                    value={newApt.service}
+                    onChange={(v) => setNewApt({ ...newApt, service: v })}
+                    options={servicesList.length === 0
+                      ? [{ value: 'Khám Da Liễu Tổng Quát', label: 'Khám Da Liễu Tổng Quát' }]
+                      : servicesList.map((s) => ({ value: s.name, label: s.name }))}
+                    buttonClassName="px-3 py-2.5 text-xs"
+                  />
                 </div>
 
                 <div className="flex flex-col gap-1.5">
                   <label>Bác sĩ phụ trách</label>
-                  <select value={newApt.doctorName} onChange={(e) => setNewApt({ ...newApt, doctorName: e.target.value })} className="bg-white border border-slate-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 rounded-xl px-3 py-2.5 outline-none text-slate-800">
-                    {(doctors || []).length === 0 ? (
-                      <option value="">Chưa có bác sĩ</option>
-                    ) : (
-                      doctors.map((d) => <option key={d.id} value={d.name}>{d.name}</option>)
-                    )}
-                  </select>
+                  <GlassSelect
+                    value={newApt.doctorName}
+                    onChange={(v) => setNewApt({ ...newApt, doctorName: v })}
+                    options={(doctors || []).map((d) => ({ value: d.name, label: d.name }))}
+                    placeholder="Chưa có bác sĩ"
+                    buttonClassName="px-3 py-2.5 text-xs"
+                  />
                 </div>
 
                 <div className="flex flex-col gap-1.5">
                   <label>Ghi chú</label>
-                  <textarea value={newApt.notes} onChange={(e) => setNewApt({ ...newApt, notes: e.target.value })} rows={2} className="bg-white border border-slate-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 rounded-xl px-3 py-2.5 outline-none text-slate-800 resize-none" placeholder="Lý do khám / yêu cầu đặc biệt..." />
+                  <textarea value={newApt.notes} onChange={(e) => setNewApt({ ...newApt, notes: e.target.value })} rows={2} className={`${GLASS_INPUT} px-3 py-2.5 resize-none`} placeholder="Lý do khám / yêu cầu đặc biệt..." />
                 </div>
 
                 <div className="flex gap-3 pt-2">
@@ -761,7 +764,7 @@ function OverviewTab({ user, kpi, todays, requests, onGoTab, onApprove, onArrive
     <motion.div variants={stagger} initial="hidden" animate="visible" className="space-y-8">
       <motion.div variants={fadeInUp} className="flex flex-col gap-1">
         <div className="flex items-center gap-2">
-          <h2 className="font-black text-2xl md:text-3xl text-slate-900 tracking-tight">Chào, {user?.name || 'Lễ tân'} 👋</h2>
+          <h2 className="font-black text-2xl md:text-3xl text-gray-900 tracking-tight">Chào, {user?.name || 'Lễ tân'} 👋</h2>
         </div>
         <p className="text-sm text-slate-500 font-medium">Tổng quan hoạt động quầy lễ tân hôm nay ({TODAY_STR})</p>
       </motion.div>

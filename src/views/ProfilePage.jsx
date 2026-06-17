@@ -149,8 +149,10 @@ export default function ProfilePage() {
         style={{ backgroundImage: profileBgImage ? `url("${profileBgImage}")` : 'none', backgroundColor: '#f8fafc' }} 
       />
 
-      {/* Layer 2 (Subtle tint — NO backdrop-blur so empty areas stay crisp) */}
-      <div className="fixed inset-0 bg-slate-900/15 z-10" />
+      {/* Layer 2 (Dark legibility tint — dims the busy photo so the translucent
+          glass cards refract against depth; dark (not white) keeps the background
+          vibrant. NO backdrop-blur so empty areas stay crisp) */}
+      <div className="fixed inset-0 bg-slate-900/40 z-10" />
 
       {/* Layer 3: Content Wrapper */}
       <div className="relative z-20 w-full max-w-7xl mx-auto p-4 md:p-8">

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Clock, Plus, Save, Search } from 'lucide-react';
 import { useDoctors } from '../../hooks/useDoctors';
+import GlassSelect from '../common/GlassSelect';
 
 export default function ConsultationTimeManagement() {
     const { doctors } = useDoctors();
@@ -102,5 +103,5 @@ function Input({ value, onChange, type = 'text' }) {
     return <input type={type} value={value} onChange={(e) => onChange(e.target.value)} className="w-full bg-white border border-slate-200 rounded-2xl py-3 px-4 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400" />;
 }
 function Select({ value, onChange, options }) {
-    return <select value={value} onChange={(e) => onChange(e.target.value)} className="w-full bg-white border border-slate-200 rounded-2xl py-3 px-4 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400">{options?.map?.((option) => <option key={option}>{option}</option>)}</select>;
+    return <GlassSelect value={value} onChange={onChange} options={options || []} className="w-full" buttonClassName="py-3 px-4 text-sm font-semibold" />;
 }

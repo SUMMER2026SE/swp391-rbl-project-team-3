@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import GlassSelect from '../common/GlassSelect';
 import {
   Star, MessageSquare, TrendingUp, Eye, EyeOff, Flag,
   CheckCircle2, Filter, Search, ChevronDown, Reply,
@@ -339,13 +340,9 @@ export default function FeedbackDashboard() {
           />
         </div>
 
-        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-          className="px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-400 cursor-pointer">
-          <option value="all">Tất cả trạng thái</option>
-          <option value="published">Công khai</option>
-          <option value="hidden">Đã ẩn</option>
-          <option value="flagged">Gắn cờ</option>
-        </select>
+        <GlassSelect value={filterStatus} onChange={setFilterStatus}
+          options={[{ value: 'all', label: 'Tất cả trạng thái' }, { value: 'published', label: 'Công khai' }, { value: 'hidden', label: 'Đã ẩn' }, { value: 'flagged', label: 'Gắn cờ' }]}
+          buttonClassName="px-3 py-2.5 text-sm" />
 
         <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
           <span className="text-xs text-slate-500 mr-1">Lọc sao:</span>

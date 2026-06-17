@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import LiquidSidebarMenu from './LiquidSidebarMenu';
 import logo from '../../assets/logo.png';
+import { GLASS_INPUT } from '../common/GlassCard';
 
 /**
  * DashboardShell — the shared premium "Liquid Glass" chrome extracted from the
@@ -74,15 +75,15 @@ export default function DashboardShell({
   const safeNavItems = Array.isArray(navItems) ? navItems : [];
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50/40 overflow-hidden font-sans text-slate-800">
+    <div className="relative min-h-screen bg-gradient-to-br from-teal-50 via-emerald-100 to-cyan-50 overflow-hidden font-sans text-slate-800">
       {/* Animated mesh blobs */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div
-          className="absolute -top-32 -left-32 w-[520px] h-[520px] rounded-full bg-emerald-300/15 blur-[120px]"
+          className="absolute -top-32 -left-32 w-[520px] h-[520px] rounded-full bg-emerald-400/30 blur-3xl"
           style={{ animation: 'float 18s ease-in-out infinite' }}
         />
         <div
-          className="absolute -bottom-40 -right-40 w-[480px] h-[480px] rounded-full bg-sky-300/15 blur-[120px]"
+          className="absolute -bottom-40 -right-40 w-[480px] h-[480px] rounded-full bg-cyan-400/30 blur-3xl"
           style={{ animation: 'float-reverse 20s ease-in-out infinite' }}
         />
       </div>
@@ -104,7 +105,7 @@ export default function DashboardShell({
       <motion.aside
         animate={{ width: isSidebarExpanded ? 256 : 80 }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        className="hidden md:flex backdrop-blur-2xl bg-white/30 border-r border-white/40 fixed h-full z-40 flex-col py-8 px-3 justify-between shadow-[4px_0_24px_rgba(0,0,0,0.03),inset_-1px_0_2px_rgba(255,255,255,0.7)] overflow-hidden"
+        className="hidden md:flex backdrop-blur-2xl bg-teal-900/10 border-r border-teal-900/10 fixed h-full z-40 flex-col py-8 px-3 justify-between shadow-[4px_0_24px_rgba(0,0,0,0.03),inset_-1px_0_2px_rgba(255,255,255,0.7)] overflow-hidden"
       >
         <div className="flex flex-col gap-6">
           <div className={`flex items-center ${isSidebarExpanded ? 'justify-between px-1' : 'justify-center'} min-h-[80px]`}>
@@ -112,7 +113,7 @@ export default function DashboardShell({
               <>
                 <div className="flex flex-col items-start gap-1">
                   <img src={logo} alt="DermaSmart Logo" className="h-16 w-auto object-contain" />
-                  <span className="text-[10px] text-slate-400 whitespace-nowrap">{portalName}</span>
+                  <span className="text-[10px] text-gray-500 whitespace-nowrap">{portalName}</span>
                 </div>
                 <button
                   onClick={() => setIsSidebarExpanded(false)}
@@ -191,29 +192,29 @@ export default function DashboardShell({
             }}
             className="sticky mx-auto z-30 py-4 backdrop-blur-2xl"
           >
-            <div className="flex items-center justify-between gap-4 w-full">
+            <div className="relative flex items-center justify-between gap-4 w-full">
               <div className="flex items-center gap-4 flex-1">
                 <span className="font-black text-2xl text-gradient-emerald md:hidden tracking-tight">DermaSmart</span>
-                <h1 className="text-xl md:text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-800 to-teal-500 tracking-tight whitespace-nowrap mr-6">
-                  {pageTitle}
-                </h1>
                 <div className="relative flex-1 max-w-md hidden md:block">
-                  <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
                   <input
                     type="text"
                     placeholder={searchPlaceholder}
                     onChange={(e) => onSearch?.(e.target.value)}
-                    className="w-full pl-11 pr-4 py-2.5 rounded-2xl bg-white/40 border border-white/60 backdrop-blur-md text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-300/60 shadow-inner shadow-white/20 transition-all"
+                    className={`w-full pl-11 pr-4 py-2.5 text-sm ${GLASS_INPUT}`}
                   />
                 </div>
               </div>
+              <h1 className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-xl md:text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-teal-800 to-emerald-700 tracking-tight whitespace-nowrap pointer-events-none">
+                {pageTitle}
+              </h1>
 
               <div className="flex items-center gap-3">
                 {headerExtras}
 
                 <div className="hidden lg:flex flex-col items-end mr-1">
-                  <span className="text-sm font-semibold text-slate-700">{user?.name || 'Người dùng'}</span>
-                  <span className="text-[11px] text-slate-400">{portalName}</span>
+                  <span className="text-sm font-semibold text-gray-900">{user?.name || 'Người dùng'}</span>
+                  <span className="text-[11px] text-gray-500">{portalName}</span>
                 </div>
 
                 <motion.button
@@ -258,7 +259,7 @@ export default function DashboardShell({
                           className="absolute right-0 mt-2 w-56 bg-white/90 backdrop-blur-xl border border-slate-200 shadow-2xl rounded-2xl p-2 z-50 origin-top-right text-left"
                         >
                           <div className="px-3 py-2.5 border-b border-slate-100 mb-1">
-                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Tài khoản</p>
+                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Tài khoản</p>
                             <p className="text-sm font-bold text-slate-800 truncate mt-0.5">{user?.name || 'Người dùng'}</p>
                             <p className="text-[11px] text-emerald-600 font-medium truncate">{user?.email || ''}</p>
                           </div>
@@ -270,7 +271,7 @@ export default function DashboardShell({
                             }}
                             className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:text-emerald-600 hover:bg-emerald-50/50 transition-colors border-none bg-transparent cursor-pointer text-left"
                           >
-                            <User className="w-4 h-4 text-slate-400" />
+                            <User className="w-4 h-4 text-slate-500" />
                             Xem hồ sơ cá nhân
                           </button>
 

@@ -13,6 +13,7 @@ import {
   Inbox,
 } from 'lucide-react';
 import { normalizeApt, APT_STATUS, TODAY_STR } from './receptionistData';
+import { GLASS_BASE } from '../common/GlassCard';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MODULE A — "Bàn Điều Phối" (Today's Dispatch Queue)
@@ -141,13 +142,7 @@ export default function TodayQueueBoard({
   return (
     <div className="space-y-6 text-left">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-        <div>
-          <h2 className="text-2xl font-black text-slate-900 tracking-tight">Bàn Điều Phối</h2>
-          <p className="text-xs text-slate-500 font-medium">
-            Điều phối hàng chờ khám hôm nay ({TODAY_STR}) — tiếp đón, theo dõi và chuyển thu ngân.
-          </p>
-        </div>
+      <div className="flex flex-col sm:flex-row sm:items-end justify-end gap-3">
         <div className="flex items-center gap-2">
           {COLUMNS.map((c) => (
             <span
@@ -161,7 +156,7 @@ export default function TodayQueueBoard({
       </div>
 
       {/* Kanban — responsive grid, never scrolls horizontally */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-start">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
         {COLUMNS.map((col) => {
           const Icon = col.icon;
           const accent = ACCENT[col.accent];
@@ -172,7 +167,7 @@ export default function TodayQueueBoard({
               initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
               transition={spring}
-              className="backdrop-blur-md bg-white/40 border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.05)] rounded-[2rem] overflow-hidden flex flex-col"
+              className={`${GLASS_BASE} overflow-hidden flex flex-col`}
             >
               {/* Column header */}
               <div className="relative px-5 pt-5 pb-4">
@@ -184,10 +179,10 @@ export default function TodayQueueBoard({
                     </div>
                     <div>
                       <h3 className="font-extrabold text-sm text-slate-800">{col.title}</h3>
-                      <p className="text-[10px] text-slate-400 font-semibold">{col.subtitle}</p>
+                      <p className="text-[10px] text-slate-500 font-semibold">{col.subtitle}</p>
                     </div>
                   </div>
-                  <span className="text-xs font-black text-slate-400">{cards.length}</span>
+                  <span className="text-xs font-black text-slate-500">{cards.length}</span>
                 </div>
               </div>
 
@@ -196,7 +191,7 @@ export default function TodayQueueBoard({
                 {cards.length === 0 ? (
                   <div className="flex flex-col items-center justify-center text-center py-8 text-slate-300">
                     <Inbox className="w-7 h-7 mb-2" />
-                    <p className="text-[11px] font-semibold text-slate-400">Chưa có bệnh nhân</p>
+                    <p className="text-[11px] font-semibold text-slate-500">Chưa có bệnh nhân</p>
                   </div>
                 ) : (
                   cards.map((apt) => {
@@ -224,7 +219,7 @@ export default function TodayQueueBoard({
                                 </span>
                               )}
                             </div>
-                            <p className="text-[11px] text-slate-400 font-medium flex items-center gap-1 mt-0.5">
+                            <p className="text-[11px] text-slate-500 font-medium flex items-center gap-1 mt-0.5">
                               <Clock className="w-3 h-3" />
                               <span className="font-bold text-slate-500">{apt.time || '--:--'}</span>
                               <span>·</span>
@@ -251,7 +246,7 @@ export default function TodayQueueBoard({
                                 disabled={isBusy}
                                 onClick={() => handleDecline(apt)}
                                 title="Từ chối"
-                                className="w-9 py-2 rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-rose-500 hover:border-rose-200 flex items-center justify-center transition-all cursor-pointer disabled:opacity-50"
+                                className="w-9 py-2 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-rose-500 hover:border-rose-200 flex items-center justify-center transition-all cursor-pointer disabled:opacity-50"
                               >
                                 <X className="w-3.5 h-3.5" />
                               </button>
@@ -284,7 +279,7 @@ export default function TodayQueueBoard({
                           <button
                             onClick={() => onOpenChat?.(apt.patientId, apt.patientName)}
                             title="Nhắn tin hỗ trợ"
-                            className="w-9 py-2 rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-teal-600 hover:border-teal-200 flex items-center justify-center transition-all cursor-pointer"
+                            className="w-9 py-2 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-teal-600 hover:border-teal-200 flex items-center justify-center transition-all cursor-pointer"
                           >
                             <MessageSquare className="w-3.5 h-3.5" />
                           </button>
@@ -300,7 +295,7 @@ export default function TodayQueueBoard({
       </div>
 
       {/* Footer hint */}
-      <div className="flex items-center gap-2 text-[11px] text-slate-400 font-medium">
+      <div className="flex items-center gap-2 text-[11px] text-slate-500 font-medium">
         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
         Bệnh nhân đã thanh toán sẽ rời khỏi bảng điều phối và xuất hiện trong lịch sử Quầy Thu Ngân.
       </div>

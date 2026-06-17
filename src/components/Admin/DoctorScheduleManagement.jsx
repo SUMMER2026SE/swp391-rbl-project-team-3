@@ -3,6 +3,8 @@ import { motion } from 'framer-motion';
 import { CalendarDays, Plus, Save, Search, RefreshCw, Trash2 } from 'lucide-react';
 import { useDoctors } from '../../hooks/useDoctors';
 import { DoctorScheduleModel } from '../../models/DoctorScheduleModel';
+import GlassCheckbox from '../common/GlassCheckbox';
+import GlassSelect from '../common/GlassSelect';
 
 const getVietnameseDayName = (dateString) => {
     const days = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
@@ -285,16 +287,14 @@ export default function DoctorScheduleManagement() {
                             <div className="flex flex-wrap gap-3 items-center">
                                 {DAYS_OF_WEEK.map(day => (
                                     <label key={day.value} className="flex items-center gap-1 cursor-pointer">
-                                        <input 
-                                            type="checkbox" 
-                                            checked={form.selectedDays.includes(day.value)} 
+                                        <GlassCheckbox
+                                            checked={form.selectedDays.includes(day.value)}
                                             onChange={(e) => {
-                                                const newDays = e.target.checked 
-                                                    ? [...form.selectedDays, day.value] 
+                                                const newDays = e.target.checked
+                                                    ? [...form.selectedDays, day.value]
                                                     : form.selectedDays.filter(d => d !== day.value);
                                                 setForm({ ...form, selectedDays: newDays });
-                                            }} 
-                                            className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" 
+                                            }}
                                         />
                                         <span className="text-sm font-semibold text-slate-700">{day.label}</span>
                                     </label>
@@ -351,14 +351,19 @@ function Input({ value, onChange, type = 'text', ...props }) {
     return <input type={type} value={value} onChange={(e) => onChange(e.target.value)} className="w-full bg-white border border-slate-200 rounded-2xl py-3 px-4 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400" {...props} />;
 }
 function Select({ value, onChange, options, loading, error }) {
+    const opts = error
+        ? [{ value: '', label: `Lỗi: ${String(error)}` }]
+        : loading
+        ? [{ value: '', label: 'Đang tải...' }]
+        : (options || []);
     return (
-        <select value={value} onChange={(e) => onChange(e.target.value)} className="w-full bg-white border border-slate-200 rounded-2xl py-3 px-4 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400">
-            {error && <option value="">Lỗi: {String(error)}</option>}
-            {!error && loading && <option value="">Đang tải...</option>}
-            {!error && !loading && options?.length === 0 && <option value="">Trống</option>}
-            {options?.map?.((option) => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-            ))}
-        </select>
+        <GlassSelect
+            value={value}
+            onChange={onChange}
+            options={opts}
+            placeholder="Trống"
+            className="w-full"
+            buttonClassName="py-3 px-4 text-sm font-semibold"
+        />
     );
 }

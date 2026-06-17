@@ -15,6 +15,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { AppointmentModel } from '../../models/AppointmentModel';
+import GlassCard, { GLASS_BASE, GLASS_INPUT } from '../common/GlassCard';
 import {
   normalizeApt,
   parseFee,
@@ -249,16 +250,8 @@ export default function BillingCheckout({
 
   return (
     <div className="space-y-6 text-left">
-      {/* Header */}
-      <div>
-        <h2 className="text-2xl font-black text-slate-900 tracking-tight">Quầy Thu Ngân</h2>
-        <p className="text-xs text-slate-500 font-medium">
-          Lập hóa đơn, áp dụng mã ưu đãi và xác nhận thanh toán dịch vụ khám.
-        </p>
-      </div>
-
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         <StatCard
           label="Doanh thu hôm nay"
           value={formatVnd(stats.revenue)}
@@ -282,7 +275,7 @@ export default function BillingCheckout({
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
         {/* ── Invoice list ─────────────────────────────────────────────────── */}
         <div className="lg:col-span-3 space-y-4">
           <div className="flex flex-col sm:flex-row gap-3 sm:items-center justify-between">
@@ -299,25 +292,25 @@ export default function BillingCheckout({
                 </button>
               ))}
             </div>
-            <div className="backdrop-blur-md bg-white/50 border border-slate-200/50 rounded-2xl px-3.5 py-2 flex items-center max-w-xs w-full">
-              <Search className="w-4 h-4 text-slate-400 mr-2 shrink-0" />
+            <div className="backdrop-blur-md bg-white/20 border border-white/40 rounded-2xl px-3.5 py-2 flex items-center max-w-xs w-full focus-within:bg-white/40 focus-within:border-white focus-within:ring-2 focus-within:ring-emerald-400/50 transition-all">
+              <Search className="w-4 h-4 text-slate-500 mr-2 shrink-0" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Tìm bệnh nhân / mã..."
-                className="bg-transparent border-none outline-none text-xs font-semibold w-full text-slate-700 focus:ring-0 p-0"
+                className="bg-transparent border-none outline-none text-xs font-semibold w-full text-gray-800 placeholder-gray-500 focus:ring-0 p-0"
               />
               {search && (
-                <button onClick={() => setSearch('')} className="bg-transparent border-none cursor-pointer text-slate-400 hover:text-slate-600">
+                <button onClick={() => setSearch('')} className="bg-transparent border-none cursor-pointer text-slate-500 hover:text-slate-600">
                   <X className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
           </div>
 
-          <div className="backdrop-blur-md bg-white/40 border border-white/60 rounded-[2rem] shadow-[0_8px_32px_rgba(0,0,0,0.05)] overflow-hidden">
+          <div className={`${GLASS_BASE} overflow-hidden`}>
             {visible.length === 0 ? (
-              <div className="py-14 text-center text-slate-400">
+              <div className="py-14 text-center text-slate-500">
                 <Receipt className="w-8 h-8 mx-auto mb-2 text-slate-300" />
                 <p className="text-xs font-semibold">Không có hóa đơn phù hợp.</p>
               </div>
@@ -344,10 +337,10 @@ export default function BillingCheckout({
                               </span>
                             )}
                           </div>
-                          <p className="text-[11px] text-slate-400 font-medium truncate mt-0.5">
+                          <p className="text-[11px] text-slate-500 font-medium truncate mt-0.5">
                             {a.serviceName} · {a.doctorName}
                           </p>
-                          <p className="text-[10px] text-slate-400 font-mono mt-0.5">{a.aptId}</p>
+                          <p className="text-[10px] text-slate-500 font-mono mt-0.5">{a.aptId}</p>
                         </div>
                         <div className="text-right shrink-0">
                           <div className="font-black text-sm text-slate-900">{a.fee}</div>
@@ -381,13 +374,13 @@ export default function BillingCheckout({
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -12 }}
-                className="backdrop-blur-md bg-white/40 border border-white/60 rounded-[2rem] shadow-[0_8px_32px_rgba(0,0,0,0.05)] p-8 text-center"
+                className={`${GLASS_BASE} p-6 text-center`}
               >
                 <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center mx-auto mb-3 text-emerald-500">
                   <Receipt className="w-7 h-7" />
                 </div>
                 <h3 className="font-extrabold text-sm text-slate-700">Chọn một hóa đơn</h3>
-                <p className="text-xs text-slate-400 font-medium mt-1 max-w-[220px] mx-auto">
+                <p className="text-xs text-slate-500 font-medium mt-1 max-w-[220px] mx-auto">
                   Nhấn vào một bệnh nhân ở danh sách để lập hóa đơn và thu tiền.
                 </p>
               </motion.div>
@@ -398,7 +391,7 @@ export default function BillingCheckout({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -12 }}
                 transition={{ type: 'spring', stiffness: 260, damping: 26 }}
-                className="backdrop-blur-md bg-white/60 border border-white/70 rounded-[2rem] shadow-[0_12px_40px_rgba(0,0,0,0.08)] p-6 space-y-5"
+                className={`${GLASS_BASE} p-6 space-y-5`}
               >
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 bg-emerald-50 border border-emerald-200/50 rounded-full px-3 py-1">
@@ -447,7 +440,7 @@ export default function BillingCheckout({
                   <>
                     {/* Voucher */}
                     <div>
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-2">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5 mb-2">
                         <Ticket className="w-3.5 h-3.5" /> Mã giảm giá
                       </label>
                       {appliedVoucher ? (
@@ -474,7 +467,7 @@ export default function BillingCheckout({
                             onChange={(e) => setVoucherCode(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && applyByCode()}
                             placeholder="VD: SUMMER_SALE"
-                            className="flex-1 bg-white border border-slate-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-700 outline-none uppercase"
+                            className={`flex-1 ${GLASS_INPUT} px-3 py-2.5 text-xs font-semibold uppercase`}
                           />
                           <button
                             onClick={applyByCode}
@@ -489,7 +482,7 @@ export default function BillingCheckout({
                       {/* Auto-applicable suggestions */}
                       {!appliedVoucher && suggestions.length > 0 && (
                         <div className="mt-2.5 space-y-1.5">
-                          <p className="text-[10px] text-slate-400 font-bold flex items-center gap-1">
+                          <p className="text-[10px] text-slate-500 font-bold flex items-center gap-1">
                             <Sparkles className="w-3 h-3 text-amber-400" /> Ưu đãi khả dụng
                           </p>
                           {suggestions.map((s, i) => (
@@ -523,7 +516,7 @@ export default function BillingCheckout({
 
                     {/* Method */}
                     <div>
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-2">
                         Phương thức thanh toán
                       </label>
                       <div className="grid grid-cols-3 gap-2">
@@ -586,16 +579,16 @@ function StatCard({ label, value, hint, icon: Icon, tone }) {
     amber: 'bg-amber-50 text-amber-500 border-amber-100',
   };
   return (
-    <div className="backdrop-blur-md bg-white/50 border border-white/70 p-5 rounded-[2rem] shadow-sm flex items-center justify-between">
+    <GlassCard interactive className="h-full flex items-center justify-between">
       <div className="text-left">
-        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">{label}</span>
+        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block mb-1">{label}</span>
         <strong className="text-2xl font-black text-slate-800 block">{value}</strong>
-        <span className="text-[9px] text-slate-400 font-semibold mt-0.5 block">{hint}</span>
+        <span className="text-[9px] text-slate-500 font-semibold mt-0.5 block">{hint}</span>
       </div>
       <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center shrink-0 ${tones[tone]}`}>
         <Icon className="w-6 h-6" />
       </div>
-    </div>
+    </GlassCard>
   );
 }
 
@@ -625,7 +618,7 @@ function ReceiptModal({ receipt, onClose, receptionistId, showToast }) {
                 <p className="text-[10px] text-slate-500 font-semibold">123 Đường Ba Tháng Hai, Quận 10, TP.HCM</p>
                 <div className="border-b-2 border-double border-slate-300 my-2" />
                 <h5 className="font-extrabold text-xs uppercase tracking-widest py-1">HÓA ĐƠN THANH TOÁN</h5>
-                <p className="text-[9px] text-slate-400 font-semibold">
+                <p className="text-[9px] text-slate-500 font-semibold">
                   Mã HĐ: HD-{String(receipt.aptId).replace(/\D/g, '').slice(-6) || '100001'}
                 </p>
               </div>
@@ -636,9 +629,9 @@ function ReceiptModal({ receipt, onClose, receptionistId, showToast }) {
               </div>
               <div className="border-b border-dashed border-slate-200" />
               <div className="space-y-1 text-[10px] text-slate-700 font-semibold">
-                <p><span className="text-slate-400 font-bold">Khách hàng:</span> <strong>{receipt.patientName}</strong></p>
-                <p><span className="text-slate-400 font-bold">Bác sĩ:</span> {receipt.doctorName}</p>
-                <p><span className="text-slate-400 font-bold">Dịch vụ:</span> {receipt.serviceName}</p>
+                <p><span className="text-slate-500 font-bold">Khách hàng:</span> <strong>{receipt.patientName}</strong></p>
+                <p><span className="text-slate-500 font-bold">Bác sĩ:</span> {receipt.doctorName}</p>
+                <p><span className="text-slate-500 font-bold">Dịch vụ:</span> {receipt.serviceName}</p>
               </div>
               <div className="border-b-2 border-double border-slate-300" />
               <div className="space-y-1 text-[10px] font-semibold text-slate-600">
@@ -658,7 +651,7 @@ function ReceiptModal({ receipt, onClose, receptionistId, showToast }) {
                 </div>
               </div>
               <div className="pt-1 text-center">
-                <span className="text-[8px] text-slate-400 tracking-wider">Cảm ơn quý khách đã tin tưởng DermaSmart!</span>
+                <span className="text-[8px] text-slate-500 tracking-wider">Cảm ơn quý khách đã tin tưởng DermaSmart!</span>
               </div>
             </div>
 

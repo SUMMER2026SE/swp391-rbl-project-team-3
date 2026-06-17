@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Save, Stethoscope, Edit2, Search } from 'lucide-react';
+import GlassSelect from '../common/GlassSelect';
 
 export default function ServiceManagement() {
     const [searchTerm, setSearchTerm] = useState('');
@@ -112,5 +113,5 @@ function Input({ value, onChange, placeholder = '', type = 'text' }) {
 }
 
 function Select({ value, onChange, options }) {
-    return <select value={value} onChange={(e) => onChange(e.target.value)} className="w-full bg-white border border-slate-200 rounded-2xl py-3 px-4 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400">{options?.map?.((option) => <option key={option}>{option}</option>)}</select>;
+    return <GlassSelect value={value} onChange={onChange} options={options || []} className="w-full" buttonClassName="py-3 px-4 text-sm font-semibold" />;
 }

@@ -5,6 +5,7 @@ import { useAuthController } from '../controllers/useAuthController';
 import { Shield, AlertCircle, CheckCircle, User, Mail, Phone, Lock, Eye, EyeOff, Key, ArrowRight } from 'lucide-react';
 import logo from '../assets/logo.png';
 import bgImage from '../assets/bg-login.png';
+import GlassCheckbox from '../components/common/GlassCheckbox';
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -364,12 +365,10 @@ function LoginPage() {
 
               <div className="flex items-start mt-2">
                 <div className="flex items-center h-5">
-                  <input
-                    className="h-4 w-4 rounded border-outline-variant text-primary focus:ring-primary bg-surface-bright cursor-pointer"
+                  <GlassCheckbox
                     id="terms"
                     name="terms"
                     required
-                    type="checkbox"
                     checked={agreeTerms}
                     onChange={(e) => setAgreeTerms(e.target.checked)}
                   />
@@ -478,11 +477,9 @@ function LoginPage() {
               </div>
 
               <div className="flex items-center mt-2">
-                <input
-                  className="h-4 w-4 rounded border-outline-variant text-primary focus:ring-primary bg-surface-bright cursor-pointer"
+                <GlassCheckbox
                   id="remember-me"
                   name="remember-me"
-                  type="checkbox"
                 />
                 <label className="ml-3 font-body-md text-sm text-on-surface-variant cursor-pointer" htmlFor="remember-me">
                   Ghi nhớ đăng nhập

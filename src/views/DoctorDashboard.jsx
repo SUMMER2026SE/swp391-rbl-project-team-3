@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import GlassSelect from '../components/common/GlassSelect';
 import { NotificationModel } from '../models/NotificationModel';
 import { DoctorModel } from '../models/DoctorModel';
 import { AppointmentModel } from '../models/AppointmentModel';
@@ -188,7 +189,7 @@ export default function DoctorDashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-transparent relative overflow-x-hidden flex w-full font-sans antialiased text-slate-800">
+    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-emerald-100 to-cyan-50 relative overflow-x-hidden flex w-full font-sans antialiased text-slate-800">
       <style>{`
         @keyframes float {
           0%, 100% { transform: translateY(0) translateX(0); }
@@ -207,14 +208,14 @@ export default function DoctorDashboard() {
       `}</style>
       {/* Pristine Medical Mesh Gradients */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-emerald-300/15 blur-[120px] bg-mesh-blob-1"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] rounded-full bg-sky-300/15 blur-[120px] bg-mesh-blob-2"></div>
+        <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-emerald-400/30 blur-3xl bg-mesh-blob-1"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] rounded-full bg-cyan-400/30 blur-3xl bg-mesh-blob-2"></div>
       </div>
       {/* Compact Glass Sidebar — icon-only by default, expands on hover */}
       <motion.aside
         animate={{ width: isSidebarExpanded ? 256 : 80 }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        className="hidden md:flex bg-white/40 backdrop-blur-2xl border-r border-white/60 shadow-[0_8px_32px_0_rgba(31,38,135,0.07),inset_0_0_20px_rgba(255,255,255,0.5)] dark:bg-slate-900/40 dark:border-slate-700/50 fixed h-full z-40 flex-col py-8 px-3 justify-between overflow-hidden transition-all duration-500 ease-out"
+        className="hidden md:flex bg-teal-900/10 backdrop-blur-2xl border-r border-teal-900/10 shadow-[0_8px_32px_0_rgba(31,38,135,0.07),inset_0_0_20px_rgba(255,255,255,0.5)] dark:bg-slate-900/40 dark:border-slate-700/50 fixed h-full z-40 flex-col py-8 px-3 justify-between overflow-hidden transition-all duration-500 ease-out"
       >
         <div className="flex flex-col gap-6">
           {/* Logo & Toggle Header */}
@@ -223,7 +224,7 @@ export default function DoctorDashboard() {
               <>
                 <div className="flex flex-col items-start gap-1">
                   <img src={logo} alt="DermaSmart Logo" className="h-16 w-auto object-contain" />
-                  <span className="text-[10px] text-slate-400 whitespace-nowrap animate-fadeIn">
+                  <span className="text-[10px] text-gray-500 whitespace-nowrap animate-fadeIn">
                     Doctor Portal
                   </span>
                 </div>
@@ -316,42 +317,40 @@ export default function DoctorDashboard() {
             backgroundColor: navBg,
             boxShadow: navShadow,
           }}
-          className="backdrop-blur-2xl flex justify-between items-center h-20 transition-all duration-500 ease-out"
+          className="relative backdrop-blur-2xl flex justify-between items-center h-20 transition-all duration-500 ease-out"
         >
           <div className="flex items-center gap-4">
             <span className="font-black text-2xl text-gradient-emerald md:hidden tracking-tight">DermaSmart</span>
-            <h1 className="text-xl md:text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-800 to-teal-500 tracking-tight whitespace-nowrap mr-6">
-              {getPageTitle()}
-            </h1>
             <div className="hidden md:flex items-center glass-inner rounded-full pl-4 pr-5 py-2.5 focus-within:ring-2 focus-within:ring-teal-500/30 focus-within:border-teal-400 transition-all">
               <Search className="w-[18px] h-[18px] text-slate-400 mr-2.5" />
               <input
-                className="bg-transparent border-none outline-none text-[15px] font-medium text-slate-700 placeholder-slate-400 w-72 p-0 focus:ring-0"
+                className="bg-transparent border-none outline-none text-[15px] font-medium text-gray-800 placeholder-gray-500 w-72 p-0 focus:ring-0"
                 placeholder="Tìm kiếm bệnh nhân, hồ sơ..."
                 type="text"
               />
             </div>
           </div>
+          <h1 className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-xl md:text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-teal-800 to-emerald-700 tracking-tight whitespace-nowrap pointer-events-none">
+            {getPageTitle()}
+          </h1>
 
           <div className="flex items-center gap-5">
             <div className="text-right hidden md:block">
               {!user?.isSupabase ? (
                 <div className="flex flex-col items-end">
-                  <select
-                    value={currentDoctorId}
-                    onChange={(e) => setCurrentDoctorId(e.target.value)}
-                    className="font-bold text-sm text-slate-900 bg-white/80 border border-slate-200 rounded-xl px-3 py-1.5 outline-none focus:border-teal-500 transition-all text-right shadow-sm cursor-pointer"
-                  >
-                    {(Array.isArray(doctorsList) ? doctorsList : []).map(d => (
-                      <option key={d.id} value={d.id}>{d.name}</option>
-                    ))}
-                  </select>
-                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Doctor Portal (Demo)</span>
+                  <GlassSelect
+                    value={String(currentDoctorId ?? '')}
+                    onChange={(v) => setCurrentDoctorId(v)}
+                    options={(Array.isArray(doctorsList) ? doctorsList : []).map(d => ({ value: String(d.id), label: d.name }))}
+                    buttonClassName="px-3 py-1.5 text-sm font-bold"
+                    className="min-w-[190px]"
+                  />
+                  <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mt-0.5">Doctor Portal (Demo)</span>
                 </div>
               ) : (
                 <>
-                  <p className="font-bold text-sm text-slate-900 leading-none">{user?.name || 'BS. CKII. Trần Văn A'}</p>
-                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Doctor Portal</span>
+                  <p className="font-bold text-sm text-gray-900 leading-none">{user?.name || 'BS. CKII. Trần Văn A'}</p>
+                  <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Doctor Portal</span>
                 </>
               )}
 

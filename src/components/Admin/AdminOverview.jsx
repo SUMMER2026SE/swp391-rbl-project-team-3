@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { TrendingUp, Users, Ticket, Activity, ChevronRight, Zap, Shield } from 'lucide-react';
 import { SystemLogModel } from '../../models/SystemLogModel';
 import { supabase } from '../../supabaseClient';
+import { GLASS_BASE, GLASS_HOVER, GLASS_TITLE } from '../common/GlassCard';
 
 const AdminOverview = ({ onNavigate }) => {
   const [logs, setLogs] = useState([]);
@@ -101,12 +102,8 @@ const AdminOverview = ({ onNavigate }) => {
       animate="show"
       className="space-y-8"
     >
-      <div className="flex justify-between items-end mb-2">
-        <div>
-          <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">Tổng quan hệ thống</h2>
-          <p className="text-slate-500 text-sm font-medium mt-1">Theo dõi các chỉ số quan trọng và hoạt động gần đây.</p>
-        </div>
-        <button 
+      <div className="flex justify-end items-center mb-2">
+        <button
           onClick={() => onNavigate && onNavigate('reports')}
           className="flex items-center px-5 py-2.5 bg-white border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 hover:bg-slate-50 shadow-sm transition-all group"
         >
@@ -115,12 +112,12 @@ const AdminOverview = ({ onNavigate }) => {
         </button>
       </div>
       {/* Bento Grid: Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {(Array.isArray(stats) ? stats : []).map((stat, index) => (
-          <motion.div 
-            key={index} 
+          <motion.div
+            key={index}
             variants={itemVariants}
-            className="backdrop-blur-xl bg-white/75 border border-white/80 shadow-[0_15px_40px_rgba(0,0,0,0.05)] rounded-3xl p-7 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300"
+            className={`${GLASS_BASE} ${GLASS_HOVER} p-6 relative overflow-hidden group h-full flex flex-col`}
           >
             <div className="flex justify-between items-start mb-6">
               <div className={`p-4 rounded-2xl bg-gradient-to-br ${stat.gradient} shadow-lg shadow-${stat.gradient.split('-')[1]}/30`}>
@@ -140,13 +137,13 @@ const AdminOverview = ({ onNavigate }) => {
         ))}
       </div>
       {/* Bento Grid: Recent Activity & Quick Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <motion.div 
-          variants={itemVariants} 
-          className="lg:col-span-2 backdrop-blur-xl bg-white/75 border border-white/80 shadow-[0_15px_40px_rgba(0,0,0,0.05)] rounded-3xl p-8"
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <motion.div
+          variants={itemVariants}
+          className={`${GLASS_BASE} p-6 lg:col-span-2 h-full flex flex-col`}
         >
           <div className="flex items-center justify-between mb-8">
-            <h3 className="text-xl font-extrabold text-slate-800 flex items-center">
+            <h3 className={`${GLASS_TITLE} flex items-center`}>
               <Activity className="w-6 h-6 mr-3 text-indigo-500" />
               Hoạt động hệ thống
             </h3>
@@ -167,7 +164,7 @@ const AdminOverview = ({ onNavigate }) => {
                 <div className="flex-1">
                   <div className="flex justify-between items-center mb-2">
                     <span className="font-extrabold text-base text-slate-800">{log.actor}</span>
-                    <span className="text-xs text-slate-400 font-bold bg-slate-100 px-3 py-1 rounded-full">
+                    <span className="text-xs text-slate-500 font-bold bg-slate-100 px-3 py-1 rounded-full">
                       {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
