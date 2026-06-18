@@ -678,11 +678,7 @@ export default function VoucherManagement() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900">Quản lý Voucher</h2>
-          <p className="text-sm text-slate-500 mt-1">Tạo và quản lý các chương trình khuyến mãi cho phòng khám</p>
-        </div>
+      <div className="flex items-center justify-end">
         <button
           onClick={() => { setEditTarget(null); setShowForm(true); }}
           className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-indigo-500 to-sky-500 text-white rounded-2xl font-bold text-sm shadow-md shadow-indigo-500/20 hover:shadow-lg hover:-translate-y-0.5 transition-all border-none cursor-pointer"

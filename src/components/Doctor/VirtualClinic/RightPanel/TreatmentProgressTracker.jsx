@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Activity, CalendarDays, CheckCircle2, Plus, Save } from 'lucide-react';
+import GlassCard, { GLASS_INPUT } from '../../../common/GlassCard';
+import GlassSelect from '../../../common/GlassSelect';
 
 const defaultProgress = [
     {
@@ -65,13 +67,13 @@ export default function TreatmentProgressTracker({ appointment }) {
     };
 
     return (
-        <div className="backdrop-blur-xl bg-white/40 border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.05)] rounded-[2rem] p-6 mb-6">
+        <GlassCard className="p-6 mb-6">
             <div className="flex items-center gap-2 mb-4 pb-4 border-b border-slate-200/40">
                 <Activity className="w-5 h-5 text-teal-600" />
                 <h3 className="font-extrabold text-lg text-slate-900">Theo dõi tiến trình điều trị</h3>
             </div>
             <div className="space-y-3 mb-5 max-h-56 overflow-y-auto pr-1 custom-scrollbar">
-                {progressList?.map?.((item) => (
+                {(Array.isArray(progressList) ? progressList : [])?.map?.((item) => (
                     <div key={item.id} className="p-4 rounded-2xl border border-slate-200/60 bg-white/60 shadow-sm">
                         <div className="flex justify-between items-start gap-3 mb-2">
                             <div>
@@ -93,23 +95,20 @@ export default function TreatmentProgressTracker({ appointment }) {
                 <input
                     value={form.title}
                     onChange={(e) => setForm({ ...form, title: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-sm font-semibold outline-none transition-all focus:border-sky-500 focus:bg-white focus:ring-4 focus:ring-sky-500/10"
+                    className={`${GLASS_INPUT} w-full py-3 px-4 text-sm font-semibold rounded-xl`}
                     placeholder="Tiêu đề tiến trình"
                 />
-                <select
+                <GlassSelect
                     value={form.status}
-                    onChange={(e) => setForm({ ...form, status: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-sm font-semibold outline-none transition-all focus:border-sky-500 focus:bg-white focus:ring-4 focus:ring-sky-500/10"
-                >
-                    <option>Đang theo dõi</option>
-                    <option>Cần theo dõi thêm</option>
-                    <option>Hoàn thành</option>
-                </select>
+                    onChange={(v) => setForm({ ...form, status: v })}
+                    options={['Đang theo dõi', 'Cần theo dõi thêm', 'Hoàn thành']}
+                    buttonClassName="py-3 px-4 text-sm font-semibold"
+                />
             </div>
             <textarea
                 value={form.note}
                 onChange={(e) => setForm({ ...form, note: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-sm font-semibold outline-none transition-all resize-none placeholder-slate-400 focus:border-sky-500 focus:bg-white focus:ring-4 focus:ring-sky-500/10"
+                className={`${GLASS_INPUT} w-full py-3 px-4 text-sm font-semibold resize-none rounded-xl`}
                 placeholder="Nhập ghi chú: mức độ cải thiện, phản ứng thuốc, triệu chứng còn lại..."
                 rows="3"
             />
@@ -121,6 +120,6 @@ export default function TreatmentProgressTracker({ appointment }) {
                 <Save className="w-4 h-4" />
                 Lưu tiến trình điều trị
             </button>
-        </div>
+        </GlassCard>
     );
 }

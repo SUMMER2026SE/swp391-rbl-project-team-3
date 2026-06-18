@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { CalendarPlus, Clock, Save } from 'lucide-react';
+import GlassCard, { GLASS_INPUT } from '../../../common/GlassCard';
 
 function getDefaultFollowUpDate() {
     const date = new Date();
@@ -45,7 +46,7 @@ export default function FollowUpAppointmentForm({ appointment }) {
     };
 
     return (
-        <div className="backdrop-blur-xl bg-white/40 border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.05)] rounded-[2rem] p-6 mb-6">
+        <GlassCard className="p-6 mb-6">
             <div className="flex items-center gap-2 mb-4 pb-4 border-b border-slate-200/40">
                 <CalendarPlus className="w-5 h-5 text-teal-600" />
                 <h3 className="font-extrabold text-lg text-slate-900">Tạo lịch tái khám</h3>
@@ -58,7 +59,7 @@ export default function FollowUpAppointmentForm({ appointment }) {
                         type="date"
                         value={followUp.date}
                         onChange={(e) => setFollowUp({ ...followUp, date: e.target.value, status: 'Chưa tạo' })}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-sm font-semibold outline-none transition-all focus:border-sky-500 focus:bg-white focus:ring-4 focus:ring-sky-500/10"
+                        className={`${GLASS_INPUT} w-full py-3 px-4 text-sm font-semibold rounded-xl`}
                     />
                 </div>
                 <div>
@@ -69,7 +70,7 @@ export default function FollowUpAppointmentForm({ appointment }) {
                             type="time"
                             value={followUp.time}
                             onChange={(e) => setFollowUp({ ...followUp, time: e.target.value, status: 'Chưa tạo' })}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pl-11 pr-4 text-sm font-semibold outline-none transition-all focus:border-sky-500 focus:bg-white focus:ring-4 focus:ring-sky-500/10"
+                            className={`${GLASS_INPUT} w-full py-3 pl-11 pr-4 text-sm font-semibold rounded-xl`}
                         />
                     </div>
                 </div>
@@ -80,7 +81,7 @@ export default function FollowUpAppointmentForm({ appointment }) {
                 <textarea
                     value={followUp.reason}
                     onChange={(e) => setFollowUp({ ...followUp, reason: e.target.value, status: 'Chưa tạo' })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-sm font-semibold outline-none transition-all resize-none placeholder-slate-400 focus:border-sky-500 focus:bg-white focus:ring-4 focus:ring-sky-500/10"
+                    className={`${GLASS_INPUT} w-full py-3 px-4 text-sm font-semibold resize-none rounded-xl`}
                     rows="2"
                 />
             </div>
@@ -98,6 +99,6 @@ export default function FollowUpAppointmentForm({ appointment }) {
                     Tạo lịch tái khám
                 </button>
             </div>
-        </div>
+        </GlassCard>
     );
 }

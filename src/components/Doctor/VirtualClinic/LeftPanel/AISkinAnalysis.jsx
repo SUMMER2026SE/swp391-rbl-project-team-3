@@ -1,5 +1,6 @@
 import React from 'react';
 import { Brain, ScanFace } from 'lucide-react';
+import GlassCard from '../../../common/GlassCard';
 
 export default function AISkinAnalysis({ patientId }) {
   const fallbackResult = {
@@ -20,19 +21,19 @@ export default function AISkinAnalysis({ patientId }) {
   };
 
   // Try to find the latest AI result for the patient
-  const aiResult = ([])?.find(r => r.patientId === patientId);
+  const aiResult = ([])?.find(r => r?.patientId === patientId);
 
   if (!aiResult) {
     return (
-      <div className="glass-3d-soft water-refract rounded-[2rem] p-8 text-center text-slate-500 font-medium mb-6">
+      <GlassCard className="p-8 text-center text-slate-500 font-medium mb-6">
         <Brain className="w-10 h-10 text-slate-300 mx-auto mb-3" />
         <p className="text-sm font-semibold">Chưa có dữ liệu xét nghiệm/AI cho bệnh nhân này.</p>
-      </div>
+      </GlassCard>
     );
   }
 
   return (
-    <div className="glass-3d-soft water-refract rounded-[2rem] p-6">
+    <GlassCard className="p-6">
       <div className="flex justify-between items-center mb-6 pb-4 border-b border-slate-200/40">
         <h3 className="font-bold text-lg text-slate-900 flex items-center gap-2">
           <Brain className="w-5 h-5 text-teal-600" />
@@ -84,11 +85,11 @@ export default function AISkinAnalysis({ patientId }) {
             let textClass = "text-teal-700";
             let bgClass = "bg-teal-50";
             
-            if (data.score < 50) {
+            if (data?.score < 50) {
               colorClass = "bg-rose-500";
               textClass = "text-rose-700";
               bgClass = "bg-rose-50";
-            } else if (data.score < 70) {
+            } else if (data?.score < 70) {
               colorClass = "bg-amber-500";
               textClass = "text-amber-700";
               bgClass = "bg-amber-50";
@@ -99,18 +100,18 @@ export default function AISkinAnalysis({ patientId }) {
                 <div className="flex justify-between mb-2">
                   <span className="text-xs font-bold text-slate-700 capitalize">{key}</span>
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg border ${textClass} ${bgClass} border-current/20`}>
-                    {data.severity}
+                    {data?.severity}
                   </span>
                 </div>
                 <div className="w-full bg-slate-200/50 rounded-full h-1.5 mb-2">
-                  <div className={`${colorClass} h-1.5 rounded-full`} style={{ width: `${data.score}%` }}></div>
+                  <div className={`${colorClass} h-1.5 rounded-full`} style={{ width: `${data?.score || 0}%` }}></div>
                 </div>
-                <p className="text-[11px] text-slate-500 font-medium line-clamp-2">{data.description}</p>
+                <p className="text-[11px] text-slate-500 font-medium line-clamp-2">{data?.description}</p>
               </div>
             );
           })}
         </div>
       </div>
-    </div>
+    </GlassCard>
   );
 }

@@ -168,14 +168,16 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="font-bold text-2xl md:text-3xl text-gradient-emerald tracking-tight leading-none">
-              {isReviewMode ? 'Xem lại hồ sơ bệnh án' : 'Phòng khám ảo'}
-            </h1>
-            <p className="text-sm text-slate-500 font-medium mt-1.5">
-              Bệnh nhân: <span className="font-bold text-slate-800">{appointment?.patientName}</span>
+            <p className="text-sm text-slate-500 font-medium">
+              Bệnh nhân: <span className="font-bold text-slate-800">{appointment?.patientName || 'Bệnh nhân'}</span>
               <span className="mx-2 text-slate-300">•</span>
-              Dịch vụ: <span className="font-medium text-slate-700">{appointment?.service}</span>
+              Dịch vụ: <span className="font-medium text-slate-700">{appointment?.service || '—'}</span>
             </p>
+            {isReviewMode && (
+              <span className="inline-flex items-center gap-1.5 mt-1.5 text-[11px] font-bold text-emerald-700 bg-emerald-500/10 border border-emerald-300/40 px-2.5 py-0.5 rounded-full">
+                Chế độ xem lại hồ sơ
+              </span>
+            )}
           </div>
         </div>
       </div>

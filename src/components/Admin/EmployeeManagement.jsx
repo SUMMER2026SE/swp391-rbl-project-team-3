@@ -173,14 +173,6 @@ const EmployeeManagement = () => {
 
   return (
     <div className="space-y-8 relative h-full">
-      <div className="flex justify-between items-end mb-2">
-        <div>
-          <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">Quản lý Nhân sự</h2>
-          <p className="text-slate-500 text-sm font-medium mt-1">
-            Tạo nhân viên, cập nhật thông tin, phân quyền và trạng thái tài khoản.
-          </p>
-        </div>
-      </div>
       <div className="backdrop-blur-xl bg-white/75 border border-white/80 shadow-[0_15px_40px_rgba(0,0,0,0.05)] rounded-[2rem] overflow-hidden flex flex-col">
         <div className="p-6 md:p-8 border-b border-slate-200/50 flex flex-col md:flex-row justify-between items-center gap-4 bg-white/40">
           <div className="relative w-full md:w-96">

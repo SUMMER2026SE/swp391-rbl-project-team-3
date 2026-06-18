@@ -1,23 +1,24 @@
 import React, { useState } from 'react';
 import { Activity, Beaker, CalendarDays, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import GlassCard from '../../../common/GlassCard';
 
 export default function ClinicalHistory({ patientId }) {
-  const patientLabs = ([])?.filter(lab => lab.patientId === patientId) || [];
-  const patientRecords = ([])?.filter(rec => rec.patientId === patientId) || [];
+  const patientLabs = ([])?.filter(lab => lab?.patientId === patientId) || [];
+  const patientRecords = ([])?.filter(rec => rec?.patientId === patientId) || [];
   const [showDetails, setShowDetails] = useState(false);
 
   if (patientLabs.length === 0 && patientRecords.length === 0) {
     return (
-      <div className="glass-3d-soft water-refract rounded-[2rem] p-8 text-center text-slate-500 font-medium">
+      <GlassCard className="p-8 text-center text-slate-500 font-medium">
         <Activity className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-        <p className="text-sm font-semibold">Chưa có dữ liệu xét nghiệm/AI cho bệnh nhân này.</p>
-      </div>
+        <p className="text-sm font-semibold">Chưa có lịch sử cận lâm sàng cho bệnh nhân này.</p>
+      </GlassCard>
     );
   }
 
   return (
-    <div className="glass-3d-soft water-refract rounded-[2rem] p-6">
+    <GlassCard className="p-6">
       {/* Always visible: Header + Summary */}
       <div className="flex items-center gap-2 mb-4 pb-4 border-b border-slate-200/40">
         <Activity className="w-5 h-5 text-teal-600" />
@@ -115,6 +116,6 @@ export default function ClinicalHistory({ patientId }) {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </GlassCard>
   );
 }

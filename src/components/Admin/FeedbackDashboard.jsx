@@ -255,11 +255,6 @@ export default function FeedbackDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Page Title */}
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900">Quản lý Đánh giá</h2>
-        <p className="text-sm text-slate-500 mt-1">Theo dõi và quản lý phản hồi từ bệnh nhân</p>
-      </div>
       {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[

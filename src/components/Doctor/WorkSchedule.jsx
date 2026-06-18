@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { Calendar, Check, Clock, XCircle } from 'lucide-react';
+import { Calendar, Check, Clock, XCircle, CalendarX2 } from 'lucide-react';
 import { DoctorModel } from '../../models/DoctorModel';
 import { DoctorScheduleModel } from '../../models/DoctorScheduleModel';
+import { GLASS_BASE } from '../common/GlassCard';
 
 export default function WorkSchedule({ doctorId }) {
     const doctor =
@@ -117,15 +118,15 @@ export default function WorkSchedule({ doctorId }) {
 
     return (
         <div className="space-y-6">
-            <div>
-                <h1 className="font-extrabold text-2xl md:text-3xl text-slate-900 tracking-tight">
-                    Lịch làm việc
-                </h1>
-
-                <p className="text-sm text-slate-500 font-medium mt-1">
-                    Lịch ca trực tuần này của {doctor?.name}
-                </p>
-            </div>
+            {(!Array.isArray(doctorSchedules) || doctorSchedules.length === 0) ? (
+                <div className={`${GLASS_BASE} p-12 flex flex-col items-center justify-center text-center`}>
+                    <div className="w-16 h-16 rounded-2xl bg-white/50 border border-white/60 flex items-center justify-center mb-4 shadow-inner">
+                        <CalendarX2 className="w-8 h-8 text-slate-300" />
+                    </div>
+                    <p className="text-sm font-semibold text-slate-600">Chưa có ca làm việc nào được phân</p>
+                    <p className="text-xs text-slate-400 mt-1">Lịch làm việc do quản trị viên phân bổ sẽ hiển thị ở đây.</p>
+                </div>
+            ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {doctorSchedules?.map?.((group) => {
                     const groupKey = `${group.id}-${group.dateRange}-${group.hours}`;
@@ -134,7 +135,7 @@ export default function WorkSchedule({ doctorId }) {
                     return (
                         <div
                             key={groupKey}
-                            className={`backdrop-blur-xl bg-white/40 border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.05)] rounded-[2rem] p-6 relative overflow-visible group min-h-[300px] ${confirmingShiftKey === groupKey ? 'z-50' : 'z-10'}`}
+                            className={`${GLASS_BASE} p-6 relative overflow-visible group min-h-[300px] ${confirmingShiftKey === groupKey ? 'z-50' : 'z-10'}`}
                         >
                             <div
                                 className={`absolute top-0 right-0 w-24 h-24 rounded-bl-full -z-10 transition-all duration-500 ${
@@ -234,6 +235,7 @@ export default function WorkSchedule({ doctorId }) {
                     );
                 })}
             </div>
+            )}
         </div>
     );
 }

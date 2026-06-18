@@ -1206,10 +1206,6 @@ export default function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900">Doanh thu & Báo cáo</h2>
-        <p className="text-sm text-slate-500 mt-1">Tổng hợp báo cáo toàn hệ thống phòng khám</p>
-      </div>
       {/* Main tab bar */}
       <div className="flex gap-1 bg-slate-100 rounded-2xl p-1.5 flex-wrap">
         {TABS?.map?.(tab => {

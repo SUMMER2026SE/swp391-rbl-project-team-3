@@ -1,10 +1,9 @@
 import React from 'react';
-import { Clock, PlayCircle, Eye } from 'lucide-react';
+import { Clock, PlayCircle, Eye, CalendarDays } from 'lucide-react';
+import { GLASS_BASE } from '../common/GlassCard';
 
 export default function ScheduleWaitingList({ doctorId, onStartExam, appointments = [] }) {
-  const today = new Date().toISOString().split('T')[0];
-
-  const todayAppointments = [...appointments]?.filter?.(
+  const todayAppointments = (Array.isArray(appointments) ? [...appointments] : [])?.filter?.(
     (apt) => String(apt?.doctorId || apt?.doctor_id) === String(doctorId) && apt?.status !== 'Đã hủy'
   )
     .sort((a, b) => (a?.time || '').localeCompare(b?.time || ''));
@@ -31,11 +30,7 @@ export default function ScheduleWaitingList({ doctorId, onStartExam, appointment
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-extrabold text-2xl md:text-3xl text-slate-900 tracking-tight">Hàng chờ & Lịch khám</h1>
-        <p className="text-sm text-slate-500 font-medium mt-1">Danh sách bệnh nhân trong ngày: {today}</p>
-      </div>
-      <div className="backdrop-blur-xl bg-white/40 border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.05)] rounded-[2rem] overflow-hidden">
+      <div className={`${GLASS_BASE} overflow-hidden`}>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -100,8 +95,14 @@ export default function ScheduleWaitingList({ doctorId, onStartExam, appointment
               })}
               {todayAppointments.length === 0 && (
                 <tr>
-                  <td colSpan="5" className="py-8 text-center text-slate-500 font-medium">
-                    Không có lịch khám nào trong ngày hôm nay.
+                  <td colSpan="5" className="py-14 text-center">
+                    <div className="flex flex-col items-center justify-center text-slate-500">
+                      <div className="w-14 h-14 rounded-2xl bg-white/50 border border-white/60 flex items-center justify-center mb-3 shadow-inner">
+                        <CalendarDays className="w-7 h-7 text-slate-300" />
+                      </div>
+                      <p className="text-sm font-semibold text-slate-600">Không có lịch khám nào</p>
+                      <p className="text-xs text-slate-400 mt-1">Các lịch hẹn của bệnh nhân sẽ xuất hiện tại đây.</p>
+                    </div>
                   </td>
                 </tr>
               )}

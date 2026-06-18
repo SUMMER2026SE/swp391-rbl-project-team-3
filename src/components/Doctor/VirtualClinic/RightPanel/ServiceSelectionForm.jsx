@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Camera, Activity, Sparkles, Droplet, Check, Search, HelpCircle } from 'lucide-react';
+import { GLASS_BASE, GLASS_INPUT } from '../../../common/GlassCard';
 
 const MOCK_SERVICES = [
   {
@@ -71,17 +72,19 @@ export default function ServiceSelectionForm({ onSelectionChange }) {
     }
   };
 
-  const categories = ['All', ...new Set(([])?.map?.(s => s.category))];
+  const term = (searchTerm || '').toLowerCase();
 
-  const filteredServices = ([])?.filter?.(service => {
-    const matchesSearch = service.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          service.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = activeCategory === 'All' || service.category === activeCategory;
+  const categories = ['All', ...new Set((MOCK_SERVICES || [])?.map?.(s => s?.category).filter(Boolean))];
+
+  const filteredServices = (MOCK_SERVICES || [])?.filter?.(service => {
+    const matchesSearch = (service?.name || '').toLowerCase().includes(term) ||
+                          (service?.description || '').toLowerCase().includes(term);
+    const matchesCategory = activeCategory === 'All' || service?.category === activeCategory;
     return matchesSearch && matchesCategory;
-  });
+  }) || [];
 
   return (
-    <div className="glass-3d water-refract rounded-[2rem] p-6 flex-1 flex flex-col min-h-0">
+    <div className={`${GLASS_BASE} p-6 flex-1 flex flex-col min-h-0`}>
       {/* Header */}
       <div className="flex items-center justify-between gap-2 mb-4 pb-4 border-b border-slate-200/40 flex-shrink-0">
         <div className="flex items-center gap-2">
@@ -104,7 +107,7 @@ export default function ServiceSelectionForm({ onSelectionChange }) {
             placeholder="Tìm kiếm dịch vụ..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-white/60 border border-slate-200/80 rounded-xl focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all text-slate-800 text-sm"
+            className={`${GLASS_INPUT} w-full pl-10 pr-4 py-2.5 text-sm`}
           />
         </div>
         <div className="flex gap-1.5 overflow-x-auto pb-1 md:pb-0 scrollbar-thin">

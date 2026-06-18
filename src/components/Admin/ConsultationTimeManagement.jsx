@@ -58,10 +58,6 @@ export default function ConsultationTimeManagement() {
 
     return (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
-            <div>
-                <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">Khung giờ khám</h2>
-                <p className="text-slate-500 text-sm font-medium mt-1">Tạo và cập nhật consultation time slot cho bệnh nhân đặt lịch.</p>
-            </div>
             <div className="backdrop-blur-xl bg-white/75 border border-white/80 shadow-[0_15px_40px_rgba(0,0,0,0.05)] rounded-[2rem] p-8">
                 <div className="flex items-center gap-2 mb-6 pb-4 border-b border-slate-200/50"><Plus className="w-5 h-5 text-indigo-600" /><h3 className="font-extrabold text-lg text-slate-800">Tạo khung giờ khám</h3></div>
                 <div className="grid grid-cols-1 md:grid-cols-6 gap-4">

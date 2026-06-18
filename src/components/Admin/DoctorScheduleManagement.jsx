@@ -251,10 +251,6 @@ export default function DoctorScheduleManagement() {
 
     return (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
-            <div>
-                <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">Lịch làm việc Bác sĩ</h2>
-                <p className="text-slate-500 text-sm font-medium mt-1">Admin phân công và cập nhật lịch làm việc cho bác sĩ.</p>
-            </div>
             <div className="backdrop-blur-xl bg-white/75 border border-white/80 shadow-[0_15px_40px_rgba(0,0,0,0.05)] rounded-[2rem] p-8">
                 <div className="flex items-center gap-2 mb-6 pb-4 border-b border-slate-200/50">
                     <Plus className="w-5 h-5 text-indigo-600" />

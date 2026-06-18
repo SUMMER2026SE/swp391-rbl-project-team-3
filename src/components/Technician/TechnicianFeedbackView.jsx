@@ -69,10 +69,6 @@ export default function TechnicianFeedbackView({ technicianId }) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-bold text-slate-900">Đánh giá từ bệnh nhân</h2>
-        <p className="text-sm text-slate-500 mt-1">Phản hồi về kỹ năng thực hiện và chất lượng dịch vụ của bạn</p>
-      </div>
       {/* Score cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {(Array.isArray(statCards) ? statCards : []).map((s, i) => {
