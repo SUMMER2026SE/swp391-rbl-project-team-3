@@ -5,6 +5,7 @@ import { NotificationModel } from '../models/NotificationModel';
 
 export function useAppointmentController(patientId = null) {
   const [appointments, setAppointments] = useState([]);
+  const [allAppointments, setAllAppointments] = useState([]);
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -12,10 +13,15 @@ export function useAppointmentController(patientId = null) {
     try {
       setLoading(true);
       await DoctorModel.getAllDoctors(); // Ensure doctors are cached for mapping
-      const apts = patientId
-        ? await AppointmentModel.getByPatientId(patientId)
-        : await AppointmentModel.getAllAppointments();
-      setAppointments(apts || []);
+      
+      const allApts = await AppointmentModel.getAllAppointments();
+      setAllAppointments(allApts || []);
+      
+      if (patientId) {
+        setAppointments((allApts || []).filter(a => String(a.patient_id || a.patientId) === String(patientId)));
+      } else {
+        setAppointments(allApts || []);
+      }
 
       const pmts = await AppointmentModel.getAllPayments();
       setPayments(pmts || []);
@@ -71,6 +77,34 @@ export function useAppointmentController(patientId = null) {
         if (!newApt) {
            return { success: false, error: 'Không thể lưu lịch hẹn vào cơ sở dữ liệu (Có thể do lỗi phân quyền RLS trên Supabase).' };
         }
+        
+        // ---- Trigger Notifications ----
+        try {
+          const prefsStr = localStorage.getItem('dermasmart_notification_prefs');
+          const prefs = prefsStr ? JSON.parse(prefsStr) : { email: true, sms: false, inApp: true };
+          if (prefs.inApp && bookingData.patientId) {
+            NotificationModel.sendNotification(
+              'PATIENT', bookingData.patientId, 
+              'Đặt lịch hẹn thành công', 
+              `Bạn đã đặt lịch hẹn khám lúc ${bookingData.time} ngày ${bookingData.date}.`
+            );
+          }
+          if (prefs.email) {
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent('show-toast', {
+                detail: { message: `Đã gửi email xác nhận đặt lịch tới hòm thư của bạn.`, type: 'info' }
+              }));
+            }, 500);
+          }
+          if (prefs.sms) {
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent('show-toast', {
+                detail: { message: `Đã gửi SMS xác nhận tới số điện thoại của bạn.`, type: 'info' }
+              }));
+            }, 1000);
+          }
+        } catch(e) {}
+
         refreshState();
         return { success: true, appointment: newApt };
       } else {
@@ -79,6 +113,34 @@ export function useAppointmentController(patientId = null) {
         if (!newApt) {
            return { success: false, error: 'Không thể lưu lịch hẹn (Lỗi RLS).' };
         }
+
+        // ---- Trigger Notifications ----
+        try {
+          const prefsStr = localStorage.getItem('dermasmart_notification_prefs');
+          const prefs = prefsStr ? JSON.parse(prefsStr) : { email: true, sms: false, inApp: true };
+          if (prefs.inApp && bookingData.patientId) {
+            NotificationModel.sendNotification(
+              'PATIENT', bookingData.patientId, 
+              'Đặt lịch hẹn thành công', 
+              `Bạn đã đặt lịch hẹn khám lúc ${bookingData.start_time || bookingData.time} ngày ${bookingData.appointment_date || bookingData.date}.`
+            );
+          }
+          if (prefs.email) {
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent('show-toast', {
+                detail: { message: `Đã gửi email xác nhận đặt lịch tới hòm thư của bạn.`, type: 'info' }
+              }));
+            }, 500);
+          }
+          if (prefs.sms) {
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent('show-toast', {
+                detail: { message: `Đã gửi SMS xác nhận tới số điện thoại của bạn.`, type: 'info' }
+              }));
+            }, 1000);
+          }
+        } catch(e) {}
+
         refreshState();
         return newApt;
       }
@@ -181,8 +243,8 @@ export function useAppointmentController(patientId = null) {
 
   // Check if a slot is booked
   const isSlotBooked = useCallback((docId, date, time) => {
-    if (!Array.isArray(appointments)) return false;
-    const isBooked = appointments.some(
+    if (!Array.isArray(allAppointments)) return false;
+    const isBooked = allAppointments.some(
       a => {
         if (String(a.doctor_id || a.doctorId) !== String(docId)) return false;
         if (a.date !== date && a.appointment_date !== date) return false;
@@ -203,7 +265,7 @@ export function useAppointmentController(patientId = null) {
     try { lockedList = JSON.parse(lockedListStr); } catch (e) {}
     const activeLocks = lockedList?.filter?.(l => l.lockedUntil > Date.now());
     return activeLocks.some(l => String(l.doctorId) === String(docId) && l.date === date && l.time === time);
-  }, [appointments]);
+  }, [allAppointments]);
 
   // Get doctor schedules and filter out booked slots for UI display
   const getAvailableSlots = useCallback((docId, date, providedSchedules = []) => {

@@ -402,7 +402,7 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.9, opacity: 0, y: 20 }}
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-        className="w-full max-w-xl backdrop-blur-3xl bg-white/95 border border-white shadow-[0_20px_60px_rgba(0,0,0,0.15)] rounded-[2.5rem] p-8 relative max-h-[92vh] overflow-y-auto light-scrollbar"
+        className="w-full max-w-2xl backdrop-blur-3xl bg-white/95 border border-white shadow-[0_20px_60px_rgba(0,0,0,0.15)] rounded-[2.5rem] p-8 relative max-h-[92vh] overflow-y-auto light-scrollbar"
         onClick={e => e.stopPropagation()}
       >
         {/* Close */}

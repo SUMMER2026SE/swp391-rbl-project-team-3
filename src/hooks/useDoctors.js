@@ -36,6 +36,22 @@ export function useDoctors() {
 
       if (fetchError) throw fetchError;
 
+      // Fetch all feedbacks to compute real ratings and review counts dynamically
+      const { data: feedbackData } = await anonSupabase
+        .from('feedbacks')
+        .select('doctor_id, rating');
+
+      const statsMap = {};
+      if (feedbackData) {
+        feedbackData.forEach(f => {
+          if (!f.doctor_id) return;
+          if (!statsMap[f.doctor_id]) statsMap[f.doctor_id] = { sum: 0, count: 0 };
+          const r = Number(f.rating);
+          statsMap[f.doctor_id].sum += isNaN(r) ? 5 : r;
+          statsMap[f.doctor_id].count += 1;
+        });
+      }
+
       // Normalize data to match the format expected by the frontend
       const normalizedDoctors = (data || [])?.map?.(user => {
         const emp = user.employee_profiles ? (Array.isArray(user.employee_profiles) ? user.employee_profiles[0] : user.employee_profiles) : {};
@@ -77,17 +93,22 @@ export function useDoctors() {
             // else: free-text schedule — leave empty so the default applies.
         }
 
+        // Real ratings calculated from feedbacks table
+        const fStats = statsMap[user.user_id];
+        const realRating = fStats && fStats.count > 0 ? Number((fStats.sum / fStats.count).toFixed(1)) : null;
+        const realReviewsCount = fStats ? fStats.count : 0;
+
         return {
           id: user.user_id,
           name: user.full_name || 'Bác sĩ',
           title: 'Bác sĩ Da liễu',
-          image: user.avatar_url || 'https://i.pravatar.cc/150?u=' + user.user_id,
+          image: user.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.full_name || 'Bác sĩ')}&background=e0f2fe&color=0284c7&size=200&font-size=0.4`,
           experience: emp?.experience_years ? `${emp.experience_years} năm kinh nghiệm` : 'Chưa cập nhật',
           specialties: specialties,
           bio: doc?.description || 'Chưa có thông tin giới thiệu.',
           consultationFee: doc?.consultation_fee ? `${doc.consultation_fee.toLocaleString()} VNĐ` : '300,000 VNĐ',
-          rating: doc?.rating || 5.0,
-          reviewsCount: doc?.reviews_count || 0,
+          rating: realRating,
+          reviewsCount: realReviewsCount,
           schedule: schedule.length > 0 ? schedule : [
             { day: "Thứ Hai", hours: "08:00 - 17:00" },
             { day: "Thứ Tư", hours: "08:00 - 17:00" },

@@ -37,8 +37,7 @@ function PasswordInput({ label, value, onChange, placeholder }) {
   );
 }
 
-function ToggleRow({ label, description, defaultOn = false }) {
-  const [on, setOn] = useState(defaultOn);
+function ToggleRow({ label, description, checked = false, onChange }) {
   return (
     <div className="flex items-center justify-between gap-4 glass-inner rounded-xl px-4 py-3.5">
       <div className="min-w-0">
@@ -46,14 +45,14 @@ function ToggleRow({ label, description, defaultOn = false }) {
         <p className="text-xs text-on-surface-variant/70 mt-0.5">{description}</p>
       </div>
       <button
-        onClick={() => setOn((v) => !v)}
+        onClick={() => onChange(!checked)}
         className={`relative rounded-full transition-colors duration-200 border-none cursor-pointer shrink-0
-                    ${on ? 'bg-primary' : 'bg-slate-300'}`}
+                    ${checked ? 'bg-primary' : 'bg-slate-300'}`}
         style={{ height: '26px', width: '46px' }}
       >
         <span
           className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200
-                      ${on ? 'translate-x-5' : 'translate-x-0'}`}
+                      ${checked ? 'translate-x-5' : 'translate-x-0'}`}
         />
       </button>
     </div>
@@ -64,6 +63,22 @@ export default function AccountSettingsTab() {
   const [pw, setPw] = useState({ current: '', next: '', confirm: '' });
   const [loading, setLoading] = useState(false);
   const [alert, setAlert] = useState(null);
+
+  // Notifications preferences
+  const [prefs, setPrefs] = useState(() => {
+    try {
+      const stored = localStorage.getItem('dermasmart_notification_prefs');
+      return stored ? JSON.parse(stored) : { email: true, sms: false, inApp: true };
+    } catch {
+      return { email: true, sms: false, inApp: true };
+    }
+  });
+
+  const updatePref = (key, value) => {
+    const newPrefs = { ...prefs, [key]: value };
+    setPrefs(newPrefs);
+    localStorage.setItem('dermasmart_notification_prefs', JSON.stringify(newPrefs));
+  };
 
   const isMountedRef = useRef(true);
   useEffect(() => {
@@ -165,9 +180,24 @@ export default function AccountSettingsTab() {
           <Bell className="w-5 h-5 text-primary" /> Thông báo
         </h4>
         <div className="space-y-3">
-          <ToggleRow label="Thông báo qua email" description="Nhận email khi có lịch hẹn mới hoặc thay đổi" defaultOn />
-          <ToggleRow label="Thông báo qua SMS" description="Nhận tin nhắn nhắc nhở trước lịch hẹn" />
-          <ToggleRow label="Thông báo trong ứng dụng" description="Hiện popup thông báo trong giao diện" defaultOn />
+          <ToggleRow 
+            label="Thông báo qua email" 
+            description="Nhận email khi có lịch hẹn mới hoặc thay đổi" 
+            checked={prefs.email}
+            onChange={(v) => updatePref('email', v)}
+          />
+          <ToggleRow 
+            label="Thông báo qua SMS" 
+            description="Nhận tin nhắn nhắc nhở trước lịch hẹn" 
+            checked={prefs.sms}
+            onChange={(v) => updatePref('sms', v)}
+          />
+          <ToggleRow 
+            label="Thông báo trong ứng dụng" 
+            description="Hiện popup thông báo trong giao diện" 
+            checked={prefs.inApp}
+            onChange={(v) => updatePref('inApp', v)}
+          />
         </div>
       </div>
     </div>

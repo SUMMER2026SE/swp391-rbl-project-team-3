@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.106.1",
+    "crypto-js": "^4.2.0",
     "framer-motion": "^12.40.0",
     "lucide-react": "^1.16.0",
     "pg": "^8.21.0",

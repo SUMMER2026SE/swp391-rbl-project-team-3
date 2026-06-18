@@ -250,6 +250,7 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
                   transition={stepTransition}
                   className="space-y-6"
                 >
+                  <TreatmentProgressTracker appointment={appointment} />
                   <DiagnosisForm value={diagnosis} onChange={setDiagnosis} isReviewMode={isReviewMode} />
                   <TreatmentPlanForm 
                     selectedServices={selectedPlanServices} 
@@ -258,7 +259,6 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
                     onNotesChange={setDoctorNotes} 
                     isReviewMode={isReviewMode} 
                   />
-                  <TreatmentProgressTracker appointment={appointment} />
 
                   <div className="flex gap-4">
                     <button

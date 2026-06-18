@@ -18,9 +18,106 @@ import { Key, LogOut, User, Ticket, Tag, Calendar, ArrowRight, ChevronDown } fro
 import logo from '../assets/logo.png';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
+import { useFeedbackController } from '../controllers/useFeedbackController';
 
 import '../index.css';
 
+// Component for fetching and displaying doctor reviews
+function DoctorReviewsList({ doctorId }) {
+  const { feedbacks, isLoading } = useFeedbackController({ doctorId });
+  
+  if (isLoading) return <div className="text-slate-500 text-sm mt-6 animate-pulse">Đang tải đánh giá...</div>;
+  if (!feedbacks || feedbacks.length === 0) return <div className="text-slate-500 text-sm mt-6 bg-slate-50/80 backdrop-blur-sm p-4 rounded-2xl border border-slate-100">Chưa có đánh giá nào cho bác sĩ này.</div>;
+
+  return (
+    <div className="mt-6 flex flex-col gap-3 relative">
+      <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+        <span className="material-symbols-outlined text-[18px] text-sky-500">forum</span>
+        Đánh giá từ bệnh nhân ({feedbacks.length})
+      </h4>
+      <div className="flex flex-col gap-3 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
+        {feedbacks.map((fb, idx) => (
+          <div key={idx} className="bg-white/60 backdrop-blur-md border border-slate-200/50 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-slate-700 text-sm flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-sky-100 text-sky-600 flex items-center justify-center text-[10px] font-bold uppercase">
+                  {(fb.patient?.full_name || fb.patient?.name || 'A').charAt(0)}
+                </div>
+                {fb.patient?.full_name || fb.patient?.name || 'Bệnh nhân ẩn danh'}
+              </span>
+              <span className="text-amber-500 text-[11px] font-bold bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-100 flex items-center gap-1">
+                {fb.overallRating || fb.rating || 5} <span className="material-symbols-outlined text-[12px] leading-none">star</span>
+              </span>
+            </div>
+            {fb.comment && <p className="text-slate-600 text-[13px] leading-relaxed italic pl-8">"{fb.comment}"</p>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Component for displaying all doctors grid
+function AllDoctorsModal({ isOpen, onClose, doctors, onSelectDoctor }) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0, y: 10 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.95, opacity: 0, y: 10 }}
+        className="w-[90vw] h-[90vh] bg-white/90 backdrop-blur-3xl border border-white/80 shadow-2xl rounded-[2.5rem] relative overflow-hidden flex flex-col p-6 md:p-12"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-200/50">
+          <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">Đội ngũ Bác sĩ</h2>
+          <button
+            className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-slate-100/80 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-colors border-none cursor-pointer"
+            onClick={onClose}
+          >
+            <span className="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        {/* Grid */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 md:pr-4 pb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {doctors.map((doc, idx) => (
+              <div
+                key={idx}
+                className="bg-white/80 rounded-[20px] shadow-sm border border-slate-200/60 flex flex-col overflow-hidden hover:shadow-md hover:-translate-y-1 transition-all cursor-pointer group"
+                onClick={() => {
+                  onClose();
+                  onSelectDoctor(doc);
+                }}
+              >
+                <div className="relative w-full h-[220px] bg-slate-100 overflow-hidden">
+                  <img
+                    src={doc.image}
+                    alt={doc.name}
+                    className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
+                  />
+                </div>
+                <div className="p-4 flex flex-col gap-1.5">
+                  <h3 className="text-[16px] font-extrabold text-slate-800 tracking-tight leading-tight">{doc.name}</h3>
+                  <p className="text-[12px] text-slate-500 font-medium">{doc.title}</p>
+                  <div className="flex flex-wrap items-center gap-2 mt-2">
+                    <span className="text-[11px] font-bold text-sky-600 bg-sky-50 px-2 py-1 rounded-md">{doc.experience || 'Chưa cập nhật'}</span>
+                    <span className="text-[11px] font-bold text-amber-500 bg-amber-50 px-2 py-1 rounded-md flex items-center gap-0.5">
+                      {doc.rating ? `${doc.rating} ⭐ (${doc.reviewsCount || 0})` : 'Chưa có đánh giá'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
 
 // Framer Motion Animation Variants
 const heroContainerVariants = {
@@ -187,8 +284,13 @@ function LandingPage({ onLogout }) {
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [isAIScanOpen, setIsAIScanOpen] = useState(false);
+  const [isAllDoctorsOpen, setIsAllDoctorsOpen] = useState(false);
   const [selectedDoctor, setSelectedDoctor] = useState(null);
   const [bookingDocId, setBookingDocId] = useState(null);
+
+  // Carousel State
+  const [carouselItems, setCarouselItems] = useState([]);
+  const [isCarouselAnimating, setIsCarouselAnimating] = useState(false);
 
   // Consume global authentication state from AuthContext
   const { user, loading: isLoadingAuth, logout } = useAuth();
@@ -204,6 +306,12 @@ function LandingPage({ onLogout }) {
   const { doctors: doctorsList } = useDoctors();
   const [activeVouchers, setActiveVouchers] = useState([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
+
+  // Initialize Carousel Items (load all doctors)
+  useEffect(() => {
+    const list = doctorsList.length > 0 ? doctorsList : LOCAL_MOCK_DOCTORS;
+    setCarouselItems(list);
+  }, [doctorsList]);
 
   useEffect(() => {
     async function loadData() {
@@ -225,6 +333,23 @@ function LandingPage({ onLogout }) {
     }
     loadData();
   }, []);
+
+  // Carousel Auto-play (Seamless Infinite Loop)
+  useEffect(() => {
+    if (carouselItems.length === 0) return;
+    const timer = setInterval(() => {
+      setIsCarouselAnimating(true);
+      setTimeout(() => {
+        setIsCarouselAnimating(false);
+        setCarouselItems((prev) => {
+          const next = [...prev];
+          next.push(next.shift());
+          return next;
+        });
+      }, 600); // Wait for transition to finish
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [carouselItems.length]);
 
   const mobileMenuRef = useRef(null);
 
@@ -386,8 +511,11 @@ function LandingPage({ onLogout }) {
 
   // Real Supabase data takes priority; fall back to local mock so the public
   // page is always visually complete even before the DB is seeded.
-  const displayDoctors = doctorsList.length > 0 ? doctorsList : LOCAL_MOCK_DOCTORS;
   const displayVouchers = activeVouchers.length > 0 ? activeVouchers : LOCAL_MOCK_VOUCHERS;
+
+  // Render exactly the items needed for a seamless shift.
+  // We append the first few items so the animation sliding left has content to reveal.
+  const extendedCarouselItems = carouselItems.length > 0 ? [...carouselItems, ...carouselItems.slice(0, 4)] : [];
 
   return (
     <>
@@ -695,43 +823,99 @@ function LandingPage({ onLogout }) {
       {/* Main Content Canvas */}
       <main className="flex-grow py-24 px-4 md:px-10 w-full max-w-[1280px] mx-auto flex flex-col gap-[120px]">
 
-        {/* Doctors Showcase Section */}
-        <section className="w-full flex flex-col gap-12 mb-12">
+        {/* Doctors Showcase Section - Carousel */}
+        <section className="w-full flex flex-col gap-12 mb-12 overflow-hidden relative">
           <div className="text-center w-full max-w-2xl mx-auto flex flex-col gap-4">
             <h2 className="font-bold text-[32px] leading-[1.3] tracking-[-0.01em] text-on-surface">Đội ngũ chuyên gia hàng đầu</h2>
+            <p className="text-on-surface-variant">Hãy thả tim để lưu lại nhé!</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {displayDoctors?.map?.((doc, index) => (
-              <motion.div
-                initial={{ opacity: 0, y: 50 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, type: "spring" }}
-                viewport={{ once: false, amount: 0.2 }}
-                key={doc.id}
-                className="glass-panel liquid-glass rounded-3xl overflow-hidden flex flex-col group hover:-translate-y-2 transition-transform duration-500"
-              >
-                <div className="w-full h-80 overflow-hidden relative">
-                  <img
-                    alt={doc.name}
-                    className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-700"
-                    src={doc.image}
-                  />
-                </div>
-                <div className="bg-white p-6 flex flex-col gap-4 flex-grow relative z-10">
-                  <div>
-                    <h3 className="font-semibold text-[20px] text-primary">{doc.name}</h3>
-                    <p className="text-on-surface-variant text-sm">{doc.title}</p>
+          
+          <div className="w-full max-w-[1008px] mx-auto overflow-hidden relative py-4">
+            <div 
+              className="flex gap-6 w-max"
+              style={{
+                transform: isCarouselAnimating ? 'translateX(calc(-320px - 24px))' : 'translateX(0)',
+                transition: isCarouselAnimating ? 'transform 0.6s ease-in-out' : 'none'
+              }}
+            >
+              {extendedCarouselItems.map((doc, index) => (
+                <div
+                  key={`${doc.id}-${index}`}
+                  className="bg-white rounded-[24px] shadow-sm border border-slate-100 flex flex-col overflow-hidden w-[320px] shrink-0"
+                >
+                  {/* Top Image Box */}
+                  <div className="relative w-full h-[320px] bg-slate-100">
+                    <img
+                      src={doc.image}
+                      alt={doc.name}
+                      className="w-full h-full object-cover object-top"
+                    />
+                    {/* Badge */}
+                    <div className="absolute top-4 left-4 bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm border border-emerald-100">
+                      <span className="material-symbols-outlined text-[14px]">verified</span>
+                      UY TÍN 100%
+                    </div>
+                    {/* Heart Button */}
+                    <button className="absolute top-4 right-4 w-8 h-8 bg-white rounded-full flex items-center justify-center text-slate-300 hover:text-rose-500 shadow-sm border-none cursor-pointer transition-colors">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                    </button>
                   </div>
-                  <button
-                    onClick={() => setSelectedDoctor(doc)}
-                    className="mt-auto flex items-center justify-center gap-2 py-3 px-4 bg-primary/5 hover:bg-primary text-primary hover:text-white rounded-xl transition-all duration-300 font-semibold text-sm border-none cursor-pointer group/btn"
-                  >
-                    <span>Xem hồ sơ</span>
-                    <span className="material-symbols-outlined text-[18px] group-hover/btn:translate-x-1 transition-transform">arrow_forward</span>
-                  </button>
+
+                  {/* Body Content */}
+                  <div className="p-5 flex flex-col gap-4">
+                    {/* Header */}
+                    <div>
+                      <h3 className="text-[18px] font-extrabold text-slate-800 tracking-tight leading-tight mb-1">{doc.name}</h3>
+                      <p className="text-[13px] text-slate-500 font-medium">{doc.title} • Chuyên khoa Da liễu</p>
+                    </div>
+
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="bg-slate-50 rounded p-3 flex flex-col gap-1">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Kinh nghiệm</span>
+                        <span className="text-[13px] font-bold text-slate-700">{doc.experience || 'Chưa cập nhật'}</span>
+                      </div>
+                      <div className="bg-slate-50 rounded p-3 flex flex-col gap-1">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Đánh giá</span>
+                        <span className="text-[13px] font-bold text-slate-700">
+                          {doc.rating ? `${doc.rating} ⭐ (${doc.reviewsCount || 0})` : 'Chưa có đánh giá'}
+                        </span>
+                      </div>
+                      <div className="bg-slate-50 rounded p-3 flex flex-col gap-1">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Phí khám</span>
+                        <span className="text-[13px] font-bold text-sky-600">{doc.consultationFee || 'Chưa cập nhật'}</span>
+                      </div>
+                      <div className="bg-slate-50 rounded p-3 flex flex-col gap-1">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Loại hình</span>
+                        <span className="text-[13px] font-bold text-slate-700">Khám trực tiếp</span>
+                      </div>
+                    </div>
+
+                    {/* Footer Action */}
+                    <div className="flex items-center justify-end mt-1">
+                      <button 
+                        onClick={() => setSelectedDoctor(doc)}
+                        className="bg-transparent border-none text-sky-600 font-bold text-[13px] cursor-pointer hover:text-sky-700 transition-colors flex items-center gap-1"
+                      >
+                        Xem hồ sơ
+                        <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </motion.div>
-            ))}
+              ))}
+            </div>
+          </div>
+
+          {/* View All Doctors Button */}
+          <div className="w-full flex justify-center mt-2 relative z-10">
+            <button 
+              onClick={() => setIsAllDoctorsOpen(true)}
+              className="bg-white/80 backdrop-blur-md border border-slate-200 text-slate-700 font-bold px-8 py-3.5 rounded-full hover:bg-sky-50 hover:text-sky-600 hover:border-sky-200 transition-all shadow-sm flex items-center gap-2 cursor-pointer group"
+            >
+              Xem tất cả bác sĩ
+              <span className="material-symbols-outlined text-[20px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+            </button>
           </div>
         </section>
 
@@ -1085,7 +1269,7 @@ function LandingPage({ onLogout }) {
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="w-[70vw] h-[70vh] min-h-[500px] bg-white/60 backdrop-blur-3xl border border-white/80 shadow-2xl rounded-[2.5rem] relative overflow-hidden flex flex-col p-12"
+              className="w-[70vw] h-[90vh] min-h-[500px] bg-white/60 backdrop-blur-3xl border border-white/80 shadow-2xl rounded-[2.5rem] relative overflow-hidden flex flex-col p-12"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Close Button */}
@@ -1157,6 +1341,9 @@ function LandingPage({ onLogout }) {
                     </div>
                   </div>
 
+                  {/* Doctor Reviews */}
+                  <DoctorReviewsList doctorId={selectedDoctor.id} />
+
                   {/* Dynamic Book CTA inside Modal */}
                   <button
                     onClick={handleBookFromModal}
@@ -1176,6 +1363,16 @@ function LandingPage({ onLogout }) {
         onClose={() => setIsBookingOpen(false)}
         preselectedDoctorId={bookingDocId}
       />
+      <AnimatePresence>
+        {isAllDoctorsOpen && (
+          <AllDoctorsModal 
+            isOpen={isAllDoctorsOpen} 
+            onClose={() => setIsAllDoctorsOpen(false)} 
+            doctors={doctorsList.length > 0 ? doctorsList : LOCAL_MOCK_DOCTORS} 
+            onSelectDoctor={(doc) => setSelectedDoctor(doc)} 
+          />
+        )}
+      </AnimatePresence>
     </>
   );
 }

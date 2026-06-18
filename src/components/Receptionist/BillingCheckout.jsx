@@ -407,9 +407,14 @@ export default function BillingCheckout({
 
                 <div className="text-left">
                   <h3 className="font-black text-lg text-slate-800">{selected.patientName}</h3>
-                  <p className="text-xs text-slate-500 font-medium">
-                    {selected.serviceName} · {selected.doctorName}
-                  </p>
+                  <div className="flex flex-col gap-1 mt-1">
+                    <p className="text-xs text-slate-500 font-medium">
+                      {selected.serviceName} · {selected.doctorName}
+                    </p>
+                    <p className="text-xs text-slate-500 font-medium">
+                      Ngày lập: {new Date().toLocaleDateString('vi-VN')}
+                    </p>
+                  </div>
                 </div>
 
                 {isPaid(selected) ? (

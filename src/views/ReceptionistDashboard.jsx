@@ -145,13 +145,30 @@ export default function ReceptionistDashboard() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [activeChatPatient, setActiveChatPatient] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
+  const [hasUnreadChat, setHasUnreadChat] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === 'chat' || isChatOpen) {
+      setHasUnreadChat(false);
+    }
+  }, [activeTab, isChatOpen]);
 
   useEffect(() => {
     let active = true;
     const fetchMsgs = async () => {
       try {
         const msgs = await ReceptionistChatModel.getAllMessages();
-        if (active) setChatMessages(msgs || []);
+        if (active) {
+          setChatMessages(prev => {
+            if (msgs && prev.length > 0 && msgs.length > prev.length) {
+               const lastMsg = msgs[msgs.length - 1];
+               if (lastMsg && lastMsg.senderRole === 'PATIENT' && activeTab !== 'chat' && !isChatOpen) {
+                  setHasUnreadChat(true);
+               }
+            }
+            return msgs || [];
+          });
+        }
       } catch (err) {
         console.error('Error fetching receptionist messages:', err);
       }
@@ -162,7 +179,7 @@ export default function ReceptionistDashboard() {
       active = false;
       clearInterval(interval);
     };
-  }, []);
+  }, [activeTab, isChatOpen]);
 
   const handleOpenChat = (patientId, patientName) => {
     const found = (patients || []).find((p) => p.id === patientId);
@@ -482,7 +499,7 @@ export default function ReceptionistDashboard() {
                   title="Chăm sóc khách hàng"
                 >
                   <MessageSquare size={18} />
-                  <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white animate-pulse" />
+                  {hasUnreadChat && <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-rose-500 border-2 border-white animate-pulse" />}
                 </motion.button>
 
                 {/* Notifications */}
