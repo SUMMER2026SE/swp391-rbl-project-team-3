@@ -24,11 +24,11 @@ export default function TreatmentPlanForm({
     <GlassCard className="p-6 mb-6">
       <div className="flex items-center gap-2 mb-4 pb-4 border-b border-slate-200/40">
         <FileText className="w-5 h-5 text-teal-600" />
-        <h3 className="font-extrabold text-lg text-slate-900">Kế hoạch Điều trị</h3>
+        <h3 className="text-lg font-bold text-gray-900 tracking-tight">Kế hoạch Điều trị</h3>
       </div>
       <div className="space-y-4">
         <div>
-          <label className="block text-xs font-bold text-slate-700 mb-2">Chỉ định dịch vụ phòng khám</label>
+          <label className="block text-sm font-semibold text-gray-700 mb-2 uppercase tracking-wider">Chỉ định dịch vụ phòng khám</label>
           <div className="grid grid-cols-2 gap-3">
             {services?.map?.((service, idx) => {
               const checked = selectedServices.includes(service);
@@ -54,13 +54,13 @@ export default function TreatmentPlanForm({
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-slate-700 mb-2">Lời dặn của Bác sĩ</label>
+          <label className="block text-sm font-semibold text-gray-700 mb-2 uppercase tracking-wider">Lời dặn của Bác sĩ</label>
           <textarea
             value={doctorNotes || ''}
             onChange={(e) => onNotesChange && onNotesChange(e.target.value)}
             readOnly={isReviewMode}
-            className={`${GLASS_INPUT} w-full py-3 px-4 text-sm font-semibold resize-none rounded-xl ${
-              isReviewMode ? 'bg-slate-100/50 text-slate-900 font-medium cursor-not-allowed' : ''
+            className={`${GLASS_INPUT} w-full p-4 text-sm font-semibold text-gray-900 resize-none rounded-xl ${
+              isReviewMode ? 'bg-slate-100/50 cursor-not-allowed' : ''
             }`}
             placeholder="Nhập lời dặn dò, chế độ ăn uống, sinh hoạt..."
             rows="2"

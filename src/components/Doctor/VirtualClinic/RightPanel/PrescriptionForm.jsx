@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Pill, Plus, Trash2, Calendar } from 'lucide-react';
+import { GLASS_INPUT } from '../../../common/GlassCard';
 
 export default function PrescriptionForm({ appointmentId, isReviewMode = false, examRecord = null, onChange }) {
   // For the moment, we treat existingPrescription as null
@@ -62,7 +63,7 @@ export default function PrescriptionForm({ appointmentId, isReviewMode = false, 
     setMedications(updated);
   };
 
-  const premiumInputClass = "w-full p-3 bg-white/60 border border-slate-200/80 rounded-xl focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all text-slate-800 text-sm font-semibold";
+  const premiumInputClass = `${GLASS_INPUT} w-full p-3 text-sm font-semibold text-gray-900 rounded-xl`;
 
   const getInputClass = (readOnly) => `${premiumInputClass} ${
     readOnly 
@@ -223,7 +224,7 @@ export default function PrescriptionForm({ appointmentId, isReviewMode = false, 
 
         {/* General Notes for Patient */}
         <div className="mt-6 pt-6 border-t border-slate-200/60">
-          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+          <label className="block text-sm font-semibold text-gray-700 mb-2 uppercase tracking-wider">
             Lời dặn chung của Bác sĩ (Sinh hoạt, Ăn uống, Chăm sóc)
           </label>
           <textarea
@@ -238,5 +239,4 @@ export default function PrescriptionForm({ appointmentId, isReviewMode = false, 
       </div>
     </div>
   );
-
 }

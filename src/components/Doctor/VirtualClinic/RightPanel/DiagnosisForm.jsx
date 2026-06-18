@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Stethoscope, Search } from 'lucide-react';
+import { GLASS_INPUT } from '../../../common/GlassCard';
 
 const ICD10_CODES = [
   "L20.9 - Viêm da cơ địa",
@@ -38,10 +39,10 @@ export default function DiagnosisForm({ value = '', onChange, isReviewMode = fal
     <div className="glass-3d water-refract rounded-[2rem] p-6 mb-6 relative z-50">
       <div className="flex items-center gap-2 mb-4 pb-4 border-b border-slate-200/40">
         <Stethoscope className="w-5 h-5 text-teal-600" />
-        <h3 className="font-extrabold text-lg text-slate-900">Chẩn đoán Lâm sàng</h3>
+        <h3 className="text-lg font-bold text-gray-900 tracking-tight">Chẩn đoán Lâm sàng</h3>
       </div>
       <div ref={wrapperRef} className="relative">
-        <label className="block text-xs font-bold text-slate-700 mb-2">Chẩn đoán xác định (ICD-10)</label>
+        <label className="block text-sm font-semibold text-gray-700 mb-2 uppercase tracking-wider">Chẩn đoán xác định (ICD-10)</label>
         <div className="relative">
           <input
             type="text"
@@ -52,10 +53,8 @@ export default function DiagnosisForm({ value = '', onChange, isReviewMode = fal
             }}
             onFocus={() => !isReviewMode && setShowDropdown(true)}
             readOnly={isReviewMode}
-            className={`w-full border rounded-xl py-3 px-4 text-sm font-semibold outline-none transition-all placeholder-slate-400 ${
-              isReviewMode
-                ? 'bg-slate-100/50 text-slate-900 font-medium cursor-not-allowed border-slate-200/60'
-                : 'bg-slate-50 border-slate-200 focus:border-sky-500 focus:bg-white focus:ring-4 focus:ring-sky-500/10'
+            className={`${GLASS_INPUT} w-full py-3 pl-4 pr-10 text-sm font-semibold rounded-xl ${
+              isReviewMode ? 'bg-slate-100/50 cursor-not-allowed' : ''
             }`}
             placeholder="Nhập mã hoặc tên bệnh (VD: L20.9 Viêm da cơ địa)..."
           />
@@ -66,7 +65,7 @@ export default function DiagnosisForm({ value = '', onChange, isReviewMode = fal
 
         {/* Dropdown for ICD-10 suggestions */}
         {showDropdown && !isReviewMode && filteredCodes.length > 0 && (
-          <div className="absolute z-10 w-full mt-2 bg-white border border-slate-200 rounded-xl shadow-xl max-h-48 overflow-y-auto custom-scrollbar">
+          <div className="absolute z-50 w-full mt-2 bg-white border border-slate-200 rounded-xl shadow-xl max-h-48 overflow-y-auto custom-scrollbar">
             {filteredCodes.map((code, index) => (
               <div
                 key={index}

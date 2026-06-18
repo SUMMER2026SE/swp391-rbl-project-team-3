@@ -16,7 +16,6 @@ import TreatmentProgressTracker from './RightPanel/TreatmentProgressTracker';
 import FollowUpAppointmentForm from './RightPanel/FollowUpAppointmentForm';
 
 import { ChatModel } from '../../../models/ChatModel';
-import LiquidTabSwitcher from '../../ui/LiquidTabSwitcher';
 import { useDoctors } from '../../../hooks/useDoctors';
 
 export default function VirtualClinicWorkspace({ appointment, onBack, handleCompleteExamination }) {
@@ -163,6 +162,7 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
         <div className="flex items-center gap-4">
           <button
             onClick={onBack}
+            title="Quay lại danh sách khám bệnh"
             className="p-2.5 glass-inner hover:bg-white rounded-full transition-all active:scale-95 text-slate-600 cursor-pointer"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -195,13 +195,29 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
         {/* Right Panel: Actions — Clinical Stepper Area */}
         <div className="lg:col-span-7 xl:col-span-6 h-full flex flex-col min-h-0">
 
-          {/* Clinical Stepper — responsive horizontal scroll to prevent cutoff */}
-          <div className="mb-8">
-            <LiquidTabSwitcher
-              tabs={steps}
-              activeTab={clinicalStep}
-              onChange={setClinicalStep}
-            />
+          {/* Clinical Stepper — floating Liquid Glass pills */}
+          <div className="flex justify-center mb-8">
+            <div className="bg-white/30 backdrop-blur-md border border-white/50 shadow-[inset_0_1px_0_rgba(255,255,255,0.6),0_8px_24px_rgba(31,38,135,0.08)] p-2 rounded-full inline-flex items-center gap-1 max-w-full">
+              {steps?.map?.((step) => {
+                const Icon = step.icon;
+                const isActive = clinicalStep === step.id;
+                return (
+                  <button
+                    key={step.id}
+                    onClick={() => setClinicalStep(step.id)}
+                    title={step.label}
+                    className={`relative flex items-center gap-2 px-6 py-3 rounded-full transition-all duration-300 whitespace-nowrap cursor-pointer ${
+                      isActive
+                        ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 font-bold scale-105'
+                        : 'text-gray-600 hover:bg-white/40 font-medium'
+                    }`}
+                  >
+                    {Icon && <Icon className="w-4 h-4 shrink-0" />}
+                    <span className="text-sm hidden sm:inline">{step.label}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Stepper Content Area — a liquid surface that spreads on press */}

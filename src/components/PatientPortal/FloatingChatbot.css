@@ -175,6 +175,32 @@
   backdrop-filter: blur(8px);
 }
 
+/* Light-wave sweep — an expanding radial pulse of light (CallAI palette) that
+   crosses the blurred background when the AI is summoned. Anchored at the
+   button corner; animated with transform + opacity only (GPU-composited).
+   Sits above the backdrop/plasma but below the chat content. */
+.lg-wave-sweep {
+  position: absolute;
+  left: calc(100% - 3rem);
+  top: calc(100% - 3rem);
+  width: 65vmax;
+  height: 65vmax;
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0.1);
+  background: radial-gradient(circle,
+    rgba(255, 255, 255, 0.20) 0%,
+    rgba(0, 245, 212, 0.14) 16%,
+    rgba(0, 122, 255, 0.10) 30%,
+    rgba(162, 0, 255, 0.08) 44%,
+    transparent 64%);
+  filter: blur(18px) saturate(160%);
+  mix-blend-mode: screen;
+  opacity: 0;
+  z-index: 2;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
 /* breathing avatar orb */
 @keyframes lg-orb-pulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.45), 0 0 22px rgba(167, 139, 250, 0.6); }
@@ -207,6 +233,179 @@
 .lg-no-scrollbar::-webkit-scrollbar { display: none; }
 .lg-no-scrollbar { scrollbar-width: none; }
 
+/* =================================================================
+   TRIGGER BUTTON — "rainbow water-drop" (ported from SkinAI.html)
+   A liquid glass drop with a spinning conic Siri-core, specular
+   highlights, organic wobble + float. Scaled from SkinAI's 320px
+   reference down to a 64px FAB (shadow offsets / sizes ÷ ~5).
+   Framer Motion owns the button's transform (entrance/hover/elastic
+   tap); all idle motion lives on inner layers to avoid clobbering it.
+   ================================================================= */
+.lg-fab {
+  -webkit-tap-highlight-color: transparent;
+  border-radius: 50%;
+}
+
+/* Soft rainbow halo bleeding outward — draws the eye, like the
+   Siri-core glow escaping the drop. Sits behind the drop. */
+.lg-fab-glow {
+  position: absolute;
+  inset: -28%;
+  border-radius: 50%;
+  z-index: 0;
+  background: radial-gradient(circle, rgba(138, 43, 226, 0.55), rgba(0, 200, 255, 0.28) 45%, transparent 70%);
+  filter: blur(11px);
+  animation: lg-fab-glow-pulse 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Idle float (translateY + rotate). Kept on its OWN layer so it never
+   fights Framer Motion's transform on the button element. */
+.lg-fab-float {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  will-change: transform;
+  animation: lg-fab-float 8s ease-in-out infinite;
+}
+
+/* The glass drop body: translucent, refractive, 3D inset depth. */
+.lg-fab-drop {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  /* dark-tinted glass so the screen-blended rainbow core stays vivid
+     even over a light page; light top-left for the glassy highlight */
+  background: radial-gradient(130% 130% at 30% 22%,
+    rgba(255, 255, 255, 0.22) 0%,
+    rgba(12, 16, 44, 0.42) 55%,
+    rgba(6, 9, 28, 0.55) 100%);
+  -webkit-backdrop-filter: blur(8px) saturate(150%);
+  backdrop-filter: blur(8px) saturate(150%);
+  box-shadow:
+    inset 3px 3px 5px rgba(255, 255, 255, 0.45),   /* top specular bevel */
+    inset -3px -3px 7px rgba(255, 255, 255, 0.12), /* soft lower rim     */
+    inset 5px -5px 10px rgba(0, 0, 0, 0.28),       /* curved inner shade */
+    0 8px 20px rgba(2, 18, 60, 0.45);              /* drop floats above  */
+  animation: lg-fab-wobble 6s ease-in-out infinite;
+  will-change: border-radius;
+}
+
+/* Spinning conic Siri-core (the SkinAI palette), blurred + screen. */
+.lg-fab-core {
+  position: absolute;
+  inset: 18%;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, #ff2a85, #8a2be2, #4169e1, #00ffff, #ff2a85);
+  filter: blur(7px);
+  opacity: 0.95;
+  mix-blend-mode: screen;
+  animation: lg-fab-spin 4s linear infinite, lg-fab-pulse 3s ease-in-out infinite alternate;
+}
+.lg-fab-core::after {
+  content: '';
+  position: absolute;
+  inset: 28%;
+  background: #fff;
+  border-radius: 50%;
+  filter: blur(5px);
+}
+
+/* Specular highlights (front + lower) for the wet-glass read. */
+.lg-fab-shine {
+  position: absolute;
+  top: 14%;
+  left: 20%;
+  width: 34%;
+  height: 20%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0) 70%);
+  transform: rotate(-40deg);
+  z-index: 2;
+  pointer-events: none;
+}
+.lg-fab-shine-sub {
+  position: absolute;
+  bottom: 14%;
+  right: 18%;
+  width: 18%;
+  height: 11%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 70%);
+  transform: rotate(-40deg);
+  z-index: 2;
+  pointer-events: none;
+}
+
+@keyframes lg-fab-wobble {
+  0%, 100% { border-radius: 46% 54% 50% 50% / 48% 52% 48% 52%; }
+  33%      { border-radius: 54% 46% 48% 52% / 52% 48% 52% 48%; }
+  66%      { border-radius: 50% 50% 54% 46% / 48% 52% 46% 54%; }
+}
+@keyframes lg-fab-float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50%      { transform: translateY(-5px) rotate(3deg); }
+}
+@keyframes lg-fab-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes lg-fab-pulse {
+  0%   { transform: scale(0.9); border-radius: 40% 60% 50% 50%; }
+  100% { transform: scale(1.1); border-radius: 60% 40% 50% 50%; }
+}
+@keyframes lg-fab-glow-pulse {
+  0%, 100% { opacity: 0.55; transform: scale(0.95); }
+  50%      { opacity: 0.9; transform: scale(1.08); }
+}
+
+/* Header avatar — a compact water-drop sharing the trigger button's identity
+   (rainbow Siri-core in glass), so the chat header matches the FAB. */
+.lg-mini-drop {
+  overflow: hidden;
+  background: radial-gradient(130% 130% at 30% 22%,
+    rgba(255, 255, 255, 0.22) 0%,
+    rgba(12, 16, 44, 0.40) 60%,
+    rgba(6, 9, 28, 0.50) 100%);
+  box-shadow:
+    inset 2px 2px 4px rgba(255, 255, 255, 0.42),
+    inset -2px -2px 5px rgba(255, 255, 255, 0.10),
+    inset 3px -3px 7px rgba(0, 0, 0, 0.28),
+    0 6px 16px rgba(2, 18, 60, 0.40);
+  animation: lg-fab-wobble 7s ease-in-out infinite;
+  will-change: border-radius;
+}
+.lg-mini-drop-core {
+  position: absolute;
+  inset: 16%;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, #ff2a85, #8a2be2, #4169e1, #00ffff, #ff2a85);
+  filter: blur(5px);
+  opacity: 0.95;
+  mix-blend-mode: screen;
+  animation: lg-fab-spin 4s linear infinite, lg-fab-pulse 3s ease-in-out infinite alternate;
+}
+.lg-mini-drop-core::after {
+  content: '';
+  position: absolute;
+  inset: 30%;
+  background: #fff;
+  border-radius: 50%;
+  filter: blur(3px);
+}
+.lg-mini-drop-shine {
+  position: absolute;
+  top: 14%;
+  left: 20%;
+  width: 32%;
+  height: 20%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0) 70%);
+  transform: rotate(-40deg);
+  pointer-events: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .lg-blob, .lg-orb, .lg-typing-dot, .lg-edge-border-system { animation: none !important; }
+  .lg-blob, .lg-orb, .lg-typing-dot, .lg-edge-border-system,
+  .lg-fab-glow, .lg-fab-float, .lg-fab-drop, .lg-fab-core,
+  .lg-mini-drop, .lg-mini-drop-core { animation: none !important; }
 }

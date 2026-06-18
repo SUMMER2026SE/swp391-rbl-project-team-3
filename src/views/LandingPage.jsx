@@ -741,6 +741,8 @@ function LandingPage({ onLogout }) {
           )}
         </div>
       )}
+      {/* Landing content stage — moved as one unit when the AI is summoned */}
+      <div id="lp-stage">
       {/* Hero Section */}
       <section className="w-full min-h-screen relative flex items-center justify-center overflow-hidden py-24 md:py-32">
         <motion.div 
@@ -1251,6 +1253,7 @@ function LandingPage({ onLogout }) {
           <a className="text-on-surface-variant hover:text-secondary transition-colors duration-300 no-underline" href="#">Hỗ trợ kỹ thuật</a>
         </div>
       </motion.footer>
+      </div>
       <ChangePasswordModal isOpen={isChangePasswordOpen} onClose={() => setIsChangePasswordOpen(false)} />
       <FloatingChatbot onBookAppointment={() => setIsBookingOpen(true)} onAIScan={() => setIsAIScanOpen(true)} />
       <FreeSkinScanModal isOpen={isAIScanOpen} onClose={() => setIsAIScanOpen(false)} onBookAppointment={() => setIsBookingOpen(true)} />

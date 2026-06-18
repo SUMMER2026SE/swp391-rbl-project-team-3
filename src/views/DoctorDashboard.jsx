@@ -86,7 +86,7 @@ export default function DoctorDashboard() {
   // Dynamic Page Title
   const getPageTitle = () => {
     if (activeAppointment) {
-      return `Phòng khám ảo: ${activeAppointment.patientName}`;
+      return `Hồ sơ Khám bệnh: ${activeAppointment?.patientName || 'Bệnh nhân'}`;
     }
     const tabNames = {
       overview: 'Tổng quan',

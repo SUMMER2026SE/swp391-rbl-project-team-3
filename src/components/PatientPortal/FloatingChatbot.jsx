@@ -7,29 +7,6 @@ import './FloatingChatbot.css';
 
 /* ───────────────────────── Sub-components ───────────────────────── */
 
-/* Custom brand mark — a clean monoline skincare droplet. Deliberately not the
-   stock AI sparkle/robot; the stroked silhouette lets the orb's gradient show
-   through, with a faint inner highlight reading as a soft reflection. */
-function BrandMark({ className = '' }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M12 3.2c3.9 3.45 6 6.78 6 9.93a6 6 0 0 1-12 0c0-3.15 2.1-6.48 6-9.93Z"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M9.4 13.6a2.7 2.7 0 0 0 2.3 2.6"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-        opacity="0.5"
-      />
-    </svg>
-  );
-}
-
 function ModeToggle({ mode, setMode }) {
   const tabs = [
     { id: 'AI', label: 'DermaSmart AI', Icon: Bot },
@@ -115,6 +92,7 @@ function MessageBubble({ msg, isLatest, onTextUpdate }) {
         {isPatient ? 'Bạn' : msg.senderName}
       </span>
       <div
+        data-wave
         className={
           isPatient
             ? 'max-w-[78%] px-4 py-2.5 rounded-2xl rounded-br-md text-sm leading-relaxed text-white shadow-lg shadow-sky-900/30 bg-gradient-to-br from-cyan-400 via-sky-500 to-violet-500'
@@ -193,6 +171,97 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = prev; };
+  }, [isOpen]);
+
+  // "Light wave" shockwave on invoke (ported from CallAI.html runPhysicsMotion):
+  // ripples every [data-wave] element outward from the button origin, staggered
+  // by distance, so the energy visibly spreads through the UI. WAAPI on these
+  // non-Framer elements with fill:'none' → no transform conflict, no residue.
+  useEffect(() => {
+    if (!isOpen) return;
+    if (typeof window === 'undefined') return;
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+
+    const originX = window.innerWidth - 48;   // button corner (bottom-right, 3rem)
+    const originY = window.innerHeight - 48;
+
+    // The landing page itself reacts: ALL of its content (wrapped in #lp-stage)
+    // is pushed away from the button then settles, so the background visibly
+    // moves as the wave passes. Fired immediately — while the radial reveal is
+    // still expanding — so the shift is seen before the frost fully covers it.
+    // Transform-only on the wrapper; composes with the page's own Framer anims.
+    const stage = typeof document !== 'undefined' && document.getElementById('lp-stage');
+    if (stage) {
+      stage.style.transformOrigin = '50% 0';
+      stage.animate(
+        [
+          { transform: 'translate3d(0, 0, 0) scale(1)' },
+          { transform: 'translate3d(-9px, -5px, 0) scale(1.012)', offset: 0.36 },
+          { transform: 'translate3d(3px, 1px, 0) scale(1.003)', offset: 0.66 },
+          { transform: 'translate3d(0, 0, 0) scale(1)' },
+        ],
+        { duration: 1050, easing: 'cubic-bezier(.22, 1, .36, 1)', fill: 'none' }
+      );
+    }
+
+    // Small lead so the radial reveal has begun and the items are laid out.
+    const timer = setTimeout(() => {
+      // The visible wave of light expanding across the (blurred) background.
+      const sweep = document.querySelector('.lg-wave-sweep');
+      if (sweep) {
+        sweep.animate(
+          [
+            { transform: 'translate(-50%, -50%) scale(0.1)', opacity: 0 },
+            { transform: 'translate(-50%, -50%) scale(0.55)', opacity: 0.7, offset: 0.2 },
+            { transform: 'translate(-50%, -50%) scale(2.6)', opacity: 0 },
+          ],
+          { duration: 1200, easing: 'cubic-bezier(.22, 1, .36, 1)', fill: 'none' }
+        );
+      }
+
+      // Gentle plasma swell as the wave passes. We deliberately do NOT scale the
+      // full-screen backdrop-filter here — that's the heaviest op and was a
+      // source of stutter; the real page already reacts via #lp-stage.
+      const plasma = document.querySelector('.lg-plasma');
+      if (plasma) {
+        plasma.animate(
+          [
+            { transform: 'scale(1)' },
+            { transform: 'scale(1.03)', offset: 0.4 },
+            { transform: 'scale(1)' },
+          ],
+          { duration: 950, easing: 'cubic-bezier(.22, 1, .36, 1)', fill: 'none' }
+        );
+      }
+
+      document.querySelectorAll('[data-wave]').forEach((el) => {
+        const r = el.getBoundingClientRect();
+        if (!r.width || !r.height) return;
+        const cx = r.left + r.width / 2;
+        const cy = r.top + r.height / 2;
+        const dx = cx - originX;
+        const dy = cy - originY;
+        const dist = Math.hypot(dx, dy);
+        const delay = Math.min(dist / 1.3, 360); // tighter shockwave travel
+        const len = Math.max(dist, 1);
+        const nx = dx / len;
+        const ny = dy / len;
+        const amp = 4; // gentler nudge as the wave passes through
+
+        // Clean nudge-and-return (no recoil keyframe) so each element settles
+        // smoothly back to rest without a tiny bounce.
+        el.animate(
+          [
+            { transform: 'translate3d(0,0,0) scale(1)', filter: 'brightness(1)' },
+            { transform: `translate3d(${nx * amp}px, ${ny * amp - amp * 0.3}px, 0) scale(1.006)`, filter: 'brightness(1.05)', offset: 0.4 },
+            { transform: 'translate3d(0,0,0) scale(1)', filter: 'brightness(1)' },
+          ],
+          { duration: 520, delay, easing: 'cubic-bezier(.22, 1, .36, 1)', fill: 'none' }
+        );
+      });
+    }, 140);
+
+    return () => clearTimeout(timer);
   }, [isOpen]);
 
   // Poll for messages (AI + live receptionist) while open
@@ -317,14 +386,22 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0, opacity: 0 }}
-            whileHover={{ scale: 1.08 }}
-            whileTap={{ scale: 0.92 }}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.85 }}
+            // Elastic, liquid press — mirrors SkinAI's cubic-bezier(0.5, 2.5, 0.5, 1)
+            transition={{ type: 'spring', stiffness: 520, damping: 13, mass: 0.7 }}
             onClick={() => setIsOpen(true)}
             aria-label="Mở trợ lý DermaSmart AI"
-            className="fixed bottom-6 right-6 z-[9998] w-16 h-16 rounded-full flex items-center justify-center cursor-pointer border-none text-white bg-gradient-to-br from-cyan-400 via-sky-500 to-violet-500 shadow-xl shadow-sky-500/40"
+            className="lg-fab fixed bottom-6 right-6 z-[9998] w-16 h-16 flex items-center justify-center cursor-pointer border-none bg-transparent p-0"
           >
-            <span className="lg-orb absolute inset-0 rounded-full" />
-            <BrandMark className="w-7 h-7 relative z-10" />
+            <span className="lg-fab-glow" aria-hidden="true" />
+            <span className="lg-fab-float">
+              <span className="lg-fab-drop">
+                <span className="lg-fab-core" />
+                <span className="lg-fab-shine" />
+                <span className="lg-fab-shine-sub" />
+              </span>
+            </span>
           </motion.button>
         )}
       </AnimatePresence>
@@ -339,7 +416,11 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
             initial={{ clipPath: REVEAL_ORIGIN }}
             animate={{ clipPath: REVEAL_FULL }}
             exit={{ clipPath: REVEAL_ORIGIN }}
-            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+            // CallAI progressive radial reveal — ease-out cubic-bezier(.16,1,.3,1),
+            // ~980ms open / ~880ms close (clip-path is GPU-composited, no layout).
+            transition={{
+              clipPath: { duration: 0.98, ease: [0.16, 1, 0.3, 1] },
+            }}
           >
             {/* Layer 0 — static frosted dim of the page (opacity-only fade) */}
             <motion.div
@@ -359,6 +440,9 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
               <span className="lg-blob lg-blob--orange" />
             </div>
 
+            {/* Light-wave sweep — expands across the background on summon */}
+            <div className="lg-wave-sweep" aria-hidden="true" />
+
             {/* Layer 1.5 — rotating Apple-Intelligence colour rim at the screen edge */}
             <div className="lg-edge" aria-hidden="true">
               <div className="lg-edge-border-system" />
@@ -367,16 +451,31 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
             {/* Layer 2 — content. Strict flex column, internally scrolling. */}
             <motion.div
               className="relative z-10 flex flex-col h-full w-full max-w-3xl mx-auto px-4 sm:px-6"
-              style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.25, duration: 0.4 }}
+              style={{
+                paddingTop: 'env(safe-area-inset-top)',
+                paddingBottom: 'env(safe-area-inset-bottom)',
+                // Scale-up originates from the button corner (bottom-right), per CallAI.
+                transformOrigin: 'calc(100% - 3rem) calc(100% - 3rem)',
+                willChange: 'transform, opacity',
+              }}
+              // CallAI "invoke" feel: smooth scale-up + opacity fade. A decelerating
+              // ease-out tween (NOT a spring) so it settles cleanly with no overshoot
+              // bounce at the end. transform + opacity only → GPU-composited.
+              initial={{ opacity: 0, scale: 0.94 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.97 }}
+              transition={{
+                scale: { duration: 0.66, ease: [0.22, 1, 0.36, 1], delay: 0.06 },
+                opacity: { duration: 0.5, ease: [0.22, 1, 0.36, 1], delay: 0.06 },
+              }}
             >
               {/* Header — anchored top */}
-              <header className="flex-none flex items-center justify-between gap-3 pt-5 pb-4">
+              <header data-wave className="flex-none flex items-center justify-between gap-3 pt-5 pb-4">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="relative w-11 h-11 rounded-2xl flex items-center justify-center bg-gradient-to-br from-cyan-400 via-sky-500 to-violet-500 shadow-lg shadow-sky-500/30 shrink-0">
-                    <BrandMark className="w-5 h-5 text-white" />
+                  {/* Mini water-drop — same identity as the trigger button */}
+                  <div className="lg-mini-drop relative w-11 h-11 shrink-0">
+                    <span className="lg-mini-drop-core" />
+                    <span className="lg-mini-drop-shine" />
                   </div>
                   <div className="min-w-0">
                     <h2 className="text-white font-bold text-base leading-tight truncate">DermaSmart AI</h2>
@@ -398,7 +497,7 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
               </header>
 
               {/* Mode toggle — anchored */}
-              <div className="flex-none pb-4">
+              <div data-wave className="flex-none pb-4">
                 <ModeToggle mode={mode} setMode={setMode} />
               </div>
 
@@ -455,6 +554,7 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
                   {quickActions.map(({ label, Icon, action }, idx) => (
                     <button
                       key={idx}
+                      data-wave
                       onClick={action}
                       className="flex items-center gap-1.5 shrink-0 px-3.5 py-2 rounded-full text-xs font-semibold cursor-pointer whitespace-nowrap border border-white/15 bg-white/10 text-white/85 hover:bg-white/20 hover:text-white transition-colors"
                     >
@@ -465,7 +565,7 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
                 </div>
 
                 {/* Input — anchored bottom */}
-                <div className="lg-glass flex items-center gap-2 p-2 pl-4 rounded-full mb-4 shadow-xl shadow-black/20">
+                <div data-wave className="lg-glass flex items-center gap-2 p-2 pl-4 rounded-full mb-4 shadow-xl shadow-black/20">
                   <input
                     ref={inputRef}
                     type="text"
