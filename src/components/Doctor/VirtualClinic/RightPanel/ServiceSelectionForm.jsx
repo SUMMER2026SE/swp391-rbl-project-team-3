@@ -67,7 +67,13 @@ export default function ServiceSelectionForm({ onSelectionChange }) {
     }
     setSelectedServices(updated);
     if (onSelectionChange) {
-      onSelectionChange(updated);
+      // Bubble up full {id, name} objects so the exam-complete handler can write
+      // each indication to service_tickets (which stores service_name).
+      const selectedObjects = updated
+        .map((sid) => MOCK_SERVICES.find((s) => s.id === sid))
+        .filter(Boolean)
+        .map((s) => ({ id: s.id, name: s.name }));
+      onSelectionChange(selectedObjects);
     }
   };
 

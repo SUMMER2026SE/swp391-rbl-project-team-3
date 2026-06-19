@@ -95,6 +95,48 @@ export const MedicalRecordModel = {
     }
   },
 
+  // Fetch the single EMR row tied to a specific appointment (1:1 via the
+  // UNIQUE(appointment_id) constraint). Used by the Patient Portal read path.
+  async getByAppointmentId(appointmentId) {
+    if (appointmentId === null || appointmentId === undefined) return null;
+    try {
+      const { data, error } = await supabase
+        .from('medical_records')
+        .select('*, doctor:doctor_profiles(*)')
+        .eq('appointment_id', appointmentId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    } catch (e) {
+      console.error('Supabase fetch error (medical_record by appointment):', e.message);
+      return null;
+    }
+  },
+
+  // EMR WRITE (Doctor "Hoàn tất khám"). One record per appointment, so we UPSERT
+  // on the appointment_id unique key — re-finishing an exam updates in place
+  // instead of throwing a 23505 duplicate-key error. Only real columns are sent
+  // (diagnosis, symptoms, doctor_note); the lifecycle status lives on the
+  // appointments row, not here. Returns the persisted row (incl. record_id).
+  async upsertExam({ appointment_id, patient_id, doctor_id, diagnosis, symptoms, doctor_note }) {
+    const payload = {
+      appointment_id,
+      patient_id,
+      doctor_id,
+      diagnosis: diagnosis || null,
+      symptoms: symptoms || null,
+      doctor_note: doctor_note || null,
+      updated_at: new Date().toISOString(),
+    };
+    const { data, error } = await supabase
+      .from('medical_records')
+      .upsert([payload], { onConflict: 'appointment_id' })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
   // Synchronous and hybrid check-in methods (for feature/receptionist compatibility)
   getWithPatientInfo(recordId) {
     const list = this.getAllSync();

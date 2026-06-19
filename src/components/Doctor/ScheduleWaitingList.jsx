@@ -3,19 +3,17 @@ import { Clock, PlayCircle, Eye } from 'lucide-react';
 
 export default function ScheduleWaitingList({ doctorId, onStartExam, appointments = [] }) {
   const today = new Date().toISOString().split('T')[0];
-  const now = new Date();
-  const currentTimeString = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
 
+  // PHASE 4 — the active waiting room is strictly patients the Receptionist has
+  // CHECKED IN (status 'Đang chờ' / WAITING). 'Đã xác nhận' (CONFIRMED, not yet
+  // arrived) is intentionally excluded. Completed exams ('Đã khám') stay visible
+  // for read-only review. Time-of-day no longer hides a checked-in patient.
   const todayAppointments = [...appointments]?.filter?.(
     (apt) => {
       const isDoctorMatch = String(apt?.doctorId || apt?.doctor_id) === String(doctorId);
-      const isNotCancelled = apt?.status !== 'Đã hủy';
-      const aptTime = apt?.time || '00:00';
-      // Hide if the appointment time has passed, but maybe keep 'Đã khám' visible? 
-      // The user requested: "lịch khám nào qua giờ khám thì sẽ không hiện lên"
-      const isPast = aptTime < currentTimeString;
-      
-      return isDoctorMatch && isNotCancelled && (!isPast || apt?.status === 'Đã khám');
+      const isWaiting = apt?.status === 'Đang chờ';
+      const isExamined = apt?.status === 'Đã khám';
+      return isDoctorMatch && (isWaiting || isExamined);
     }
   ).sort((a, b) => (a?.time || '').localeCompare(b?.time || ''));
 

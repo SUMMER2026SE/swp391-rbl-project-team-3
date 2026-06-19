@@ -1,7 +1,8 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { GLASS_INPUT } from '../components/common/GlassCard';
+import { ServiceTicketModel } from '../models/ServiceTicketModel';
 import {
   motion,
   AnimatePresence,
@@ -42,9 +43,52 @@ export default function TechnicianDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [activeTask, setActiveTask] = useState(null);
-  const [tasks, setTasks] = useState(([]) || []);
+  const [tasks, setTasks] = useState([]);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [showToast, setShowToast] = useState(false);
+
+  // PHASE 3 — Doctor → Technician read path. Map a service_ticket row into the
+  // task shape the workspace/list components already consume.
+  const mapTicket = (t) => ({
+    id: t.id,
+    appointmentId: t.appointment_id,
+    patientId: t.appointment?.patient_id || null,
+    patientName: t.appointment?.patient_name || 'Bệnh nhân',
+    procedureType: t.service_name,
+    procedure: t.service_name,
+    service: t.service_name,
+    status: t.status === 'TECH_COMPLETED' ? 'Đã hoàn thành' : 'Chờ thực hiện',
+    createdAt: t.created_at,
+    requestTime: t.created_at,
+    resultRecord:
+      t.status === 'TECH_COMPLETED'
+        ? {
+            technicianNotes: t.result_notes || '',
+            images: t.result_image_url
+              ? [{ id: 'res-0', url: t.result_image_url, name: 'result.jpg' }]
+              : [],
+            metrics: {},
+          }
+        : null,
+  });
+
+  const loadTasks = useCallback(async () => {
+    try {
+      const tickets = await ServiceTicketModel.getActiveTickets();
+      setTasks((Array.isArray(tickets) ? tickets : []).map(mapTicket));
+    } catch (err) {
+      console.error('Failed to load technician tasks:', err);
+      setTasks([]);
+    }
+  }, []);
+
+  // Initial load + light polling so indications a doctor just routed appear
+  // without a manual refresh.
+  useEffect(() => {
+    loadTasks();
+    const interval = setInterval(loadTasks, 5000);
+    return () => clearInterval(interval);
+  }, [loadTasks]);
 
   /* ───────── dynamic page title ───────── */
   const getPageTitle = () => {
@@ -101,15 +145,20 @@ export default function TechnicianDashboard() {
   ];
 
   /* ───────── handlers ───────── */
-  const handleCompleteTask = (taskId, resultRecord) => {
-    const updatedTasks = tasks?.map?.((t) =>
-      t.id === taskId ? { ...t, status: 'Đã hoàn thành', resultRecord } : t);
-    setTasks(updatedTasks);
-    // Also update global mock
-    const found = ([])?.find((t) => t.id === taskId);
-    if (found) {
-      found.status = 'Đã hoàn thành';
-      found.resultRecord = resultRecord;
+  // PHASE 3 — Technician result feedback loop. Persist the completion to the
+  // service_tickets row so the Doctor's workspace can read tech notes/images.
+  const handleCompleteTask = async (taskId, resultRecord) => {
+    try {
+      await ServiceTicketModel.update(taskId, {
+        status: 'TECH_COMPLETED',
+        result_notes: resultRecord?.technicianNotes || '',
+        result_image_url: resultRecord?.images?.[0]?.url || null,
+        technician_id: user?.id || null,
+        updated_at: new Date().toISOString(),
+      });
+      await loadTasks();
+    } catch (err) {
+      console.error('Failed to save technician result:', err);
     }
     setActiveTask(null);
     setShowToast(true);

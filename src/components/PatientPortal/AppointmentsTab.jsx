@@ -25,8 +25,11 @@ import { useAppointmentController } from '../../controllers/useAppointmentContro
 import { useFeedbackController } from '../../controllers/useFeedbackController';
 import { useAuth } from '../../context/AuthContext';
 import { DoctorModel } from '../../models/DoctorModel';
+import { MedicalRecordModel } from '../../models/MedicalRecordModel';
+import { PrescriptionModel } from '../../models/PrescriptionModel';
 import { createPaymentLink, getPaymentStatus } from '../../utils/payos';
 import FeedbackFormModal from './FeedbackFormModal';
+import MedicalRecordDetailModal from './MedicalRecordDetailModal';
 
 // ─── Status Badge Component ─────────────────────────────────────────────────
 
@@ -56,7 +59,7 @@ function StatusBadge({ text, type = 'status' }) {
 
 // ─── Appointment Card Component ──────────────────────────────────────────────
 
-function AppointmentCard({ apt, index, isUpcoming, onCancel, onReschedule, onViewFeedback, onWriteFeedback, existingFeedback }) {
+function AppointmentCard({ apt, index, isUpcoming, onCancel, onReschedule, onViewFeedback, onWriteFeedback, onViewEMR, existingFeedback }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 15 }}
@@ -154,7 +157,7 @@ function AppointmentCard({ apt, index, isUpcoming, onCancel, onReschedule, onVie
               </button>
             )}
             <button
-              onClick={() => onViewFeedback(apt)}
+              onClick={() => onViewEMR(apt)}
               className="text-sky-600 hover:bg-sky-50 border border-sky-200 rounded-xl px-4 py-2 text-xs font-semibold transition-all cursor-pointer bg-white flex items-center gap-1.5"
             >
               <MessageSquare className="w-3 h-3" />
@@ -799,6 +802,10 @@ export default function AppointmentsTab() {
   const [viewTarget, setViewTarget] = useState(null);
   const [writeFeedbackTarget, setWriteFeedbackTarget] = useState(null);
 
+  // PHASE 2 — EMR read. Fetched record passed into MedicalRecordDetailModal.
+  const [emrRecord, setEmrRecord] = useState(null);
+  const [emrLoading, setEmrLoading] = useState(false);
+
   // Date-aware split: an *active* appointment only counts as "upcoming" while
   // its date hasn't passed; once the date is in the past it moves to history
   // (overdue) instead of lingering in "sắp tới" forever.
@@ -845,6 +852,59 @@ export default function AppointmentsTab() {
     return { success: false };
   };
 
+  // PHASE 2 — EMR READ PATH. Only the finalized exam (Đã khám / Hoàn thành) is
+  // synced to the patient. Fetch the medical_records row by appointment, then
+  // its prescription (header + details), and shape it for MedicalRecordDetailModal.
+  const handleViewEMR = async (apt) => {
+    const SYNCED = ['Đã khám', 'Hoàn thành', 'Reviewed'];
+    if (!SYNCED.includes(apt.status)) return;
+    setEmrLoading(true);
+    try {
+      const mr = await MedicalRecordModel.getByAppointmentId(apt.id);
+      const presc = mr?.record_id ? await PrescriptionModel.getByRecordId(mr.record_id) : null;
+
+      const prescriptions = (presc?.prescription_details || []).map((d) => ({
+        name: d?.medicine?.medicine_name || 'Thuốc',
+        type: 'Thuốc',
+        dosage: d?.dosage || '—',
+        frequency: d?.frequency || '—',
+        duration: d?.duration || '—',
+        quantity: d?.quantity ?? null,
+        instructions: d?.instruction || '',
+      }));
+
+      const record = {
+        date: apt.date,
+        time: apt.time,
+        doctor: apt.doctorName,
+        service: apt.service,
+        fee: apt.fee,
+        paymentStatus: apt.paymentStatus,
+        patient: { fullName: apt.patientName },
+        symptoms: mr?.symptoms || '',
+        diagnosis: mr?.diagnosis || 'Chưa có chẩn đoán được ghi nhận.',
+        diagnosisDetail: mr?.doctor_note || '',
+        notes: mr?.doctor_note || '',
+        prescriptions,
+        // Sections the live schema doesn't carry yet — guarded as empty so the
+        // modal renders gracefully instead of crashing.
+        aiAnalysis: null,
+        treatmentPlan: null,
+        beforeAfterImages: [],
+        followUps: [],
+        treatmentHistory: [],
+      };
+      setEmrRecord(record);
+    } catch (err) {
+      console.error('Failed to load EMR for patient:', err);
+      window.dispatchEvent(new CustomEvent('show-toast', {
+        detail: { message: 'Không tải được hồ sơ khám. Vui lòng thử lại.', type: 'error' },
+      }));
+    } finally {
+      setEmrLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-8">
       {/* Upcoming */}
@@ -870,6 +930,7 @@ export default function AppointmentsTab() {
                 onReschedule={setRescheduleTarget}
                 onViewFeedback={setViewTarget}
                 onWriteFeedback={setWriteFeedbackTarget}
+                onViewEMR={handleViewEMR}
                 existingFeedback={getFeedbackByAppointment(apt.id)}
               />
             ))
@@ -906,6 +967,7 @@ export default function AppointmentsTab() {
                 onReschedule={setRescheduleTarget}
                 onViewFeedback={setViewTarget}
                 onWriteFeedback={setWriteFeedbackTarget}
+                onViewEMR={handleViewEMR}
                 existingFeedback={getFeedbackByAppointment(apt.id)}
               />
             ))
@@ -950,7 +1012,27 @@ export default function AppointmentsTab() {
               />
             )}
           </AnimatePresence>
+          {/* PHASE 2 — EMR detail (real medical_records + prescriptions) */}
+          <AnimatePresence>
+            {emrRecord && (
+              <MedicalRecordDetailModal
+                record={emrRecord}
+                onClose={() => setEmrRecord(null)}
+              />
+            )}
+          </AnimatePresence>
         </>,
+        document.body
+      )}
+
+      {/* Lightweight loading veil while the EMR is being fetched */}
+      {emrLoading && createPortal(
+        <div className="fixed inset-0 z-[9998] flex items-center justify-center bg-slate-900/30 backdrop-blur-sm">
+          <div className="flex items-center gap-3 bg-white/90 px-5 py-3 rounded-2xl shadow-xl border border-white">
+            <RefreshCw className="w-4 h-4 text-emerald-500 animate-spin" />
+            <span className="text-sm font-semibold text-slate-700">Đang tải hồ sơ khám...</span>
+          </div>
+        </div>,
         document.body
       )}
     </div>

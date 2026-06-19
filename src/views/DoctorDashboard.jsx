@@ -1,10 +1,14 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import GlassSelect from '../components/common/GlassSelect';
 import { NotificationModel } from '../models/NotificationModel';
 import { DoctorModel } from '../models/DoctorModel';
 import { AppointmentModel } from '../models/AppointmentModel';
+import { MedicalRecordModel } from '../models/MedicalRecordModel';
+import { PrescriptionModel } from '../models/PrescriptionModel';
+import { ServiceTicketModel } from '../models/ServiceTicketModel';
+import { supabase } from '../supabaseClient';
 import {
   motion,
   AnimatePresence,
@@ -60,18 +64,44 @@ export default function DoctorDashboard() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [appointments, setAppointments] = useState([]);
-  const [showToast, setShowToast] = useState(false);
+  // Toast supports both success and error feedback for the EMR write flow.
+  const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' }
+  const [isSaving, setIsSaving] = useState(false);
   const [doctorsList, setDoctorsList] = useState([]);
   const [activeDoctor, setActiveDoctor] = useState(null);
 
+  const showToast = useCallback((message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3200);
+  }, []);
+
+  // Centralized loader so both the initial fetch and the Realtime listener can
+  // refresh the doctor's queue from Supabase.
+  const loadApts = useCallback(async () => {
+    if (!currentDoctorId) return;
+    const data = await AppointmentModel.getByDoctorId(currentDoctorId);
+    setAppointments(Array.isArray(data) ? data : []);
+  }, [currentDoctorId]);
+
+  useEffect(() => {
+    loadApts();
+  }, [loadApts]);
+
+  // PHASE 4 — Realtime Receptionist → Doctor queue. Subscribe to changes on the
+  // appointments rows for THIS doctor; when a receptionist checks a patient in
+  // (status → 'Đang chờ') or any status flips, refetch with zero manual reload.
   useEffect(() => {
     if (!currentDoctorId) return;
-    const loadApts = async () => {
-      const data = await AppointmentModel.getByDoctorId(currentDoctorId);
-      setAppointments(data);
-    };
-    loadApts();
-  }, [currentDoctorId]);
+    const channel = supabase
+      .channel(`doctor-appointments-${currentDoctorId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'appointments', filter: `doctor_id=eq.${currentDoctorId}` },
+        () => { loadApts(); }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [currentDoctorId, loadApts]);
 
   useEffect(() => {
     const loadDoctors = async () => {
@@ -97,25 +127,71 @@ export default function DoctorDashboard() {
     return tabNames[activeTab] || 'Tổng quan';
   };
 
+  // PHASE 1 & 3 — EMR WRITE PATH (no longer a stub).
+  // Persists the exam to Supabase: flips the appointment to 'Đã khám' (EXAMINED),
+  // upserts the medical_records row, saves the prescription (header + details),
+  // and routes any selected indications to the Technician via service_tickets.
   const handleCompleteExamination = async (appointmentId, selectedServices = [], clinicalData = null) => {
-    // Note: Instead of mutating mock data, we would make an API call to update status
-    // and create tasks in Supabase.
-    
-    // 1. Update local React state optimistically
-    setAppointments((prev) =>
-      (Array.isArray(prev) ? prev : []).map(
-        (app) => (app.id === appointmentId ? { ...app, status: 'Đã khám', examRecord: clinicalData } : app)
-      )
-    );
+    if (isSaving) return;
 
-    // 4. Close the Virtual Clinic
-    setActiveAppointment(null);
+    // Resolve the patient/doctor ids from the appointment being examined (raw
+    // row carries snake_case; fall back to the camelCase aliases just in case).
+    const apt =
+      (appointments || []).find((a) => String(a.id) === String(appointmentId)) ||
+      activeAppointment ||
+      {};
+    const patientId = apt.patient_id || apt.patientId || null;
+    const doctorId = apt.doctor_id || apt.doctorId || currentDoctorId || null;
 
-    // 5. Trigger success toast
-    setShowToast(true);
-    setTimeout(() => {
-      setShowToast(false);
-    }, 3000);
+    setIsSaving(true);
+    try {
+      // 1. Lifecycle: appointment → 'Đã khám' (EXAMINED). Leaves billing untouched.
+      await AppointmentModel.updateStatus(appointmentId, 'Đã khám');
+
+      // 2. Medical record (1:1 with the appointment → upsert).
+      const record = await MedicalRecordModel.upsertExam({
+        appointment_id: appointmentId,
+        patient_id: patientId,
+        doctor_id: doctorId,
+        diagnosis: clinicalData?.diagnosis || '',
+        symptoms: apt.reason || apt.symptoms || '',
+        doctor_note: clinicalData?.doctorNotes || clinicalData?.generalInstructions || '',
+      });
+
+      // 3. Prescription (only if the doctor actually kê đơn).
+      const meds = (clinicalData?.medications || []).filter((m) => (m?.name || '').trim());
+      if (record?.record_id && meds.length > 0) {
+        await PrescriptionModel.savePrescriptionForRecord({
+          record_id: record.record_id,
+          doctor_id: doctorId,
+          patient_id: patientId,
+          note: clinicalData?.generalInstructions || '',
+          medications: meds,
+        });
+      }
+
+      // 4. Doctor → Technician: one service_ticket per selected indication.
+      const services = Array.isArray(selectedServices) ? selectedServices : [];
+      for (const svc of services) {
+        const serviceName = typeof svc === 'string' ? svc : svc?.name;
+        if (!serviceName) continue;
+        await ServiceTicketModel.create({
+          appointment_id: appointmentId,
+          service_name: serviceName,
+          status: 'PENDING',
+        });
+      }
+
+      // 5. Refresh from the DB (also drives the Realtime-backed queue) & close.
+      await loadApts();
+      setActiveAppointment(null);
+      showToast('Hồ sơ bệnh án đã được lưu và đồng bộ thành công!', 'success');
+    } catch (err) {
+      console.error('Failed to complete examination (EMR write):', err);
+      showToast('Lưu hồ sơ thất bại. Vui lòng thử lại.', 'error');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
 
@@ -512,15 +588,19 @@ export default function DoctorDashboard() {
         </main>
       </div>
       <AnimatePresence>
-        {showToast && (
+        {toast && (
           <motion.div
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-8 right-8 z-50 flex items-center gap-3 backdrop-blur-2xl bg-emerald-500/90 text-white px-6 py-4 rounded-2xl shadow-lg shadow-emerald-500/20 border border-emerald-400/50"
+            className={`fixed bottom-8 right-8 z-50 flex items-center gap-3 backdrop-blur-2xl text-white px-6 py-4 rounded-2xl shadow-lg border ${
+              toast.type === 'error'
+                ? 'bg-rose-500/90 shadow-rose-500/20 border-rose-400/50'
+                : 'bg-emerald-500/90 shadow-emerald-500/20 border-emerald-400/50'
+            }`}
           >
             <CheckCircle2 className="w-5 h-5 text-white" />
-            <span className="font-bold text-sm">Hồ sơ bệnh án đã lưu thành công!</span>
+            <span className="font-bold text-sm">{toast.message}</span>
           </motion.div>
         )}
       </AnimatePresence>
