@@ -138,3 +138,102 @@ export function useDoctors() {
 
   return { doctors, loading, error, refetch: fetchDoctors };
 }
+
+export function useTechnicians() {
+  const [technicians, setTechnicians] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchTechnicians = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const { data, error: fetchError } = await anonSupabase
+        .from('users')
+        .select(`
+          user_id,
+          full_name,
+          avatar_url,
+          employee_profiles (
+            experience_years,
+            specialization,
+            work_schedule
+          )
+        `)
+        .eq('role_id', 3)
+        .eq('status', 'ACTIVE');
+
+      if (fetchError) throw fetchError;
+
+      const { data: feedbackData } = await anonSupabase
+        .from('feedbacks')
+        .select('doctor_id, rating, criteria_ratings');
+
+      const statsMap = {};
+      if (feedbackData) {
+        feedbackData.forEach(f => {
+          let ratingVal = null;
+          if (f.criteria_ratings) {
+            const cr = typeof f.criteria_ratings === 'string' ? JSON.parse(f.criteria_ratings) : f.criteria_ratings;
+            if (cr.technician) ratingVal = Number(cr.technician);
+          }
+          if (ratingVal === null || isNaN(ratingVal)) {
+            ratingVal = Number(f.rating) || 5;
+          }
+          if (f.doctor_id) {
+            if (!statsMap[f.doctor_id]) statsMap[f.doctor_id] = { sum: 0, count: 0 };
+            statsMap[f.doctor_id].sum += ratingVal;
+            statsMap[f.doctor_id].count += 1;
+          }
+        });
+      }
+
+      const normalizedTechs = (data || []).map(user => {
+        const emp = user.employee_profiles ? (Array.isArray(user.employee_profiles) ? user.employee_profiles[0] : user.employee_profiles) : {};
+        
+        let specialties = [];
+        if (emp?.specialization) {
+          specialties = emp.specialization.split(',')?.map?.(s => s.trim());
+        } else {
+          specialties = ['Vận hành thiết bị', 'Hỗ trợ điều trị'];
+        }
+
+        const fStats = statsMap[user.user_id];
+        const rating = fStats && fStats.count > 0 ? Number((fStats.sum / fStats.count).toFixed(1)) : 4.7;
+        const reviewsCount = fStats ? fStats.count : 0;
+
+        return {
+          id: user.user_id,
+          name: user.full_name || 'Kỹ thuật viên',
+          title: 'Kỹ thuật viên',
+          image: user.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.full_name || 'KTV')}&background=f0fdf4&color=16a34a&size=200&font-size=0.4`,
+          experience: emp?.experience_years ? `${emp.experience_years} năm kinh nghiệm` : 'Chưa cập nhật',
+          specialties: specialties,
+          bio: emp?.specialization ? `Kỹ thuật viên chuyên nghiệp với chuyên môn sâu về ${emp.specialization.toLowerCase()}.` : 'Chưa có thông tin giới thiệu.',
+          consultationFee: 'Đã bao gồm trong phí dịch vụ',
+          rating: rating,
+          reviewsCount: reviewsCount,
+          schedule: [
+            { day: 'Thứ Hai - Thứ Bảy', hours: '08:00 - 17:00' }
+          ],
+          isTechnician: true
+        };
+      });
+
+      setTechnicians(normalizedTechs);
+    } catch (err) {
+      console.error('Lỗi khi tải danh sách KTV:', err?.message || err);
+      setError(err.message);
+      setTechnicians([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchTechnicians();
+  }, [fetchTechnicians]);
+
+  return { technicians, loading, error, refetch: fetchTechnicians };
+}

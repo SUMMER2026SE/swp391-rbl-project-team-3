@@ -29,13 +29,26 @@ function ReplyModal({ feedback, onClose, onSubmit }) {
           </button>
         </div>
         <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-4 text-sm text-slate-600 italic">
-          "{feedback.comment}"
+          {(() => {
+            try {
+              if (feedback.comment && (feedback.comment.startsWith('{') || feedback.comment.startsWith('['))) {
+                const parsed = JSON.parse(feedback.comment);
+                return (
+                  <div className="space-y-1 not-italic text-left">
+                    <p><span className="font-bold text-slate-400">BS:</span> "{parsed.doctorComment}"</p>
+                    {parsed.techComment && <p><span className="font-bold text-slate-400">KTV:</span> "{parsed.techComment}"</p>}
+                  </div>
+                );
+              }
+            } catch(e) {}
+            return `"${feedback.comment}"`;
+          })()}
         </div>
         <textarea
           value={text} onChange={e => setText(e.target.value)}
           placeholder="Nhập phản hồi chân thành từ phòng khám..."
           rows={4} maxLength={300}
-          className="w-full p-3 rounded-xl border border-slate-200 bg-slate-50 text-sm outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 resize-none"
+          className="w-full p-3 rounded-lg border border-slate-200 bg-slate-50 text-sm outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 resize-none min-h-[100px]"
         />
         <p className="text-xs text-slate-400 text-right mt-1 mb-4">{text.length}/300</p>
         <div className="flex gap-3">

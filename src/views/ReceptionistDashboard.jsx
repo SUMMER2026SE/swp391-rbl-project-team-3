@@ -759,8 +759,19 @@ export default function ReceptionistDashboard() {
 // Overview — KPIs + a light glance at the queue & new requests (front-desk only).
 // ─────────────────────────────────────────────────────────────────────────────
 function OverviewTab({ user, kpi, todays, requests, onGoTab, onApprove, onArrive, onOpenChat, onAdd, showToast }) {
+  const now = new Date();
   const nextUp = todays
     .filter((a) => a.status === APT_STATUS.CONFIRMED || a.status === APT_STATUS.CHECKED_IN)
+    .filter((a) => {
+      // Hide confirmed (not yet checked-in) appointments whose time has passed
+      if (a.status === APT_STATUS.CONFIRMED && a.time) {
+        const [h, m] = a.time.split(':').map(Number);
+        const aptDate = new Date();
+        aptDate.setHours(h, m, 0, 0);
+        if (now > aptDate) return false;
+      }
+      return true;
+    })
     .sort((a, b) => a.time.localeCompare(b.time))
     .slice(0, 6);
 

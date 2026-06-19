@@ -42,6 +42,7 @@ function mapFeedbackFromDB(row) {
     overallRating: row.rating,
     comment: row.comment,
     createdAt: row.created_at,
+    status: row.status || 'published',
     // Per-criterion ratings aren't stored yet; default to {} so readers that do
     // `fb.criteriaRatings?.[key]` stay safe.
     criteriaRatings: row.criteria_ratings ?? {},

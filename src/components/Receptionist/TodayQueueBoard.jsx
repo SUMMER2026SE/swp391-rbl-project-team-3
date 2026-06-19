@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   Clock,
@@ -87,15 +87,61 @@ export default function TodayQueueBoard({
   showToast,
 }) {
   const [busyId, setBusyId] = useState(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Update current time every 30 seconds so check-in eligibility refreshes
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 30000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Check-in is allowed starting 15 minutes before appointment time
+  const canCheckIn = (aptTime) => {
+    if (!aptTime) return false;
+    const [h, m] = aptTime.split(':').map(Number);
+    const aptDate = new Date();
+    aptDate.setHours(h, m, 0, 0);
+    const diffMin = (aptDate - currentTime) / 60000; // minutes until appointment
+    return diffMin <= 15; // allow check-in up to 15 min early (and anytime after)
+  };
+
+  const getCheckInMessage = (aptTime) => {
+    if (!aptTime) return '';
+    const [h, m] = aptTime.split(':').map(Number);
+    const aptDate = new Date();
+    aptDate.setHours(h, m, 0, 0);
+    const earlyDate = new Date(aptDate.getTime() - 15 * 60000);
+    const hh = String(earlyDate.getHours()).padStart(2, '0');
+    const mm = String(earlyDate.getMinutes()).padStart(2, '0');
+    return `Có thể check-in từ ${hh}:${mm}`;
+  };
+
+  // Check if an appointment's scheduled time has passed
+  const isAptTimePassed = (aptTime) => {
+    if (!aptTime) return false;
+    const [h, m] = aptTime.split(':').map(Number);
+    const aptDate = new Date();
+    aptDate.setHours(h, m, 0, 0);
+    return currentTime > aptDate;
+  };
 
   // Only TODAY's non-cancelled, non-paid appointments belong on the board.
+  // Hide appointments in "Chờ tiếp đón" if their time has already passed (patient didn't show up).
   const todays = useMemo(() => {
+    const receptionStatuses = [APT_STATUS.REQUEST, APT_STATUS.CONFIRMED];
     return (appointments || [])
       .map((a, i) => normalizeApt(a, i))
       .filter((a) => a.date === TODAY_STR)
       .filter((a) => a.status !== APT_STATUS.CANCELLED && a.status !== APT_STATUS.PAID)
+      .filter((a) => {
+        // If still waiting for reception and time has passed → hide
+        if (receptionStatuses.includes(a.status) && isAptTimePassed(a.time)) {
+          return false;
+        }
+        return true;
+      })
       .sort((a, b) => a.time.localeCompare(b.time));
-  }, [appointments]);
+  }, [appointments, currentTime]);
 
   const grouped = useMemo(() => {
     const map = {};
@@ -252,21 +298,26 @@ export default function TodayQueueBoard({
                               </button>
                             </>
                           ) : col.id === 'reception' ? (
-                            <button
-                              disabled={isBusy}
-                              onClick={() => handleArrive(apt)}
-                              className="flex-1 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-teal-600 text-white text-[11px] font-bold hover:shadow-md hover:shadow-teal-500/20 active:scale-95 transition-all border-none cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
-                            >
-                              <UserCheck className="w-3.5 h-3.5" /> Đã đến
-                            </button>
+                            canCheckIn(apt.time) ? (
+                              <button
+                                disabled={isBusy}
+                                onClick={() => handleArrive(apt)}
+                                className="flex-1 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-teal-600 text-white text-[11px] font-bold hover:shadow-md hover:shadow-teal-500/20 active:scale-95 transition-all border-none cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
+                              >
+                                <UserCheck className="w-3.5 h-3.5" /> Đã đến
+                              </button>
+                            ) : (
+                              <div
+                                title={getCheckInMessage(apt.time)}
+                                className="flex-1 py-2 rounded-xl bg-slate-100 border border-slate-200/60 text-[11px] font-bold text-slate-400 flex items-center justify-center gap-1.5 select-none cursor-not-allowed"
+                              >
+                                <Clock className="w-3.5 h-3.5" /> {getCheckInMessage(apt.time)}
+                              </div>
+                            )
                           ) : col.id === 'inclinic' ? (
-                            <button
-                              disabled={isBusy}
-                              onClick={() => handleToBilling(apt)}
-                              className="flex-1 py-2 rounded-xl bg-gradient-to-r from-teal-500 to-amber-500 text-white text-[11px] font-bold hover:shadow-md hover:shadow-amber-500/20 active:scale-95 transition-all border-none cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
-                            >
-                              <Wallet className="w-3.5 h-3.5" /> Chờ thanh toán
-                            </button>
+                            <div className="flex-1 py-2 rounded-xl bg-slate-50 border border-slate-200/60 text-[11px] font-bold text-slate-400 flex items-center justify-center gap-1.5 select-none">
+                              <Stethoscope className="w-3.5 h-3.5 animate-pulse" /> Đang chờ bác sĩ hoàn tất
+                            </div>
                           ) : (
                             <button
                               disabled={isBusy}

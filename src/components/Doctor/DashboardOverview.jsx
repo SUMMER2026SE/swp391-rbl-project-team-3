@@ -27,7 +27,7 @@ export default function DashboardOverview({ doctorId }) {
   const totalPatientsToday = todayAppointments.length;
   
   const waitingPatients = todayAppointments?.filter?.(
-    apt => apt?.status === 'Đã xác nhận' || apt?.status === 'Chờ xác nhận' || apt?.status === 'Đang chờ'
+    apt => apt?.status === 'Đang chờ'
   ).length;
 
   const completedPatients = todayAppointments?.filter?.(apt => apt?.status === 'Đã khám').length;

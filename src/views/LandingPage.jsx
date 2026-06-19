@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { VoucherModel } from '../models/VoucherModel';
-import { useDoctors } from '../hooks/useDoctors';
+import { useDoctors, useTechnicians } from '../hooks/useDoctors';
 import ChangePasswordModal from './ChangePasswordModal';
 import FreeSkinScanModal from '../components/FreeSkinScanModal';
 import FloatingChatbot from '../components/PatientPortal/FloatingChatbot';
@@ -22,34 +22,52 @@ import { useFeedbackController } from '../controllers/useFeedbackController';
 
 import '../index.css';
 
-// Component for fetching and displaying doctor reviews
-function DoctorReviewsList({ doctorId }) {
+// Component for fetching and displaying doctor/tech reviews
+function DoctorReviewsList({ doctorId, isTechnician }) {
   const { feedbacks, isLoading } = useFeedbackController({ doctorId });
   
   if (isLoading) return <div className="text-slate-500 text-sm mt-6 animate-pulse">Đang tải đánh giá...</div>;
-  if (!feedbacks || feedbacks.length === 0) return <div className="text-slate-500 text-sm mt-6 bg-slate-50/80 backdrop-blur-sm p-4 rounded-2xl border border-slate-100">Chưa có đánh giá nào cho bác sĩ này.</div>;
+
+  // Filter public comments
+  const visibleFeedbacks = (feedbacks || []).map(fb => {
+    try {
+      if (fb.comment && (fb.comment.startsWith('{') || fb.comment.startsWith('['))) {
+        const parsed = JSON.parse(fb.comment);
+        if (isTechnician) {
+          return parsed.techPublic ? { ...fb, commentText: parsed.techComment } : null;
+        } else {
+          return parsed.doctorPublic ? { ...fb, commentText: parsed.doctorComment } : null;
+        }
+      }
+    } catch (e) {}
+    // Legacy fallback
+    if (isTechnician) return null; // legacy feedbacks don't have technician reviews
+    return fb.isPublic !== false ? { ...fb, commentText: fb.comment } : null;
+  }).filter(Boolean);
+
+  if (visibleFeedbacks.length === 0) return <div className="text-slate-500 text-sm mt-6 bg-slate-50/80 backdrop-blur-sm p-4 rounded-2xl border border-slate-100">Chưa có đánh giá nào cho chuyên gia này.</div>;
 
   return (
-    <div className="mt-6 flex flex-col gap-3 relative">
+    <div className="mt-6 flex flex-col gap-3 relative text-left">
       <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
         <span className="material-symbols-outlined text-[18px] text-sky-500">forum</span>
-        Đánh giá từ bệnh nhân ({feedbacks.length})
+        Đánh giá từ bệnh nhân ({visibleFeedbacks.length})
       </h4>
       <div className="flex flex-col gap-3 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
-        {feedbacks.map((fb, idx) => (
+        {visibleFeedbacks.map((fb, idx) => (
           <div key={idx} className="bg-white/60 backdrop-blur-md border border-slate-200/50 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <span className="font-semibold text-slate-700 text-sm flex items-center gap-2">
                 <div className="w-6 h-6 rounded-full bg-sky-100 text-sky-600 flex items-center justify-center text-[10px] font-bold uppercase">
                   {(fb.patient?.full_name || fb.patient?.name || 'A').charAt(0)}
                 </div>
-                {fb.patient?.full_name || fb.patient?.name || 'Bệnh nhân ẩn danh'}
+                {fb.isAnonymous ? 'Bệnh nhân ẩn danh' : (fb.patient?.full_name || fb.patient?.name || 'Bệnh nhân')}
               </span>
               <span className="text-amber-500 text-[11px] font-bold bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-100 flex items-center gap-1">
                 {fb.overallRating || fb.rating || 5} <span className="material-symbols-outlined text-[12px] leading-none">star</span>
               </span>
             </div>
-            {fb.comment && <p className="text-slate-600 text-[13px] leading-relaxed italic pl-8">"{fb.comment}"</p>}
+            {fb.commentText && <p className="text-slate-600 text-[13px] leading-relaxed italic pl-8">"{fb.commentText}"</p>}
           </div>
         ))}
       </div>
@@ -72,7 +90,9 @@ function AllDoctorsModal({ isOpen, onClose, doctors, onSelectDoctor }) {
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-200/50">
-          <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">Đội ngũ Bác sĩ</h2>
+          <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
+            {doctors.length > 0 && doctors[0].isTechnician ? 'Đội ngũ Kỹ thuật viên' : 'Đội ngũ Bác sĩ'}
+          </h2>
           <button
             className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-slate-100/80 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-colors border-none cursor-pointer"
             onClick={onClose}
@@ -304,14 +324,33 @@ function LandingPage({ onLogout }) {
   // Doctors come from the shared, normalized hook (same source the dashboards
   // use) so the showcase renders correct fields when real data is available.
   const { doctors: doctorsList } = useDoctors();
+  const { technicians: techniciansList } = useTechnicians();
+  const [activeTab, setActiveTab] = useState('doctor'); // 'doctor' or 'technician'
   const [activeVouchers, setActiveVouchers] = useState([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
 
-  // Initialize Carousel Items (load all doctors)
+  // Initialize Carousel Items
   useEffect(() => {
-    const list = doctorsList.length > 0 ? doctorsList : LOCAL_MOCK_DOCTORS;
+    const list = activeTab === 'doctor'
+      ? (doctorsList.length > 0 ? doctorsList : LOCAL_MOCK_DOCTORS)
+      : (techniciansList.length > 0 ? techniciansList : [
+          {
+            id: 'mock-tech-01',
+            name: 'KTV. Lê Thị C',
+            title: 'Kỹ thuật viên Soi da',
+            image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBOvstfM_6hjJJ5YCSOBxCzfwbclWI1ikrRl-icFlIHxF4NygZvQxx96GFjFZxtZfN6DVX7pnrS7TqXMZUjIJfYmnBmJt_xPeHBmYZygGsmOKIPBjBM8i3v26RezTALfNa8HpJUnkSbhJc9EtGiYfDAiBXyKOX9luu3_8JaZeWEeVzHXrxAjFArFG7Hl4-cun-bgSaNdsp_yOQ1rG5R3gxsbzFqHx6KnNeKgMSV2VvD1MaqniR6tvUjr6SxPrg-FoHQyjTl83glA0FY',
+            experience: '8 năm kinh nghiệm',
+            bio: 'Vận hành hệ thống soi da quang phổ đa tầng kết hợp phân tích chỉ số AI chính xác nhất.',
+            specialties: ['Soi da AI', 'Vận hành máy laser', 'Chăm sóc da'],
+            consultationFee: 'Kèm theo dịch vụ',
+            rating: 4.8,
+            reviewsCount: 145,
+            schedule: [{ day: 'Thứ Hai - Thứ Bảy', hours: '08:00 - 17:00' }],
+            isTechnician: true
+          }
+        ]);
     setCarouselItems(list);
-  }, [doctorsList]);
+  }, [activeTab, doctorsList, techniciansList]);
 
   useEffect(() => {
     async function loadData() {
@@ -829,7 +868,29 @@ function LandingPage({ onLogout }) {
         <section className="w-full flex flex-col gap-12 mb-12 overflow-hidden relative">
           <div className="text-center w-full max-w-2xl mx-auto flex flex-col gap-4">
             <h2 className="font-bold text-[32px] leading-[1.3] tracking-[-0.01em] text-on-surface">Đội ngũ chuyên gia hàng đầu</h2>
-            <p className="text-on-surface-variant">Hãy thả tim để lưu lại nhé!</p>
+            <div className="flex items-center justify-center gap-4 mt-2">
+              <button
+                onClick={() => setActiveTab('doctor')}
+                className={`px-5 py-2.5 rounded-full text-sm font-bold border transition-all cursor-pointer ${
+                  activeTab === 'doctor'
+                    ? 'bg-sky-500 border-sky-500 text-white shadow-md shadow-sky-500/20'
+                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                Bác sĩ Chuyên khoa
+              </button>
+              <button
+                onClick={() => setActiveTab('technician')}
+                className={`px-5 py-2.5 rounded-full text-sm font-bold border transition-all cursor-pointer ${
+                  activeTab === 'technician'
+                    ? 'bg-sky-500 border-sky-500 text-white shadow-md shadow-sky-500/20'
+                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                Kỹ thuật viên
+              </button>
+            </div>
+            <p className="text-on-surface-variant text-xs mt-1">Hãy thả tim để lưu lại nhé!</p>
           </div>
           
           <div className="w-full max-w-[1008px] mx-auto overflow-hidden relative py-4">
@@ -852,15 +913,6 @@ function LandingPage({ onLogout }) {
                       alt={doc.name}
                       className="w-full h-full object-cover object-top"
                     />
-                    {/* Badge */}
-                    <div className="absolute top-4 left-4 bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm border border-emerald-100">
-                      <span className="material-symbols-outlined text-[14px]">verified</span>
-                      UY TÍN 100%
-                    </div>
-                    {/* Heart Button */}
-                    <button className="absolute top-4 right-4 w-8 h-8 bg-white rounded-full flex items-center justify-center text-slate-300 hover:text-rose-500 shadow-sm border-none cursor-pointer transition-colors">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-                    </button>
                   </div>
 
                   {/* Body Content */}
@@ -868,7 +920,7 @@ function LandingPage({ onLogout }) {
                     {/* Header */}
                     <div>
                       <h3 className="text-[18px] font-extrabold text-slate-800 tracking-tight leading-tight mb-1">{doc.name}</h3>
-                      <p className="text-[13px] text-slate-500 font-medium">{doc.title} • Chuyên khoa Da liễu</p>
+                      <p className="text-[13px] text-slate-500 font-medium">{doc.title} • {doc.isTechnician ? 'Phòng Kỹ thuật' : 'Chuyên khoa Da liễu'}</p>
                     </div>
 
                     {/* Stats Grid */}
@@ -915,7 +967,7 @@ function LandingPage({ onLogout }) {
               onClick={() => setIsAllDoctorsOpen(true)}
               className="bg-white/80 backdrop-blur-md border border-slate-200 text-slate-700 font-bold px-8 py-3.5 rounded-full hover:bg-sky-50 hover:text-sky-600 hover:border-sky-200 transition-all shadow-sm flex items-center gap-2 cursor-pointer group"
             >
-              Xem tất cả bác sĩ
+              {activeTab === 'doctor' ? 'Xem tất cả bác sĩ' : 'Xem tất cả kỹ thuật viên'}
               <span className="material-symbols-outlined text-[20px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
             </button>
           </div>
@@ -1345,7 +1397,7 @@ function LandingPage({ onLogout }) {
                   </div>
 
                   {/* Doctor Reviews */}
-                  <DoctorReviewsList doctorId={selectedDoctor.id} />
+                  <DoctorReviewsList doctorId={selectedDoctor.id} isTechnician={selectedDoctor.isTechnician} />
 
                   {/* Dynamic Book CTA inside Modal */}
                   <button
@@ -1371,7 +1423,7 @@ function LandingPage({ onLogout }) {
           <AllDoctorsModal 
             isOpen={isAllDoctorsOpen} 
             onClose={() => setIsAllDoctorsOpen(false)} 
-            doctors={doctorsList.length > 0 ? doctorsList : LOCAL_MOCK_DOCTORS} 
+            doctors={activeTab === 'doctor' ? (doctorsList.length > 0 ? doctorsList : LOCAL_MOCK_DOCTORS) : techniciansList} 
             onSelectDoctor={(doc) => setSelectedDoctor(doc)} 
           />
         )}

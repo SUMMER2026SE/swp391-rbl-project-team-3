@@ -68,16 +68,18 @@ export default function FeedbackFormModal({ apt, onClose, onSubmitted }) {
   const [criteriaRatings, setCriteriaRatings] = useState({
     doctor: 0, technician: 0, treatmentEffect: 0, waitingTime: 0, facility: 0,
   });
-  const [comment, setComment] = useState('');
+  const [doctorComment, setDoctorComment] = useState('');
+  const [techComment, setTechComment] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(false);
-  const [isPublic, setIsPublic] = useState(true);
+  const [isPublicDoctor, setIsPublicDoctor] = useState(false);
+  const [isPublicTech, setIsPublicTech] = useState(false);
   const [images, setImages] = useState([]);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef(null);
 
   const canProceedStep1 = overallRating > 0;
-  const canSubmit = overallRating > 0 && comment.trim().length >= 10;
+  const canSubmit = overallRating > 0 && doctorComment.trim().length >= 10 && techComment.trim().length >= 10;
 
   // ── Image Upload ──
   const handleImageUpload = (e) => {
@@ -113,10 +115,15 @@ export default function FeedbackFormModal({ apt, onClose, onSubmitted }) {
         service: apt.service,
         date: apt.date,
         isAnonymous,
-        isPublic,
+        isPublic: isPublicDoctor || isPublicTech,
         overallRating,
         criteriaRatings,
-        comment: comment.trim(),
+        comment: JSON.stringify({
+          doctorComment: doctorComment.trim(),
+          doctorPublic: isPublicDoctor,
+          techComment: techComment.trim(),
+          techPublic: isPublicTech
+        }),
         images: images?.map?.(i => i.url),
       };
       const res = await submitFeedback(payload);
@@ -244,25 +251,48 @@ export default function FeedbackFormModal({ apt, onClose, onSubmitted }) {
               {/* ── Step 2: Comment + Images + Privacy ── */}
               {step === 2 && (
                 <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-5">
-                  {/* Comment */}
+                  {/* Nhận xét Bác sĩ */}
                   <div>
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">
-                      Nhận xét chi tiết <span className="text-rose-400">*</span>
+                      Nhận xét về Bác sĩ <span className="text-rose-400">*</span>
                     </label>
                     <textarea
-                      value={comment}
-                      onChange={(e) => setComment(e.target.value)}
-                      placeholder="Chia sẻ trải nghiệm của bạn... (tối thiểu 10 ký tự)"
-                      rows={4}
+                      value={doctorComment}
+                      onChange={(e) => setDoctorComment(e.target.value)}
+                      placeholder="Nhận xét về chuyên môn, thái độ của Bác sĩ... (tối thiểu 10 ký tự)"
+                      rows={3}
                       maxLength={500}
-                      className="w-full p-3.5 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 text-sm text-slate-700 resize-none transition-all"
+                      className="w-full p-3.5 rounded-lg bg-slate-50 border border-slate-200 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 text-sm text-slate-700 resize-none min-h-[100px] transition-all"
                     />
                     <div className="flex justify-between items-center mt-1.5">
-                      {comment.length < 10 && comment.length > 0 && (
+                      {doctorComment.length < 10 && doctorComment.length > 0 && (
                         <p className="text-xs text-rose-500">Cần ít nhất 10 ký tự</p>
                       )}
-                      <span className={`text-xs ml-auto font-medium ${comment.length > 450 ? 'text-amber-500' : 'text-slate-400'}`}>
-                        {comment.length}/500
+                      <span className={`text-xs ml-auto font-medium ${doctorComment.length > 450 ? 'text-amber-500' : 'text-slate-400'}`}>
+                        {doctorComment.length}/500
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Nhận xét Kỹ thuật viên */}
+                  <div>
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">
+                      Nhận xét về Kỹ thuật viên <span className="text-rose-400">*</span>
+                    </label>
+                    <textarea
+                      value={techComment}
+                      onChange={(e) => setTechComment(e.target.value)}
+                      placeholder="Nhận xét về tay nghề, thao tác của Kỹ thuật viên... (tối thiểu 10 ký tự)"
+                      rows={3}
+                      maxLength={500}
+                      className="w-full p-3.5 rounded-lg bg-slate-50 border border-slate-200 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 text-sm text-slate-700 resize-none min-h-[100px] transition-all"
+                    />
+                    <div className="flex justify-between items-center mt-1.5">
+                      {techComment.length < 10 && techComment.length > 0 && (
+                        <p className="text-xs text-rose-500">Cần ít nhất 10 ký tự</p>
+                      )}
+                      <span className={`text-xs ml-auto font-medium ${techComment.length > 450 ? 'text-amber-500' : 'text-slate-400'}`}>
+                        {techComment.length}/500
                       </span>
                     </div>
                   </div>
@@ -309,7 +339,20 @@ export default function FeedbackFormModal({ apt, onClose, onSubmitted }) {
                       }`}
                     >
                       <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${isAnonymous ? 'bg-violet-100' : 'bg-white border border-slate-200'}`}>
-                        {isAnonymous ? <EyeOff className="w-4 h-4 text-violet-600" /> : <Eye className="w-4 h-4 text-slate-400" />}
+                        {isAnonymous ? (
+                          <svg
+                            viewBox="0 0 16 16"
+                            fill="currentColor"
+                            className="w-5 h-5 text-violet-600"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="m4.736 1.968-.892 3.269-.014.058C2.113 5.568 1 6.006 1 6.5 1 7.328 4.134 8 8 8s7-.672 7-1.5c0-.494-1.113-.932-2.83-1.205l-.014-.058-.892-3.27c-.146-.533-.698-.849-1.239-.734C9.411 1.363 8.62 1.5 8 1.5s-1.411-.136-2.025-.267c-.541-.115-1.093.2-1.239.735m.015 3.867a.25.25 0 0 1 .274-.224c.9.092 1.91.143 2.975.143a30 30 0 0 0 2.975-.143.25.25 0 0 1 .05.498c-.918.093-1.944.145-3.025.145s-2.107-.052-3.025-.145a.25.25 0 0 1-.224-.274M3.5 10h2a.5.5 0 0 1 .5.5v1a1.5 1.5 0 0 1-3 0v-1a.5.5 0 0 1 .5-.5m-1.5.5q.001-.264.085-.5H2a.5.5 0 0 1 0-1h3.5a1.5 1.5 0 0 1 1.488 1.312 3.5 3.5 0 0 1 2.024 0A1.5 1.5 0 0 1 10.5 9H14a.5.5 0 0 1 0 1h-.085q.084.236.085.5v1a2.5 2.5 0 0 1-5 0v-.14l-.21-.07a2.5 2.5 0 0 0-1.58 0l-.21.07v.14a2.5 2.5 0 0 1-5 0zm8.5-.5h2a.5.5 0 0 1 .5.5v1a1.5 1.5 0 0 1-3 0v-1a.5.5 0 0 1 .5-.5"
+                            />
+                          </svg>
+                        ) : (
+                          <Eye className="w-4 h-4 text-slate-400" />
+                        )}
                       </div>
                       <div className="flex-1">
                         <p className={`text-sm font-semibold ${isAnonymous ? 'text-violet-800' : 'text-slate-700'}`}>
@@ -325,24 +368,46 @@ export default function FeedbackFormModal({ apt, onClose, onSubmitted }) {
                     </div>
 
                     <div
-                      onClick={() => setIsPublic(!isPublic)}
+                      onClick={() => setIsPublicDoctor(!isPublicDoctor)}
                       className={`flex items-center gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
-                        !isPublic ? 'bg-slate-100 border-slate-300' : 'bg-slate-50 border-slate-200 hover:border-slate-300'
+                        !isPublicDoctor ? 'bg-slate-100 border-slate-300' : 'bg-slate-50 border-slate-200 hover:border-slate-300'
                       }`}
                     >
-                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${!isPublic ? 'bg-slate-200' : 'bg-white border border-slate-200'}`}>
-                        {isPublic ? <Eye className="w-4 h-4 text-slate-400" /> : <EyeOff className="w-4 h-4 text-slate-500" />}
+                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${!isPublicDoctor ? 'bg-slate-200' : 'bg-white border border-slate-200'}`}>
+                        {isPublicDoctor ? <Eye className="w-4 h-4 text-slate-400" /> : <EyeOff className="w-4 h-4 text-slate-500" />}
                       </div>
                       <div className="flex-1">
                         <p className="text-sm font-semibold text-slate-700">
-                          {isPublic ? 'Công khai đánh giá' : 'Chỉ phòng khám được xem'}
+                          {isPublicDoctor ? 'Công khai nhận xét Bác sĩ' : 'Ẩn nhận xét Bác sĩ'}
                         </p>
                         <p className="text-xs text-slate-400 mt-0.5">
-                          {isPublic ? 'Đánh giá hiển thị trên trang bác sĩ và phòng khám' : 'Chỉ Admin và Bác sĩ thấy đánh giá này'}
+                          {isPublicDoctor ? 'Nhận xét Bác sĩ hiển thị trên trang thông tin Bác sĩ' : 'Chỉ Admin và Bác sĩ được thấy'}
                         </p>
                       </div>
-                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${isPublic ? 'border-emerald-500 bg-emerald-500' : 'border-slate-300'}`}>
-                        {isPublic && <div className="w-2.5 h-2.5 bg-white rounded-full" />}
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${isPublicDoctor ? 'border-emerald-500 bg-emerald-500' : 'border-slate-300'}`}>
+                        {isPublicDoctor && <div className="w-2.5 h-2.5 bg-white rounded-full" />}
+                      </div>
+                    </div>
+
+                    <div
+                      onClick={() => setIsPublicTech(!isPublicTech)}
+                      className={`flex items-center gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
+                        !isPublicTech ? 'bg-slate-100 border-slate-300' : 'bg-slate-50 border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${!isPublicTech ? 'bg-slate-200' : 'bg-white border border-slate-200'}`}>
+                        {isPublicTech ? <Eye className="w-4 h-4 text-slate-400" /> : <EyeOff className="w-4 h-4 text-slate-500" />}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-slate-700">
+                          {isPublicTech ? 'Công khai nhận xét Kỹ thuật viên' : 'Ẩn nhận xét Kỹ thuật viên'}
+                        </p>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          {isPublicTech ? 'Nhận xét KTV hiển thị trên trang thông tin KTV' : 'Chỉ Admin và KTV được thấy'}
+                        </p>
+                      </div>
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${isPublicTech ? 'border-emerald-500 bg-emerald-500' : 'border-slate-300'}`}>
+                        {isPublicTech && <div className="w-2.5 h-2.5 bg-white rounded-full" />}
                       </div>
                     </div>
                   </div>
@@ -414,17 +479,18 @@ export default function FeedbackFormModal({ apt, onClose, onSubmitted }) {
                         setError('Vui lòng chọn số sao đánh giá tổng thể.');
                         return;
                       }
-                      if (!comment.trim()) {
-                        setError('Vui lòng điền nội dung nhận xét chi tiết.');
+                      if (!doctorComment.trim() || !techComment.trim()) {
+                        setError('Vui lòng điền nhận xét chi tiết cho cả Bác sĩ và Kỹ thuật viên.');
                         return;
                       }
-                      if (comment.trim().length < 10) {
-                        setError('Nội dung nhận xét chi tiết phải chứa ít nhất 10 ký tự.');
+                      if (doctorComment.trim().length < 10 || techComment.trim().length < 10) {
+                        setError('Nội dung nhận xét cho Bác sĩ và Kỹ thuật viên phải chứa ít nhất 10 ký tự.');
                         return;
                       }
                       const TOXIC_WORDS = ['đm', 'đéo', 'vcl', 'clm', 'khốn nạn', 'mất dạy', 'lừa đảo', 'cút', 'đĩ', 'mẹ kiếp'];
-                      const hasToxic = comment.toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~()]/g,"").split(/\s+/).some(w => TOXIC_WORDS.includes(w));
-                      if (hasToxic) {
+                      const hasToxicDoctor = doctorComment.toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~()]/g,"").split(/\s+/).some(w => TOXIC_WORDS.includes(w));
+                      const hasToxicTech = techComment.toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~()]/g,"").split(/\s+/).some(w => TOXIC_WORDS.includes(w));
+                      if (hasToxicDoctor || hasToxicTech) {
                         setError('Nội dung đánh giá chứa từ ngữ không phù hợp. Vui lòng điều chỉnh lại.');
                         return;
                       }

@@ -39,12 +39,10 @@ export function normalizeProfileData(realData, userRole, visitsCount = 0) {
     };
   } else {
     const vitals = {
-      bloodType: realData.blood_type || null,
+      bloodType: realData.bloodType || null,
       height: realData.height || null,
       weight: realData.weight || null,
-      bloodPressure: realData.blood_pressure || null,
       allergies: realData.allergies || (realData.allergyNote ? realData.allergyNote.split(',')?.map?.(s => s.trim()) : null),
-      familyHistory: realData.familyHistory || null,
     };
 
     let medicalHistory = [];

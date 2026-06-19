@@ -5,7 +5,7 @@ import { PatientModel } from './PatientModel';
 // Map legacy/English status codes onto the Vietnamese vocabulary the whole UI
 // is built around, so seed rows (e.g. 'CONFIRMED') stay visible & consistent.
 const STATUS_NORMALIZE_MAP = {
-  PENDING: 'Đang chờ',
+  PENDING: 'Đã xác nhận',
   CONFIRMED: 'Đã xác nhận',
   CHECKED_IN: 'Đang chờ',
   CHECKEDIN: 'Đang chờ',
@@ -533,10 +533,11 @@ export const AppointmentModel = {
         };
       }
 
-      // Rule 5: Cannot book the same doctor on the same day twice
+      // Rule 5: Cannot book the same doctor on the same day twice (only active/upcoming appointments)
       const sameDayDoc = patientAppointments.some(
         a => {
-          if (this.isCancelled(a.status)) return false;
+          const isAptActive = a.status === 'Đang chờ' || a.status === 'Đã xác nhận' || a.status === 'Chờ xác nhận' || a.status === 'Pending';
+          if (!isAptActive) return false;
           if (bookingData.holdAptId && String(a.appointment_id || a.id) === String(bookingData.holdAptId)) return false;
           return String(a.doctor_id || a.doctorId) === String(doctorId) && (a.date === date || a.appointment_date === date);
         }

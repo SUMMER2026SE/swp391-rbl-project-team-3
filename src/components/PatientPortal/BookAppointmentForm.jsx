@@ -314,7 +314,7 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
         : `Khách vãng lai đăng ký qua website.`,
       bookingFee: 50000,
       paymentStatus: 'Đã thanh toán một phần (Giữ chỗ)',
-      status: 'Đang chờ'
+      status: 'Đã xác nhận'
     };
 
     // Validate BEFORE taking the deposit so a patient is never charged for an

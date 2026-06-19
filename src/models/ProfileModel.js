@@ -72,7 +72,7 @@ export const ProfileModel = {
     if (role === 'PATIENT') {
       const { data: patient, error: patientError } = await supabase
         .from('patient_profiles')
-        .select('address, allergy_note, medical_history, emergency_contact')
+        .select('address, allergy_note, medical_history, emergency_contact, blood_type, height, weight')
         .eq('patient_id', userId)
         .maybeSingle();
 
@@ -85,6 +85,9 @@ export const ProfileModel = {
         allergyNote: patient?.allergy_note || '',
         medicalHistory: patient?.medical_history || '',
         emergencyContact: patient?.emergency_contact || '',
+        bloodType: patient?.blood_type || '',
+        height: patient?.height || null,
+        weight: patient?.weight || null,
       };
     } else {
       // Staff roles (ADMIN, DOCTOR, TECHNICIAN, RECEPTIONIST)
@@ -163,6 +166,9 @@ export const ProfileModel = {
           allergy_note: profileData.allergyNote,
           medical_history: profileData.medicalHistory,
           emergency_contact: profileData.emergencyContact,
+          ...(profileData.bloodType !== undefined && { blood_type: profileData.bloodType }),
+          ...(profileData.height !== undefined && { height: profileData.height }),
+          ...(profileData.weight !== undefined && { weight: profileData.weight }),
         });
 
       if (patientError) throw patientError;

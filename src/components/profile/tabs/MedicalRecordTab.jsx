@@ -119,56 +119,37 @@ export default function MedicalRecordTab({ profile }) {
         </p>
       </div>
       {/* ── 1. Vital strip ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <VitalCard icon={Droplets} label="Nhóm máu" value={vitals?.bloodType} accent="text-rose-500" tint="bg-rose-50" />
-        <VitalCard icon={Weight} label="Cân nặng" value={vitals?.weight} accent="text-indigo-500" tint="bg-indigo-50" />
-        <VitalCard icon={Ruler} label="Chiều cao" value={vitals?.height} accent="text-sky-500" tint="bg-sky-50" />
-        <VitalCard icon={HeartPulse} label="Huyết áp" value={vitals?.bloodPressure} accent="text-emerald-500" tint="bg-emerald-50" />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <VitalCard icon={Droplets} label="Nhóm máu" value={vitals?.bloodType || '—'} accent="text-rose-500" tint="bg-rose-50" />
+        <VitalCard icon={Weight} label="Cân nặng" value={vitals?.weight ? `${vitals.weight} kg` : '—'} accent="text-indigo-500" tint="bg-indigo-50" />
+        <VitalCard icon={Ruler} label="Chiều cao" value={vitals?.height ? `${vitals.height} cm` : '—'} accent="text-sky-500" tint="bg-sky-50" />
       </div>
-      {/* ── 2. Allergies + family history ── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Allergies alert */}
-        <div className={`rounded-[1.75rem] p-6 border ${hasAllergies ? 'bg-rose-50/70 border-rose-100' : 'bg-emerald-50/70 border-emerald-100'}`}>
-          <div className="flex items-center gap-3">
-            <span className={`p-3 rounded-2xl ${hasAllergies ? 'bg-rose-100 text-rose-500' : 'bg-emerald-100 text-emerald-500'}`}>
-              {hasAllergies ? <ShieldAlert className="w-6 h-6" /> : <ShieldCheck className="w-6 h-6" />}
-            </span>
-            <div>
-              <p className="text-sm font-medium text-on-surface-variant/70 leading-none">Cảnh báo dị ứng</p>
-              <p className={`mt-1.5 text-2xl font-extrabold leading-none ${hasAllergies ? 'text-rose-600' : 'text-emerald-600'}`}>
-                {hasAllergies ? `${vitals.allergies.length} tác nhân` : 'An toàn'}
-              </p>
-            </div>
-          </div>
-          {hasAllergies ? (
-            <div className="flex flex-wrap gap-2 mt-4 max-h-[120px] overflow-y-auto pr-2 glass-scrollbar">
-              {vitals.allergies?.map?.((a) => (
-                <span key={a} className="text-sm font-bold px-3 py-1.5 rounded-full bg-white/80 text-rose-600 border border-rose-100 whitespace-nowrap">
-                  {a}
-                </span>
-              ))}
-            </div>
-          ) : (
-            <p className="mt-3 text-sm font-medium text-emerald-700/80 leading-relaxed">
-              Không có tiền sử dị ứng
-            </p>
-          )}
-        </div>
-
-        {/* Family history */}
-        <div className="rounded-[1.75rem] p-6 bg-white/55 border border-white/60 backdrop-blur-xl">
-          <div className="flex items-center gap-3">
-            <span className="p-3 rounded-2xl bg-violet-50 text-violet-500">
-              <Users2 className="w-6 h-6" />
-            </span>
-            <p className="text-sm font-medium text-on-surface-variant/70">Tiền sử gia đình</p>
-          </div>
-          <div className="mt-3 max-h-[120px] overflow-y-auto pr-2 glass-scrollbar">
-            <p className="text-lg font-extrabold text-on-surface leading-relaxed">
-              {vitals?.familyHistory}
+      {/* ── 2. Allergies ── */}
+      <div className={`rounded-[1.75rem] p-6 border ${hasAllergies ? 'bg-rose-50/70 border-rose-100' : 'bg-emerald-50/70 border-emerald-100'}`}>
+        <div className="flex items-center gap-3">
+          <span className={`p-3 rounded-2xl ${hasAllergies ? 'bg-rose-100 text-rose-500' : 'bg-emerald-100 text-emerald-500'}`}>
+            {hasAllergies ? <ShieldAlert className="w-6 h-6" /> : <ShieldCheck className="w-6 h-6" />}
+          </span>
+          <div>
+            <p className="text-sm font-medium text-on-surface-variant/70 leading-none">Cảnh báo dị ứng</p>
+            <p className={`mt-1.5 text-2xl font-extrabold leading-none ${hasAllergies ? 'text-rose-600' : 'text-emerald-600'}`}>
+              {hasAllergies ? `${vitals.allergies.length} tác nhân` : 'An toàn'}
             </p>
           </div>
         </div>
+        {hasAllergies ? (
+          <div className="flex flex-wrap gap-2 mt-4 max-h-[120px] overflow-y-auto pr-2 glass-scrollbar">
+            {vitals.allergies?.map?.((a) => (
+              <span key={a} className="text-sm font-bold px-3 py-1.5 rounded-full bg-white/80 text-rose-600 border border-rose-100 whitespace-nowrap">
+                {a}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-3 text-sm font-medium text-emerald-700/80 leading-relaxed">
+            Không có tiền sử dị ứng
+          </p>
+        )}
       </div>
       {/* ── 3. Medical history (progressive) ── */}
       <Section icon={ClipboardList} title="Tiền sử bệnh án" subtitle="Bệnh lý nền về da & mãn tính"

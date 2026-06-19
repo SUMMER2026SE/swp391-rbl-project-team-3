@@ -145,9 +145,36 @@ export default function FeedbackCard({
         </div>
 
         {/* ── Comment ── */}
-        <p className="text-sm text-slate-700 leading-relaxed mb-3 italic">
-          "{fb.comment}"
-        </p>
+        <div className="text-sm text-slate-700 leading-relaxed mb-3 italic">
+          {(() => {
+            try {
+              if (fb.comment && (fb.comment.startsWith('{') || fb.comment.startsWith('['))) {
+                const parsed = JSON.parse(fb.comment);
+                if (highlightKey === 'technician') {
+                  return <p>"{parsed.techComment || 'Chưa có nhận xét KTV'}"</p>;
+                } else if (highlightKey === 'doctor') {
+                  return <p>"{parsed.doctorComment || 'Chưa có nhận xét Bác sĩ'}"</p>;
+                } else {
+                  return (
+                    <div className="space-y-1.5 not-italic text-left">
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Bác sĩ:</span>
+                        <p className="text-sm text-slate-700 italic">"{parsed.doctorComment}" <span className="text-[9px] text-slate-400 font-semibold">({parsed.doctorPublic ? 'Công khai' : 'Ẩn'})</span></p>
+                      </div>
+                      {parsed.techComment && (
+                        <div>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Kỹ thuật viên:</span>
+                          <p className="text-sm text-slate-700 italic">"{parsed.techComment}" <span className="text-[9px] text-slate-400 font-semibold">({parsed.techPublic ? 'Công khai' : 'Ẩn'})</span></p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+              }
+            } catch (e) {}
+            return <p>"{fb.comment}"</p>;
+          })()}
+        </div>
 
         {/* ── Images ── */}
         {fb.images?.length > 0 && (

@@ -179,7 +179,7 @@ export default function PatientFeedbackTab({ user }) {
   const [writeTarget, setWriteTarget] = useState(null);
 
   // Completed appointments that don't have feedback yet
-  const completedApts = appointments?.filter?.(a => a.status === 'Đã khám' || a.status === 'Reviewed');
+  const completedApts = appointments?.filter?.(a => a.status === 'Đã khám' || a.status === 'Reviewed' || a.status === 'Đã thanh toán');
   const pendingApts = completedApts?.filter?.(a => !getFeedbackByAppointment(a.id));
   const myFeedbacks = feedbacks?.filter?.(f => f.patientId === patientId);
 
@@ -270,10 +270,37 @@ export default function PatientFeedbackTab({ user }) {
                     
                     {fb ? (
                       <div className="space-y-3">
-                        <p className="text-sm text-slate-700 leading-relaxed italic">
-                          {fb.isAnonymous && <span className="text-[10px] font-bold text-violet-600 bg-violet-50 border border-violet-200 rounded-full px-2 py-0.5 mr-2">Ẩn danh</span>}
-                          "{fb.comment}"
-                        </p>
+                        {fb.isAnonymous && <span className="text-[10px] font-bold text-violet-600 bg-violet-50 border border-violet-200 rounded-full px-2 py-0.5 mb-2 inline-block">Ẩn danh</span>}
+                        {(() => {
+                          try {
+                            if (fb.comment && (fb.comment.startsWith('{') || fb.comment.startsWith('['))) {
+                              const parsed = JSON.parse(fb.comment);
+                              return (
+                                <div className="space-y-2 text-left not-italic">
+                                  <div>
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Nhận xét Bác sĩ:</span>
+                                    <p className="text-sm text-slate-700 italic mt-0.5">
+                                      "{parsed.doctorComment}" <span className="text-[9px] text-slate-400 font-semibold">({parsed.doctorPublic ? 'Công khai' : 'Ẩn'})</span>
+                                    </p>
+                                  </div>
+                                  {parsed.techComment && (
+                                    <div>
+                                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Nhận xét Kỹ thuật viên:</span>
+                                      <p className="text-sm text-slate-700 italic mt-0.5">
+                                        "{parsed.techComment}" <span className="text-[9px] text-slate-400 font-semibold">({parsed.techPublic ? 'Công khai' : 'Ẩn'})</span>
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            }
+                          } catch (e) {}
+                          return (
+                            <p className="text-sm text-slate-700 leading-relaxed italic">
+                              "{fb.comment}"
+                            </p>
+                          );
+                        })()}
                         
                         {fb.images?.length > 0 && (
                           <div className="flex gap-2">

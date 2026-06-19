@@ -37,9 +37,12 @@ const STATUS_STYLES = {
   'Đã xác nhận': 'bg-emerald-50 text-emerald-700 border border-emerald-200',
   'Chờ xác nhận': 'bg-amber-50 text-amber-700 border border-amber-200',
   'Đang chờ': 'bg-teal-50 text-teal-700 border border-teal-200',
+  'Chưa khám': 'bg-blue-50 text-blue-700 border border-blue-200',
+  'Đang khám': 'bg-teal-50 text-teal-700 border border-teal-200',
   'Đã khám': 'bg-sky-50 text-sky-700 border border-sky-200',
   'Đã hủy': 'bg-rose-50 text-rose-700 border border-rose-200',
   'Reviewed': 'bg-indigo-50 text-indigo-700 border border-indigo-200',
+  'Đã thanh toán': 'bg-emerald-50 text-emerald-700 border border-emerald-200',
 };
 
 const PAYMENT_STYLES = {
@@ -76,7 +79,7 @@ function AppointmentCard({ apt, index, isUpcoming, onCancel, onReschedule, onVie
           <Clock className="w-3.5 h-3.5" />
           {apt.time}
         </span>
-        <StatusBadge text={apt.status} type="status" />
+        <StatusBadge text={isUpcoming ? (apt.status === 'Đang chờ' ? 'Đang khám' : 'Chưa khám') : apt.status} type="status" />
       </div>
 
       <div className="flex items-center gap-2 mb-2">
@@ -137,7 +140,7 @@ function AppointmentCard({ apt, index, isUpcoming, onCancel, onReschedule, onVie
             )}
           </>
         )}
-        {!isUpcoming && (apt.status === 'Đã khám' || apt.status === 'Reviewed') && (
+        {!isUpcoming && (apt.status === 'Đã khám' || apt.status === 'Reviewed' || apt.status === 'Đã thanh toán') && (
           <>
             {existingFeedback ? (
               <button
@@ -753,9 +756,30 @@ function ViewFeedbackModal({ apt, feedback, onClose }) {
                   </div>
                 ))}
                 {/* Comment */}
-                {feedback.comment && (
-                  <p className="text-sm text-slate-700 italic border-t border-amber-200 pt-3">"{feedback.comment}"</p>
-                )}
+                {feedback.comment && (() => {
+                  try {
+                    if (feedback.comment.startsWith('{') || feedback.comment.startsWith('[')) {
+                      const parsed = JSON.parse(feedback.comment);
+                      return (
+                        <div className="space-y-2 border-t border-amber-200 pt-3 not-italic text-left text-sm">
+                          <div>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Nhận xét Bác sĩ:</span>
+                            <p className="text-slate-700 italic mt-0.5">"{parsed.doctorComment}" <span className="text-[9px] text-slate-400 font-semibold">({parsed.doctorPublic ? 'Công khai' : 'Ẩn'})</span></p>
+                          </div>
+                          {parsed.techComment && (
+                            <div>
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Nhận xét Kỹ thuật viên:</span>
+                              <p className="text-slate-700 italic mt-0.5">"{parsed.techComment}" <span className="text-[9px] text-slate-400 font-semibold">({parsed.techPublic ? 'Công khai' : 'Ẩn'})</span></p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
+                  } catch(e) {}
+                  return (
+                    <p className="text-sm text-slate-700 italic border-t border-amber-200 pt-3">"{feedback.comment}"</p>
+                  );
+                })()}
                 {/* Images */}
                 {feedback.images?.length > 0 && (
                   <div className="flex gap-2 flex-wrap border-t border-amber-200 pt-3">
@@ -793,7 +817,7 @@ export default function AppointmentsTab() {
   const patientId = user?.id || 'pat-01';
 
   const { appointments, cancelAppointment, rescheduleAppointment } = useAppointmentController(patientId);
-  const { getFeedbackByAppointment } = useFeedbackController({ patientId });
+  const { feedbacks, getFeedbackByAppointment } = useFeedbackController({ patientId });
 
   const [cancelTarget, setCancelTarget] = useState(null);
   const [cancelError, setCancelError] = useState('');
@@ -806,19 +830,41 @@ export default function AppointmentsTab() {
   const [emrRecord, setEmrRecord] = useState(null);
   const [emrLoading, setEmrLoading] = useState(false);
 
+  const getFeedbackForApt = (aptId) => {
+    return (feedbacks || []).find(f => String(f.appointmentId || f.appointment_id) === String(aptId));
+  };
+
   // Date-aware split: an *active* appointment only counts as "upcoming" while
-  // its date hasn't passed; once the date is in the past it moves to history
+  // its date and time haven't passed; once the time is in the past it moves to history
   // (overdue) instead of lingering in "sắp tới" forever.
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
   const ACTIVE_STATUSES = ['Đã xác nhận', 'Chờ xác nhận', 'Đang chờ', 'Pending'];
-  const TERMINAL_STATUSES = ['Đã khám', 'Đã hủy', 'Reviewed'];
+  const TERMINAL_STATUSES = ['Đã khám', 'Đã hủy', 'Reviewed', 'Đã thanh toán'];
   const aptDate = (a) => a.date || a.appointment_date || '';
-  const isActive = (a) => ACTIVE_STATUSES.includes(a.status);
-  const isTerminal = (a) => TERMINAL_STATUSES.includes(a.status);
+
+  const isDateTimePassed = (dateStr, timeStr) => {
+    if (!dateStr) return true;
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return true;
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+
+    const time = timeStr || '00:00';
+    const timeParts = time.split(':');
+    const hours = parseInt(timeParts[0] || '0', 10);
+    const minutes = parseInt(timeParts[1] || '0', 10);
+
+    const aptDateTime = new Date(year, month, day, hours, minutes, 0, 0);
+    return aptDateTime < new Date();
+  };
 
   const upcoming = appointments.filter(
-    (a) => isActive(a) && aptDate(a) >= todayStr
+    (a) => {
+      const isStatusActive = ACTIVE_STATUSES.includes(a.status);
+      return isStatusActive && !isDateTimePassed(aptDate(a), a.time || a.start_time);
+    }
   ).sort((a, b) => {
     const strA = `${aptDate(a)}T${a.time || a.start_time || ''}`;
     const strB = `${aptDate(b)}T${b.time || b.start_time || ''}`;
@@ -826,7 +872,12 @@ export default function AppointmentsTab() {
   });
 
   const past = appointments.filter(
-    (a) => isTerminal(a) || (isActive(a) && aptDate(a) < todayStr)
+    (a) => {
+      const isStatusTerminal = TERMINAL_STATUSES.includes(a.status);
+      const isStatusActive = ACTIVE_STATUSES.includes(a.status);
+      const isOverdue = isStatusActive && isDateTimePassed(aptDate(a), a.time || a.start_time);
+      return isStatusTerminal || isOverdue;
+    }
   ).sort((a, b) => {
     const strA = `${aptDate(a)}T${a.time || a.start_time || ''}`;
     const strB = `${aptDate(b)}T${b.time || b.start_time || ''}`;
@@ -931,7 +982,7 @@ export default function AppointmentsTab() {
                 onViewFeedback={setViewTarget}
                 onWriteFeedback={setWriteFeedbackTarget}
                 onViewEMR={handleViewEMR}
-                existingFeedback={getFeedbackByAppointment(apt.id)}
+                existingFeedback={getFeedbackForApt(apt.id)}
               />
             ))
           ) : (
@@ -968,7 +1019,7 @@ export default function AppointmentsTab() {
                 onViewFeedback={setViewTarget}
                 onWriteFeedback={setWriteFeedbackTarget}
                 onViewEMR={handleViewEMR}
-                existingFeedback={getFeedbackByAppointment(apt.id)}
+                existingFeedback={getFeedbackForApt(apt.id)}
               />
             ))
           ) : (
@@ -998,7 +1049,7 @@ export default function AppointmentsTab() {
             {viewTarget && (
               <ViewFeedbackModal
                 apt={viewTarget}
-                feedback={getFeedbackByAppointment(viewTarget.id)}
+                feedback={getFeedbackForApt(viewTarget.id)}
                 onClose={() => setViewTarget(null)}
               />
             )}

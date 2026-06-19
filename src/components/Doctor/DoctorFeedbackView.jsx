@@ -129,7 +129,17 @@ export default function DoctorFeedbackView({ doctorId }) {
                   <StarDisplay value={fb?.overallRating || 0} size="sm" />
                 </div>
 
-                <p className="text-sm text-slate-700 leading-relaxed">{fb?.comment || ''}</p>
+                <p className="text-sm text-slate-700 leading-relaxed">
+                  {(() => {
+                    try {
+                      if (fb?.comment && (fb.comment.startsWith('{') || fb.comment.startsWith('['))) {
+                        const parsed = JSON.parse(fb.comment);
+                        return parsed.doctorComment || '';
+                      }
+                    } catch(e) {}
+                    return fb?.comment || '';
+                  })()}
+                </p>
 
                 {/* Images */}
                 {fb?.images?.length > 0 && (
