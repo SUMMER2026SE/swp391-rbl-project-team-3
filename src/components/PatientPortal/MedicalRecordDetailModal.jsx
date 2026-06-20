@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { GLASS_BASE } from '../common/GlassCard';
 import {
   X,
   User,
@@ -121,7 +122,7 @@ function OverviewTab({ record }) {
     <div className="space-y-5">
       {/* Thông tin bệnh nhân */}
       <Section icon={<User className="w-4 h-4" />} title="Thông tin bệnh nhân" accent="sky">
-        <div className="bg-white border border-slate-200 rounded-2xl p-4">
+        <div className="bg-white/40 backdrop-blur-md border border-white/60 rounded-2xl p-4">
           <div className="flex items-center gap-4 mb-4">
             <img
               src={patient.avatar || `https://i.pravatar.cc/80?u=${patient.id}`}
@@ -144,7 +145,7 @@ function OverviewTab({ record }) {
       </Section>
       {/* Thông tin khám bệnh */}
       <Section icon={<Stethoscope className="w-4 h-4" />} title="Thông tin khám bệnh" accent="emerald">
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-0 divide-y divide-slate-100">
+        <div className="bg-white/40 backdrop-blur-md border border-white/60 rounded-2xl p-4 space-y-0 divide-y divide-slate-100">
           <InfoRow label="Ngày khám" value={record.date} />
           <InfoRow label="Giờ khám" value={record.time} />
           <InfoRow label="Bác sĩ phụ trách" value={record.doctor} />
@@ -161,14 +162,14 @@ function OverviewTab({ record }) {
       </Section>
       {/* Triệu chứng */}
       <Section icon={<AlertCircle className="w-4 h-4" />} title="Triệu chứng lâm sàng" accent="amber">
-        <div className="bg-white border border-slate-200 rounded-2xl p-4">
+        <div className="bg-white/40 backdrop-blur-md border border-white/60 rounded-2xl p-4">
           <p className="text-sm text-slate-700 leading-relaxed">{record.symptoms || '—'}</p>
         </div>
       </Section>
       {/* Sinh hiệu */}
       {record.vitalSigns && (
         <Section icon={<Activity className="w-4 h-4" />} title="Sinh hiệu" accent="rose">
-          <div className="bg-white border border-slate-200 rounded-2xl p-4">
+          <div className="bg-white/40 backdrop-blur-md border border-white/60 rounded-2xl p-4">
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {[
                 { label: 'Cân nặng', value: record.vitalSigns.weight },
@@ -189,19 +190,19 @@ function OverviewTab({ record }) {
       )}
       {/* Chẩn đoán */}
       <Section icon={<ClipboardList className="w-4 h-4" />} title="Chẩn đoán" accent="violet">
-        <div className="bg-white border border-slate-200 rounded-2xl p-4">
-          <div className="flex items-start gap-3 mb-3">
-            <div className="flex-1">
-              <p className="text-sm font-bold text-slate-800">{record.diagnosis}</p>
-              {record.diagnosisCode && record.diagnosisCode !== '—' && (
-                <span className="inline-block mt-1 px-2 py-0.5 rounded-md bg-violet-50 text-violet-700 border border-violet-200 text-[10px] font-bold">
+        <div className="bg-white/30 backdrop-blur-md border border-white/50 rounded-2xl p-4">
+          <div className="flex items-start gap-3 mb-1">
+            <div className="flex-1 min-w-0">
+              <p className="text-lg font-bold text-gray-900 leading-snug break-words">{record?.diagnosis || '—'}</p>
+              {record?.diagnosisCode && record.diagnosisCode !== '—' && (
+                <span className="inline-block mt-1.5 px-2 py-0.5 rounded-md bg-violet-50 text-violet-700 border border-violet-200 text-[10px] font-bold">
                   ICD-10: {record.diagnosisCode}
                 </span>
               )}
             </div>
           </div>
-          {record.diagnosisDetail && (
-            <p className="text-sm text-slate-600 leading-relaxed border-t border-slate-100 pt-3">
+          {record?.diagnosisDetail && (
+            <p className="text-gray-800 text-sm leading-relaxed break-words whitespace-pre-wrap border-t border-white/50 mt-3 pt-3">
               {record.diagnosisDetail}
             </p>
           )}
@@ -210,21 +211,21 @@ function OverviewTab({ record }) {
       {/* Ghi chú */}
       {(record?.notes || record?.technicianNotes) && (
         <Section icon={<MessageSquare className="w-4 h-4" />} title="Ghi chú" accent="teal">
-          <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3">
+          <div className="bg-white/30 backdrop-blur-md border border-white/50 rounded-2xl p-4 space-y-4">
             {record?.notes && (
               <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
-                  <Shield className="w-3 h-3" /> Bác sĩ
+                <p className="text-lg font-bold text-gray-900 leading-snug mb-1.5 flex items-center gap-1.5">
+                  <Shield className="w-4 h-4 text-teal-600 shrink-0" /> Lời dặn của bác sĩ
                 </p>
-                <p className="text-sm text-slate-700 leading-relaxed">{record.notes}</p>
+                <p className="text-gray-800 text-sm leading-relaxed break-words whitespace-pre-wrap">{record.notes}</p>
               </div>
             )}
             {record?.technicianNotes && (
-              <div className={record.notes ? 'border-t border-slate-100 pt-3' : ''}>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
-                  <Wrench className="w-3 h-3" /> Kỹ thuật viên
+              <div className={record?.notes ? 'border-t border-white/50 pt-4' : ''}>
+                <p className="text-lg font-bold text-gray-900 leading-snug mb-1.5 flex items-center gap-1.5">
+                  <Wrench className="w-4 h-4 text-teal-600 shrink-0" /> Ghi chú kỹ thuật viên
                 </p>
-                <p className="text-sm text-slate-700 leading-relaxed">{record.technicianNotes}</p>
+                <p className="text-gray-800 text-sm leading-relaxed break-words whitespace-pre-wrap">{record.technicianNotes}</p>
               </div>
             )}
           </div>
@@ -288,7 +289,7 @@ function AIAnalysisTab({ record }) {
       </div>
       {/* Metrics */}
       <Section icon={<Brain className="w-4 h-4" />} title="Chỉ số da chi tiết" accent="violet">
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-4">
+        <div className="bg-white/40 backdrop-blur-md border border-white/60 rounded-2xl p-4 space-y-4">
           {ai.metrics?.map?.((m) => (
             <div key={m.label}>
               <div className="flex items-center justify-between mb-1.5">
@@ -337,7 +338,7 @@ function TreatmentTab({ record }) {
       {/* Kế hoạch điều trị */}
       {plan && (
         <Section icon={<Activity className="w-4 h-4" />} title="Kế hoạch điều trị" accent="emerald">
-          <div className="bg-white border border-slate-200 rounded-2xl p-4">
+          <div className="bg-white/40 backdrop-blur-md border border-white/60 rounded-2xl p-4">
             <div className="flex items-start justify-between mb-4 pb-3 border-b border-slate-100">
               <div>
                 <p className="text-sm font-bold text-slate-800">{plan.title}</p>
@@ -409,7 +410,7 @@ function TreatmentTab({ record }) {
       {/* Lịch sử thủ thuật */}
       {history.length > 0 && (
         <Section icon={<Wrench className="w-4 h-4" />} title="Thủ thuật đã thực hiện" accent="sky">
-          <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3">
+          <div className="bg-white/40 backdrop-blur-md border border-white/60 rounded-2xl p-4 space-y-3">
             {history?.map?.((h, i) => (
               <div key={h.id} className={`flex gap-3 ${i < history.length - 1 ? 'pb-3 border-b border-slate-100' : ''}`}>
                 <div className="w-8 h-8 rounded-xl bg-sky-50 border border-sky-100 text-sky-600 flex items-center justify-center shrink-0">
@@ -460,67 +461,71 @@ function PrescriptionTab({ record }) {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       {prescriptions?.map?.((p, i) => (
         <motion.div
           key={i}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: i * 0.08 }}
-          className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm"
+          className="flex flex-col bg-white/40 backdrop-blur-md border border-white/60 rounded-2xl p-4 shadow-[0_8px_24px_rgba(31,38,135,0.06)]"
         >
-          {/* Header */}
-          <div className="flex items-start justify-between gap-3 mb-3 pb-3 border-b border-slate-100">
-            <div className="flex items-start gap-3">
+          {/* Header — Medication name highlighted */}
+          <div className="flex items-start justify-between gap-3 mb-3 pb-3 border-b border-white/50">
+            <div className="flex items-start gap-3 min-w-0">
               <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0">
                 <Pill className="w-4 h-4 text-emerald-600" />
               </div>
-              <div>
-                <p className="text-sm font-bold text-slate-800">{p.name}</p>
-                <span className={`inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${TYPE_COLORS[p.type] || 'bg-slate-50 text-slate-600 border-slate-200'}`}>
-                  {p.type}
-                </span>
+              <div className="min-w-0">
+                <p className="font-bold text-emerald-700 leading-snug break-words">{p?.name || 'Thuốc'}</p>
+                {p?.type && (
+                  <span className={`inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${TYPE_COLORS[p.type] || 'bg-slate-50 text-slate-600 border-slate-200'}`}>
+                    {p.type}
+                  </span>
+                )}
               </div>
             </div>
-            <div className="text-right shrink-0">
-              <p className="text-xs font-bold text-slate-800">{p.duration}</p>
-              <p className="text-[10px] text-slate-400">Thời gian dùng</p>
-            </div>
-          </div>
-
-          {/* Details grid */}
-          <div className="grid grid-cols-2 gap-2 mb-3">
-            <div className="bg-slate-50 rounded-xl p-2.5">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Liều lượng</p>
-              <p className="text-xs font-semibold text-slate-700 mt-0.5">{p.dosage}</p>
-            </div>
-            <div className="bg-slate-50 rounded-xl p-2.5">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tần suất</p>
-              <p className="text-xs font-semibold text-slate-700 mt-0.5">{p.frequency}</p>
-            </div>
-            {p.quantity && (
-              <div className="bg-slate-50 rounded-xl p-2.5">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Số lượng</p>
-                <p className="text-xs font-semibold text-slate-700 mt-0.5">{p.quantity}</p>
+            {p?.duration && (
+              <div className="text-right shrink-0">
+                <p className="text-xs font-bold text-gray-800">{p.duration}</p>
+                <p className="text-[10px] text-slate-400">Thời gian dùng</p>
               </div>
             )}
           </div>
 
-          {/* Instructions */}
-          {p.instructions && (
-            <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 mb-2">
-              <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider mb-1">Cách dùng</p>
-              <p className="text-xs text-emerald-900 leading-relaxed">{p.instructions}</p>
+          {/* Details — Dosage / Frequency / Quantity */}
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            <div className="bg-white/40 border border-white/50 rounded-xl p-2.5">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Liều lượng</p>
+              <p className="text-sm text-gray-700 font-semibold mt-0.5 break-words">{p?.dosage || '—'}</p>
+            </div>
+            <div className="bg-white/40 border border-white/50 rounded-xl p-2.5">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tần suất</p>
+              <p className="text-sm text-gray-700 font-semibold mt-0.5 break-words">{p?.frequency || '—'}</p>
+            </div>
+            {p?.quantity && (
+              <div className="bg-white/40 border border-white/50 rounded-xl p-2.5 col-span-2">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Số lượng</p>
+                <p className="text-sm text-gray-700 font-semibold mt-0.5 break-words">{p.quantity}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Instructions / Lời dặn */}
+          {p?.instructions && (
+            <div className="bg-emerald-50/70 border border-emerald-100 rounded-xl p-3 mt-auto">
+              <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider mb-1">Hướng dẫn / Cách dùng</p>
+              <p className="text-sm text-gray-700 leading-relaxed break-words whitespace-pre-wrap">{p.instructions}</p>
             </div>
           )}
 
           {/* Side effects */}
-          {p.sideEffects && p.sideEffects !== 'Không ghi nhận.' && (
-            <div className="bg-amber-50 border border-amber-100 rounded-xl p-3">
+          {p?.sideEffects && p.sideEffects !== 'Không ghi nhận.' && (
+            <div className="bg-amber-50/70 border border-amber-100 rounded-xl p-3 mt-2">
               <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wider mb-1 flex items-center gap-1">
                 <AlertCircle className="w-3 h-3" /> Tác dụng phụ
               </p>
-              <p className="text-xs text-amber-900 leading-relaxed">{p.sideEffects}</p>
+              <p className="text-sm text-gray-700 leading-relaxed break-words whitespace-pre-wrap">{p.sideEffects}</p>
             </div>
           )}
         </motion.div>
@@ -692,7 +697,7 @@ function FollowUpTab({ record }) {
             </div>
 
             {/* Content */}
-            <div className="flex-1 bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+            <div className="flex-1 bg-white/40 backdrop-blur-md border border-white/60 rounded-2xl p-4 shadow-sm">
               <div className="flex items-start justify-between gap-2 mb-2">
                 <div>
                   <p className="text-sm font-bold text-slate-800">{fu.type}</p>
@@ -758,7 +763,7 @@ export default function MedicalRecordDetailModal({ record, onClose }) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 font-sans"
+        className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/40 backdrop-blur-md p-4 font-sans"
         onClick={onClose}
       >
         <motion.div
@@ -766,7 +771,7 @@ export default function MedicalRecordDetailModal({ record, onClose }) {
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.92, opacity: 0, y: 20 }}
           transition={{ type: 'spring', damping: 26, stiffness: 200 }}
-          className="w-full max-w-2xl bg-white/95 backdrop-blur-xl border border-white shadow-2xl rounded-[2rem] flex flex-col max-h-[92vh] overflow-hidden"
+          className={`${GLASS_BASE} w-full max-w-2xl flex flex-col max-h-[92vh] overflow-hidden`}
           onClick={(e) => e.stopPropagation()}
         >
           {/* ── Header ── */}
@@ -809,7 +814,7 @@ export default function MedicalRecordDetailModal({ record, onClose }) {
           </div>
 
           {/* ── Tab Content ── */}
-          <div className="flex-1 overflow-y-auto px-5 py-5">
+          <div className="flex-1 overflow-y-auto p-4 md:p-8">
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeTab}

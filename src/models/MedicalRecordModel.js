@@ -137,6 +137,27 @@ export const MedicalRecordModel = {
     return data;
   },
 
+  // Type-ahead over the `diagnoses` reference table (ICD-10 catalogue). Matches
+  // the doctor's query against either the ICD-10 code OR the disease name so
+  // "L20" and "viêm da" both resolve. Returns at most 8 rows for the dropdown.
+  async searchDiagnoses(query) {
+    const clean = (query || '').trim();
+    if (!clean) return [];
+    try {
+      const { data, error } = await supabase
+        .from('diagnoses')
+        .select('diagnosis_id, icd10_code, name, category')
+        .or(`icd10_code.ilike.%${clean}%,name.ilike.%${clean}%`)
+        .order('icd10_code', { ascending: true })
+        .limit(8);
+      if (error) throw error;
+      return data || [];
+    } catch (e) {
+      console.warn('Supabase search error (diagnoses):', e.message);
+      return [];
+    }
+  },
+
   // Synchronous and hybrid check-in methods (for feature/receptionist compatibility)
   getWithPatientInfo(recordId) {
     const list = this.getAllSync();

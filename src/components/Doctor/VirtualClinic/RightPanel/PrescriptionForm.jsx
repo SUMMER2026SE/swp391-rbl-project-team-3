@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Pill, Plus, Trash2, Calendar } from 'lucide-react';
 import { GLASS_INPUT } from '../../../common/GlassCard';
+import GlassAutoComplete from '../../../common/GlassAutoComplete';
+import { PrescriptionModel } from '../../../../models/PrescriptionModel';
 
 export default function PrescriptionForm({ appointmentId, isReviewMode = false, examRecord = null, onChange }) {
   // For the moment, we treat existingPrescription as null
@@ -145,14 +147,37 @@ export default function PrescriptionForm({ appointmentId, isReviewMode = false, 
                     <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
                       Tên thuốc / Biệt dược
                     </label>
-                    <input
-                      type="text"
-                      value={med.name}
-                      onChange={(e) => handleMedicationChange(idx, 'name', e.target.value)}
-                      placeholder="Nhập tên thuốc (ví dụ: Isotretinoin 20mg)"
-                      className={getInputClass(isReviewMode)}
-                      readOnly={isReviewMode}
-                    />
+                    {isReviewMode ? (
+                      <input
+                        type="text"
+                        value={med.name}
+                        readOnly
+                        className={getInputClass(true)}
+                      />
+                    ) : (
+                      <GlassAutoComplete
+                        value={med.name}
+                        onChange={(val) => handleMedicationChange(idx, 'name', val)}
+                        fetchSuggestions={(q) => PrescriptionModel.searchMedicines(q)}
+                        // Doctors prescribe drugs not yet catalogued — keep free
+                        // text; resolveMedicineId() find-or-creates it on submit.
+                        allowCustomInput={true}
+                        getOptionLabel={(m) => m.medicine_name}
+                        renderOption={(m) => (
+                          <div className="flex items-center gap-2.5">
+                            <Pill className="w-3.5 h-3.5 shrink-0 text-emerald-600" />
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-gray-800 truncate">{m.medicine_name}</p>
+                              {m.description && (
+                                <p className="text-[11px] text-gray-500 truncate">{m.description}</p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        placeholder="Nhập tên thuốc (ví dụ: Isotretinoin 20mg)"
+                        emptyMessage="Không tìm thấy thuốc phù hợp."
+                      />
+                    )}
                   </div>
 
                   {/* Dosage */}

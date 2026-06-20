@@ -339,9 +339,9 @@ export default function BillingCheckout({
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* ── Invoice list ─────────────────────────────────────────────────── */}
-        <div className="lg:col-span-3 space-y-4">
+        <div className="col-span-1 lg:col-span-6 space-y-4">
           <div className="flex flex-col sm:flex-row gap-3 sm:items-center justify-between">
             <div className="flex bg-slate-100/80 p-1 rounded-2xl gap-1 w-fit border border-slate-200/40">
               {FILTERS.map((f) => (
@@ -430,7 +430,7 @@ export default function BillingCheckout({
         </div>
 
         {/* ── Checkout panel ───────────────────────────────────────────────── */}
-        <div className="lg:col-span-2 lg:sticky lg:top-24">
+        <div className="col-span-1 lg:col-span-6 lg:sticky lg:top-24">
           <AnimatePresence mode="wait">
             {!selected ? (
               <motion.div

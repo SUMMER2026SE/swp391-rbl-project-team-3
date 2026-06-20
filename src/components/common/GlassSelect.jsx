@@ -65,13 +65,13 @@ export default function GlassSelect({
         aria-expanded={open}
         className={`${GLASS_INPUT} w-full flex items-center justify-between gap-2 cursor-pointer disabled:opacity-50 ${buttonClassName}`}
       >
-        <span className={`truncate ${selected ? '' : 'text-gray-500'}`}>
+        <span className={`truncate ${selected ? '' : 'text-slate-800'}`}>
           {selected ? selected.label : placeholder}
         </span>
         <motion.span
           animate={{ rotate: open ? 180 : 0 }}
           transition={{ duration: 0.2 }}
-          className="shrink-0 text-gray-500"
+          className="shrink-0 text-slate-800"
         >
           <ChevronDown className="w-4 h-4" />
         </motion.span>
@@ -88,7 +88,7 @@ export default function GlassSelect({
             className={`${GLASS_BASE} absolute z-50 left-0 right-0 mt-2 p-1.5 max-h-60 overflow-auto origin-top ${menuClassName}`}
           >
             {items.length === 0 ? (
-              <li className="px-3 py-2 text-sm text-gray-500">Không có lựa chọn</li>
+              <li className="px-3 py-2 text-sm text-slate-800">Không có lựa chọn</li>
             ) : (
               items.map((o) => {
                 const active = String(o.value) === String(value);

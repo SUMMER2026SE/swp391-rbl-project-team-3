@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  X, Calendar, Clock, User, Stethoscope, CheckCircle2,
+  X, Calendar, Clock, ClockAlert, User, Stethoscope, CheckCircle2,
   ChevronDown, Star, AlertTriangle, Ticket, Tag, Sparkles,
   TrendingDown, Info, QrCode, Timer, CreditCard
 } from 'lucide-react';
@@ -10,6 +10,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useDoctors } from '../../hooks/useDoctors';
 import { DoctorScheduleModel } from '../../models/DoctorScheduleModel';
 import { createPaymentLink, getPaymentStatus } from '../../utils/payos';
+import GlassSelect from '../common/GlassSelect';
+import GlassDatePicker from '../common/GlassDatePicker';
 
 // ─── Service categories (static reference data) ───────────────────────────────
 // There is no `services` table in Supabase yet, and categories are stable
@@ -41,17 +43,17 @@ function formatVND(n) {
 function PriceSummary({ originalAmount }) {
   if (!originalAmount) {
     return (
-      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-2">
+      <div className="bg-white/30 border border-white/40 rounded-2xl p-3.5 space-y-2">
         <div className="flex justify-between text-xs font-semibold text-slate-600">
           <span>Giá dịch vụ</span>
-          <span className="italic text-slate-500 text-[11px]">(Được xác định theo bác sĩ)</span>
+          <span className="italic text-slate-700 text-[11px]">(Được xác định theo bác sĩ)</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-2">
+    <div className="bg-white/30 border border-white/40 rounded-2xl p-3.5 space-y-2">
       <div className="flex justify-between text-xs font-semibold text-slate-600">
         <span>Giá dịch vụ</span>
         <span>{formatVND(originalAmount)}</span>
@@ -398,7 +400,7 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm font-sans"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/40 backdrop-blur-md font-sans"
       onClick={step === 'payment' ? undefined : onClose}
     >
       <motion.div
@@ -406,14 +408,14 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.9, opacity: 0, y: 20 }}
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-        className="w-full max-w-2xl backdrop-blur-3xl bg-white/95 border border-white shadow-[0_20px_60px_rgba(0,0,0,0.15)] rounded-[2.5rem] p-8 relative max-h-[92vh] overflow-y-auto light-scrollbar"
+        className="w-[95vw] md:w-[85vw] lg:w-[80vw] max-w-6xl bg-white/40 backdrop-blur-2xl border border-white/60 shadow-xl rounded-3xl p-8 relative max-h-[90vh] overflow-y-auto custom-scrollbar"
         onClick={e => e.stopPropagation()}
       >
         {/* Close */}
         {step !== 'payment' && (
           <button
             onClick={onClose}
-            className="absolute top-5 right-5 bg-transparent border-none text-slate-400 hover:text-slate-700 hover:bg-slate-100/50 p-2 rounded-full flex items-center justify-center transition-all cursor-pointer"
+            className="absolute top-5 right-5 bg-transparent border-none text-slate-600 hover:text-slate-700 hover:bg-slate-100/50 p-2 rounded-full flex items-center justify-center transition-all cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -424,13 +426,14 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
         {step === 'form' && (
           <motion.form 
             key="form"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
             onSubmit={handleProceedToPayment}
           >
             {/* Header */}
             <div className="mb-6 text-center">
               <h2 className="text-2xl font-bold text-slate-800 mb-1 tracking-tight">Đặt lịch khám mới</h2>
-              <p className="text-slate-500 text-sm">Điền đầy đủ thông tin để đặt chỗ khám tại DermaSmart</p>
+              <p className="text-slate-700 text-sm">Điền đầy đủ thông tin để đặt chỗ khám tại DermaSmart</p>
             </div>
 
             {/* Error */}
@@ -441,161 +444,184 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
               </div>
             )}
 
-            <div className="space-y-4">
-              {/* 0. Select Doctor (Returning Patients Only) */}
-              {isReturning && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
+              {/* ─── LEFT COLUMN: Doctor, Date & Contact ─── */}
+              <div className="space-y-4">
+                {/* 0. Date — custom Liquid Glass calendar (replaces native date input) */}
                 <div>
-                  <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                    <User className="w-4 h-4 text-indigo-500" />
-                    Bước 1: Chọn bác sĩ (Tuỳ chọn)
+                  <label className="flex items-center gap-2 text-sm font-bold text-slate-900 uppercase tracking-wider mb-2">
+                    <Calendar className="w-4 h-4 text-teal-500" />
+                    Bước 1: Chọn ngày khám
                   </label>
-                  <select
-                    value={selectedDoctor}
-                    onChange={e => setSelectedDoctor(e.target.value)}
-                    className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-emerald-500 text-slate-800 transition-colors cursor-pointer text-sm"
-                  >
-                    <option value="">Không chọn</option>
-                    {doctors?.map(doc => (
-                      <option key={doc.id || doc.user_id} value={doc.user_id || doc.id}>
-                        {doc.name} {doc.specialties && doc.specialties.length > 0 ? `(${doc.specialties.join(', ')})` : ''}
-                      </option>
-                    ))}
-                  </select>
+                  <GlassDatePicker
+                    value={selectedDate}
+                    min={minDate}
+                    onChange={(d) => { setSelectedDate(d); setSelectedTime(''); }}
+                  />
                 </div>
-              )}
 
-              {/* 1. Date */}
-              <div>
-                <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                  <Calendar className="w-4 h-4 text-teal-500" />
-                  {isReturning ? 'Bước 2: Chọn ngày khám' : 'Bước 1: Chọn ngày khám'}
-                </label>
-                <input
-                  type="date"
-                  value={selectedDate}
-                  min={minDate}
-                  required
-                  onChange={e => { setSelectedDate(e.target.value); setSelectedTime(''); }}
-                  className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-emerald-500 text-slate-800 transition-colors cursor-pointer text-sm"
-                />
+                {/* 1. Doctor — visible to ALL users (guests + logged-in) */}
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-bold text-slate-900 uppercase tracking-wider mb-2">
+                    <User className="w-4 h-4 text-indigo-500" />
+                    Bước 2: Chọn bác sĩ
+                  </label>
+                  <GlassSelect
+                    value={selectedDoctor}
+                    onChange={(v) => setSelectedDoctor(v)}
+                    placeholder="Tự động chọn bác sĩ phù hợp"
+                    buttonClassName="p-4 text-sm text-slate-900 font-medium"
+                    options={[
+                      { value: '', label: 'Không chọn — hệ thống tự sắp xếp' },
+                      ...(doctors || []).map(doc => ({
+                        value: doc.user_id || doc.id,
+                        label: `${/^(BS|ThS|TS|PGS|GS|CN|KTV)/i.test((doc.name || '').trim()) ? '' : 'BS. '}${doc.name}${doc.specialties && doc.specialties.length > 0 ? ` (${doc.specialties.join(', ')})` : ''}`,
+                      })),
+                    ]}
+                  />
+                </div>
+
+                {/* 5. Contact */}
+                <div className="border-t border-slate-150 pt-4">
+                  {user ? (
+                    <div className="bg-sky-50/50 border border-sky-100/50 rounded-2xl p-4 flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-sky-100 text-sky-700 flex items-center justify-center font-bold text-sm">
+                        {user.name.charAt(0)}
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-600 font-bold uppercase tracking-wider">Đang đặt với tài khoản</p>
+                        <p className="text-sm font-bold text-slate-800">{user.name}</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <p className="text-sm font-bold text-slate-900 uppercase tracking-wider">Thông tin liên hệ (Khách vãng lai)</p>
+                      <input
+                        type="text" placeholder="Họ và tên bệnh nhân" required
+                        value={guestName} onChange={e => setGuestName(e.target.value)}
+                        className="w-full p-4 rounded-xl bg-white/50 border border-white/40 text-slate-900 font-medium placeholder-slate-500 outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all text-sm"
+                      />
+                      <div className="grid grid-cols-2 gap-3">
+                        <input
+                          type="tel" placeholder="Số điện thoại" required
+                          value={guestPhone} onChange={e => setGuestPhone(e.target.value)}
+                          className="w-full p-4 rounded-xl bg-white/50 border border-white/40 text-slate-900 font-medium placeholder-slate-500 outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all text-sm"
+                        />
+                        <input
+                          type="email" placeholder="Địa chỉ Email" required
+                          value={guestEmail} onChange={e => setGuestEmail(e.target.value)}
+                          className="w-full p-4 rounded-xl bg-white/50 border border-white/40 text-slate-900 font-medium placeholder-slate-500 outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all text-sm"
+                        />
+                      </div>
+                      <p className="text-[10px] text-slate-600 italic">
+                        * Lưu ý: Tài khoản bệnh nhân sẽ được tạo tự động dựa trên thông tin trên.
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
 
-              {/* 2. Parallel Time */}
-              <AnimatePresence>
-                {selectedDate && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-5 overflow-hidden"
-                  >
-                    {workingDocs.length === 0 ? (
-                      <div className="text-sm text-rose-500 font-semibold flex items-center gap-2 justify-center py-4">
-                        <AlertTriangle className="w-4 h-4" /> Không có bác sĩ làm việc vào ngày đã chọn.
-                      </div>
-                    ) : selectedDoctor && !workingDocs.some(d => String(d.user_id || d.id) === String(selectedDoctor)) ? (
-                      <div className="text-sm text-rose-500 font-semibold flex items-center gap-2 justify-center py-4">
-                        <AlertTriangle className="w-4 h-4" /> Bác sĩ bạn chọn không làm việc vào ngày này. Vui lòng chọn ngày khác hoặc bỏ chọn bác sĩ.
-                      </div>
-                    ) : (
-                      <>
-                        <div className="text-center bg-sky-100 text-sky-800 text-xs font-bold py-1.5 rounded-full mb-2 border border-sky-200">
-                          {isReturning ? 'Bước 3: Chọn khung giờ bạn muốn' : 'Bước 2: Chọn khung giờ bạn muốn'}
+              {/* ─── RIGHT COLUMN: Time Slots, Price & Submit ─── */}
+              <div className="flex flex-col gap-4">
+                {/* 2. Time Slot Picker — plain conditional. AnimatePresence mode="wait"
+                    deadlocked the placeholder→slots swap under React.StrictMode (the exit
+                    callback gets dropped on the double-invoke), leaving the time picker stuck. */}
+                {selectedDate ? (
+                    <motion.div
+                      key="slots"
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 12 }}
+                      transition={{ duration: 0.25 }}
+                      className="bg-white/30 border border-white/40 rounded-2xl p-5 space-y-5"
+                    >
+                      {workingDocs.length === 0 ? (
+                        <div className="text-sm text-rose-500 font-semibold flex items-center gap-2 justify-center py-4">
+                          <AlertTriangle className="w-4 h-4" /> Không có bác sĩ làm việc vào ngày đã chọn.
                         </div>
-
-                        {/* Time Select */}
-                        <div>
-                          <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                            <Clock className="w-4 h-4 text-amber-500" />
-                            Các khung giờ có thể đặt
-                          </label>
-                          <div className="grid grid-cols-4 gap-2">
-                            {filteredSlots?.map?.(slot => (
-                               <button
-                                key={slot.time}
-                                type="button"
-                                disabled={slot.isBooked}
-                                onClick={() => setSelectedTime(slot.time === selectedTime ? '' : slot.time)}
-                                className={`px-2 py-2.5 rounded-xl text-xs font-bold text-center cursor-pointer border transition-all ${
-                                  slot.isBooked
-                                    ? 'bg-slate-100 border-slate-200 text-slate-300 cursor-not-allowed line-through'
-                                    : selectedTime === slot.time
-                                    ? 'bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-500/20'
-                                    : 'bg-white border-slate-200 text-slate-600 hover:border-emerald-300 hover:bg-emerald-50'
-                                }`}
-                              >
-                                {slot.time}
-                              </button>
-                            ))}
+                      ) : selectedDoctor && !workingDocs.some(d => String(d.user_id || d.id) === String(selectedDoctor)) ? (
+                        <div className="text-sm text-rose-500 font-semibold flex items-center gap-2 justify-center py-4">
+                          <AlertTriangle className="w-4 h-4" /> Bác sĩ bạn chọn không làm việc vào ngày này. Vui lòng chọn ngày khác hoặc bỏ chọn bác sĩ.
+                        </div>
+                      ) : (
+                        <>
+                          <div className="text-center bg-sky-100 text-sky-800 text-xs font-bold py-1.5 rounded-full mb-2 border border-sky-200">
+                            Bước 3: Chọn giờ khám
                           </div>
-                        </div>
-                      </>
-                    )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
 
-              {/* ── Price Summary ── */}
-              <AnimatePresence>
-                {selectedCategory && (
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                    <PriceSummary originalAmount={originalAmount} />
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                          {/* Time Select */}
+                          <div>
+                            <label className="flex items-center gap-2 text-sm font-bold text-slate-900 uppercase tracking-wider mb-2">
+                              <Clock className="w-4 h-4 text-amber-500" />
+                              Các khung giờ có thể đặt
+                            </label>
+                            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-3 gap-3">
+                              {filteredSlots?.map?.(slot => (
+                                <button
+                                  key={slot.time}
+                                  type="button"
+                                  disabled={slot.isBooked}
+                                  onClick={() => setSelectedTime(slot.time === selectedTime ? '' : slot.time)}
+                                  className={`py-3 px-4 rounded-xl text-base font-bold text-center cursor-pointer border transition-all ${
+                                    slot.isBooked
+                                      ? 'bg-slate-100/50 border-white/40 text-slate-400 cursor-not-allowed line-through'
+                                      : selectedTime === slot.time
+                                      ? 'bg-emerald-500 text-white border-emerald-400 shadow-[0_8px_16px_rgba(16,185,129,0.3)] scale-105'
+                                      : 'bg-white/40 border-white/50 text-gray-700 hover:bg-white/70 hover:border-emerald-400 hover:shadow-md'
+                                  }`}
+                                >
+                                  {slot.time}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="time-placeholder"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="bg-white/20 border border-dashed border-white/50 rounded-2xl p-8 flex flex-col items-center justify-center text-center text-slate-600 gap-3 min-h-[180px]"
+                    >
+                      <Clock className="w-8 h-8 opacity-40" />
+                      <p className="text-sm font-medium max-w-[220px]">Chọn ngày khám ở cột bên trái để xem các khung giờ trống.</p>
+                    </motion.div>
+                  )}
 
-              {/* 5. Contact */}
-              <div className="border-t border-slate-150 pt-4">
-                {user ? (
-                  <div className="bg-sky-50/50 border border-sky-100/50 rounded-2xl p-4 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-sky-100 text-sky-700 flex items-center justify-center font-bold text-sm">
-                      {user.name.charAt(0)}
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Đang đặt với tài khoản</p>
-                      <p className="text-sm font-bold text-slate-800">{user.name}</p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Thông tin liên hệ (Khách vãng lai)</p>
-                    <input
-                      type="text" placeholder="Họ và tên bệnh nhân" required
-                      value={guestName} onChange={e => setGuestName(e.target.value)}
-                      className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-emerald-500 text-slate-800 text-sm"
-                    />
-                    <div className="grid grid-cols-2 gap-3">
-                      <input
-                        type="tel" placeholder="Số điện thoại" required
-                        value={guestPhone} onChange={e => setGuestPhone(e.target.value)}
-                        className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-emerald-500 text-slate-800 text-sm"
-                      />
-                      <input
-                        type="email" placeholder="Địa chỉ Email" required
-                        value={guestEmail} onChange={e => setGuestEmail(e.target.value)}
-                        className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-emerald-500 text-slate-800 text-sm"
-                      />
-                    </div>
-                    <p className="text-[10px] text-slate-400 italic">
-                      * Lưu ý: Tài khoản bệnh nhân sẽ được tạo tự động dựa trên thông tin trên.
-                    </p>
-                  </div>
-                )}
+                {/* Lateness policy warning */}
+                <div className="bg-amber-100/80 border border-amber-500/50 rounded-xl p-4 mt-4 flex items-start gap-3">
+                  <ClockAlert className="text-amber-600 shrink-0" size={20} />
+                  <p className="text-base text-amber-900 font-bold">
+                    Nếu quý khách đến trễ quá 30 phút so với giờ hẹn, lịch khám sẽ tự động bị hủy và ghi nhận vắng mặt.
+                  </p>
+                </div>
+
+                {/* ── Price Summary ── */}
+                <AnimatePresence>
+                  {selectedCategory && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                      <PriceSummary originalAmount={originalAmount} />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Submit */}
+                <button
+                  type="submit"
+                  disabled={!isFormComplete || isSubmittingRef.current}
+                  className={`w-full mt-auto py-4 text-lg font-bold rounded-2xl text-white border-none transition-all duration-200 cursor-pointer ${
+                    isFormComplete && !isSubmittingRef.current
+                      ? 'bg-gradient-to-r from-emerald-500 to-sky-500 shadow-[0_8px_20px_rgba(20,184,166,0.3)] hover:shadow-[0_12px_25px_rgba(20,184,166,0.4)] hover:-translate-y-0.5'
+                      : 'bg-slate-300 cursor-not-allowed shadow-none'
+                  }`}
+                >
+                  Tiếp tục thanh toán giữ chỗ (50.000 VNĐ)
+                </button>
               </div>
             </div>
-
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={!isFormComplete || isSubmittingRef.current}
-              className={`w-full mt-6 p-4 rounded-2xl text-white text-base font-semibold border-none transition-all duration-200 cursor-pointer ${
-                isFormComplete && !isSubmittingRef.current
-                  ? 'bg-gradient-to-r from-emerald-500 to-sky-500 shadow-[0_8px_20px_rgba(20,184,166,0.3)] hover:shadow-[0_12px_25px_rgba(20,184,166,0.4)] hover:-translate-y-0.5'
-                  : 'bg-slate-300 cursor-not-allowed shadow-none'
-              }`}
-            >
-              Tiếp tục thanh toán giữ chỗ (50.000 VNĐ)
-            </button>
           </motion.form>
         )}
 
@@ -603,14 +629,15 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
         {step === 'payment' && (
           <motion.div 
             key="payment"
-            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+            initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
             className="flex flex-col items-center text-center"
           >
             <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
               <QrCode className="w-8 h-8 text-emerald-600" />
             </div>
             <h3 className="text-xl font-bold text-slate-800 mb-2">Thanh toán phí giữ chỗ</h3>
-            <p className="text-sm text-slate-500 mb-6 max-w-sm">
+            <p className="text-sm text-slate-700 mb-6 max-w-sm">
               Để đảm bảo slot khám, vui lòng thanh toán phí giữ chỗ <span className="font-bold text-slate-800">50,000 VNĐ</span>. Số tiền này sẽ được trừ vào chi phí khám bệnh thực tế.
             </p>
 
@@ -627,7 +654,7 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
                 </div>
               )}
-              {orderCode && <div className="text-[10px] text-center text-slate-400 mt-2">Mã đơn: {orderCode}</div>}
+              {orderCode && <div className="text-[10px] text-center text-slate-600 mt-2">Mã đơn: {orderCode}</div>}
             </div>
 
             <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 px-4 py-3 rounded-xl mb-6 w-full justify-center">
@@ -658,7 +685,7 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
               <Timer className="w-10 h-10 text-rose-500" />
             </div>
             <h3 className="text-xl font-bold text-slate-800 mb-2">Hết thời gian giữ chỗ!</h3>
-            <p className="text-sm text-slate-500 max-w-sm mb-6 leading-relaxed">
+            <p className="text-sm text-slate-700 max-w-sm mb-6 leading-relaxed">
               Bạn đã quá 5 phút để thanh toán. Slot hẹn này sẽ bị khóa tạm thời trong 3 phút để nhường cho bệnh nhân khác.
               <br/><br/>
               Vui lòng thử lại sau hoặc chọn một slot trống khác!
@@ -687,7 +714,7 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
               <Ticket className="w-3.5 h-3.5" />
               Đã thanh toán cọc 50,000 VNĐ
             </div>
-            <p className="text-sm text-slate-500 max-w-sm leading-relaxed">
+            <p className="text-sm text-slate-700 max-w-sm leading-relaxed">
               Yêu cầu đặt lịch đã được xác nhận.{' '}
               {user
                 ? 'Xem và quản lý lịch khám tại trang cá nhân.'
@@ -699,11 +726,11 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
                   <span>Dự kiến thanh toán thêm</span>
                   <span className="text-emerald-600">{formatVND(Math.max(0, originalAmount - 50000))}</span>
                 </div>
-                <div className="flex justify-between text-slate-500 text-[11px]">
+                <div className="flex justify-between text-slate-700 text-[11px]">
                   <span>Chi phí gốc (bác sĩ)</span>
                   <span>{formatVND(originalAmount)}</span>
                 </div>
-                <div className="flex justify-between text-slate-500 font-semibold text-[11px]">
+                <div className="flex justify-between text-slate-700 font-semibold text-[11px]">
                   <span>Đã thanh toán (Cọc)</span>
                   <span>-50.000 VNĐ</span>
                 </div>

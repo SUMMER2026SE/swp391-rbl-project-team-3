@@ -1,6 +1,27 @@
 import { supabase } from '../supabaseClient';
 
 export const PrescriptionModel = {
+  // Type-ahead over the `medicines` catalogue. Case-insensitive match on the
+  // drug name; returns up to 8 rows (name + description) for the prescription
+  // pad's autocomplete dropdown.
+  async searchMedicines(query) {
+    const clean = (query || '').trim();
+    if (!clean) return [];
+    try {
+      const { data, error } = await supabase
+        .from('medicines')
+        .select('medicine_id, medicine_name, description, active_ingredient, unit')
+        .ilike('medicine_name', `%${clean}%`)
+        .order('medicine_name', { ascending: true })
+        .limit(8);
+      if (error) throw error;
+      return data || [];
+    } catch (e) {
+      console.warn('Supabase search error (medicines):', e.message);
+      return [];
+    }
+  },
+
   // Fetch prescription header along with its details and medicine info
   async getByRecordId(recordId) {
     try {

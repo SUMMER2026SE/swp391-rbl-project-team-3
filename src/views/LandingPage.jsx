@@ -14,7 +14,7 @@ import {
   useSpring,
   useMotionTemplate,
 } from 'framer-motion';
-import { Key, LogOut, User, Ticket, Tag, Calendar, ArrowRight, ChevronDown } from 'lucide-react';
+import { Key, LogOut, User, Ticket, Tag, Calendar, ArrowRight, ChevronDown, Cpu, ScanFace, CalendarPlus } from 'lucide-react';
 import logo from '../assets/logo.png';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
@@ -141,9 +141,13 @@ function AllDoctorsModal({ isOpen, onClose, doctors, onSelectDoctor }) {
 
 // Framer Motion Animation Variants
 const heroContainerVariants = {
-  hidden: {},
+  hidden: { opacity: 0, y: 20 },
   visible: {
+    opacity: 1,
+    y: 0,
     transition: {
+      duration: 0.8,
+      ease: "easeOut",
       staggerChildren: 0.15
     }
   }
@@ -807,9 +811,10 @@ function LandingPage({ onLogout }) {
           {/* Top Tag */}
           <motion.div
             variants={heroFadeInUp}
-            className="bg-emerald-100/50 backdrop-blur-md rounded-full px-4 py-1.5 border border-emerald-200 text-emerald-800 text-sm font-semibold tracking-wide"
+            className="flex items-center gap-2 bg-emerald-100/50 backdrop-blur-md rounded-full px-4 py-1.5 border border-emerald-200 text-emerald-800 text-sm font-semibold tracking-wide"
           >
-            ✨ Ra mắt phiên bản AI 2.0
+            <Cpu size={16} className="text-emerald-600" />
+            Ra mắt phiên bản AI 2.0
           </motion.div>
 
           {/* H1 */}
@@ -836,28 +841,41 @@ function LandingPage({ onLogout }) {
             variants={heroFadeInUp}
             className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-6 w-full sm:w-auto items-center justify-center"
           >
-            <button
+            {/* Primary — Booking (solid, trustworthy) */}
+            <motion.button
               onClick={handleBookFromHero}
-              className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 text-white font-bold shadow-lg shadow-emerald-500/25 px-8 py-4 rounded-2xl transition-all cursor-pointer border-none text-base"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="w-full sm:w-auto flex items-center justify-center gap-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-lg font-bold shadow-lg hover:shadow-emerald-500/30 px-8 py-4 rounded-2xl transition-[background-color,box-shadow] duration-300 cursor-pointer border-none"
             >
+              <CalendarPlus size={20} />
               Đặt lịch khám ngay
-            </button>
-            <button
+            </motion.button>
+
+            {/* Secondary — AI Skin Scan (high-tech gradient) */}
+            <motion.button
               onClick={() => setIsAIScanOpen(true)}
-              className="w-full sm:w-auto bg-gradient-to-r from-sky-400 to-emerald-400 hover:from-sky-500 hover:to-emerald-500 text-white font-bold shadow-lg shadow-sky-500/25 px-8 py-4 rounded-2xl transition-all cursor-pointer border-none text-base flex items-center justify-center gap-2"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="w-full sm:w-auto flex items-center justify-center gap-2.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-lg font-bold shadow-lg hover:shadow-cyan-500/30 px-8 py-4 rounded-2xl transition-[box-shadow] duration-300 cursor-pointer border-none"
             >
-              ✨ Soi da AI miễn phí
-            </button>
-            <button
+              <ScanFace size={20} />
+              Soi da AI miễn phí
+            </motion.button>
+
+            {/* Tertiary — View AI Features (glass / outline) */}
+            <motion.button
               onClick={() => {
                 const featuresEl = document.getElementById('features');
                 if (featuresEl) featuresEl.scrollIntoView({ behavior: 'smooth' });
               }}
-              className="w-full sm:w-auto border border-sky-300 hover:bg-white/50 text-sky-600 font-semibold px-8 py-4 rounded-2xl transition-all cursor-pointer bg-transparent text-base"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="w-full sm:w-auto group flex items-center justify-center gap-2 bg-white/10 hover:bg-white/30 border border-slate-300 text-slate-700 text-lg font-semibold px-8 py-4 rounded-2xl transition-[background-color] duration-300 cursor-pointer backdrop-blur-md"
             >
               Xem tính năng AI
-
-            </button>
+              <ArrowRight size={20} className="transition-transform duration-300 group-hover:translate-x-1" />
+            </motion.button>
           </motion.div>
         </motion.div>
       </section>
