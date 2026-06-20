@@ -16,6 +16,64 @@ export const ServiceTicketModel = {
     }
   },
 
+  async populateDetails(tickets) {
+    if (!tickets || tickets.length === 0) return tickets;
+
+    const patientIds = Array.from(new Set(tickets.map(t => t.appointment?.patient_id).filter(Boolean)));
+    const doctorIds = Array.from(new Set(tickets.map(t => t.appointment?.doctor_id).filter(Boolean)));
+
+    let patientMap = {};
+    if (patientIds.length > 0) {
+      try {
+        const { data: patientsData } = await supabase
+          .from('users')
+          .select('user_id, gender, date_of_birth')
+          .in('user_id', patientIds);
+        if (patientsData) {
+          patientsData.forEach(p => {
+            patientMap[p.user_id] = p;
+          });
+        }
+      } catch (e) {
+        console.error('Error populating patient details for tickets:', e);
+      }
+    }
+
+    let doctorMap = {};
+    if (doctorIds.length > 0) {
+      try {
+        const { data: doctorsData } = await supabase
+          .from('users')
+          .select('user_id, full_name')
+          .in('user_id', doctorIds);
+        if (doctorsData) {
+          doctorsData.forEach(d => {
+            doctorMap[d.user_id] = d.full_name;
+          });
+        }
+      } catch (e) {
+        console.error('Error populating doctor details for tickets:', e);
+      }
+    }
+
+    tickets.forEach(t => {
+      if (t.appointment) {
+        const pId = t.appointment.patient_id;
+        if (pId && patientMap[pId]) {
+          t.appointment.patient_gender = patientMap[pId].gender;
+          t.appointment.patient_dob = patientMap[pId].date_of_birth;
+        }
+        
+        const dId = t.appointment.doctor_id;
+        if (dId && doctorMap[dId]) {
+          t.appointment.doctor_name = doctorMap[dId];
+        }
+      }
+    });
+
+    return tickets;
+  },
+
   // Tickets the Technician still has to act on. The patient name lives directly
   // on the appointments row (patient_name), so we embed that instead of the
   // non-existent patient_profiles.full_name column.
@@ -27,7 +85,7 @@ export const ServiceTicketModel = {
         .eq('status', 'PENDING')
         .order('created_at', { ascending: true });
       if (error) throw error;
-      return data || [];
+      return await this.populateDetails(data || []);
     } catch (e) {
       console.error('Supabase fetch error (pending service_tickets):', e.message);
       return [];
@@ -44,7 +102,7 @@ export const ServiceTicketModel = {
         .in('status', ['PENDING', 'TECH_COMPLETED'])
         .order('created_at', { ascending: true });
       if (error) throw error;
-      return data || [];
+      return await this.populateDetails(data || []);
     } catch (e) {
       console.error('Supabase fetch error (active service_tickets):', e.message);
       return [];

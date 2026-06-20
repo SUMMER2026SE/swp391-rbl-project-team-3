@@ -47,6 +47,18 @@ export default function TechnicianDashboard() {
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [showToast, setShowToast] = useState(false);
 
+  const calculateAge = (dob) => {
+    if (!dob) return '—';
+    const today = new Date();
+    const birth = new Date(dob);
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age > 0 ? `${age} tuổi` : '—';
+  };
+
   // PHASE 3 — Doctor → Technician read path. Map a service_ticket row into the
   // task shape the workspace/list components already consume.
   const mapTicket = (t) => ({
@@ -54,6 +66,11 @@ export default function TechnicianDashboard() {
     appointmentId: t.appointment_id,
     patientId: t.appointment?.patient_id || null,
     patientName: t.appointment?.patient_name || 'Bệnh nhân',
+    patientGender: t.appointment?.patient_gender || '—',
+    patientAge: calculateAge(t.appointment?.patient_dob),
+    assignedBy: t.appointment?.doctor_name || 'Bác sĩ',
+    notes: t.doctor_note || '',
+    doctorNotes: t.doctor_note || '',
     procedureType: t.service_name,
     procedure: t.service_name,
     service: t.service_name,

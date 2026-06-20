@@ -8,7 +8,8 @@ export default function TreatmentPlanForm({
   onServicesChange,
   doctorNotes = '',
   onNotesChange,
-  isReviewMode = false
+  isReviewMode = false,
+  hideServices = false,
 }) {
   const services = ['Chiếu đèn sinh học', 'Peel da hóa học', 'Điện di tinh chất', 'Lấy nhân mụn'];
 
@@ -20,38 +21,42 @@ export default function TreatmentPlanForm({
     }
   };
 
+  const titleText = hideServices ? 'Thông tin Lâm sàng & Lời dặn' : 'Kế hoạch Điều trị';
+
   return (
     <GlassCard className="p-6 mb-6">
       <div className="flex items-center gap-2 mb-4 pb-4 border-b border-slate-200/40">
         <FileText className="w-5 h-5 text-teal-600" />
-        <h3 className="text-lg font-bold text-gray-900 tracking-tight">Kế hoạch Điều trị</h3>
+        <h3 className="text-lg font-bold text-gray-900 tracking-tight">{titleText}</h3>
       </div>
       <div className="space-y-4">
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2 uppercase tracking-wider">Chỉ định dịch vụ phòng khám</label>
-          <div className="grid grid-cols-2 gap-3">
-            {services?.map?.((service, idx) => {
-              const checked = selectedServices.includes(service);
-              return (
-                <label 
-                  key={idx} 
-                  className={`flex items-center gap-2.5 p-3 rounded-xl border transition-all text-xs font-semibold ${
-                    isReviewMode
-                      ? 'border-slate-200/50 bg-slate-100/30 text-slate-800 cursor-not-allowed'
-                      : 'border-slate-200 bg-slate-50 cursor-pointer hover:bg-sky-50 text-slate-700'
-                  }`}
-                >
-                  <GlassCheckbox
-                    checked={checked}
-                    onChange={() => !isReviewMode && handleToggle(service)}
-                    disabled={isReviewMode}
-                  />
-                  <span>{service}</span>
-                </label>
-              );
-            })}
+        {!hideServices && (
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2 uppercase tracking-wider">Chỉ định dịch vụ phòng khám</label>
+            <div className="grid grid-cols-2 gap-3">
+              {services?.map?.((service, idx) => {
+                const checked = selectedServices.includes(service);
+                return (
+                  <label 
+                    key={idx} 
+                    className={`flex items-center gap-2.5 p-3 rounded-xl border transition-all text-xs font-semibold ${
+                      isReviewMode
+                        ? 'border-slate-200/50 bg-slate-100/30 text-slate-800 cursor-not-allowed'
+                        : 'border-slate-200 bg-slate-50 cursor-pointer hover:bg-sky-50 text-slate-700'
+                    }`}
+                  >
+                    <GlassCheckbox
+                      checked={checked}
+                      onChange={() => !isReviewMode && handleToggle(service)}
+                      disabled={isReviewMode}
+                    />
+                    <span>{service}</span>
+                  </label>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
 
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2 uppercase tracking-wider">Lời dặn của Bác sĩ</label>

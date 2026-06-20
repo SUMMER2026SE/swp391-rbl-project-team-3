@@ -154,7 +154,7 @@ export default function DoctorDashboard() {
         patient_id: patientId,
         doctor_id: doctorId,
         diagnosis: clinicalData?.diagnosis || '',
-        symptoms: apt.reason || apt.symptoms || '',
+        symptoms: clinicalData?.symptoms || apt.reason || apt.symptoms || '',
         doctor_note: clinicalData?.doctorNotes || clinicalData?.generalInstructions || '',
       });
 
@@ -172,13 +172,27 @@ export default function DoctorDashboard() {
 
       // 4. Doctor → Technician: one service_ticket per selected indication.
       const services = Array.isArray(selectedServices) ? selectedServices : [];
+      const noteToSave = clinicalData?.indicationNote || '';
       for (const svc of services) {
         const serviceName = typeof svc === 'string' ? svc : svc?.name;
         if (!serviceName) continue;
+
+        // Double check if ticket already exists to avoid duplicates
+        const { data: existing } = await supabase
+          .from('service_tickets')
+          .select('id')
+          .eq('appointment_id', appointmentId)
+          .eq('service_name', serviceName)
+          .maybeSingle();
+
+        if (existing) continue;
+
         await ServiceTicketModel.create({
           appointment_id: appointmentId,
           service_name: serviceName,
           status: 'PENDING',
+          doctor_note: noteToSave,
+          technician_id: svc?.technician_id || null,
         });
       }
 
@@ -189,6 +203,45 @@ export default function DoctorDashboard() {
     } catch (err) {
       console.error('Failed to complete examination (EMR write):', err);
       showToast('Lưu hồ sơ thất bại. Vui lòng thử lại.', 'error');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSendIndications = async (appointmentId, selectedServices = [], doctorNote = '') => {
+    if (isSaving) return;
+    setIsSaving(true);
+    try {
+      const services = Array.isArray(selectedServices) ? selectedServices : [];
+      for (const svc of services) {
+        const serviceName = typeof svc === 'string' ? svc : svc?.name;
+        if (!serviceName) continue;
+
+        // Double check if ticket already exists to avoid duplicates
+        const { data: existing } = await supabase
+          .from('service_tickets')
+          .select('id')
+          .eq('appointment_id', appointmentId)
+          .eq('service_name', serviceName)
+          .maybeSingle();
+
+        if (existing) continue;
+
+        await ServiceTicketModel.create({
+          appointment_id: appointmentId,
+          service_name: serviceName,
+          status: 'PENDING',
+          doctor_note: doctorNote,
+          technician_id: svc?.technician_id || null,
+        });
+      }
+
+      showToast('Đã gửi chỉ định cho Kỹ thuật viên!', 'success');
+      setActiveAppointment(null);
+      await loadApts();
+    } catch (err) {
+      console.error('Failed to send indications:', err);
+      showToast('Gửi chỉ định thất bại. Vui lòng thử lại.', 'error');
     } finally {
       setIsSaving(false);
     }
@@ -564,6 +617,7 @@ export default function DoctorDashboard() {
               appointment={activeAppointment} 
               onBack={() => setActiveAppointment(null)} 
               handleCompleteExamination={handleCompleteExamination}
+              handleSendIndications={handleSendIndications}
             />
           ) : (
             <motion.div

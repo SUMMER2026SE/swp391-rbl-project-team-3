@@ -11,8 +11,17 @@ import { supabase } from '../../supabaseClient';
 import { ProfileModel } from '../../models/ProfileModel';
 import { ROLE_DISPLAY_NAMES } from './profileConfig';
 
-export function normalizeProfileData(realData, userRole, visitsCount = 0) {
+export function normalizeProfileData(realData, userRole, metricsInput = null) {
   if (!realData) return null;
+  
+  let visitsCount = 0;
+  let staffMetrics = null;
+  if (typeof metricsInput === 'number') {
+    visitsCount = metricsInput;
+  } else if (metricsInput && typeof metricsInput === 'object') {
+    visitsCount = metricsInput.visits || 0;
+    staffMetrics = metricsInput;
+  }
   
   const base = {
     id: realData.id,
@@ -36,6 +45,7 @@ export function normalizeProfileData(realData, userRole, visitsCount = 0) {
       department: realData.department || '',
       specialization: realData.specialization || '',
       schedule: realData.schedule || '',
+      metrics: staffMetrics || {},
     };
   } else {
     const vitals = {
@@ -101,34 +111,110 @@ export function useProfileData(authUser) {
       if (authError) throw authError;
       if (!user) throw new Error('No authenticated user found');
 
-      let userRole = user.user_metadata?.role || 'PATIENT';
-      if (user.email?.toLowerCase().includes('admin')) {
-        userRole = 'ADMIN';
-      } else if (user.email?.toLowerCase().includes('doctor') || user.email?.toLowerCase().includes('bs') || user.email?.toLowerCase().includes('bacsi')) {
-        userRole = 'DOCTOR';
-      } else if (user.email?.toLowerCase().includes('reception') || user.email?.toLowerCase().includes('letan')) {
-        userRole = 'RECEPTIONIST';
-      } else if (user.email?.toLowerCase().includes('tech') || user.email?.toLowerCase().includes('ktv')) {
-        userRole = 'TECHNICIAN';
-      }
+      const userRole = authUser?.role || 'PATIENT';
       
       // 2. Fetch the real profile using ProfileModel
       const realData = await ProfileModel.getProfile(user.id, userRole);
 
-      // 3. Fetch real metrics from Supabase (e.g., patient appointments count)
-      let visitsCount = 0;
+      // 3. Fetch real metrics from Supabase (e.g., patient or staff stats)
+      let metricsData = {};
       if (userRole === 'PATIENT') {
         const { count, error: countError } = await supabase
           .from('appointments')
           .select('*', { count: 'exact', head: true })
-          .eq('patient_id', user.id);
+          .eq('patient_id', user.id)
+          .in('status', ['Đã khám', 'Reviewed', 'Đã thanh toán']);
         if (!countError && count !== null) {
-          visitsCount = count;
+          metricsData.visits = count;
         }
+      } else if (userRole === 'DOCTOR') {
+        // Ca khám thành công
+        const { count: successCount, error: err1 } = await supabase
+          .from('appointments')
+          .select('*', { count: 'exact', head: true })
+          .eq('doctor_id', user.id)
+          .in('status', ['Đã khám', 'Reviewed']);
+
+        // Đánh giá trung bình
+        const { data: feedbacks, error: err2 } = await supabase
+          .from('feedbacks')
+          .select('rating')
+          .eq('doctor_id', user.id);
+        
+        let avgRating = 0;
+        if (!err2 && feedbacks && feedbacks.length > 0) {
+          const sum = feedbacks.reduce((acc, f) => acc + (f.rating || 0), 0);
+          avgRating = (sum / feedbacks.length).toFixed(1);
+        }
+
+        // Giờ làm việc thực tế (Confirmed shifts in the past or today)
+        const today = new Date();
+        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+        const { data: shifts, error: err3 } = await supabase
+          .from('doctor_shifts')
+          .select('start_time, end_time')
+          .eq('doctor_id', user.id)
+          .eq('status', 'Đã xác nhận')
+          .lte('work_date', todayStr);
+        
+        let workHours = 0;
+        if (!err3 && shifts && shifts.length > 0) {
+          const parseTimeToHours = (t) => {
+            if (!t) return 0;
+            const [h, m] = t.split(':').map(Number);
+            return h + (m || 0) / 60;
+          };
+          workHours = shifts.reduce((acc, s) => {
+            const diff = parseTimeToHours(s.end_time) - parseTimeToHours(s.start_time);
+            return acc + (diff > 0 ? diff : 0);
+          }, 0);
+        }
+
+        metricsData = {
+          successVisits: successCount || 0,
+          avgRating: avgRating > 0 ? `${avgRating}/5` : 'Chưa có',
+          workHours: workHours > 0 ? `${Math.round(workHours)} giờ` : '0 giờ',
+        };
+      } else if (userRole === 'TECHNICIAN') {
+        // Thủ thuật hoàn tất & Giờ làm việc thực tế
+        // Tính dựa trên các service_tickets đã hoàn thành (TECH_COMPLETED)
+        const { data: completedTickets, error: errTech } = await supabase
+          .from('service_tickets')
+          .select('created_at, updated_at')
+          .eq('technician_id', user.id)
+          .eq('status', 'TECH_COMPLETED');
+
+        let workHours = 0;
+        let successCount = 0;
+
+        if (!errTech && completedTickets) {
+          successCount = completedTickets.length;
+          
+          workHours = completedTickets.reduce((acc, t) => {
+            if (t.created_at && t.updated_at) {
+              const start = new Date(t.created_at).getTime();
+              const end = new Date(t.updated_at).getTime();
+              const diffHours = (end - start) / (1000 * 60 * 60);
+              return acc + (diffHours > 0 ? diffHours : 0);
+            }
+            return acc;
+          }, 0);
+        }
+
+        // Round to 1 decimal place if needed, or Math.round
+        const formattedHours = workHours > 0 
+          ? `${workHours < 1 ? workHours.toFixed(1) : Math.round(workHours)} giờ` 
+          : '0 giờ';
+
+        metricsData = {
+          successVisits: successCount,
+          workHours: formattedHours,
+        };
       }
 
       // 4. Transform raw database profile into UI view-model
-      const transformed = normalizeProfileData(realData, userRole, visitsCount);
+      const transformed = normalizeProfileData(realData, userRole, metricsData);
 
       setProfile(transformed);
     } catch (err) {

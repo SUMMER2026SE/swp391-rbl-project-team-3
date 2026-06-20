@@ -54,6 +54,7 @@ export default function ProfilePage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('personal');
+  const [feedbackAptId, setFeedbackAptId] = useState(null);
 
   const { profile, isLoading, error, setProfile } = useProfileData(user);
 
@@ -199,9 +200,9 @@ export default function ProfilePage() {
                   {activeTab === 'personal' && <PersonalInfoTab profile={profile} onSaved={handleProfileSaved} />}
                   {activeTab === 'settings' && <AccountSettingsTab />}
                   {activeTab === 'insights' && <StaffInsightsTab profile={profile} />}
-                  {activeTab === 'appointments' && <AppointmentsTab />}
+                  {activeTab === 'appointments' && <AppointmentsTab setActiveTab={setActiveTab} setFeedbackAptId={setFeedbackAptId} />}
                   {activeTab === 'records' && <MedicalRecordTab profile={profile} />}
-                  {activeTab === 'feedback' && <PatientFeedbackTab user={user} />}
+                  {activeTab === 'feedback' && <PatientFeedbackTab user={user} feedbackAptId={feedbackAptId} setFeedbackAptId={setFeedbackAptId} />}
                   {activeTab === 'activity_log' && (
                     <div className="text-center py-12 border-2 border-dashed border-slate-200 rounded-2xl bg-white/40 backdrop-blur-sm">
                       <Activity className="w-10 h-10 text-slate-300 mx-auto mb-3" />

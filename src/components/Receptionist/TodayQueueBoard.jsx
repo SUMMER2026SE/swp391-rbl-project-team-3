@@ -84,6 +84,7 @@ export default function TodayQueueBoard({
   onDecline, // async (aptId)
   onOpenChat, // (patientId, patientName)
   onGoBilling, // (apt) — jump to the Billing module pre-filtered to this patient
+  onArrive, // (apt) - open check-in patient lookup/create modal
   showToast,
 }) {
   const [busyId, setBusyId] = useState(null);
@@ -161,11 +162,16 @@ export default function TodayQueueBoard({
     }
   };
 
-  const handleArrive = (apt) =>
-    run(apt.key, async () => {
-      await onChangeStatus?.(apt.aptId, APT_STATUS.CHECKED_IN);
-      showToast?.(`${apt.patientName} đã được tiếp đón và xếp vào hàng chờ khám.`, 'success');
-    });
+  const handleArrive = (apt) => {
+    if (onArrive) {
+      onArrive(apt);
+    } else {
+      run(apt.key, async () => {
+        await onChangeStatus?.(apt.aptId, APT_STATUS.CHECKED_IN);
+        showToast?.(`${apt.patientName} đã được tiếp đón và xếp vào hàng chờ khám.`, 'success');
+      });
+    }
+  };
 
   const handleToBilling = (apt) =>
     run(apt.key, async () => {

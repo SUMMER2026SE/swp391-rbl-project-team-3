@@ -146,7 +146,7 @@ const AssignedTasksList = ({ tasks, onExecuteTask, onReviewTask }) => {
                       </div>
                       {task?.doctorName && (
                         <p className="text-xs text-slate-500 mt-1 ml-6">
-                          BS. {task.doctorName}
+                          {task.doctorName}
                         </p>
                       )}
                     </div>

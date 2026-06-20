@@ -295,7 +295,9 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
   // ── Submit Form to Payment Step ──────────────────────────────────────────────
   const handleProceedToPayment = async (e) => {
     e.preventDefault();
-    if (!isFormComplete) return;
+    if (!isFormComplete || isSubmittingRef.current) return;
+    
+    isSubmittingRef.current = true;
     setErrorMessage('');
 
     const bookingPayload = {
@@ -323,6 +325,7 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
     if (!validation.valid) {
       setErrorMessage(validation.error);
       setSelectedTime('');
+      isSubmittingRef.current = false;
       return;
     }
 
@@ -359,6 +362,7 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
       setPaymentPayload(bookingPayload);
     }
     
+    isSubmittingRef.current = false;
     setStep('payment');
     setTimeLeft(300); // 5 minutes
   };
@@ -453,7 +457,7 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
                     <option value="">Không chọn</option>
                     {doctors?.map(doc => (
                       <option key={doc.id || doc.user_id} value={doc.user_id || doc.id}>
-                        BS. {doc.name} {doc.specialties && doc.specialties.length > 0 ? `(${doc.specialties.join(', ')})` : ''}
+                        {doc.name} {doc.specialties && doc.specialties.length > 0 ? `(${doc.specialties.join(', ')})` : ''}
                       </option>
                     ))}
                   </select>
@@ -583,9 +587,9 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
             {/* Submit */}
             <button
               type="submit"
-              disabled={!isFormComplete}
+              disabled={!isFormComplete || isSubmittingRef.current}
               className={`w-full mt-6 p-4 rounded-2xl text-white text-base font-semibold border-none transition-all duration-200 cursor-pointer ${
-                isFormComplete
+                isFormComplete && !isSubmittingRef.current
                   ? 'bg-gradient-to-r from-emerald-500 to-sky-500 shadow-[0_8px_20px_rgba(20,184,166,0.3)] hover:shadow-[0_12px_25px_rgba(20,184,166,0.4)] hover:-translate-y-0.5'
                   : 'bg-slate-300 cursor-not-allowed shadow-none'
               }`}

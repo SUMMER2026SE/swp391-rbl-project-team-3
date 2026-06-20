@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { AppointmentModel } from '../../models/AppointmentModel';
 import GlassCard, { GLASS_BASE, GLASS_INPUT } from '../common/GlassCard';
+import { supabase } from '../../supabaseClient';
 import {
   normalizeApt,
   parseFee,
@@ -68,6 +69,11 @@ export default function BillingCheckout({
   const [processing, setProcessing] = useState(false);
   const [receipt, setReceipt] = useState(null);
 
+  const [usedServices, setUsedServices] = useState([]);
+  const [servicesTotal, setServicesTotal] = useState(0);
+
+
+
   const docFee = (doctorId) => {
     const d = (doctors || []).find((x) => String(x.id) === String(doctorId));
     return parseFee(d?.consultationFee, 0);
@@ -77,7 +83,11 @@ export default function BillingCheckout({
     () =>
       (appointments || [])
         .map((a, i) => normalizeApt(a, i))
-        .filter((a) => a.status !== APT_STATUS.CANCELLED),
+        .filter((a) => {
+          // Cashier should strictly only see appointments that have finished examination (ready to pay)
+          // or ones that have already been paid. Unexamined/future/duplicate appointments should not clutter this view.
+          return a.status === APT_STATUS.EXAMINED || a.status === APT_STATUS.PAID;
+        }),
     [appointments]
   );
 
@@ -128,6 +138,54 @@ export default function BillingCheckout({
     [visible, all, selectedKey]
   );
 
+  useEffect(() => {
+    if (!selectedKey || !selected) {
+      setUsedServices([]);
+      setServicesTotal(0);
+      return;
+    }
+    
+    const fetchServices = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('service_tickets')
+          .select('id, service_name')
+          .eq('appointment_id', selected.aptId);
+          
+        if (data && data.length > 0) {
+           const { data: svcData } = await supabase
+             .from('services')
+             .select('service_name, price');
+             
+           let totalSvc = 0;
+           const svcs = data.map(t => {
+               const svc = (svcData || []).find(s => s.service_name === t.service_name);
+               const priceStr = svc?.price || 0;
+               let priceNum = 0;
+               if (typeof priceStr === 'number') priceNum = priceStr;
+               else if (typeof priceStr === 'string') priceNum = parseInt(priceStr.replace(/[^0-9]/g, ''), 10) || 0;
+               
+               totalSvc += priceNum;
+               
+               return {
+                 id: t.id,
+                 name: t.service_name,
+                 price: priceNum
+               };
+           });
+           setUsedServices(svcs);
+           setServicesTotal(totalSvc);
+        } else {
+           setUsedServices([]);
+           setServicesTotal(0);
+        }
+      } catch (err) {
+         console.error('Error fetching used services:', err);
+      }
+    };
+    fetchServices();
+  }, [selectedKey, selected]);
+
   // Reset the checkout state whenever the selected invoice changes.
   useEffect(() => {
     setVoucherCode('');
@@ -137,7 +195,8 @@ export default function BillingCheckout({
   }, [selectedKey]);
 
   // ── Money math for the selected invoice ───────────────────────────────────
-  const total = selected ? parseFee(selected.fee, 0) || docFee(selected.doctorId) || 300000 : 0;
+  const baseTotal = selected ? parseFee(selected.fee, 0) || docFee(selected.doctorId) || 300000 : 0;
+  const total = baseTotal + servicesTotal;
   const prior = selected ? priorPaidFor(selected.aptId, payments) : 0;
   const discount = appliedVoucher?.discount || 0;
   const netPayable = Math.max(0, total - prior - discount);
@@ -213,8 +272,13 @@ export default function BillingCheckout({
       if (voucherId != null && typeof incrementUsage === 'function') {
         try { await incrementUsage(voucherId); } catch { /* non-fatal */ }
       }
+      
+      const baseTotal = parseFee(selected.fee, 0) || docFee(selected.doctorId) || 300000;
+      
       setReceipt({
         ...selected,
+        baseTotal,
+        usedServices,
         total,
         prior,
         discount,
@@ -427,6 +491,8 @@ export default function BillingCheckout({
                       onClick={() =>
                         setReceipt({
                           ...selected,
+                          baseTotal: parseFee(selected.fee, 0) || 300000,
+                          usedServices: [],
                           total,
                           prior,
                           discount: 0,
@@ -510,7 +576,10 @@ export default function BillingCheckout({
 
                     {/* Breakdown */}
                     <div className="border-t border-dashed border-slate-200 pt-3 space-y-2 text-xs font-semibold text-slate-600">
-                      <Row label="Chi phí dịch vụ" value={formatVnd(total)} />
+                      <Row label={`Khám: ${selected.serviceName}`} value={formatVnd(baseTotal)} />
+                      {usedServices.map(s => (
+                        <Row key={s.id} label={`Dịch vụ: ${s.name}`} value={formatVnd(s.price)} />
+                      ))}
                       {prior > 0 && <Row label="Đã thanh toán trước (đặt cọc)" value={`−${formatVnd(prior)}`} tone="teal" />}
                       {discount > 0 && <Row label="Giảm giá (voucher)" value={`−${formatVnd(discount)}`} tone="emerald" />}
                       <div className="border-t border-slate-200 pt-2 flex items-center justify-between">
@@ -629,25 +698,36 @@ function ReceiptModal({ receipt, onClose, receptionistId, showToast }) {
               </div>
               <div className="space-y-1 text-[10px] text-slate-600 font-semibold">
                 <p className="flex justify-between"><span>Thời gian:</span><span>{receipt.paidAt.toLocaleString('vi-VN')}</span></p>
-                <p className="flex justify-between"><span>Thu ngân:</span><span>Lễ tân ({receptionistId || 'staff'})</span></p>
+                <p className="flex justify-between"><span>Thu ngân:</span><span className="truncate max-w-[120px]">{receptionistId || 'staff'}</span></p>
                 <p className="flex justify-between"><span>Hình thức:</span><span>{receipt.method}</span></p>
               </div>
-              <div className="border-b border-dashed border-slate-200" />
+              <div className="border-b border-dashed border-slate-200 my-2" />
               <div className="space-y-1 text-[10px] text-slate-700 font-semibold">
                 <p><span className="text-slate-500 font-bold">Khách hàng:</span> <strong>{receipt.patientName}</strong></p>
                 <p><span className="text-slate-500 font-bold">Bác sĩ:</span> {receipt.doctorName}</p>
-                <p><span className="text-slate-500 font-bold">Dịch vụ:</span> {receipt.serviceName}</p>
               </div>
-              <div className="border-b-2 border-double border-slate-300" />
+              <div className="border-t border-dashed border-slate-300 my-2 pt-2 space-y-1 text-[10px] text-slate-700 font-semibold">
+                <div className="flex justify-between">
+                  <span>Khám: {receipt.serviceName}</span>
+                  <span className="font-mono">{formatVnd(receipt.baseTotal)}</span>
+                </div>
+                {receipt.usedServices && receipt.usedServices.map((s, idx) => (
+                  <div key={idx} className="flex justify-between">
+                    <span>DV: {s.name}</span>
+                    <span className="font-mono">{formatVnd(s.price)}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="border-b-2 border-double border-slate-300 my-2" />
               <div className="space-y-1 text-[10px] font-semibold text-slate-600">
-                <p className="flex justify-between"><span>Cộng tiền dịch vụ:</span><span>{formatVnd(receipt.total)}</span></p>
+                <p className="flex justify-between"><span>Cộng tiền dịch vụ:</span><span className="font-mono">{formatVnd(receipt.total)}</span></p>
                 {receipt.prior > 0 && (
-                  <p className="flex justify-between text-teal-600"><span>Đã khấu trừ cọc:</span><span>−{formatVnd(receipt.prior)}</span></p>
+                  <p className="flex justify-between text-teal-600"><span>Đã khấu trừ cọc:</span><span className="font-mono">−{formatVnd(receipt.prior)}</span></p>
                 )}
                 {receipt.discount > 0 && (
                   <p className="flex justify-between text-emerald-600">
                     <span>Ưu đãi {receipt.voucherCode ? `(${receipt.voucherCode})` : ''}:</span>
-                    <span>−{formatVnd(receipt.discount)}</span>
+                    <span className="font-mono">−{formatVnd(receipt.discount)}</span>
                   </p>
                 )}
                 <div className="border-t border-slate-200 pt-1.5 flex justify-between items-center text-xs font-black text-slate-900">

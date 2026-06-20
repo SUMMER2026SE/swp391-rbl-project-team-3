@@ -44,11 +44,24 @@ export default function ProfileSummaryCard({ profile, onAvatarChange }) {
   const theme = ROLE_THEME[profile.role] || ROLE_THEME.PATIENT;
   const RoleIcon = theme.icon;
 
-  // Patient metrics carry live values; merge them into the config row.
+  // Patient and Doctor metrics carry live values; merge them into the config row.
   let metrics = ROLE_METRICS[profile.role] || [];
   if (profile.kind === 'patient' && profile.metrics) {
     metrics = metrics?.map?.((m, i) =>
       i === 0 ? { ...m, value: String(profile.metrics.visits ?? '—') } : m);
+  } else if (profile.role === 'DOCTOR' && profile.metrics) {
+    metrics = metrics?.map?.((m, i) => {
+      if (i === 0) return { ...m, value: String(profile.metrics.successVisits ?? '—') };
+      if (i === 1) return { ...m, value: String(profile.metrics.workHours ?? '—') };
+      if (i === 2) return { ...m, value: String(profile.metrics.avgRating ?? '—') };
+      return m;
+    });
+  } else if (profile.role === 'TECHNICIAN' && profile.metrics) {
+    metrics = metrics?.map?.((m, i) => {
+      if (i === 0) return { ...m, value: String(profile.metrics.successVisits ?? '—') };
+      if (i === 1) return { ...m, value: String(profile.metrics.workHours ?? '—') };
+      return m;
+    });
   }
 
   const handlePick = (e) => {
@@ -117,6 +130,9 @@ export default function ProfileSummaryCard({ profile, onAvatarChange }) {
               <div className="min-w-0 text-left">
                 <p className="text-sm font-medium text-on-surface-variant/70 leading-none">{m.label}</p>
                 <p className={`mt-1 text-2xl font-extrabold leading-none ${m.accent}`}>{m.value}</p>
+                {profile.memberSince && (
+                  <p className="mt-1.5 text-[10px] text-on-surface-variant/50 font-medium italic">Tính từ {profile.memberSince}</p>
+                )}
               </div>
             </div>
           );

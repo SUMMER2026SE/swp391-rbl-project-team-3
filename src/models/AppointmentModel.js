@@ -350,6 +350,10 @@ export const AppointmentModel = {
     if (updatedFields.doctor_id !== undefined) dbPayload.doctor_id = updatedFields.doctor_id;
     if (updatedFields.patientId !== undefined) dbPayload.patient_id = updatedFields.patientId;
     if (updatedFields.patient_id !== undefined) dbPayload.patient_id = updatedFields.patient_id;
+    if (updatedFields.patientName !== undefined) dbPayload.patient_name = updatedFields.patientName;
+    if (updatedFields.patient_name !== undefined) dbPayload.patient_name = updatedFields.patient_name;
+    if (updatedFields.patientPhone !== undefined) dbPayload.patient_phone = updatedFields.patientPhone;
+    if (updatedFields.patient_phone !== undefined) dbPayload.patient_phone = updatedFields.patient_phone;
     
     if (updatedFields.date !== undefined) { dbPayload.appointment_date = updatedFields.date; }
     if (updatedFields.appointment_date !== undefined) { dbPayload.appointment_date = updatedFields.appointment_date; }
@@ -386,15 +390,15 @@ export const AppointmentModel = {
         ? Number(rawVoucher)
         : null;
 
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      const isValidUuid = (str) => typeof str === 'string' && uuidRegex.test(str);
-
       const pId = payData.patient_id || payData.patientId;
       const rId = payData.receptionist_id ?? null;
       const proxyGuestId = '18504773-0f51-405a-aa32-70cae403be6e';
 
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const isValidUuid = (str) => typeof str === 'string' && uuidRegex.test(str);
+
       const row = {
-        appointment_id: isValidUuid(appointmentId) ? appointmentId : null,
+        appointment_id: appointmentId,
         patient_id: isValidUuid(pId) ? pId : proxyGuestId,
         receptionist_id: isValidUuid(rId) ? rId : null,
         voucher_id: voucherId,
@@ -408,17 +412,23 @@ export const AppointmentModel = {
         status: 'Paid',
       };
 
-      // If this is a mock appointment (no valid UUID), bypass Supabase insert
-      // to avoid UUID syntax errors and foreign key violations.
-      if (!isValidUuid(appointmentId)) {
-        if (appointmentId && markAppointmentPaid) {
-          await this.updateStatus(appointmentId, 'Đã thanh toán');
-        }
-        return { id: Math.floor(Math.random() * 10000), ...row };
-      }
-
       const { data, error } = await supabase.from('payments').insert([row]).select();
       if (error) throw error;
+
+      // Also track in the invoices table
+      try {
+        await supabase.from('invoices').insert([{
+          appointment_id: appointmentId,
+          patient_id: isValidUuid(pId) ? pId : proxyGuestId,
+          total_amount: finalAmount,
+          status: 'PAID',
+          payment_method: method,
+          transaction_id: `TXN-${data[0].id || Date.now()}`
+        }]);
+      } catch (err) {
+        console.warn('Failed to insert into invoices:', err.message);
+      }
+
       if (appointmentId && markAppointmentPaid) {
         await this.updateStatus(appointmentId, 'Đã thanh toán');
       }
@@ -498,6 +508,10 @@ export const AppointmentModel = {
       a => {
         if (this.isCancelled(a.status)) return false;
         if (bookingData.holdAptId && String(a.appointment_id || a.id) === String(bookingData.holdAptId)) return false;
+        if (a.status === 'Đang giữ chỗ') {
+          const createdAt = new Date(a.created_at || Date.now()).getTime();
+          if (Date.now() - createdAt > 5 * 60 * 1000) return false;
+        }
         if ((a.date === date || a.appointment_date === date) &&
             (a.time === time || a.start_time === time) &&
             (
@@ -523,6 +537,11 @@ export const AppointmentModel = {
       const upcoming = patientAppointments.filter(
         a => {
           if (bookingData.holdAptId && String(a.appointment_id || a.id) === String(bookingData.holdAptId)) return false;
+          if (a.status === 'Đang giữ chỗ') {
+            const createdAt = new Date(a.created_at || Date.now()).getTime();
+            if (Date.now() - createdAt > 5 * 60 * 1000) return false;
+            return true;
+          }
           return a.status === 'Đang chờ' || a.status === 'Đã xác nhận' || a.status === 'Chờ xác nhận' || a.status === 'Pending';
         }
       );

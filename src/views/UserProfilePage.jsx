@@ -571,6 +571,7 @@ export default function UserProfilePage() {
 
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('personal');
+  const [feedbackAptId, setFeedbackAptId] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
 
@@ -784,7 +785,7 @@ export default function UserProfilePage() {
               )}
               {activeTab === 'appointments' && (
                 <motion.div key="appointments" variants={tabContentVariants} initial="hidden" animate="visible" exit="exit">
-                  <AppointmentsTab />
+                  <AppointmentsTab setActiveTab={setActiveTab} setFeedbackAptId={setFeedbackAptId} />
                 </motion.div>
               )}
               {activeTab === 'records' && (
@@ -794,7 +795,7 @@ export default function UserProfilePage() {
               )}
               {activeTab === 'feedback' && (
                 <motion.div key="feedback" variants={tabContentVariants} initial="hidden" animate="visible" exit="exit">
-                  <PatientFeedbackTab user={user} />
+                  <PatientFeedbackTab user={user} feedbackAptId={feedbackAptId} setFeedbackAptId={setFeedbackAptId} />
                 </motion.div>
               )}
             </AnimatePresence>

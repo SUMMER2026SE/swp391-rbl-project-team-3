@@ -54,6 +54,7 @@ import ReceptionistChatTab from '../components/Receptionist/ReceptionistChatTab'
 import ReceptionistFeedbackView from '../components/Receptionist/ReceptionistFeedbackView';
 import TodayQueueBoard from '../components/Receptionist/TodayQueueBoard';
 import BillingCheckout from '../components/Receptionist/BillingCheckout';
+import CheckInPatientModal from '../components/Receptionist/CheckInPatientModal';
 import { normalizeApt, APT_STATUS, TODAY_STR } from '../components/Receptionist/receptionistData';
 import logo from '../assets/logo.png';
 
@@ -88,6 +89,7 @@ export default function ReceptionistDashboard() {
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [toast, setToast] = useState(null);
+  const [selectedCheckInApt, setSelectedCheckInApt] = useState(null);
 
   const {
     appointments,
@@ -214,9 +216,17 @@ export default function ReceptionistDashboard() {
   };
 
   // ─── Queue / appointment actions (awaited → reliable refresh) ─────────────
-  const handleQueueStatusChange = async (aptId, status) => {
-    await AppointmentModel.updateAppointment(aptId, { status });
+  const handleQueueStatusChange = async (aptId, status, extraFields = {}) => {
+    await AppointmentModel.updateAppointment(aptId, { status, ...extraFields });
     await refreshState();
+  };
+
+  const handleCheckInSuccess = async (aptId, patientId, patientName, patientPhone) => {
+    await handleQueueStatusChange(aptId, APT_STATUS.CHECKED_IN, {
+      patient_id: patientId,
+      patient_name: patientName,
+      patient_phone: patientPhone
+    });
   };
 
   const handleApproveRequest = async (aptId) => {
@@ -603,7 +613,7 @@ export default function ReceptionistDashboard() {
                   requests={(appointments || []).map((a, i) => normalizeApt(a, i)).filter((a) => a.status === APT_STATUS.REQUEST)}
                   onGoTab={setActiveTab}
                   onApprove={handleApproveRequest}
-                  onArrive={(aptId) => handleQueueStatusChange(aptId, APT_STATUS.CHECKED_IN)}
+                  onArrive={(apt) => setSelectedCheckInApt(apt)}
                   onOpenChat={handleOpenChat}
                   onAdd={() => setIsAddOpen(true)}
                   showToast={showToast}
@@ -619,6 +629,7 @@ export default function ReceptionistDashboard() {
                   onDecline={handleDeclineRequest}
                   onOpenChat={handleOpenChat}
                   onGoBilling={goBilling}
+                  onArrive={(apt) => setSelectedCheckInApt(apt)}
                   showToast={showToast}
                 />
               )}
@@ -654,6 +665,15 @@ export default function ReceptionistDashboard() {
         onClose={() => { setIsChatOpen(false); setActiveChatPatient(null); }}
         messages={chatMessages}
         onSendMessage={handleSendMessage}
+      />
+
+      {/* Check-in Lookup & Medical Record Modal */}
+      <CheckInPatientModal
+        isOpen={!!selectedCheckInApt}
+        onClose={() => setSelectedCheckInApt(null)}
+        appointment={selectedCheckInApt}
+        onCheckInSuccess={handleCheckInSuccess}
+        showToast={showToast}
       />
 
       {/* Walk-in appointment modal */}
@@ -854,7 +874,7 @@ function OverviewTab({ user, kpi, todays, requests, onGoTab, onApprove, onArrive
                       <span className="px-3 py-1.5 text-[11px] text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-xl font-bold shrink-0">Đã đến</span>
                     ) : (
                       <button
-                        onClick={async () => { await onArrive(apt.aptId); showToast(`${apt.patientName} đã được tiếp đón.`, 'success'); }}
+                        onClick={() => onArrive(apt)}
                         className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-sky-500 to-teal-600 text-white text-[11px] font-bold hover:shadow-md active:scale-95 transition-all cursor-pointer border-none shrink-0 flex items-center gap-1.5"
                       >
                         <UserCheck className="w-3.5 h-3.5" /> Đã đến

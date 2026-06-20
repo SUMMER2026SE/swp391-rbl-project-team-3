@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, CheckCircle2, Check, ChevronRight, UploadCloud, FlaskConical, FileCheck, XCircle, Image as ImageIcon, X, Stethoscope } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Check, ChevronRight, UploadCloud, FlaskConical, FileCheck, XCircle, Image as ImageIcon, X, Stethoscope, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence, useMotionValue, useMotionTemplate, animate } from 'framer-motion';
 import LiquidTabSwitcher from '../../ui/LiquidTabSwitcher';
+import { supabase } from '../../../supabaseClient';
 
 // ─── Animation Variants ──────────────────────────────────────────────────────
 const stepTransition = { type: 'spring', stiffness: 300, damping: 30, mass: 0.8 };
@@ -165,22 +166,67 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
     }
   };
 
+  const [isUploading, setIsUploading] = useState(false);
+
   // ─── Handlers ───────────────────────────────────────────────────────────
-  const handleAddImage = () => {
-    if (isReviewMode) return;
-    const newImage = {
-      id: `img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      url: `https://picsum.photos/seed/${Date.now()}/400/300`,
-      name: `capture_${uploadedImages.length + 1}.jpg`,
-      timestamp: new Date().toISOString(),
-    };
-    setResultsMap((prev) => ({
-      ...prev,
-      [activeProcIndex]: {
-        ...prev[activeProcIndex],
-        images: [...(prev[activeProcIndex]?.images || []), newImage]
-      }
-    }));
+  const handleFileUpload = async (e) => {
+    if (isReviewMode || isUploading) return;
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsUploading(true);
+      const fileExt = file.name.split('.').pop();
+      const filePath = `results/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${fileExt}`;
+
+      // Upload file to clinic-assets bucket
+      const { error: uploadError } = await supabase.storage
+        .from('clinic-assets')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('clinic-assets')
+        .getPublicUrl(filePath);
+
+      const newImage = {
+        id: `img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        url: publicUrl,
+        name: file.name,
+        timestamp: new Date().toISOString(),
+      };
+
+      setResultsMap((prev) => ({
+        ...prev,
+        [activeProcIndex]: {
+          ...prev[activeProcIndex],
+          images: [...(prev[activeProcIndex]?.images || []), newImage]
+        }
+      }));
+    } catch (err) {
+      console.error('File upload error:', err);
+      alert('Tải ảnh lên thất bại. Vui lòng kiểm tra lại cấu hình storage của bạn.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleTriggerFileInput = () => {
+    if (isReviewMode || isUploading) return;
+    document.getElementById('tech-file-input')?.click();
+  };
+
+  const handleFileDrop = (e) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    if (isReviewMode || isUploading) return;
+    const file = e.dataTransfer?.files?.[0];
+    if (file) {
+      const fakeEvent = { target: { files: [file] } };
+      handleFileUpload(fakeEvent);
+    }
   };
 
   const handleRemoveImage = (imageId) => {
@@ -489,53 +535,67 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
         </div>
         {/* ── Drag & Drop Zone ── */}
         {!isReviewMode && (
-          <motion.div
-            onClick={handleAddImage}
-            onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
-            onDragLeave={() => setIsDragOver(false)}
-            onDrop={(e) => { e.preventDefault(); setIsDragOver(false); handleAddImage(); }}
-            animate={{
-              borderColor: isDragOver
-                ? 'rgba(16,185,129,0.6)'
-                : 'rgba(16,185,129,0.25)',
-              backgroundColor: isDragOver
-                ? 'rgba(16,185,129,0.08)'
-                : 'rgba(16,185,129,0.02)',
-            }}
-            whileHover={{ borderColor: 'rgba(16,185,129,0.5)', backgroundColor: 'rgba(16,185,129,0.06)' }}
-            transition={{ duration: 0.25 }}
-            className="relative flex flex-col items-center justify-center gap-3 rounded-2xl border-[2.5px] border-dashed cursor-pointer py-10 px-6 group overflow-hidden"
-          >
-            {/* Pulse ring behind icon */}
+          <>
+            <input
+              type="file"
+              id="tech-file-input"
+              accept="image/*"
+              className="hidden"
+              onChange={handleFileUpload}
+              disabled={isUploading}
+            />
             <motion.div
-              className="absolute inset-0 flex items-center justify-center pointer-events-none"
-              initial={false}
+              onClick={handleTriggerFileInput}
+              onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+              onDragLeave={() => setIsDragOver(false)}
+              onDrop={handleFileDrop}
+              animate={{
+                borderColor: isDragOver
+                  ? 'rgba(16,185,129,0.6)'
+                  : 'rgba(16,185,129,0.25)',
+                backgroundColor: isDragOver
+                  ? 'rgba(16,185,129,0.08)'
+                  : 'rgba(16,185,129,0.02)',
+              }}
+              whileHover={{ borderColor: 'rgba(16,185,129,0.5)', backgroundColor: 'rgba(16,185,129,0.06)' }}
+              transition={{ duration: 0.25 }}
+              className="relative flex flex-col items-center justify-center gap-3 rounded-2xl border-[2.5px] border-dashed cursor-pointer py-10 px-6 group overflow-hidden"
             >
+              {/* Pulse ring behind icon */}
               <motion.div
-                className="w-20 h-20 rounded-full border-2 border-emerald-300/30"
-                animate={{
-                  scale: [1, 1.6, 1],
-                  opacity: [0.5, 0, 0.5],
-                }}
-                transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
-              />
-            </motion.div>
+                className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                initial={false}
+              >
+                <motion.div
+                  className="w-20 h-20 rounded-full border-2 border-emerald-300/30"
+                  animate={{
+                    scale: [1, 1.6, 1],
+                    opacity: [0.5, 0, 0.5],
+                  }}
+                  transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
+                />
+              </motion.div>
 
-            <motion.div
-              animate={{ y: [0, -6, 0] }}
-              transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
-            >
-              <UploadCloud className="w-12 h-12 text-emerald-400 group-hover:text-emerald-500 transition-colors duration-200" />
+              {isUploading ? (
+                <Loader2 className="w-12 h-12 text-emerald-500 animate-spin" />
+              ) : (
+                <motion.div
+                  animate={{ y: [0, -6, 0] }}
+                  transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+                >
+                  <UploadCloud className="w-12 h-12 text-emerald-400 group-hover:text-emerald-500 transition-colors duration-200" />
+                </motion.div>
+              )}
+              <div className="text-center z-10">
+                <p className="text-sm font-semibold text-slate-700">
+                  {isUploading ? 'Đang tải lên...' : 'Kéo thả hình ảnh vào đây hoặc click để chọn file'}
+                </p>
+                <p className="text-xs text-slate-400 mt-1">
+                  Hỗ trợ JPG, PNG, DICOM — Tối đa 20MB
+                </p>
+              </div>
             </motion.div>
-            <div className="text-center z-10">
-              <p className="text-sm font-semibold text-slate-700">
-                Kéo thả hình ảnh vào đây hoặc click để chọn file
-              </p>
-              <p className="text-xs text-slate-400 mt-1">
-                Hỗ trợ JPG, PNG, DICOM — Tối đa 20MB
-              </p>
-            </div>
-          </motion.div>
+          </>
         )}
         {/* ── Image Previews ── */}
         <div className="flex-1 overflow-y-auto custom-scrollbar pr-1">

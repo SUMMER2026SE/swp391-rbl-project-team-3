@@ -1,11 +1,43 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Brain, ScanFace } from 'lucide-react';
+import { supabase } from '../../../../supabaseClient';
 
-export default function AISkinAnalysis({ patientId }) {
+export default function AISkinAnalysis({ patientId, ticketsStatusHash }) {
+  const [latestScanUrl, setLatestScanUrl] = useState(null);
+
+  useEffect(() => {
+    if (!patientId) return;
+    const fetchLatestScan = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('service_tickets')
+          .select(`
+            result_image_url,
+            appointment:appointments!inner (
+              patient_id
+            )
+          `)
+          .eq('appointment.patient_id', patientId)
+          .eq('service_name', 'Soi da cắt lớp AI')
+          .eq('status', 'TECH_COMPLETED')
+          .order('updated_at', { ascending: false })
+          .limit(1);
+
+        if (error) throw error;
+        if (data && data[0]?.result_image_url) {
+          setLatestScanUrl(data[0].result_image_url);
+        }
+      } catch (err) {
+        console.error('[AISkinAnalysis] Error fetching scan:', err);
+      }
+    };
+    fetchLatestScan();
+  }, [patientId, ticketsStatusHash]);
+
   const fallbackResult = {
     patientId: patientId || "fallback",
     overallScore: 85,
-    imageUrl: "https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&q=80&w=800",
+    imageUrl: latestScanUrl || "https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&q=80&w=800",
     metrics: {
       acne: { score: 30, severity: "Moderate", description: "Vài nốt mụn viêm ở vùng má." },
       pigmentation: { score: 90, severity: "Low", description: "Màu da đồng đều, ít sạm nám." },
@@ -19,8 +51,7 @@ export default function AISkinAnalysis({ patientId }) {
     ]
   };
 
-  // Try to find the latest AI result for the patient
-  const aiResult = fallbackResult; // Using fallback result for now
+  const aiResult = fallbackResult;
 
   if (!aiResult) {
     return (
@@ -32,7 +63,7 @@ export default function AISkinAnalysis({ patientId }) {
   }
 
   return (
-    <div className="glass-3d-soft water-refract rounded-[2rem] p-6">
+    <div className="glass-3d-soft water-refract rounded-[2rem] p-6 text-left">
       <div className="flex justify-between items-center mb-6 pb-4 border-b border-slate-200/40">
         <h3 className="font-bold text-lg text-slate-900 flex items-center gap-2">
           <Brain className="w-5 h-5 text-teal-600" />
@@ -59,7 +90,7 @@ export default function AISkinAnalysis({ patientId }) {
           )}
           
           {/* AI Highlights Overlay */}
-          {aiResult?.highlights?.map((highlight, index) => (
+          {!latestScanUrl && aiResult?.highlights?.map((highlight, index) => (
             <div
               key={index}
               className="absolute rounded-full border-[3px] shadow-[0_0_15px_rgba(0,0,0,0.3)] animate-pulse"
@@ -69,7 +100,7 @@ export default function AISkinAnalysis({ patientId }) {
                 width: highlight.radius * 2,
                 height: highlight.radius * 2,
                 borderColor: highlight.color,
-                backgroundColor: highlight.color.replace('0.5', '0.1') // slight fill
+                backgroundColor: highlight.color.replace('0.5', '0.1')
               }}
               title={highlight.type}
             ></div>
@@ -79,7 +110,6 @@ export default function AISkinAnalysis({ patientId }) {
         {/* Metrics */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {Object.entries(aiResult?.metrics || {})?.map?.(([key, data]) => {
-            // Determine colors based on score
             let colorClass = "bg-teal-500";
             let textClass = "text-teal-700";
             let bgClass = "bg-teal-50";
@@ -105,7 +135,7 @@ export default function AISkinAnalysis({ patientId }) {
                 <div className="w-full bg-slate-200/50 rounded-full h-1.5 mb-2">
                   <div className={`${colorClass} h-1.5 rounded-full`} style={{ width: `${data.score}%` }}></div>
                 </div>
-                <p className="text-[11px] text-slate-500 font-medium line-clamp-2">{data.description}</p>
+                <p className="text-[11px] text-slate-500 font-medium line-clamp-2 leading-relaxed">{data.description}</p>
               </div>
             );
           })}
