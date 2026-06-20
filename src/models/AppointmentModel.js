@@ -20,6 +20,15 @@ const STATUS_NORMALIZE_MAP = {
   'ĐÃ HUỶ': 'Đã hủy',
 };
 
+// FK anchor for walk-in guests. `appointments.patient_id` is NOT NULL and chains
+// patient_profiles.patient_id → auth.users, so a guest (who has no auth account)
+// can't get a unique users row from the client. We therefore reuse ONE anchor row
+// purely to satisfy the FK — but every guest booking now carries its own
+// patient_name / patient_phone on the appointment row (see `book`, `holdSlot`),
+// so guests are individually identifiable and never collapse into one record.
+// NOTE: minting a real per-guest user requires Supabase Auth admin (a server task).
+export const GUEST_ANCHOR_ID = '18504773-0f51-405a-aa32-70cae403be6e';
+
 export const AppointmentModel = {
   isCancelled(status) {
     if (!status) return false;
@@ -169,11 +178,10 @@ export const AppointmentModel = {
 
   async create(appointmentData) {
     try {
-      // If patient_id is null (Guest user), we must use a proxy UUID because
-      // the appointments table requires a non-null patient_id that exists in users.
-      // We use the receptionist's UUID as a proxy for all guests.
-      const proxyGuestId = '18504773-0f51-405a-aa32-70cae403be6e';
-      const actualPatientId = appointmentData.patient_id || proxyGuestId;
+      // If patient_id is null (Guest walk-in) we fall back to the shared FK anchor.
+      // The guest's real identity is preserved via patient_name / patient_phone on
+      // the row itself, so guests stay distinguishable (see GUEST_ANCHOR_ID note).
+      const actualPatientId = appointmentData.patient_id || GUEST_ANCHOR_ID;
 
       // Ensure patient exists in patient_profiles to satisfy foreign key constraints.
       // We do a silent insert and ignore errors (e.g. if it already exists or RLS blocks it).
@@ -287,7 +295,14 @@ export const AppointmentModel = {
     
     let newApt;
     if (bookingData.holdAptId) {
-      newApt = await this.update(bookingData.holdAptId, { status: bookingData.status || 'Đã xác nhận' });
+      // Confirm the held row AND stamp the guest's identity onto it. The hold was
+      // created before contact details were finalized, so without this a confirmed
+      // guest booking would carry no name/phone and look like the FK anchor row.
+      newApt = await this.update(bookingData.holdAptId, {
+        status: bookingData.status || 'Đã xác nhận',
+        patient_name: dbPayload.patient_name,
+        patient_phone: dbPayload.patient_phone,
+      });
       if (!newApt) newApt = await this.create(dbPayload);
     } else {
       newApt = await this.create(dbPayload);
@@ -358,8 +373,10 @@ export const AppointmentModel = {
     if (updatedFields.date !== undefined) { dbPayload.appointment_date = updatedFields.date; }
     if (updatedFields.appointment_date !== undefined) { dbPayload.appointment_date = updatedFields.appointment_date; }
     
-    if (updatedFields.time !== undefined) { dbPayload.start_time = updatedFields.time; dbPayload.end_time = updatedFields.time; }
-    if (updatedFields.start_time !== undefined) { dbPayload.start_time = updatedFields.start_time; dbPayload.end_time = updatedFields.start_time; }
+    // Keep the 30-minute consultation window when the time changes — never collapse
+    // end_time onto start_time (that produced zero-length appointments on edits).
+    if (updatedFields.time !== undefined) { dbPayload.start_time = updatedFields.time; dbPayload.end_time = this.addMinutesToTime(updatedFields.time, 30); }
+    if (updatedFields.start_time !== undefined) { dbPayload.start_time = updatedFields.start_time; dbPayload.end_time = this.addMinutesToTime(updatedFields.start_time, 30); }
     
     if (updatedFields.status !== undefined) dbPayload.status = updatedFields.status;
     if (updatedFields.fee !== undefined) dbPayload.fee = updatedFields.fee;
@@ -392,7 +409,7 @@ export const AppointmentModel = {
 
       const pId = payData.patient_id || payData.patientId;
       const rId = payData.receptionist_id ?? null;
-      const proxyGuestId = '18504773-0f51-405a-aa32-70cae403be6e';
+      const proxyGuestId = GUEST_ANCHOR_ID;
 
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       const isValidUuid = (str) => typeof str === 'string' && uuidRegex.test(str);

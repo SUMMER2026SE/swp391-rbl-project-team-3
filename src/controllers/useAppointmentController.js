@@ -392,6 +392,10 @@ export function useAppointmentController(patientId = null) {
       const dbPayload = {
         doctor_id: bookingData.doctorId,
         patient_id: bookingData.patientId,
+        // Carry guest identity on the hold row so it's never confused with the
+        // shared FK anchor and survives through to the confirmed appointment.
+        patient_name: bookingData.patientName,
+        patient_phone: bookingData.patientPhone,
         service: bookingData.service,
         fee: bookingData.fee,
         status: 'Đang giữ chỗ',

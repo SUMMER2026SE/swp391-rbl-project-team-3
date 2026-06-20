@@ -1,8 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Activity, Clock, Play, CheckCircle2, Eye } from 'lucide-react';
+import { Activity, Clock, Play, CheckCircle2, Eye, Loader2, Lock } from 'lucide-react';
 
-const AssignedTasksList = ({ tasks, onExecuteTask, onReviewTask }) => {
+const AssignedTasksList = ({ tasks, currentTechId, onExecuteTask, onReviewTask }) => {
   const taskList = tasks || [];
 
   if (taskList.length === 0) {
@@ -105,6 +105,8 @@ const AssignedTasksList = ({ tasks, onExecuteTask, onReviewTask }) => {
             {(Array.isArray(taskList) ? taskList : []).map((task, index) => {
               const isCompleted = task?.status === 'Đã hoàn thành';
               const isPending = task?.status === 'Chờ thực hiện';
+              const isInProgress = task?.status === 'Đang tiến hành';
+              const isMine = String(task?.technicianId ?? '') === String(currentTechId ?? '');
 
               return (
                 <motion.tr
@@ -168,13 +170,19 @@ const AssignedTasksList = ({ tasks, onExecuteTask, onReviewTask }) => {
                         Chờ thực hiện
                       </span>
                     )}
+                    {isInProgress && (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-sky-50 text-sky-700 border border-sky-200/60">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        {isMine ? 'Đang tiến hành' : 'KTV khác đang xử lý'}
+                      </span>
+                    )}
                     {isCompleted && (
                       <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         Đã hoàn thành
                       </span>
                     )}
-                    {!isPending && !isCompleted && (
+                    {!isPending && !isInProgress && !isCompleted && (
                       <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200/60">
                         <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
                         {task?.status || 'Không rõ'}
@@ -191,8 +199,25 @@ const AssignedTasksList = ({ tasks, onExecuteTask, onReviewTask }) => {
                         className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-emerald-500 to-teal-500 shadow-md shadow-emerald-500/25 hover:shadow-lg hover:shadow-emerald-500/30 transition-all duration-200"
                       >
                         <Play className="w-4 h-4" />
-                        Thực hiện thủ thuật
+                        Bắt đầu
                       </motion.button>
+                    )}
+                    {isInProgress && isMine && (
+                      <motion.button
+                        whileHover={{ scale: 1.04 }}
+                        whileTap={{ scale: 0.97 }}
+                        onClick={() => onExecuteTask?.(task)}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-sky-500 to-cyan-500 shadow-md shadow-sky-500/25 hover:shadow-lg hover:shadow-sky-500/30 transition-all duration-200"
+                      >
+                        <Play className="w-4 h-4" />
+                        Tiếp tục
+                      </motion.button>
+                    )}
+                    {isInProgress && !isMine && (
+                      <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-slate-400 bg-slate-50 border border-slate-200/60 cursor-not-allowed select-none">
+                        <Lock className="w-4 h-4" />
+                        Đang được xử lý
+                      </span>
                     )}
                     {isCompleted && (
                       <motion.button

@@ -92,14 +92,15 @@ export const ServiceTicketModel = {
     }
   },
 
-  // Pending + completed tickets, so the Technician portal can also render the
-  // "Đã hoàn thành" rows for review (read-only) alongside the active queue.
+  // Pending + in-progress + completed tickets, so the Technician portal can render
+  // its claimed ("Đang tiến hành") work AND the "Đã hoàn thành" rows for review
+  // alongside the open queue. IN_PROGRESS is what makes a claim survive a refresh.
   async getActiveTickets() {
     try {
       const { data, error } = await supabase
         .from('service_tickets')
         .select('*, appointment:appointments(patient_id, patient_name, doctor_id, appointment_date, start_time)')
-        .in('status', ['PENDING', 'TECH_COMPLETED'])
+        .in('status', ['PENDING', 'IN_PROGRESS', 'TECH_COMPLETED'])
         .order('created_at', { ascending: true });
       if (error) throw error;
       return await this.populateDetails(data || []);
@@ -107,6 +108,26 @@ export const ServiceTicketModel = {
       console.error('Supabase fetch error (active service_tickets):', e.message);
       return [];
     }
+  },
+
+  // Atomically claim a ticket for a technician. The `.eq('status','PENDING')`
+  // guard makes this a single conditional UPDATE: if two technicians race, only
+  // the first matches a PENDING row — the loser gets an empty result (null) and
+  // is told the ticket was already taken. Persists technician_id so the claim
+  // (status IN_PROGRESS) is owned and survives a page refresh.
+  async claim(id, technicianId) {
+    const { data, error } = await supabase
+      .from('service_tickets')
+      .update({
+        status: 'IN_PROGRESS',
+        technician_id: technicianId ?? null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .eq('status', 'PENDING')
+      .select();
+    if (error) throw error;
+    return data && data.length > 0 ? data[0] : null; // null → already claimed by someone else
   },
 
   async create(ticketData) {

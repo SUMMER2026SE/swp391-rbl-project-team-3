@@ -26,6 +26,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   CheckCircle2,
+  AlertTriangle,
 } from 'lucide-react';
 import TechnicianOverview from '../components/Technician/Overview/TechnicianOverview';
 import AssignedTasksList from '../components/Technician/AssignedTasks/AssignedTasksList';
@@ -45,7 +46,13 @@ export default function TechnicianDashboard() {
   const [activeTask, setActiveTask] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
-  const [showToast, setShowToast] = useState(false);
+  // Toast now carries a message + type so claim conflicts / failures surface to
+  // the technician (previously a fixed success-only banner).
+  const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' }
+  const notify = useCallback((message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  }, []);
 
   const calculateAge = (dob) => {
     if (!dob) return '—';
@@ -74,7 +81,13 @@ export default function TechnicianDashboard() {
     procedureType: t.service_name,
     procedure: t.service_name,
     service: t.service_name,
-    status: t.status === 'TECH_COMPLETED' ? 'Đã hoàn thành' : 'Chờ thực hiện',
+    status:
+      t.status === 'TECH_COMPLETED'
+        ? 'Đã hoàn thành'
+        : t.status === 'IN_PROGRESS'
+        ? 'Đang tiến hành'
+        : 'Chờ thực hiện',
+    technicianId: t.technician_id || null,
     createdAt: t.created_at,
     requestTime: t.created_at,
     resultRecord:
@@ -166,6 +179,7 @@ export default function TechnicianDashboard() {
   // service_tickets row so the Doctor's workspace can read tech notes/images.
   const handleCompleteTask = async (taskId, resultRecord) => {
     try {
+      // Lifecycle: IN_PROGRESS → TECH_COMPLETED, attaching the technician's result.
       await ServiceTicketModel.update(taskId, {
         status: 'TECH_COMPLETED',
         result_notes: resultRecord?.technicianNotes || '',
@@ -174,16 +188,41 @@ export default function TechnicianDashboard() {
         updated_at: new Date().toISOString(),
       });
       await loadTasks();
+      setActiveTask(null);
+      notify('Kết quả thủ thuật đã được ghi nhận!', 'success');
     } catch (err) {
       console.error('Failed to save technician result:', err);
+      // Keep the workspace open so the technician can retry without losing input.
+      notify('Lưu kết quả thất bại. Vui lòng thử lại.', 'error');
     }
-    setActiveTask(null);
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 3000);
   };
 
-  const handleSelectTask = (task) => {
-    setActiveTask(task);
+  // Start (claim) a PENDING ticket, or resume one this technician already owns.
+  // Only PENDING tickets can be picked up; an IN_PROGRESS ticket is openable only
+  // by its owner — everyone else is told it's being handled elsewhere.
+  const handleStartTask = async (task) => {
+    if (task.status === 'Đang tiến hành') {
+      if (String(task.technicianId ?? '') !== String(user?.id ?? '')) {
+        notify('Chỉ định này đang được kỹ thuật viên khác xử lý.', 'error');
+        return;
+      }
+      setActiveTask(task);
+      return;
+    }
+    try {
+      const claimed = await ServiceTicketModel.claim(task.id, user?.id);
+      if (!claimed) {
+        // Lost the race — another technician claimed it first.
+        notify('Chỉ định này vừa được kỹ thuật viên khác nhận.', 'error');
+        await loadTasks();
+        return;
+      }
+      await loadTasks();
+      setActiveTask({ ...task, status: 'Đang tiến hành', technicianId: user?.id });
+    } catch (err) {
+      console.error('Failed to claim service ticket:', err);
+      notify('Không thể nhận chỉ định lúc này. Vui lòng thử lại.', 'error');
+    }
   };
 
   const handleReviewTask = (task) => {
@@ -219,7 +258,8 @@ export default function TechnicianDashboard() {
         return (
           <AssignedTasksList
             tasks={tasks}
-            onExecuteTask={handleSelectTask}
+            currentTechId={user?.id}
+            onExecuteTask={handleStartTask}
             onReviewTask={handleReviewTask}
           />
         );
@@ -500,18 +540,24 @@ export default function TechnicianDashboard() {
 
       {/* ─── Toast ─── */}
       <AnimatePresence>
-        {showToast && (
+        {toast && (
           <motion.div
             initial={{ opacity: 0, y: 60, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 40, scale: 0.95 }}
             transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-            className="fixed bottom-8 right-8 z-50 flex items-center gap-3 px-6 py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-2xl shadow-emerald-500/30"
+            className={`fixed bottom-8 right-8 z-50 flex items-center gap-3 px-6 py-4 rounded-2xl text-white shadow-2xl ${
+              toast.type === 'error'
+                ? 'bg-gradient-to-r from-rose-500 to-red-600 shadow-rose-500/30'
+                : 'bg-gradient-to-r from-emerald-500 to-teal-600 shadow-emerald-500/30'
+            }`}
           >
-            <CheckCircle2 size={22} className="flex-shrink-0" />
-            <span className="text-sm font-semibold">
-              Kết quả thủ thuật đã được ghi nhận!
-            </span>
+            {toast.type === 'error' ? (
+              <AlertTriangle size={22} className="flex-shrink-0" />
+            ) : (
+              <CheckCircle2 size={22} className="flex-shrink-0" />
+            )}
+            <span className="text-sm font-semibold">{toast.message}</span>
           </motion.div>
         )}
       </AnimatePresence>
