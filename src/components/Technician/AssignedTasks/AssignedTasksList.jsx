@@ -11,7 +11,7 @@ const AssignedTasksList = ({ tasks, onExecuteTask, onReviewTask }) => {
         <div className="bg-white/40 backdrop-blur-sm border-b border-white/30 px-8 py-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-bold text-slate-800 tracking-tight">
+              <h2 className="text-xl md:text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-teal-800 to-emerald-700 tracking-tight whitespace-nowrap">
                 Danh sách Chỉ định
               </h2>
               <p className="text-sm text-slate-500 mt-0.5">
@@ -67,7 +67,7 @@ const AssignedTasksList = ({ tasks, onExecuteTask, onReviewTask }) => {
       <div className="bg-white/40 backdrop-blur-sm border-b border-white/30 px-8 py-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold text-slate-800 tracking-tight">
+            <h2 className="text-xl md:text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-teal-800 to-emerald-700 tracking-tight whitespace-nowrap">
               Danh sách Chỉ định
             </h2>
             <p className="text-sm text-slate-500 mt-0.5">

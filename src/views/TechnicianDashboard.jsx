@@ -234,7 +234,7 @@ export default function TechnicianDashboard() {
 
   /* ═══════════════════════════════════════════ JSX ═══════════════════════════════════════════ */
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-teal-50 via-emerald-100 to-cyan-50 overflow-hidden">
+    <div className="relative min-h-screen bg-gradient-to-br from-teal-50 via-emerald-100 to-cyan-50 overflow-hidden font-sans text-slate-800">
       {/* ─── Background Blobs ─── */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div

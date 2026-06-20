@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useFeedbackController } from '../../controllers/useFeedbackController';
 import FeedbackCard, { StarDisplay, CRITERIA_META } from '../shared/FeedbackCard';
+import { GLASS_BASE } from '../common/GlassCard';
 
 // ─── Reply Modal ──────────────────────────────────────────────────────────────
 function ReplyModal({ feedback, onClose, onSubmit }) {
@@ -133,7 +134,7 @@ export default function ReceptionistFeedbackView() {
             <motion.div
               key={s.label}
               initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
-              className={`${colors.bg} border ${colors.border} rounded-2xl p-4 text-center`}
+              className="bg-white/40 backdrop-blur-2xl border border-white/60 rounded-2xl p-4 text-center shadow-sm"
             >
               <s.icon className={`w-5 h-5 ${colors.text} mx-auto mb-2`} />
               <p className={`text-2xl font-black ${colors.val}`}>{s.value}</p>
@@ -144,7 +145,7 @@ export default function ReceptionistFeedbackView() {
       </div>
       {/* Rating distribution */}
       {stats.total > 0 && (
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+        <div className={`${GLASS_BASE} p-5`}>
           <p className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
             <BarChart3 className="w-4 h-4 text-emerald-500" /> Phân bổ sao
           </p>
@@ -173,7 +174,7 @@ export default function ReceptionistFeedbackView() {
         </div>
       )}
       {/* Filter bar */}
-      <div className="flex flex-wrap gap-3 items-center bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+      <div className={`${GLASS_BASE} p-4 flex flex-wrap gap-3 items-center`}>
         <div className="relative flex-1 min-w-48">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
@@ -203,7 +204,7 @@ export default function ReceptionistFeedbackView() {
       {/* List */}
       <div className="space-y-4">
         {isLoading ? (
-          <div className="text-center py-12 bg-white border border-dashed border-slate-200 rounded-2xl">
+          <div className="text-center py-12 bg-white/40 backdrop-blur-2xl border border-dashed border-white/60 rounded-3xl">
             <div className="w-8 h-8 rounded-full border-4 border-slate-200 border-t-emerald-500 animate-spin mx-auto mb-3" />
             <p className="text-sm text-slate-500 font-semibold">Đang tải đánh giá...</p>
           </div>
@@ -218,7 +219,7 @@ export default function ReceptionistFeedbackView() {
             />
           ))
         ) : (
-          <div className="text-center py-12 bg-white border border-dashed border-slate-200 rounded-2xl">
+          <div className="text-center py-12 bg-white/40 backdrop-blur-2xl border border-dashed border-white/60 rounded-3xl">
             <MessageSquare className="w-10 h-10 text-slate-300 mx-auto mb-3" />
             <p className="text-sm text-slate-500 font-semibold">Không tìm thấy đánh giá nào.</p>
           </div>
