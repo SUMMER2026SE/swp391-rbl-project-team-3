@@ -17,34 +17,66 @@ function mapFeedbackToDB(fb = {}) {
   const row = {};
   const patientId = fb.patientId ?? fb.patient_id;
   const doctorId = fb.doctorId ?? fb.doctor_id;
+  const technicianId = fb.technicianId ?? fb.technician_id;
   const appointmentId = fb.appointmentId ?? fb.appointment_id;
   const rating = fb.overallRating ?? fb.rating;
+  const technicianRating = fb.technicianRating ?? fb.technician_rating;
 
   if (patientId !== undefined) row.patient_id = patientId;
   if (doctorId !== undefined) row.doctor_id = doctorId ?? null;
+  if (technicianId !== undefined) row.technician_id = technicianId ?? null;
   if (appointmentId !== undefined) row.appointment_id = toNum(appointmentId);
   if (rating !== undefined) row.rating = toNum(rating);
-  if (fb.comment !== undefined) row.comment = fb.comment;
-  // NOTE: criteriaRatings / isPublic / images / patientName etc. are intentionally
-  // dropped — the table has no columns for them. Add a `criteria_ratings jsonb`
-  // column if per-criterion scores need to persist.
+  if (technicianRating !== undefined) row.technician_rating = toNum(technicianRating);
+  if (fb.comment !== undefined) row.comment = fb.comment; // Kept for backward compatibility if needed
+  if (fb.criteriaRatings !== undefined) row.criteria_ratings = fb.criteriaRatings;
+  if (fb.doctorComment !== undefined) row.doctor_comment = fb.doctorComment;
+  if (fb.isDoctorPublic !== undefined) row.is_doctor_public = fb.isDoctorPublic;
+  if (fb.technicianComment !== undefined) row.technician_comment = fb.technicianComment;
+  if (fb.isTechnicianPublic !== undefined) row.is_technician_public = fb.isTechnicianPublic;
   return row;
 }
 
 function mapFeedbackFromDB(row) {
   if (!row) return row;
+
+  // ── Backward-compatible fallback ──
+  // If the new columns are empty but the old `comment` column has JSON data,
+  // extract the values so all consumers receive them transparently.
+  let doctorComment = row.doctor_comment;
+  let isDoctorPublic = row.is_doctor_public;
+  let technicianComment = row.technician_comment;
+  let isTechnicianPublic = row.is_technician_public;
+
+  if (!doctorComment && !technicianComment && row.comment) {
+    try {
+      const c = row.comment;
+      if (typeof c === 'string' && (c.startsWith('{') || c.startsWith('['))) {
+        const parsed = JSON.parse(c);
+        doctorComment = parsed.doctorComment || null;
+        isDoctorPublic = parsed.doctorPublic ?? true;
+        technicianComment = parsed.techComment || null;
+        isTechnicianPublic = parsed.techPublic ?? true;
+      }
+    } catch (e) { /* not JSON, ignore */ }
+  }
+
   return {
     ...row, // keep raw snake_case keys + the embedded patient(patient_profiles)
     id: row.feedback_id ?? row.id,
     patientId: row.patient_id,
-    doctorId: row.doctor_id,
+    doctorId: row.doctor_id || row.appointment?.doctor_id,
+    technicianId: row.technician_id,
     appointmentId: row.appointment_id,
     overallRating: row.rating,
+    technicianRating: row.technician_rating,
     comment: row.comment,
+    doctorComment,
+    isDoctorPublic: isDoctorPublic ?? true,
+    technicianComment,
+    isTechnicianPublic: isTechnicianPublic ?? true,
     createdAt: row.created_at,
     status: row.status || 'published',
-    // Per-criterion ratings aren't stored yet; default to {} so readers that do
-    // `fb.criteriaRatings?.[key]` stay safe.
     criteriaRatings: row.criteria_ratings ?? {},
   };
 }

@@ -2,12 +2,14 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Star, MessageSquare, TrendingUp, Wrench, ThumbsUp } from 'lucide-react';
 import { useFeedbackController } from '../../controllers/useFeedbackController';
+import { useAuth } from '../../context/AuthContext';
 import FeedbackCard, { StarDisplay, CRITERIA_META } from '../shared/FeedbackCard';
 import { GLASS_BASE } from '../common/GlassCard';
 
 export default function TechnicianFeedbackView({ technicianId }) {
-  // KTV được lưu dưới doctorId trong feedback (vì dùng chung field)
-  const resolvedId = technicianId || 'doc-03';
+  // Lấy ID thật của KTV
+  const { user } = useAuth();
+  const resolvedId = technicianId || user?.id || 'doc-03';
   const { feedbacks, getStats } = useFeedbackController();
 
   const [feedbackList, setFeedbackList] = React.useState([]);
@@ -16,11 +18,24 @@ export default function TechnicianFeedbackView({ technicianId }) {
     setFeedbackList(Array.isArray(feedbacks) ? feedbacks : []);
   }, [feedbacks]);
 
+  // Lọc đánh giá thuộc về KTV này
   const ownPublished = (Array.isArray(feedbackList) ? feedbackList : []).filter(
-    f => f?.doctorId === resolvedId && f?.status === 'published'
+    f => f?.technicianId === resolvedId && f?.status === 'published'
   );
+  
+  // Tính điểm trung bình riêng cho KTV
+  let techTotal = 0;
+  let techCount = 0;
+  ownPublished.forEach(f => {
+    if (f.technicianRating) {
+      techTotal += f.technicianRating;
+      techCount++;
+    }
+  });
+  const techAvg = techCount > 0 ? (techTotal / techCount).toFixed(1) : 0;
+
   const visibleFeedbacks = (Array.isArray(feedbackList) ? feedbackList : []).filter(
-    f => f?.status === 'published' && (f?.doctorId === resolvedId || f?.isPublic === true)
+    f => f?.status === 'published' && (f?.technicianId === resolvedId || f?.isPublic === true)
   );
   const stats = getStats(ownPublished) || {
     total: 0,
@@ -33,9 +48,10 @@ export default function TechnicianFeedbackView({ technicianId }) {
     c && ['technician', 'treatmentEffect', 'waitingTime', 'facility'].includes(c.key)
   ) || [];
 
+  const displayAvg = techAvg > 0 ? parseFloat(techAvg) : 0;
   const avgColor =
-    stats.avg >= 4.5 ? 'text-emerald-600' :
-    stats.avg >= 3.5 ? 'text-amber-600' : 'text-rose-600';
+    displayAvg >= 4.5 ? 'text-emerald-600' :
+    displayAvg >= 3.5 ? 'text-amber-600' : 'text-rose-600';
 
   return (
     <div className="space-y-6">
@@ -43,8 +59,8 @@ export default function TechnicianFeedbackView({ technicianId }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Big score */}
         <div className="backdrop-blur-2xl bg-gradient-to-br from-amber-100/60 to-orange-100/40 border border-amber-200/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_8px_32px_0_rgba(31,38,135,0.07)] rounded-3xl p-6 flex flex-col items-center justify-center text-center">
-          <p className={`text-6xl font-black ${avgColor} leading-none mb-2`}>{stats.avg > 0 ? stats.avg : '—'}</p>
-          <StarDisplay value={Math.round(stats.avg)} size="lg" />
+          <p className={`text-6xl font-black ${avgColor} leading-none mb-2`}>{techAvg > 0 ? techAvg : '—'}</p>
+          <StarDisplay value={Math.round(displayAvg)} size="lg" />
           <p className="text-sm text-slate-500 mt-3">{stats.total} đánh giá</p>
           <p className="text-xs text-slate-400 mt-1">
             {stats.total > 0 ? `${Math.round((((stats.distribution[4] || 0) + (stats.distribution[5] || 0)) / stats.total) * 100)}% hài lòng (4-5★)` : 'Chưa có đánh giá'}

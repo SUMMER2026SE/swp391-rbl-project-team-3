@@ -79,7 +79,7 @@ export default function FeedbackFormModal({ apt, onClose, onSubmitted }) {
   const fileInputRef = useRef(null);
 
   const canProceedStep1 = overallRating > 0;
-  const canSubmit = overallRating > 0 && doctorComment.trim().length >= 10 && techComment.trim().length >= 10;
+  const canSubmit = overallRating > 0 && doctorComment.trim().length >= 10 && (techComment.trim().length === 0 || techComment.trim().length >= 10);
 
   // ── Image Upload ──
   const handleImageUpload = (e) => {
@@ -106,24 +106,36 @@ export default function FeedbackFormModal({ apt, onClose, onSubmitted }) {
     setError('');
     setIsSubmitting(true);
     try {
+      // Fetch technician_id from service_tickets if it exists
+      const { supabase } = await import('../../supabaseClient');
+      const { data: tickets } = await supabase
+        .from('service_tickets')
+        .select('technician_id')
+        .eq('appointment_id', apt.id)
+        .not('technician_id', 'is', null)
+        .limit(1);
+      
+      const techId = tickets?.[0]?.technician_id || null;
+
       const payload = {
         appointmentId: apt.id,
         patientId: user?.id || 'pat-01',
         patientName: user?.name || apt.patientName || 'Bệnh nhân',
-        doctorId: apt.doctorId,
-        doctorName: apt.doctorName,
+        doctorId: apt.doctorId || apt.doctor_id,
+        doctorName: apt.doctorName || apt.doctor_name,
+        technicianId: techId,
+        technicianRating: criteriaRatings.technician,
         service: apt.service,
         date: apt.date,
         isAnonymous,
         isPublic: isPublicDoctor || isPublicTech,
         overallRating,
         criteriaRatings,
-        comment: JSON.stringify({
-          doctorComment: doctorComment.trim(),
-          doctorPublic: isPublicDoctor,
-          techComment: techComment.trim(),
-          techPublic: isPublicTech
-        }),
+        doctorComment: doctorComment.trim(),
+        isDoctorPublic: isPublicDoctor,
+        technicianComment: techComment.trim(),
+        isTechnicianPublic: isPublicTech,
+        comment: doctorComment.trim(), // Keep for backward compatibility if needed temporarily
         images: images?.map?.(i => i.url),
       };
       const res = await submitFeedback(payload);
@@ -277,7 +289,7 @@ export default function FeedbackFormModal({ apt, onClose, onSubmitted }) {
                   {/* Nhận xét Kỹ thuật viên */}
                   <div>
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">
-                      Nhận xét về Kỹ thuật viên <span className="text-rose-400">*</span>
+                      Nhận xét về Kỹ thuật viên <span className="text-slate-400 normal-case font-normal">(tùy chọn)</span>
                     </label>
                     <textarea
                       value={techComment}

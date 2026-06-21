@@ -31,18 +31,15 @@ function ReplyModal({ feedback, onClose, onSubmit }) {
         </div>
         <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-4 text-sm text-slate-600 italic">
           {(() => {
-            try {
-              if (feedback.comment && (feedback.comment.startsWith('{') || feedback.comment.startsWith('['))) {
-                const parsed = JSON.parse(feedback.comment);
-                return (
-                  <div className="space-y-1 not-italic text-left">
-                    <p><span className="font-bold text-slate-400">BS:</span> "{parsed.doctorComment}"</p>
-                    {parsed.techComment && <p><span className="font-bold text-slate-400">KTV:</span> "{parsed.techComment}"</p>}
-                  </div>
-                );
-              }
-            } catch(e) {}
-            return `"${feedback.comment}"`;
+            if (feedback.doctorComment || feedback.technicianComment) {
+              return (
+                <div className="space-y-1 not-italic text-left">
+                  {feedback.doctorComment && <p><span className="font-bold text-slate-400">BS:</span> "{feedback.doctorComment}"</p>}
+                  {feedback.technicianComment && <p><span className="font-bold text-slate-400">KTV:</span> "{feedback.technicianComment}"</p>}
+                </div>
+              );
+            }
+            return `"${feedback.comment || 'Chưa có nhận xét'}"`;
           })()}
         </div>
         <textarea

@@ -72,6 +72,7 @@ export default function BillingCheckout({
   const [usedServices, setUsedServices] = useState([]);
   const [servicesTotal, setServicesTotal] = useState(0);
 
+  const [servicesTotalsMap, setServicesTotalsMap] = useState({});
 
 
   const docFee = (doctorId) => {
@@ -90,6 +91,47 @@ export default function BillingCheckout({
         }),
     [appointments]
   );
+
+  // Fetch services for all items so we can display the correct calculated fee in the list.
+  useEffect(() => {
+    const fetchAllServices = async () => {
+      const aptIds = all.map((a) => a.aptId);
+      if (aptIds.length === 0) return;
+      
+      try {
+        const { data: tickets } = await supabase
+          .from('service_tickets')
+          .select('appointment_id, service_name')
+          .in('appointment_id', aptIds);
+          
+        if (!tickets || tickets.length === 0) return;
+        
+        const { data: svcData } = await supabase
+          .from('services')
+          .select('service_name, price');
+          
+        const svcMap = {};
+        (svcData || []).forEach((s) => {
+          let priceNum = 0;
+          const priceStr = s.price || 0;
+          if (typeof priceStr === 'number') priceNum = priceStr;
+          else if (typeof priceStr === 'string') priceNum = parseInt(priceStr.replace(/[^0-9]/g, ''), 10) || 0;
+          svcMap[s.service_name] = priceNum;
+        });
+        
+        const totals = {};
+        tickets.forEach((t) => {
+          const price = svcMap[t.service_name] || 0;
+          totals[t.appointment_id] = (totals[t.appointment_id] || 0) + price;
+        });
+        
+        setServicesTotalsMap(totals);
+      } catch (err) {
+        console.error('Error fetching all services for list:', err);
+      }
+    };
+    fetchAllServices();
+  }, [all]);
 
   const isPaid = (a) => a.status === APT_STATUS.PAID;
 
@@ -265,8 +307,12 @@ export default function BillingCheckout({
       };
       // markAppointmentPaid defaults true → flips status to "Đã thanh toán".
       const result = await AppointmentModel.addPayment(payload);
+      if (result && result.error) {
+        showToast?.(`Lỗi thanh toán: ${result.error.message || result.error}`, 'error');
+        return;
+      }
       if (!result) {
-        showToast?.('Không thể ghi nhận thanh toán (lỗi kết nối hoặc RLS).', 'error');
+        showToast?.('Không thể ghi nhận thanh toán (không có dữ liệu trả về).', 'error');
         return;
       }
       if (voucherId != null && typeof incrementUsage === 'function') {
@@ -407,7 +453,26 @@ export default function BillingCheckout({
                           <p className="text-[10px] text-slate-500 font-mono mt-0.5">{a.aptId}</p>
                         </div>
                         <div className="text-right shrink-0">
-                          <div className="font-black text-sm text-slate-900">{a.fee}</div>
+                          <div className="font-black text-sm text-slate-900">
+                            {(() => {
+                              const aBaseTotal = parseFee(a.fee, 0) || docFee(a.doctorId) || 300000;
+                              const aServicesTotal = servicesTotalsMap[a.aptId] || 0;
+                              const pays = (payments || []).filter((p) => String(p.appointment_id ?? p.appointmentId) === String(a.aptId));
+                              
+                              if (paid) {
+                                // For paid ones, show the final payment amount
+                                if (pays.length > 0) {
+                                  const finalPay = pays[pays.length - 1];
+                                  return formatVnd(parseFee(finalPay.final_amount ?? finalPay.amount ?? finalPay.total_amount, 0));
+                                }
+                                return formatVnd(aBaseTotal + aServicesTotal);
+                              } else {
+                                // Unpaid: base + services - deposit
+                                const aPrior = pays.reduce((sum, p) => sum + parseFee(p.final_amount ?? p.amount ?? p.total_amount, 0), 0);
+                                return formatVnd(Math.max(0, aBaseTotal + aServicesTotal - aPrior));
+                              }
+                            })()}
+                          </div>
                           <span
                             className={`inline-block mt-1 text-[9px] font-black uppercase tracking-wide px-2 py-0.5 rounded-full border ${
                               paid
@@ -488,20 +553,37 @@ export default function BillingCheckout({
                       <span className="text-xs font-bold">Hóa đơn này đã được thanh toán đầy đủ.</span>
                     </div>
                     <button
-                      onClick={() =>
+                      onClick={async () => {
+                        showToast?.('Đang tải lại dữ liệu hóa đơn...');
+                        const { data: invs } = await supabase.from('invoices').select('*').eq('appointment_id', selected.aptId).order('created_at', { ascending: true });
+                        let priorAmount = 0;
+                        let checkoutAmount = 0;
+                        const paidRecord = payments.find(p => p.appointment_id === selected.aptId);
+                        if (invs && invs.length > 0) {
+                          if (invs.length === 1) {
+                            checkoutAmount = invs[0].total_amount;
+                          } else {
+                            priorAmount = invs.slice(0, invs.length - 1).reduce((sum, i) => sum + i.total_amount, 0);
+                            checkoutAmount = invs[invs.length - 1].total_amount;
+                          }
+                        } else if (paidRecord) {
+                          // Fallback if invoices table was manually cleared
+                          priorAmount = paidRecord.final_amount > 50000 ? 50000 : 0;
+                          checkoutAmount = Math.max(0, paidRecord.final_amount - priorAmount);
+                        }
                         setReceipt({
                           ...selected,
                           baseTotal: parseFee(selected.fee, 0) || 300000,
-                          usedServices: [],
-                          total,
-                          prior,
-                          discount: 0,
-                          netPayable: Math.max(0, total - prior),
-                          method: '—',
+                          usedServices,
+                          total: paidRecord?.total_amount || total,
+                          prior: priorAmount,
+                          discount: paidRecord?.discount_amount || 0,
+                          netPayable: checkoutAmount,
+                          method: paidRecord?.payment_method || '—',
                           voucherCode: null,
-                          paidAt: new Date(),
-                        })
-                      }
+                          paidAt: paidRecord?.paid_at ? new Date(paidRecord.paid_at) : new Date(),
+                        });
+                      }}
                       className="w-full py-3 rounded-xl bg-white border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 cursor-pointer flex items-center justify-center gap-1.5"
                     >
                       <Printer className="w-4 h-4" /> In lại biên lai
@@ -726,7 +808,7 @@ function ReceiptModal({ receipt, onClose, receptionistId, showToast }) {
                 )}
                 {receipt.discount > 0 && (
                   <p className="flex justify-between text-emerald-600">
-                    <span>Ưu đãi {receipt.voucherCode ? `(${receipt.voucherCode})` : ''}:</span>
+                    <span>Giảm giá (voucher) {receipt.voucherCode ? `[${receipt.voucherCode}]` : ''}:</span>
                     <span className="font-mono">−{formatVnd(receipt.discount)}</span>
                   </p>
                 )}

@@ -39,8 +39,8 @@ export function useFeedbackController(filterBy = {}) {
 
   function applyFilter(list, filter) {
     let result = Array.isArray(list) ? list : [];
-    if (filter.patientId) result = result.filter(f => f.patientId === filter.patientId);
-    if (filter.doctorId)  result = result.filter(f => f.doctorId  === filter.doctorId);
+    if (filter.patientId) result = result.filter(f => String(f.patientId || f.patient_id) === String(filter.patientId));
+    if (filter.doctorId)  result = result.filter(f => String(f.doctorId  || f.doctor_id)  === String(filter.doctorId));
     return result;
   }
 
@@ -58,10 +58,9 @@ export function useFeedbackController(filterBy = {}) {
     }
   };
 
-  // Stubs for missing model methods
-  const getFeedbackByAppointment = async (appointmentId) => {
-     console.warn("getFeedbackByAppointment not implemented in model");
-     return null;
+  const getFeedbackByAppointment = (appointmentId) => {
+    const all = Array.isArray(feedbacks) ? feedbacks : [];
+    return all.find(f => String(f.appointmentId ?? f.appointment_id) === String(appointmentId)) || null;
   };
 
   const updateStatus = async (feedbackId, status) => {

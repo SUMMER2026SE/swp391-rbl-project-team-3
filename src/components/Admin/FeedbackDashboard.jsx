@@ -125,23 +125,21 @@ function FeedbackCard({ fb, onStatusChange, onReply }) {
           </span>
         </div>
       </div>
-      {/* Comment */}
       <div className="text-sm text-slate-700 leading-relaxed mb-3">
         {(() => {
-          try {
-            if (fb.comment && (fb.comment.startsWith('{') || fb.comment.startsWith('['))) {
-              const parsed = JSON.parse(fb.comment);
-              return (
-                <div className="space-y-1 mt-1 text-xs text-left">
-                  <p><span className="font-bold text-slate-500">BS:</span> "{parsed.doctorComment}" <span className="text-[10px] text-slate-400 font-semibold">({parsed.doctorPublic ? 'Công khai' : 'Ẩn'})</span></p>
-                  {parsed.techComment && (
-                    <p><span className="font-bold text-slate-500">KTV:</span> "{parsed.techComment}" <span className="text-[10px] text-slate-400 font-semibold">({parsed.techPublic ? 'Công khai' : 'Ẩn'})</span></p>
-                  )}
-                </div>
-              );
-            }
-          } catch(e) {}
-          return <p className="line-clamp-2">"{fb.comment}"</p>;
+          if (fb.doctorComment || fb.technicianComment) {
+            return (
+              <div className="space-y-1 mt-1 text-xs text-left">
+                {fb.doctorComment && (
+                  <p><span className="font-bold text-slate-500">BS:</span> "{fb.doctorComment}" <span className="text-[10px] text-slate-400 font-semibold">({(fb.isDoctorPublic ?? true) ? 'Công khai' : 'Ẩn'})</span></p>
+                )}
+                {fb.technicianComment && (
+                  <p><span className="font-bold text-slate-500">KTV:</span> "{fb.technicianComment}" <span className="text-[10px] text-slate-400 font-semibold">({(fb.isTechnicianPublic ?? true) ? 'Công khai' : 'Ẩn'})</span></p>
+                )}
+              </div>
+            );
+          }
+          return <p className="line-clamp-2">"{fb.comment || 'Chưa có nhận xét'}"</p>;
         })()}
       </div>
       {/* Images */}
