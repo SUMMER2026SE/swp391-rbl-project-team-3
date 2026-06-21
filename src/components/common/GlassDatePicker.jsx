@@ -46,6 +46,7 @@ export default function GlassDatePicker({
   min,
   placeholder = 'Chọn ngày khám',
   className = '',
+  buttonClassName = '',
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -121,7 +122,7 @@ export default function GlassDatePicker({
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="dialog"
         aria-expanded={open}
-        className="bg-white/50 border border-white/40 text-gray-900 rounded-xl p-4 w-full cursor-pointer flex justify-between items-center outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
+        className={`bg-white/50 border border-white/40 text-gray-900 rounded-xl p-4 w-full cursor-pointer flex justify-between items-center outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all ${buttonClassName}`}
       >
         <span className={selectedDate ? 'text-slate-900 text-sm font-medium' : 'text-slate-800 text-sm font-medium'}>
           {triggerLabel}

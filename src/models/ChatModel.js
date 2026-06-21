@@ -210,10 +210,11 @@ export const ReceptionistChatModel = {
 export function subscribeToMessages({ patientId, onEvent }) {
   const scope = patientId || 'all';
   const filter = patientId ? `patient_id=eq.${patientId}` : undefined;
-  const base = { event: undefined, schema: 'public', table: 'messages', ...(filter ? { filter } : {}) };
+  const base = { schema: 'public', table: 'messages', ...(filter ? { filter } : {}) };
 
+  const channelName = `chat-msgs-${scope}-${Date.now()}-${Math.random()}`;
   const channel = supabase
-    .channel(`chat-messages-${scope}-${Date.now()}`)
+    .channel(channelName)
     .on('postgres_changes', { ...base, event: 'INSERT' }, (p) => onEvent?.('INSERT', mapFromDB(p.new)))
     .on('postgres_changes', { ...base, event: 'UPDATE' }, (p) => onEvent?.('UPDATE', mapFromDB(p.new)))
     .subscribe();
@@ -226,10 +227,11 @@ export function subscribeToMessages({ patientId, onEvent }) {
 export function subscribeToSessions({ patientId, onEvent }) {
   const scope = patientId || 'all';
   const filter = patientId ? `patient_id=eq.${patientId}` : undefined;
-  const base = { event: undefined, schema: 'public', table: 'chat_sessions', ...(filter ? { filter } : {}) };
+  const base = { schema: 'public', table: 'chat_sessions', ...(filter ? { filter } : {}) };
 
+  const channelName = `chat-sess-${scope}-${Date.now()}-${Math.random()}`;
   const channel = supabase
-    .channel(`chat-sessions-${scope}-${Date.now()}`)
+    .channel(channelName)
     .on('postgres_changes', { ...base, event: 'INSERT' }, (p) => onEvent?.('INSERT', mapSessionFromDB(p.new)))
     .on('postgres_changes', { ...base, event: 'UPDATE' }, (p) => onEvent?.('UPDATE', mapSessionFromDB(p.new)))
     .subscribe();

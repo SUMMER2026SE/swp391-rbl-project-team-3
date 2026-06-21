@@ -40,6 +40,8 @@ import {
   ArrowRight,
   PanelLeftClose,
   PanelLeftOpen,
+  Calendar,
+  AlertTriangle,
 } from 'lucide-react';
 import { useAppointmentController } from '../controllers/useAppointmentController';
 import { useMedicalRecordController } from '../controllers/useMedicalRecordController';
@@ -47,6 +49,7 @@ import { useVoucherController } from '../controllers/useVoucherController';
 import { useDoctors } from '../hooks/useDoctors';
 import { AppointmentModel } from '../models/AppointmentModel';
 import { NotificationModel } from '../models/NotificationModel';
+import { DoctorScheduleModel } from '../models/DoctorScheduleModel';
 import { supabase } from '../supabaseClient';
 import { ReceptionistChatModel, subscribeToMessages, unsubscribe } from '../models/ChatModel';
 import LiquidSidebarMenu from '../components/ui/LiquidSidebarMenu';
@@ -56,6 +59,7 @@ import ReceptionistFeedbackView from '../components/Receptionist/ReceptionistFee
 import TodayQueueBoard from '../components/Receptionist/TodayQueueBoard';
 import BillingCheckout from '../components/Receptionist/BillingCheckout';
 import CheckInPatientModal from '../components/Receptionist/CheckInPatientModal';
+import GlassDatePicker from '../components/common/GlassDatePicker';
 import { normalizeApt, APT_STATUS, TODAY_STR } from '../components/Receptionist/receptionistData';
 import logo from '../assets/logo.png';
 
@@ -96,6 +100,11 @@ export default function ReceptionistDashboard() {
     appointments,
     payments,
     bookAppointment,
+    getAvailableSlots,
+    isSlotBooked,
+    lockSlot,
+    holdSlot,
+    validateBooking,
     refreshState,
   } = useAppointmentController();
 
@@ -296,97 +305,449 @@ export default function ReceptionistDashboard() {
   const [newApt, setNewApt] = useState({
     patientName: '',
     phone: '',
-    date: TODAY_STR,
-    time: '09:00',
+    email: '',
+    dob: '1990-01-01',
+    gender: 'Nam',
+    district: '',
+    province: '',
+    existingPatientId: null,
     service: 'Khám Da Liễu Tổng Quát',
-    doctorName: '',
     notes: '',
   });
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
+  const [isExistingPatient, setIsExistingPatient] = useState(false);
+
+  // States mirroring BookAppointmentForm.jsx for walk-in flow
+  const minDate = useMemo(() => {
+    const todayDate = new Date();
+    return `${todayDate.getFullYear()}-${(todayDate.getMonth() + 1).toString().padStart(2, '0')}-${todayDate.getDate().toString().padStart(2, '0')}`;
+  }, []);
+  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedDoctor, setSelectedDoctor] = useState('');
+  const [selectedTime, setSelectedTime] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [step, setStep] = useState('form'); // 'form', 'payment', 'success'
+  const isSubmittingRef = useRef(false);
+  const [paymentPayload, setPaymentPayload] = useState(null);
+  const [adminSchedules, setAdminSchedules] = useState([]);
 
   useEffect(() => {
-    if (!isAddOpen) return;
-    const saved = localStorage.getItem('admin-services');
-    let parsed = [];
-    if (saved) {
-      try {
-        const raw = JSON.parse(saved);
-        parsed = (Array.isArray(raw) ? raw : [])
-          .filter((s) => s.status === 'Hoạt động')
-          .map((s) => ({ id: s.id, name: s.name }));
-      } catch { parsed = []; }
-    }
-    setServicesList(parsed);
-    setNewApt((prev) => ({
-      ...prev,
-      service: parsed[0]?.name || prev.service,
-      doctorName: doctors[0]?.name || prev.doctorName,
-    }));
-  }, [isAddOpen, doctors]);
-
-  const handleAddApt = async (e) => {
-    e.preventDefault();
-    if (!newApt.patientName.trim() || !newApt.phone.trim()) {
-      showToast('Vui lòng nhập họ tên và số điện thoại.', 'error');
-      return;
-    }
-    const doctor = doctors.find((d) => d.name === newApt.doctorName) || doctors[0];
-    if (!doctor) {
-      showToast('Chưa có bác sĩ trong hệ thống.', 'error');
-      return;
-    }
-
-    // Find-or-create a lightweight patient record (name + phone only — no clinical data).
-    const cleanPhone = newApt.phone.replace(/[\s.-]/g, '');
-    let target = (patients || []).find((p) => p.phone && p.phone.replace(/[\s.-]/g, '') === cleanPhone);
-    let patientId = target?.id;
-    if (!target) {
-      try {
-        const created = addPatient({
-          fullName: newApt.patientName,
-          phone: newApt.phone,
-          dob: '1990-01-01',
-          address: 'Chưa cập nhật',
-          medicalHistory: [],
-        });
-        patientId = created?.id;
-      } catch (err) {
-        showToast(err.message || 'Lỗi khi tạo hồ sơ bệnh nhân.', 'error');
-        return;
+    if (isAddOpen) {
+      setSelectedDate('');
+      setSelectedDoctor('');
+      setSelectedTime('');
+      setErrorMessage('');
+      setStep('form');
+      setPaymentPayload(null);
+      
+      const saved = localStorage.getItem('admin-services');
+      let parsed = [];
+      if (saved) {
+        try {
+          const raw = JSON.parse(saved);
+          parsed = (Array.isArray(raw) ? raw : [])
+            .filter((s) => s.status === 'Hoạt động')
+            .map((s) => ({ id: s.id, name: s.name }));
+        } catch { parsed = []; }
       }
-    }
+      setServicesList(parsed);
 
-    try {
-      const res = await bookAppointment({
-        patient_id: patientId,
-        patient_name: newApt.patientName,
-        doctor_id: doctor.id,
-        doctor_name: doctor.name,
-        service_name: newApt.service,
-        appointment_date: newApt.date,
-        start_time: newApt.time,
-        reason: newApt.notes || 'Khám trực tiếp tại quầy',
-        status: APT_STATUS.CONFIRMED,
-      });
-      if (res && res.success === false) {
-        showToast(res.error || 'Không thể tạo lịch hẹn.', 'error');
-        return;
-      }
-      setIsAddOpen(false);
       setNewApt({
         patientName: '',
         phone: '',
-        date: TODAY_STR,
-        time: '09:00',
-        service: servicesList[0]?.name || 'Khám Da Liễu Tổng Quát',
-        doctorName: doctors[0]?.name || '',
+        email: '',
+        dob: '1990-01-01',
+        gender: 'Nam',
+        district: '',
+        province: '',
+        existingPatientId: null,
+        service: parsed[0]?.name || 'Khám Da Liễu Tổng Quát',
         notes: '',
       });
-      await refreshState();
-      showToast(`Đã tạo lịch khám trực tiếp cho ${newApt.patientName}.`, 'success');
+      setIsExistingPatient(false);
+      setIsCheckingEmail(false);
+
+      // Fetch doctor shift schedules
+      DoctorScheduleModel.getAllShifts().then(data => setAdminSchedules(data || []));
+    }
+  }, [isAddOpen]);
+
+  const handleEmailBlur = async () => {
+    const emailVal = newApt.email.trim().toLowerCase();
+    if (!emailVal || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
+      return;
+    }
+    setIsCheckingEmail(true);
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select(`
+          user_id,
+          full_name,
+          phone,
+          email,
+          date_of_birth,
+          gender,
+          patient_profiles (
+            address
+          )
+        `)
+        .eq('role_id', 5)
+        .eq('email', emailVal)
+        .maybeSingle();
+
+      if (error) throw error;
+      
+      if (data) {
+        setIsExistingPatient(true);
+        const fullAddress = data.patient_profiles?.address || '';
+        const parts = fullAddress.split(',').map((p) => p.trim());
+        let district = '';
+        let province = '';
+        if (parts.length >= 2) {
+          province = parts[parts.length - 1];
+          district = parts.slice(0, parts.length - 1).join(', ');
+        } else {
+          province = fullAddress;
+        }
+
+        setNewApt(prev => ({
+          ...prev,
+          patientName: data.full_name || prev.patientName,
+          phone: data.phone || prev.phone,
+          dob: data.date_of_birth || prev.dob,
+          gender: data.gender || prev.gender,
+          district: district || prev.district,
+          province: province || prev.province,
+          existingPatientId: data.user_id
+        }));
+        showToast('Tìm thấy tài khoản đã đăng ký! Thông tin hồ sơ được tự động điền.', 'info');
+      } else {
+        setIsExistingPatient(false);
+        setNewApt(prev => ({ ...prev, existingPatientId: null }));
+      }
     } catch (err) {
-      showToast(err.message || 'Có lỗi xảy ra.', 'error');
+      console.error("Error checking email:", err);
+    } finally {
+      setIsCheckingEmail(false);
     }
   };
+
+  const handleSubmitBooking = async (e) => {
+    if (e) e.preventDefault();
+    
+    const nameTrim = newApt.patientName.trim();
+    const phoneClean = newApt.phone.replace(/[\s.-]/g, '');
+    const emailTrim = newApt.email.trim().toLowerCase();
+
+    if (!selectedDate) {
+      setErrorMessage('Vui lòng chọn ngày khám.');
+      return;
+    }
+
+    if (!selectedTime) {
+      setErrorMessage('Vui lòng chọn khung giờ khám.');
+      return;
+    }
+
+    if (!emailTrim || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrim)) {
+      setErrorMessage('Vui lòng nhập Email (Gmail) hợp lệ.');
+      return;
+    }
+
+    if (!isExistingPatient) {
+      if (nameTrim.length < 4) {
+        setErrorMessage('Họ và tên phải từ 4 ký tự trở lên.');
+        return;
+      }
+      const nameRegex = /^[a-zA-Z\sàáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ]+$/;
+      if (!nameRegex.test(nameTrim)) {
+        setErrorMessage('Họ và tên chỉ được chứa chữ cái tiếng Việt và khoảng trắng.');
+        return;
+      }
+      if (nameTrim.split(/\s+/).length < 2) {
+        setErrorMessage('Họ và tên phải bao gồm ít nhất Họ và Tên (2 từ).');
+        return;
+      }
+
+      const phoneRegex = /^(03|05|07|08|09)\d{8}$/;
+      if (!phoneRegex.test(phoneClean)) {
+        setErrorMessage('Số điện thoại không hợp lệ (gồm 10 chữ số, bắt đầu bằng 03, 05, 07, 08, 09).');
+        return;
+      }
+
+      if (!newApt.dob) {
+        setErrorMessage('Vui lòng chọn ngày sinh.');
+        return;
+      }
+      const birthDate = new Date(newApt.dob);
+      if (birthDate > new Date()) {
+        setErrorMessage('Ngày sinh không thể ở tương lai.');
+        return;
+      }
+
+      if (!newApt.district.trim() || !newApt.province.trim()) {
+        setErrorMessage('Vui lòng nhập Quận/Huyện và Tỉnh/Thành phố.');
+        return;
+      }
+    }
+
+    // Determine final doctor ID
+    const finalDocId = selectedDoctor || (workingDocs.find(doc => !isSlotBooked(doc.user_id || doc.id, selectedDate, selectedTime))?.user_id) || (workingDocs.find(doc => !isSlotBooked(doc.user_id || doc.id, selectedDate, selectedTime))?.id);
+    if (!finalDocId) {
+      setErrorMessage('Không tìm thấy bác sĩ khả dụng cho ngày và giờ đã chọn.');
+      return;
+    }
+
+    const finalDocData = finalDocId ? doctors.find(d => String(d.user_id || d.id) === String(finalDocId)) : null;
+    const finalFeeVal = finalDocData?.consultationFee || '300,000 VNĐ';
+
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+    setErrorMessage('');
+
+    if (!isExistingPatient) {
+      // Check if phone already registered in public users
+      const { data: phoneUser, error: phoneCheckErr } = await supabase
+        .from('users')
+        .select('user_id, full_name, email')
+        .eq('role_id', 5)
+        .eq('phone', phoneClean)
+        .maybeSingle();
+
+      if (phoneCheckErr) {
+        console.error("Phone check error:", phoneCheckErr);
+      }
+      
+      if (phoneUser) {
+        setErrorMessage(`Số điện thoại này đã được đăng ký cho bệnh nhân: ${phoneUser.full_name} (${phoneUser.email}).`);
+        isSubmittingRef.current = false;
+        return;
+      }
+    }
+
+    let patientId = newApt.existingPatientId;
+
+    if (!isExistingPatient) {
+      try {
+        // Create new user profile (JIT record generation)
+        const newUserId = window.crypto?.randomUUID ? window.crypto.randomUUID() : 'pat-' + Math.random().toString(36).substring(2, 15);
+        
+        // 1. Insert into users
+        const { error: userErr } = await supabase
+          .from('users')
+          .insert({
+            user_id: newUserId,
+            role_id: 5,
+            full_name: nameTrim,
+            phone: phoneClean,
+            email: emailTrim,
+            gender: newApt.gender,
+            date_of_birth: newApt.dob,
+            status: 'ACTIVE',
+          });
+
+        if (userErr) throw userErr;
+
+        // 2. Insert into patient_profiles
+        const fullAddress = `${newApt.district.trim()}, ${newApt.province.trim()}`;
+        const { error: profileErr } = await supabase
+          .from('patient_profiles')
+          .insert({
+            patient_id: newUserId,
+            address: fullAddress,
+          });
+
+        if (profileErr) throw profileErr;
+
+        // Also add patient locally for legacy compatibility
+        try {
+          addPatient({
+            id: newUserId,
+            fullName: nameTrim,
+            phone: newApt.phone,
+            dob: newApt.dob,
+            email: emailTrim,
+            gender: newApt.gender,
+            address: fullAddress,
+            medicalHistory: [],
+          });
+        } catch (e) {
+          console.warn("Legacy local addPatient warning:", e);
+        }
+
+        patientId = newUserId;
+      } catch (err) {
+        setErrorMessage(err.message || 'Lỗi khi tạo hồ sơ bệnh nhân mới.');
+        isSubmittingRef.current = false;
+        return;
+      }
+    }
+
+    const bookingPayload = {
+      doctorId: finalDocId,
+      patientId: patientId,
+      patientName: nameTrim,
+      patientPhone: phoneClean,
+      patientEmail: emailTrim,
+      date: selectedDate,
+      time: selectedTime,
+      service: newApt.service || 'Khám Da Liễu Tổng Quát',
+      fee: finalFeeVal,
+      originalFee: finalFeeVal,
+      notes: newApt.notes || 'Khám trực tiếp tại quầy',
+      bookingFee: 50000,
+      paymentStatus: 'Đã thanh toán',
+      status: 'Đã xác nhận'
+    };
+
+    // Validate booking
+    const validation = await validateBooking(bookingPayload);
+    if (!validation.valid) {
+      setErrorMessage(validation.error);
+      isSubmittingRef.current = false;
+      return;
+    }
+
+    try {
+      const result = await bookAppointment(bookingPayload);
+      if (result.success) {
+        showToast('Đặt lịch và tạo hồ sơ bệnh án thành công!', 'success');
+        setTimeout(() => {
+          isSubmittingRef.current = false;
+          setIsAddOpen(false);
+        }, 1500);
+      } else {
+        isSubmittingRef.current = false;
+        setErrorMessage(result.error || 'Có lỗi xảy ra khi xác nhận đặt lịch.');
+      }
+    } catch (err) {
+      console.error("Booking submit error:", err);
+      setErrorMessage(err.message || 'Có lỗi xảy ra khi đặt lịch.');
+      isSubmittingRef.current = false;
+    }
+  };
+
+  // Helper functions for online-synced pricing layout
+  function parsePriceToNumber(priceStr) {
+    if (!priceStr) return 0;
+    if (typeof priceStr === 'number') return priceStr;
+    return parseInt(priceStr.replace(/[^0-9]/g, ''), 10) || 0;
+  }
+
+  function formatVND(n) {
+    return n.toLocaleString('vi-VN') + ' VNĐ';
+  }
+
+  function PriceSummary({ originalAmount }) {
+    if (!originalAmount) {
+      return (
+        <div className="bg-white/30 border border-white/40 rounded-2xl p-3.5 space-y-2 text-left">
+          <div className="flex justify-between text-xs font-semibold text-slate-600">
+            <span>Giá dịch vụ</span>
+            <span className="italic text-slate-400 text-[11px]">(Được xác định theo bác sĩ)</span>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="bg-white/30 border border-white/40 rounded-2xl p-3.5 space-y-2 text-left">
+        <div className="flex justify-between text-xs font-semibold text-slate-600">
+          <span>Giá dịch vụ</span>
+          <span>{formatVND(originalAmount)}</span>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Working Doctors for selected date ───
+  const workingDocs = useMemo(() => {
+    if (!selectedDate) return [];
+    return (doctors || []).filter(doc => {
+      return (adminSchedules || []).some(s => 
+        String(s.doctor_id || s.doctorId) === String(doc.user_id || doc.id) && 
+        (s.work_date === selectedDate || s.date === selectedDate) && 
+        s.status === 'Đã xác nhận'
+      );
+    });
+  }, [selectedDate, doctors, adminSchedules]);
+
+  // ─── Filtered Slots ───
+  const filteredSlots = (() => {
+    const todayDate = new Date();
+    const minDate = `${todayDate.getFullYear()}-${(todayDate.getMonth() + 1).toString().padStart(2, '0')}-${todayDate.getDate().toString().padStart(2, '0')}`;
+
+    const lockedListStr = localStorage.getItem('dermasmart_locked_slots') || '[]';
+    let lockedList = [];
+    try { lockedList = JSON.parse(lockedListStr); } catch (e) {}
+    const activeLocks = lockedList.filter(l => l.lockedUntil > Date.now());
+
+    const isSlotActuallyBooked = (dId, dDate, dTime) => {
+      // Past check
+      if (dDate < minDate) return true;
+      if (dDate === minDate) {
+        const now = new Date();
+        const currentMins = now.getHours() * 60 + now.getMinutes();
+        const [h, m] = dTime.split(':').map(Number);
+        if ((h * 60 + m) <= currentMins) return true;
+      }
+
+      // Check bookings
+      const booked = isSlotBooked(dId, dDate, dTime);
+      // Check locks
+      const locked = activeLocks.some(l => String(l.doctorId) === String(dId) && l.date === dDate && l.time === dTime);
+      
+      // Check if it fits the doctor's shift
+      let outsideShift = true;
+      const docShift = (adminSchedules || []).find(s => String(s.doctor_id) === String(dId) && s.work_date === dDate);
+      if (docShift) {
+         const shiftStart = docShift.start_time.slice(0, 5);
+         const shiftEnd = docShift.end_time.slice(0, 5);
+         if (dTime >= shiftStart && dTime < shiftEnd) {
+             outsideShift = false;
+         }
+      }
+
+      return booked || locked || outsideShift;
+    };
+
+    let slotsToDisplay = [];
+    if (selectedDoctor) {
+      const slots = getAvailableSlots(selectedDoctor, selectedDate, adminSchedules);
+      slotsToDisplay = (slots || []).map(s => ({
+        ...s,
+        isBooked: isSlotActuallyBooked(selectedDoctor, selectedDate, s.time)
+      }));
+    } else {
+      const allSlotsMap = new Map();
+      workingDocs.forEach(doc => {
+         const docId = doc.user_id || doc.id;
+         const docSlots = getAvailableSlots(docId, selectedDate, adminSchedules);
+         (docSlots || []).forEach(s => {
+             if (!allSlotsMap.has(s.time)) {
+                 allSlotsMap.set(s.time, { time: s.time, isBooked: true });
+             }
+             if (!isSlotActuallyBooked(docId, selectedDate, s.time)) {
+                 allSlotsMap.get(s.time).isBooked = false;
+             }
+         });
+      });
+      slotsToDisplay = Array.from(allSlotsMap.values());
+      slotsToDisplay.sort((a, b) => a.time.localeCompare(b.time));
+    }
+    
+    return slotsToDisplay.filter(slot => !slot.isBooked);
+  })();
+
+  const finalDoctorId = selectedDoctor || (workingDocs.find(doc => !isSlotBooked(doc.user_id || doc.id, selectedDate, selectedTime))?.user_id) || (workingDocs.find(doc => !isSlotBooked(doc.user_id || doc.id, selectedDate, selectedTime))?.id);
+  const finalDoctorData = finalDoctorId ? doctors.find(d => String(d.user_id || d.id) === String(finalDoctorId)) : null;
+
+  const originalAmount = finalDoctorData ? parsePriceToNumber(finalDoctorData.consultationFee) : 0;
+  const finalFee = finalDoctorData?.consultationFee || '300,000 VNĐ';
+
+  const isContactInfoComplete = newApt.patientName.trim() && newApt.phone.trim() && newApt.email.trim();
+  const isFormComplete = selectedDate && selectedTime && isContactInfoComplete && finalDoctorId;
 
   // ─── Derived KPI counts ───────────────────────────────────────────────────
   const todays = useMemo(
@@ -711,71 +1072,260 @@ export default function ReceptionistDashboard() {
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 0.4 }} exit={{ opacity: 0 }} onClick={() => setIsAddOpen(false)} className="fixed inset-0 bg-slate-900/30 backdrop-blur-sm z-[100]" />
             <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 20 }} transition={{ type: 'spring', damping: 25 }}
-              className="fixed inset-0 m-auto w-[92vw] max-w-lg h-fit max-h-[90vh] overflow-y-auto backdrop-blur-3xl bg-white/90 border border-white rounded-[2.5rem] shadow-2xl z-[101] p-8 flex flex-col gap-6"
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              transition={{ type: 'spring', damping: 25 }}
+              className="fixed inset-0 m-auto w-[95vw] max-w-5xl h-[85vh] overflow-hidden backdrop-blur-3xl bg-white border border-slate-100 rounded-3xl shadow-2xl z-[101] flex flex-col"
             >
-              <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 bg-teal-50 rounded-xl text-teal-600"><Plus className="w-5 h-5" /></div>
-                  <h3 className="font-extrabold text-lg text-slate-900 tracking-tight">Đặt lịch hẹn trực tiếp</h3>
+              {/* Header */}
+              <div className="flex justify-between items-center px-8 py-4 border-b border-slate-100 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-[#0d473b] flex items-center justify-center text-white font-extrabold shadow-sm">
+                    <Plus className="w-4 h-4" />
+                  </div>
+                  <h3 className="font-extrabold text-lg text-[#0d473b] tracking-tight">Đặt lịch hẹn trực tiếp & Tạo hồ sơ</h3>
                 </div>
-                <button onClick={() => setIsAddOpen(false)} className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center cursor-pointer border-none"><X className="w-4 h-4" /></button>
+                <button onClick={() => setIsAddOpen(false)} className="w-8 h-8 rounded-full bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-800 flex items-center justify-center cursor-pointer border-none transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
               </div>
 
-              <form onSubmit={handleAddApt} className="space-y-4 text-xs font-semibold text-slate-700">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Form Content */}
+              <form onSubmit={handleSubmitBooking} className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden text-xs font-semibold text-slate-700">
+                
+                {/* LEFT COLUMN: Scrollable Form Inputs */}
+                <div className="flex-1 overflow-y-auto p-8 space-y-5">
+                  {errorMessage && (
+                    <div className="p-3.5 bg-rose-50 border border-rose-100 text-rose-600 rounded-xl text-xs font-bold flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      <span>{errorMessage}</span>
+                    </div>
+                  )}
+
+                  {/* Date Input */}
                   <div className="flex flex-col gap-1.5">
-                    <label>Họ và tên <span className="text-rose-500">*</span></label>
-                    <input type="text" value={newApt.patientName} onChange={(e) => setNewApt({ ...newApt, patientName: e.target.value })} className={`${GLASS_INPUT} px-3 py-2.5`} placeholder="Nguyễn Văn A" />
+                    <GlassDatePicker
+                      value={selectedDate}
+                      onChange={(d) => { setSelectedDate(d); setSelectedTime(''); }}
+                      min={minDate}
+                      placeholder="mm/dd/yyyy"
+                      buttonClassName="!bg-[#e8f1fb] !border-slate-200/80 !py-3 text-slate-700 font-medium"
+                    />
                   </div>
+
+                  {/* Step 2: Choose Doctor */}
                   <div className="flex flex-col gap-1.5">
-                    <label>Số điện thoại <span className="text-rose-500">*</span></label>
-                    <input type="tel" value={newApt.phone} onChange={(e) => setNewApt({ ...newApt, phone: e.target.value })} className={`${GLASS_INPUT} px-3 py-2.5`} placeholder="09xx xxx xxx" />
+                    <label className="flex items-center gap-1.5 text-[11px] font-black text-[#855e42] uppercase tracking-wider mb-1">
+                      <Users className="w-3.5 h-3.5 text-teal-600" />
+                      BƯỚC 2: CHỌN BÁC SĨ
+                    </label>
+                    <GlassSelect
+                      value={selectedDoctor}
+                      onChange={(v) => { setSelectedDoctor(v); setSelectedTime(''); }}
+                      options={[
+                        { value: '', label: 'Không chọn – Hệ thống tự động sắp xếp' },
+                        ...(doctors || []).map(doc => ({
+                          value: doc.user_id || doc.id,
+                          label: `${/^(BS|ThS|TS|PGS|GS|CN|KTV)/i.test((doc.name || '').trim()) ? '' : 'BS. '}${doc.name}${doc.specialties && doc.specialties.length > 0 ? ` (${doc.specialties.join(', ')})` : ''}`,
+                        }))
+                      ]}
+                      buttonClassName="px-4 py-3 text-sm text-slate-700 bg-[#e8f1fb] border border-slate-200 rounded-xl font-medium hover:bg-[#deebfa] transition-colors"
+                    />
+                  </div>
+
+                  <div className="border-b border-slate-200/60 my-4" />
+
+                  {/* Patient Record Title */}
+                  <div className="flex items-center gap-1.5 text-[11px] font-black text-[#855e42] uppercase tracking-wider mb-3">
+                    <ClipboardList className="w-3.5 h-3.5 text-[#0d473b]" />
+                    HỒ SƠ BỆNH ÁN BỆNH NHÂN
+                  </div>
+
+                  {/* Patient Profile Fields */}
+                  <div className="space-y-4">
+                    {/* Email */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-bold text-slate-500">Email (Gmail) <span className="text-rose-500">*</span></label>
+                      <input
+                        type="email"
+                        value={newApt.email}
+                        onChange={(e) => setNewApt({ ...newApt, email: e.target.value })}
+                        onBlur={handleEmailBlur}
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500/50 bg-[#e8f1fb] text-sm font-medium text-slate-700 transition-colors"
+                        placeholder="example@gmail.com"
+                        required
+                      />
+                    </div>
+
+                    {/* Name & Phone */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold text-slate-500">Họ và tên <span className="text-rose-500">*</span></label>
+                        <input
+                          type="text"
+                          value={newApt.patientName}
+                          onChange={(e) => setNewApt({ ...newApt, patientName: e.target.value })}
+                          className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500/50 bg-[#e8f1fb] text-sm font-medium text-slate-700 disabled:bg-[#f1f5f9]/80 disabled:text-slate-400 transition-colors"
+                          placeholder="Nguyễn Văn A"
+                          disabled={isExistingPatient || isCheckingEmail}
+                          required
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold text-slate-500">Số điện thoại <span className="text-rose-500">*</span></label>
+                        <input
+                          type="tel"
+                          value={newApt.phone}
+                          onChange={(e) => setNewApt({ ...newApt, phone: e.target.value })}
+                          className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500/50 bg-[#e8f1fb] text-sm font-medium text-slate-700 disabled:bg-[#f1f5f9]/80 disabled:text-slate-400 transition-colors"
+                          placeholder="09xx xxx xxx"
+                          disabled={isExistingPatient || isCheckingEmail}
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    {/* DOB & Gender */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold text-slate-500">Ngày sinh <span className="text-rose-500">*</span></label>
+                        <input
+                          type="date"
+                          value={newApt.dob}
+                          onChange={(e) => setNewApt({ ...newApt, dob: e.target.value })}
+                          className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500/50 bg-[#e8f1fb] text-sm font-medium text-slate-700 disabled:bg-[#f1f5f9]/80 disabled:text-slate-400 transition-colors"
+                          disabled={isExistingPatient || isCheckingEmail}
+                          required
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold text-slate-500">Giới tính <span className="text-rose-500">*</span></label>
+                        <GlassSelect
+                          value={newApt.gender}
+                          onChange={(v) => setNewApt({ ...newApt, gender: v })}
+                          options={[
+                            { value: 'Nam', label: 'Nam' },
+                            { value: 'Nữ', label: 'Nữ' }
+                          ]}
+                          disabled={isExistingPatient || isCheckingEmail}
+                          buttonClassName="px-4 py-3 text-sm text-slate-700 bg-[#e8f1fb] border border-slate-200 rounded-xl font-medium disabled:bg-[#f1f5f9]/80 disabled:text-slate-400 hover:bg-[#deebfa] transition-colors"
+                        />
+                      </div>
+                    </div>
+
+                    {/* District & Province */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold text-slate-500">Quận / Huyện <span className="text-rose-500">*</span></label>
+                        <input
+                          type="text"
+                          value={newApt.district}
+                          onChange={(e) => setNewApt({ ...newApt, district: e.target.value })}
+                          className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500/50 bg-[#e8f1fb] text-sm font-medium text-slate-700 disabled:bg-[#f1f5f9]/80 disabled:text-slate-400 transition-colors"
+                          placeholder="Quận 1, Quận Bình Thạnh..."
+                          disabled={isExistingPatient || isCheckingEmail}
+                          required
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold text-slate-500">Tỉnh / Thành phố <span className="text-rose-500">*</span></label>
+                        <input
+                          type="text"
+                          value={newApt.province}
+                          onChange={(e) => setNewApt({ ...newApt, province: e.target.value })}
+                          className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500/50 bg-[#e8f1fb] text-sm font-medium text-slate-700 disabled:bg-[#f1f5f9]/80 disabled:text-slate-400 transition-colors"
+                          placeholder="TP. Hồ Chí Minh"
+                          disabled={isExistingPatient || isCheckingEmail}
+                          required
+                        />
+                      </div>
+                    </div>
+
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="flex flex-col gap-1.5">
-                    <label>Ngày khám</label>
-                    <input type="date" value={newApt.date} onChange={(e) => setNewApt({ ...newApt, date: e.target.value })} className={`${GLASS_INPUT} px-3 py-2.5`} />
+                {/* RIGHT COLUMN: Slots, Warnings, Pricing & Actions */}
+                <div className="w-full lg:w-[420px] bg-[#ecf3fa]/60 border-l border-slate-100 flex flex-col p-6 overflow-y-auto shrink-0 justify-between gap-6">
+                  
+                  {/* Slots container or empty calendar message card */}
+                  <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm flex flex-col flex-1 min-h-[320px] justify-center">
+                    {!selectedDate ? (
+                      <div className="text-center py-8 px-4 flex flex-col items-center justify-center gap-3">
+                        <div className="w-12 h-12 rounded-full bg-[#ecf7f5] text-teal-600 flex items-center justify-center shadow-inner">
+                          <Clock className="w-6 h-6" />
+                        </div>
+                        <h4 className="font-bold text-sm text-slate-800">Lịch trống hiển thị tại đây</h4>
+                        <p className="text-[11px] text-slate-400 font-medium max-w-[240px] leading-relaxed">
+                          Chọn ngày khám ở cột bên trái để xem các khung giờ còn trống của bác sĩ.
+                        </p>
+                      </div>
+                    ) : filteredSlots.length === 0 ? (
+                      <div className="text-center py-8 px-4 flex flex-col items-center justify-center gap-2">
+                        <Clock className="w-7 h-7 text-rose-500" />
+                        <h4 className="font-bold text-sm text-rose-500">Hết khung giờ trống</h4>
+                        <p className="text-[11px] text-slate-400 font-medium">
+                          Bác sĩ không có ca trực hoặc đã hết slot khám trống trong ngày này. Vui lòng chọn ngày khác.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4 h-full flex flex-col justify-start">
+                        <h4 className="font-extrabold text-sm text-slate-500 uppercase tracking-wider text-left">Khung giờ còn trống</h4>
+                        <div className="grid grid-cols-3 gap-3 overflow-y-auto pr-1 flex-1">
+                          {filteredSlots.map((slot) => (
+                            <button
+                              key={slot.time}
+                              type="button"
+                              onClick={() => setSelectedTime(slot.time)}
+                              className={`py-3 px-4 rounded-xl font-bold text-sm border text-center transition-all cursor-pointer ${
+                                selectedTime === slot.time
+                                  ? 'bg-[#0d473b] border-[#0d473b] text-white shadow-md shadow-emerald-800/10'
+                                  : 'bg-[#e8f1fb] border-slate-200 text-slate-700 hover:border-teal-500 hover:text-teal-600 hover:bg-[#deebfa]'
+                              }`}
+                            >
+                              {slot.time}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label>Giờ khám</label>
-                    <input type="time" value={newApt.time} onChange={(e) => setNewApt({ ...newApt, time: e.target.value })} className={`${GLASS_INPUT} px-3 py-2.5`} />
+
+                  {/* Warning message card */}
+                  <div className="bg-[#fffbeb] border border-[#fef08a] rounded-2xl p-4 flex gap-3 text-left shadow-sm shrink-0">
+                    <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                    <div className="text-[11px] font-semibold text-amber-800 leading-relaxed">
+                      <span className="font-black">Lưu ý quan trọng:</span> Bệnh nhân cần đến trễ không quá 30 phút so với giờ hẹn, nếu trễ quá lịch khám sẽ tự động hủy trên hệ thống.
+                    </div>
                   </div>
-                </div>
 
-                <div className="flex flex-col gap-1.5">
-                  <label>Dịch vụ</label>
-                  <GlassSelect
-                    value={newApt.service}
-                    onChange={(v) => setNewApt({ ...newApt, service: v })}
-                    options={servicesList.length === 0
-                      ? [{ value: 'Khám Da Liễu Tổng Quát', label: 'Khám Da Liễu Tổng Quát' }]
-                      : servicesList.map((s) => ({ value: s.name, label: s.name }))}
-                    buttonClassName="px-3 py-2.5 text-xs"
-                  />
-                </div>
+                  {/* Bottom details and buttons */}
+                  <div className="space-y-4 shrink-0 mt-auto">
+                    <div className="border-t border-slate-200/60 pt-4 flex items-center justify-between gap-4">
+                      <div className="text-left">
+                        <div className="text-[10px] font-black text-slate-400 tracking-wider">GIÁ DỊCH VỤ DỰ KIẾN</div>
+                        <div className="text-[9px] text-slate-400 italic font-medium mt-0.5">(Được xác định theo chỉ định bác sĩ)</div>
+                      </div>
+                      <div className="flex gap-2.5">
+                        <button
+                          type="button"
+                          onClick={() => setIsAddOpen(false)}
+                          className="px-5 py-3 border border-slate-300 rounded-xl text-slate-600 font-bold hover:bg-slate-50 transition-colors text-xs cursor-pointer bg-[#ffffff]"
+                        >
+                          Hủy bỏ
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={isSubmittingRef.current}
+                          className="px-6 py-2 bg-[#0d473b] hover:bg-[#072d24] text-white font-bold rounded-xl text-xs leading-tight transition-all flex flex-col items-center justify-center min-h-[46px] min-w-[100px] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border-none shadow-sm"
+                        >
+                          <span>Xác nhận</span>
+                          <span>lịch</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
 
-                <div className="flex flex-col gap-1.5">
-                  <label>Bác sĩ phụ trách</label>
-                  <GlassSelect
-                    value={newApt.doctorName}
-                    onChange={(v) => setNewApt({ ...newApt, doctorName: v })}
-                    options={(doctors || []).map((d) => ({ value: d.name, label: d.name }))}
-                    placeholder="Chưa có bác sĩ"
-                    buttonClassName="px-3 py-2.5 text-xs"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label>Ghi chú</label>
-                  <textarea value={newApt.notes} onChange={(e) => setNewApt({ ...newApt, notes: e.target.value })} rows={2} className={`${GLASS_INPUT} px-3 py-2.5 resize-none`} placeholder="Lý do khám / yêu cầu đặc biệt..." />
-                </div>
-
-                <div className="flex gap-3 pt-2">
-                  <button type="button" onClick={() => setIsAddOpen(false)} className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 active:scale-95 transition-all cursor-pointer bg-white">Hủy</button>
-                  <button type="submit" className="flex-1 py-3 rounded-xl bg-gradient-to-r from-teal-600 to-sky-600 text-white font-bold hover:shadow-lg active:scale-95 transition-all cursor-pointer border-none">Tạo lịch hẹn</button>
                 </div>
               </form>
             </motion.div>

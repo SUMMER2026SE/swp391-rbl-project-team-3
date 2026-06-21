@@ -29,30 +29,110 @@ export const ProfileModel = {
          throw new Error('Hồ sơ của bạn chưa được khởi tạo trong hệ thống. Vui lòng đăng ký lại tài khoản mới hoặc liên hệ Quản trị viên.');
       }
 
-      const { error: insertError } = await supabase.from('users').upsert({
-          user_id: userId,
-          role_id: 5, // 5 = PATIENT
-          email: authUser.email,
-          full_name: authUser.user_metadata?.full_name || 'Bệnh nhân mới',
-          phone: authUser.user_metadata?.phone || '',
-          status: 'ACTIVE'
-      });
-
-      if (insertError) {
-          console.error("Auto-Heal Insert Failed:", insertError);
-          throw new Error('Không thể tự động khởi tạo hồ sơ. RLS hoặc Schema đang chặn Insert.');
-      }
-
-      // Re-fetch after auto-heal
-      const { data: healedUser, error: healedError } = await supabase
+      // Check if there is an existing patient row in public `users` with the same email
+      const { data: existingUser, error: findError } = await supabase
         .from('users')
-        .select('user_id, full_name, email, phone, gender, date_of_birth, avatar_url, status, created_at')
-        .eq('user_id', userId)
+        .select('*')
+        .eq('role_id', 5)
+        .eq('email', authUser.email)
         .maybeSingle();
 
-      if (healedError) throw healedError;
-      if (!healedUser) throw new Error('Auto-heal completed but user row is still missing.');
-      user = healedUser;
+      if (findError) console.error("Error finding existing user by email:", findError);
+
+      if (existingUser && existingUser.user_id !== userId) {
+        // Merge old user_id to new userId
+        console.warn(`Merging old user_id ${existingUser.user_id} into new userId ${userId}`);
+        const oldUserId = existingUser.user_id;
+
+        // A. Update the old user's email to avoid unique constraint conflict
+        const tempEmail = `${existingUser.email}_linked_${userId}`;
+        await supabase
+          .from('users')
+          .update({ email: tempEmail })
+          .eq('user_id', oldUserId);
+
+        // B. Insert the new user row
+        const { error: insertError } = await supabase.from('users').insert({
+          user_id: userId,
+          role_id: 5,
+          email: authUser.email,
+          full_name: authUser.user_metadata?.full_name || existingUser.full_name || 'Bệnh nhân',
+          phone: authUser.user_metadata?.phone || existingUser.phone || '',
+          gender: existingUser.gender || 'Khác',
+          date_of_birth: existingUser.date_of_birth,
+          status: 'ACTIVE'
+        });
+
+        if (!insertError) {
+          // C. Upsert patient profile
+          const { data: oldProfile } = await supabase
+            .from('patient_profiles')
+            .select('*')
+            .eq('patient_id', oldUserId)
+            .maybeSingle();
+
+          if (oldProfile) {
+            await supabase.from('patient_profiles').upsert({
+              patient_id: userId,
+              address: oldProfile.address,
+              allergy_note: oldProfile.allergy_note,
+              medical_history: oldProfile.medical_history,
+              emergency_contact: oldProfile.emergency_contact,
+              blood_type: oldProfile.blood_type,
+              height: oldProfile.height,
+              weight: oldProfile.weight
+            });
+          }
+
+          // D. Cascade updates to foreign tables
+          await supabase.from('appointments').update({ patient_id: userId }).eq('patient_id', oldUserId);
+          await supabase.from('medical_records').update({ patient_id: userId }).eq('patient_id', oldUserId);
+          await supabase.from('feedbacks').update({ patient_id: userId }).eq('patient_id', oldUserId);
+          await supabase.from('invoices').update({ patient_id: userId }).eq('patient_id', oldUserId);
+          await supabase.from('service_tickets').update({ patient_id: userId }).eq('patient_id', oldUserId);
+
+          // E. Cleanup old profile & user
+          await supabase.from('patient_profiles').delete().eq('patient_id', oldUserId);
+          await supabase.from('users').delete().eq('user_id', oldUserId);
+
+          // Re-fetch the newly merged user
+          const { data: healedUser } = await supabase
+            .from('users')
+            .select('user_id, full_name, email, phone, gender, date_of_birth, avatar_url, status, created_at')
+            .eq('user_id', userId)
+            .maybeSingle();
+          user = healedUser;
+        } else {
+          console.error("Merge insert failed:", insertError);
+          throw new Error('Không thể tự động chuyển dữ liệu cũ sang tài khoản mới.');
+        }
+      } else {
+        // Proceed with regular JIT create
+        const { error: insertError } = await supabase.from('users').upsert({
+            user_id: userId,
+            role_id: 5, // 5 = PATIENT
+            email: authUser.email,
+            full_name: authUser.user_metadata?.full_name || 'Bệnh nhân mới',
+            phone: authUser.user_metadata?.phone || '',
+            status: 'ACTIVE'
+        });
+
+        if (insertError) {
+            console.error("Auto-Heal Insert Failed:", insertError);
+            throw new Error('Không thể tự động khởi tạo hồ sơ. RLS hoặc Schema đang chặn Insert.');
+        }
+
+        // Re-fetch after auto-heal
+        const { data: healedUser, error: healedError } = await supabase
+          .from('users')
+          .select('user_id, full_name, email, phone, gender, date_of_birth, avatar_url, status, created_at')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        if (healedError) throw healedError;
+        if (!healedUser) throw new Error('Auto-heal completed but user row is still missing.');
+        user = healedUser;
+      }
     }
 
     const baseProfile = {

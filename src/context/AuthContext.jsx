@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { AuthModel } from '../models/AuthModel';
 import { supabase } from '../supabaseClient';
+import { ProfileModel } from '../models/ProfileModel';
 
 const AuthContext = createContext(null);
 
@@ -73,8 +74,23 @@ export function AuthProvider({ children }) {
       .select('role_id')
       .eq('user_id', uid)
       .maybeSingle()
-      .then(({ data }) => {
-        if (active) setRoleState({ uid, role: data ? (ROLE_BY_ID[Number(data.role_id)] || 'PATIENT') : null, resolved: true });
+      .then(async ({ data }) => {
+        if (!data) {
+          // No user row found. Try loading the profile to trigger the merge/auto-heal!
+          try {
+            await ProfileModel.getProfile(uid, 'PATIENT');
+            if (active) {
+              setRoleState({ uid, role: 'PATIENT', resolved: true });
+            }
+          } catch (e) {
+            console.error('Auto-heal/merge failed in AuthContext:', e);
+            if (active) {
+              setRoleState({ uid, role: null, resolved: true });
+            }
+          }
+        } else {
+          if (active) setRoleState({ uid, role: ROLE_BY_ID[Number(data.role_id)] || 'PATIENT', resolved: true });
+        }
       })
       .catch(() => { if (active) setRoleState({ uid, role: null, resolved: true }); })
       .finally(() => { clearTimeout(timer); });

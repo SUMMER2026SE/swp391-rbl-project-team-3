@@ -78,6 +78,8 @@ export const AppointmentModel = {
       doctorId: row.doctor_id,
       doctorName: doc ? doc.name : 'Bác sĩ',
       patientName: row.patient_name || row.patientName || 'Bệnh nhân',
+      patientPhone: row.patient_phone || row.patientPhone,
+      patientEmail: row.patient_email || row.patientEmail,
       reason: row.reason,
       status: this.normalizeStatus(row.status),
       createdAt: row.created_at,
@@ -617,8 +619,8 @@ export const AppointmentModel = {
       return { valid: false, error: 'Khung giờ này đã được đặt trước cho bác sĩ này. Vui lòng chọn khung giờ khác.' };
     }
 
-    // Rule 6: No double booking for patient
-    const isPatientBusy = allAppointments.some(
+    // Rule 6: No double booking for patient on the same day
+    const isPatientBusySameDay = allAppointments.some(
       a => {
         if (this.isCancelled(a.status)) return false;
         if (bookingData.holdAptId && String(a.appointment_id || a.id) === String(bookingData.holdAptId)) return false;
@@ -626,20 +628,23 @@ export const AppointmentModel = {
           const createdAt = new Date(a.created_at || Date.now()).getTime();
           if (Date.now() - createdAt > 5 * 60 * 1000) return false;
         }
-        if ((a.date === date || a.appointment_date === date) &&
-            (a.time === time || a.start_time === time) &&
-            (
-              (patientId && (String(a.patient_id) === String(patientId) || String(a.patientId) === String(patientId))) ||
-              (patientPhone && a.patientPhone === patientPhone) ||
-              (patientEmail && a.patientEmail === patientEmail)
-            )) return true;
+        if (a.date === date || a.appointment_date === date) {
+          const cleanPhoneA = a.patientPhone?.replace(/[\s.-]/g, '') || a.patient_phone?.replace(/[\s.-]/g, '');
+          const cleanPhoneB = patientPhone?.replace(/[\s.-]/g, '');
+          
+          const isSamePatient = 
+            (patientId && (String(a.patient_id) === String(patientId) || String(a.patientId) === String(patientId))) ||
+            (cleanPhoneB && cleanPhoneA === cleanPhoneB) ||
+            (patientEmail && (a.patientEmail === patientEmail || a.patient_email === patientEmail));
+          return isSamePatient;
+        }
         return false;
       }
     );
-    if (isPatientBusy) {
+    if (isPatientBusySameDay) {
       return {
         valid: false,
-        error: `Bạn đã có một lịch hẹn khác vào khung giờ ${time} ngày ${date}. Mỗi người chỉ có thể đặt 1 lịch khám tại cùng một thời điểm.`,
+        error: `Bạn đã có một lịch hẹn khác đăng ký cho ngày ${date}. Mỗi người chỉ có thể đặt tối đa 1 lịch khám trong cùng một ngày.`,
       };
     }
 
@@ -663,22 +668,6 @@ export const AppointmentModel = {
         return {
           valid: false,
           error: 'Bạn đã có 2 lịch hẹn sắp tới. Vui lòng hoàn thành hoặc hủy lịch cũ trước khi đặt lịch mới.',
-        };
-      }
-
-      // Rule 5: Cannot book the same doctor on the same day twice (only active/upcoming appointments)
-      const sameDayDoc = patientAppointments.some(
-        a => {
-          const isAptActive = a.status === 'Đang chờ' || a.status === 'Đã xác nhận' || a.status === 'Chờ xác nhận' || a.status === 'Pending';
-          if (!isAptActive) return false;
-          if (bookingData.holdAptId && String(a.appointment_id || a.id) === String(bookingData.holdAptId)) return false;
-          return String(a.doctor_id || a.doctorId) === String(doctorId) && (a.date === date || a.appointment_date === date);
-        }
-      );
-      if (sameDayDoc) {
-        return {
-          valid: false,
-          error: 'Bạn đã có một lịch hẹn với bác sĩ này trong cùng một ngày.',
         };
       }
     }
