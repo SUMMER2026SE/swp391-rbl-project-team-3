@@ -28,8 +28,6 @@ function StarDisplay({ value, size = 'md' }) {
 }
 
 const CRITERIA_META = [
-  { key: 'doctor',          label: 'Bác sĩ',            icon: Stethoscope },
-  { key: 'technician',      label: 'Kỹ thuật viên',      icon: Wrench },
   { key: 'treatmentEffect', label: 'Hiệu quả điều trị',  icon: Sparkles },
   { key: 'waitingTime',     label: 'Thời gian chờ',       icon: Clock },
   { key: 'facility',        label: 'Cơ sở vật chất',      icon: Building2 },

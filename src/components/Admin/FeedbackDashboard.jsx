@@ -28,8 +28,6 @@ const STATUS_STYLES = {
 };
 
 const CRITERIA_META = [
-  { key: 'doctor',          label: 'Bác sĩ',               icon: Stethoscope, color: 'emerald' },
-  { key: 'technician',      label: 'Kỹ thuật viên',         icon: Wrench,      color: 'sky' },
   { key: 'treatmentEffect', label: 'Hiệu quả điều trị',     icon: Sparkles,    color: 'violet' },
   { key: 'waitingTime',     label: 'Thời gian chờ',          icon: Clock,       color: 'amber' },
   { key: 'facility',        label: 'Cơ sở vật chất',         icon: Building2,   color: 'teal' },

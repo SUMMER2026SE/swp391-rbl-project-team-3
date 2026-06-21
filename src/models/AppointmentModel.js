@@ -586,6 +586,15 @@ export const AppointmentModel = {
           error: `Bác sĩ không có lịch trực vào ngày này. Lịch làm việc cố định của bác sĩ: ${scheduleStr}.`,
         };
       }
+    } else {
+      const isValidTime = shifts.some(s => {
+        const start = s.start_time.slice(0, 5);
+        const end = s.end_time.slice(0, 5);
+        return time >= start && time < end;
+      });
+      if (!isValidTime) {
+        return { valid: false, error: 'Khung giờ này nằm ngoài ca làm việc của bác sĩ.' };
+      }
     }
 
     // Rule 3: No double booking for doctor

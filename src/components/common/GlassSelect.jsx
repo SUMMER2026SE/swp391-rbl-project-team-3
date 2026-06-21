@@ -56,7 +56,7 @@ export default function GlassSelect({
   };
 
   return (
-    <div ref={ref} className={`relative ${className}`}>
+    <div ref={ref} className={`relative ${open ? 'z-[100]' : ''} ${className}`}>
       <button
         type="button"
         disabled={disabled}
@@ -85,7 +85,7 @@ export default function GlassSelect({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.18, ease: 'easeOut' }}
-            className={`${GLASS_BASE} absolute z-50 left-0 right-0 mt-2 p-1.5 max-h-60 overflow-auto origin-top ${menuClassName}`}
+            className={`${GLASS_BASE} !bg-white/95 absolute z-50 left-0 right-0 mt-2 p-1.5 max-h-60 overflow-auto origin-top ${menuClassName}`}
           >
             {items.length === 0 ? (
               <li className="px-3 py-2 text-sm text-slate-800">Không có lựa chọn</li>

@@ -20,8 +20,6 @@ function StarDisplay({ value, size = 'sm' }) {
 }
 
 const CRITERIA_META = [
-  { key: 'doctor',          label: 'Bác sĩ',               icon: Stethoscope, color: 'text-emerald-600 bg-emerald-50' },
-  { key: 'technician',      label: 'Kỹ thuật viên',         icon: Wrench,      color: 'text-sky-600 bg-sky-50' },
   { key: 'treatmentEffect', label: 'Hiệu quả điều trị',     icon: Sparkles,    color: 'text-violet-600 bg-violet-50' },
   { key: 'waitingTime',     label: 'Thời gian chờ',          icon: Clock,       color: 'text-amber-600 bg-amber-50' },
   { key: 'facility',        label: 'Cơ sở vật chất',         icon: Building2,   color: 'text-teal-600 bg-teal-50' },
@@ -75,34 +73,7 @@ export default function DoctorFeedbackView({ doctorId }) {
           </div>
         </div>
       </div>
-      {/* Criteria Averages */}
-      <div className={`${GLASS_BASE} p-5`}>
-        <p className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
-          <TrendingUp className="w-4 h-4 text-teal-500" /> Điểm trung bình theo tiêu chí
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {CRITERIA_META?.map?.(({ key, label, icon: Icon, color }) => {
-            const val = stats.criteria[key] ? Math.round(stats.criteria[key] * 10) / 10 : 0;
-            return (
-              <div key={key} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <div className={`p-2 rounded-lg ${color.split(' ')[1]} shrink-0`}>
-                  <Icon className={`w-3.5 h-3.5 ${color.split(' ')[0]}`} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-slate-700">{label}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                      <motion.div initial={{ width: 0 }} animate={{ width: `${(val / 5) * 100}%` }}
-                        transition={{ duration: 0.8 }} className="h-full bg-amber-400 rounded-full" />
-                    </div>
-                    <span className="text-xs font-bold text-slate-600 shrink-0">{val > 0 ? val : '—'}</span>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+
       {/* Reviews list */}
       <div>
         <div className="flex items-center justify-between mb-4">

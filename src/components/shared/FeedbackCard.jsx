@@ -30,8 +30,6 @@ export function StarDisplay({ value, size = 'sm' }) {
 
 // ─── Criteria labels ──────────────────────────────────────────────────────────
 export const CRITERIA_META = [
-  { key: 'doctor',          label: 'Bác sĩ',            icon: Stethoscope,  color: 'text-emerald-600' },
-  { key: 'technician',      label: 'Kỹ thuật viên',      icon: Wrench,       color: 'text-sky-600' },
   { key: 'treatmentEffect', label: 'Hiệu quả điều trị',  icon: Sparkles,     color: 'text-violet-600' },
   { key: 'waitingTime',     label: 'Thời gian chờ',       icon: Clock,        color: 'text-amber-600' },
   { key: 'facility',        label: 'Cơ sở vật chất',      icon: Building2,    color: 'text-teal-600' },

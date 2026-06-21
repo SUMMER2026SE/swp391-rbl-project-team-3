@@ -326,7 +326,11 @@ export default function BillingCheckout({
       // markAppointmentPaid defaults true → flips status to "Đã thanh toán".
       const result = await AppointmentModel.addPayment(payload);
       if (result && result.error) {
-        showToast?.(`Lỗi thanh toán: ${result.error.message || result.error}`, 'error');
+        let errMsg = result.error.message || String(result.error);
+        if (errMsg.includes('idx_unique_patient_voucher')) {
+          errMsg = 'Bệnh nhân này đã sử dụng mã giảm giá này rồi.';
+        }
+        showToast?.(`Lỗi thanh toán: ${errMsg}`, 'error');
         return;
       }
       if (!result) {

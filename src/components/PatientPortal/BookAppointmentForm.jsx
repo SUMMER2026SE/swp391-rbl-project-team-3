@@ -468,7 +468,7 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
                   </label>
                   <GlassSelect
                     value={selectedDoctor}
-                    onChange={(v) => setSelectedDoctor(v)}
+                    onChange={(v) => { setSelectedDoctor(v); setSelectedTime(''); }}
                     placeholder="Tự động chọn bác sĩ phù hợp"
                     buttonClassName="p-4 text-sm text-slate-900 font-medium"
                     options={[

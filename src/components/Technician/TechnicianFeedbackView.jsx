@@ -89,40 +89,7 @@ export default function TechnicianFeedbackView({ technicianId }) {
           </div>
         </div>
       </div>
-      {/* Technician-specific criteria */}
-      {(stats?.total || 0) > 0 && (
-        <div className={`${GLASS_BASE} p-5`}>
-          <p className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-emerald-500" /> Điểm tiêu chí liên quan
-          </p>
-          <div className="grid grid-cols-2 gap-3">
-            {(Array.isArray(technicianCriteria) ? technicianCriteria : []).map(({ key, label, icon: Icon, color }) => {
-              const val = stats?.criteria?.[key]
-                ? Math.round(stats.criteria[key] * 10) / 10
-                : 0;
-              return (
-                <div key={key} className="flex items-center gap-3 bg-slate-50 rounded-xl p-3 border border-slate-100">
-                  <Icon className={`w-4 h-4 ${color} shrink-0`} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-slate-700 truncate">{label}</p>
-                    <div className="flex items-center gap-1.5 mt-1">
-                      <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${(val / 5) * 100}%` }}
-                          transition={{ duration: 0.8 }}
-                          className="h-full bg-amber-400 rounded-full"
-                        />
-                      </div>
-                      <span className="text-xs font-bold text-slate-600 w-6 shrink-0">{val > 0 ? val : '—'}</span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+
       {/* Feedback list */}
       <div>
         <p className="text-sm font-bold text-slate-700 mb-3">
