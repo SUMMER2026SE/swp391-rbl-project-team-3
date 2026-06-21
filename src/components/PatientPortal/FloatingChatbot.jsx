@@ -2,8 +2,23 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Send, Bot, Headphones, Calendar, ScanLine, BadgeDollarSign, Pill, MessageSquare } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { ReceptionistChatModel } from '../../models/ChatModel';
+import {
+  ReceptionistChatModel,
+  ChatSessionModel,
+  CHAT_STATUS,
+  subscribeToMessages,
+  subscribeToSessions,
+  unsubscribe,
+} from '../../models/ChatModel';
+import { generateBotReply, isHandoffReply } from '../../services/GeminiService';
 import './FloatingChatbot.css';
+
+// Phrases that signal the patient wants a real human → auto-escalate from AI.
+const HANDOFF_KEYWORDS = ['gặp lễ tân', 'gặp nhân viên', 'gặp người', 'người thật', 'nhân viên tư vấn', 'tư vấn viên', 'nói chuyện với người', 'tổng đài', 'hỗ trợ trực tiếp'];
+const wantsHuman = (text) => {
+  const t = (text || '').toLowerCase();
+  return HANDOFF_KEYWORDS.some((k) => t.includes(k));
+};
 
 /* ───────────────────────── Sub-components ───────────────────────── */
 
@@ -131,9 +146,20 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
   const [inputValue, setInputValue] = useState('');
   const [mode, setMode] = useState('AI'); // 'AI' | 'Live'
   const [isTyping, setIsTyping] = useState(false);
+  const [session, setSession] = useState(null); // handoff state (status + agentTyping)
 
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
+  const patientTypingTimer = useRef(null);
+
+  // Merge an incoming message into state, de-duping by id (realtime INSERT can
+  // race the optimistic local append / the safety poll).
+  const mergeMessage = useCallback((msg) => {
+    if (!msg) return;
+    setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
+  }, []);
+
+  const escalated = session?.status === CHAT_STATUS.WAITING || session?.status === CHAT_STATUS.WITH_AGENT;
 
   // Scroll only the inner container — never the page. Prevents layout shift.
   const scrollToBottom = useCallback(() => {
@@ -163,7 +189,7 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
 
   useEffect(() => {
     if (isOpen) requestAnimationFrame(scrollToBottom);
-  }, [isOpen, messages, isTyping, mode, scrollToBottom]);
+  }, [isOpen, messages, isTyping, mode, session?.agentTyping, scrollToBottom]);
 
   // Lock the page scroll while the overlay owns the viewport
   useEffect(() => {
@@ -264,12 +290,15 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
     return () => clearTimeout(timer);
   }, [isOpen]);
 
-  // Poll for messages (AI + live receptionist) while open
+  // ── Live data while the widget is open ──
+  // Primary transport is Supabase Realtime (INSERT/UPDATE on messages +
+  // chat_sessions). A slow safety poll covers the localStorage-fallback path
+  // and any dropped realtime frames. Both channels are torn down on close.
   useEffect(() => {
     if (!isOpen) return;
     let active = true;
 
-    const fetchMsgs = async () => {
+    const seedAndLoad = async () => {
       try {
         let msgs = await ReceptionistChatModel.getMessagesForPatient(patientId);
         if (!active) return;
@@ -290,15 +319,102 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
       }
     };
 
-    fetchMsgs();
-    const interval = setInterval(fetchMsgs, 2000);
-    return () => { active = false; clearInterval(interval); };
-  }, [isOpen, patientId]);
+    const loadSession = async () => {
+      try {
+        const s = await ChatSessionModel.get(patientId);
+        if (active && s) setSession(s);
+      } catch (err) {
+        console.error('Error loading chat session:', err);
+      }
+    };
+
+    seedAndLoad();
+    loadSession();
+
+    // Realtime: append new messages (de-duped) and patch updates.
+    const msgChannel = subscribeToMessages({
+      patientId,
+      onEvent: (type, msg) => {
+        if (!active) return;
+        if (type === 'INSERT') mergeMessage(msg);
+        else setMessages((prev) => prev.map((m) => (m.id === msg.id ? msg : m)));
+      },
+    });
+
+    // Realtime: handoff status + "agent is typing".
+    const sesChannel = subscribeToSessions({
+      patientId,
+      onEvent: (_type, s) => { if (active) setSession(s); },
+    });
+    const stopLocal = ChatSessionModel.onLocalChange((all) => {
+      if (!active) return;
+      const mine = all.find((s) => s.patientId === patientId);
+      if (mine) setSession(mine);
+    });
+
+    // Safety net (localStorage fallback / missed frames) — slow, non-authoritative.
+    const interval = setInterval(seedAndLoad, 5000);
+
+    return () => {
+      active = false;
+      clearInterval(interval);
+      clearTimeout(patientTypingTimer.current);
+      unsubscribe(msgChannel);
+      unsubscribe(sesChannel);
+      stopLocal();
+    };
+  }, [isOpen, patientId, mergeMessage]);
+
+  // Escalate the conversation to a human receptionist. Posts a system note,
+  // flips the session to WAITING_FOR_AGENT, switches the widget to Live mode,
+  // and (because the bot only ever replies in AI mode + when not escalated)
+  // gracefully silences the bot. Idempotent — safe to call when already live.
+  const escalateToHuman = useCallback(async (note) => {
+    setMode('Live');
+    try {
+      await ChatSessionModel.requestAgent(patientId, patientName);
+      setSession((prev) => ({ ...(prev || { patientId }), status: CHAT_STATUS.WAITING }));
+      const sys = await ReceptionistChatModel.addMessage({
+        senderId: 'system',
+        senderName: 'DermaSmart',
+        senderRole: 'BOT',
+        text: note || 'Mình đã kết nối bạn với lễ tân. Vui lòng chờ trong giây lát, nhân viên sẽ phản hồi ngay ạ! 💬',
+        mode: 'Live',
+        patientId,
+      });
+      if (sys) mergeMessage(sys);
+    } catch (err) {
+      console.error('Handoff to receptionist failed:', err);
+    }
+  }, [patientId, patientName, mergeMessage]);
+
+  // Debounced "patient is typing" presence flag (Live mode only).
+  const signalPatientTyping = useCallback(() => {
+    if (mode !== 'Live') return;
+    ChatSessionModel.setPatientTyping(patientId, true);
+    clearTimeout(patientTypingTimer.current);
+    patientTypingTimer.current = setTimeout(() => {
+      ChatSessionModel.setPatientTyping(patientId, false);
+    }, 2500);
+  }, [mode, patientId]);
 
   const handleSend = async () => {
     const currentText = inputValue.trim();
     if (!currentText) return;
     setInputValue('');
+
+    // Keyword handoff: a human request in AI mode escalates instead of replying.
+    if (mode === 'AI' && wantsHuman(currentText)) {
+      try {
+        const userMsg = await ReceptionistChatModel.addMessage({
+          senderId: patientId, senderName: patientName, senderRole: 'PATIENT',
+          text: currentText, mode: 'Live', patientId,
+        });
+        if (userMsg) mergeMessage(userMsg);
+      } catch (err) { console.error('Failed to send message:', err); }
+      await escalateToHuman();
+      return;
+    }
 
     try {
       const newMsg = await ReceptionistChatModel.addMessage({
@@ -309,49 +425,49 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
         mode,
         patientId,
       });
-      if (newMsg) setMessages((prev) => [...prev, newMsg]);
+      if (newMsg) mergeMessage(newMsg);
 
+      // The bot answers ONLY in AI mode. Once handed off, it stays silent so the
+      // receptionist owns the thread — no duplicate / conflicting auto-replies.
       if (mode === 'AI') {
         setIsTyping(true);
-        setTimeout(async () => {
-          try {
-            await ReceptionistChatModel.addMessage({
-              senderId: 'bot',
-              senderName: 'DermaSmart AI',
-              senderRole: 'BOT',
-              text: 'Cảm ơn bạn đã nhắn tin! Tôi đang xử lý yêu cầu của bạn. Bạn có thể cho tôi biết thêm chi tiết không?',
-              mode: 'AI',
-              patientId,
-            });
-            const updated = await ReceptionistChatModel.getMessagesForPatient(patientId);
-            setMessages(updated || []);
-          } catch (err) {
-            console.error('AI automated reply failed:', err);
-          } finally {
-            setIsTyping(false);
+        clearTimeout(patientTypingTimer.current);
+        try {
+          // Real LLM reply (DermaBot via Gemini). Pass prior AI-mode turns as
+          // context; GeminiService maps PATIENT→user / BOT→model. Errors and a
+          // missing key both resolve to a graceful maintenance fallback.
+          const history = messages.filter((m) => m.mode === 'AI');
+          const replyText = await generateBotReply(currentText, history);
+
+          const reply = await ReceptionistChatModel.addMessage({
+            senderId: 'bot',
+            senderName: 'DermaBot',
+            senderRole: 'BOT',
+            text: replyText,
+            mode: 'AI',
+            patientId,
+          });
+          if (reply) mergeMessage(reply);
+
+          // Auto-handoff: if DermaBot signalled it wants a human, escalate.
+          if (isHandoffReply(replyText)) {
+            await escalateToHuman('Tôi sẽ kết nối bạn với Lễ tân ngay bây giờ. Vui lòng chờ trong giây lát ạ! 💬');
           }
-        }, 1100);
+        } catch (err) {
+          console.error('AI (Gemini) reply failed:', err);
+        } finally {
+          setIsTyping(false);
+        }
       } else {
-        setTimeout(async () => {
-          try {
-            const currentMsgs = await ReceptionistChatModel.getMessagesForPatient(patientId);
-            const lastMsg = currentMsgs && currentMsgs[currentMsgs.length - 1];
-            if (lastMsg && lastMsg.senderRole === 'PATIENT') {
-              await ReceptionistChatModel.addMessage({
-                senderId: 'staff-01',
-                senderName: 'Lễ tân Hoàng Anh',
-                senderRole: 'RECEPTIONIST',
-                text: 'Dạ em đã nhận được tin nhắn của anh/chị. Em sẽ kiểm tra và phản hồi ngay ạ!',
-                mode: 'Live',
-                patientId,
-              });
-              const updated = await ReceptionistChatModel.getMessagesForPatient(patientId);
-              setMessages(updated || []);
-            }
-          } catch (err) {
-            console.error('Receptionist automated reply failed:', err);
-          }
-        }, 2000);
+        // Live mode: persist only. A real receptionist replies from their
+        // dashboard — no fabricated staff message. Re-arm the waiting state so
+        // the agent dashboard re-surfaces the thread after a patient follow-up.
+        signalPatientTyping();
+        clearTimeout(patientTypingTimer.current);
+        ChatSessionModel.setPatientTyping(patientId, false);
+        if (session?.status !== CHAT_STATUS.WITH_AGENT) {
+          ChatSessionModel.requestAgent(patientId, patientName);
+        }
       }
     } catch (err) {
       console.error('Failed to send message:', err);
@@ -370,6 +486,8 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
     { label: 'Soi da AI', Icon: ScanLine, action: () => onAIScan?.() },
     { label: 'Bảng giá', Icon: BadgeDollarSign, action: () => setInputValue('Cho tôi xem bảng giá dịch vụ') },
     { label: 'Liệu trình', Icon: Pill, action: () => setInputValue('Tư vấn liệu trình điều trị cho tôi') },
+    // Explicit Bot→Human handoff. Hidden once already talking to a receptionist.
+    ...(escalated ? [] : [{ label: 'Gặp Lễ tân', Icon: Headphones, action: () => escalateToHuman() }]),
   ];
 
   // Reveal originates from the floating button corner (bottom-right).
@@ -482,7 +600,13 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
                     <div className="flex items-center gap-1.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.9)]" />
                       <span className="text-[11px] text-white/55 font-medium">
-                        {mode === 'AI' ? 'Trợ lý thông minh · Trực tuyến' : 'Lễ tân · Sẵn sàng hỗ trợ'}
+                        {mode === 'AI'
+                          ? 'Trợ lý thông minh · Trực tuyến'
+                          : session?.status === CHAT_STATUS.WITH_AGENT
+                            ? 'Lễ tân · Đang hỗ trợ bạn'
+                            : session?.status === CHAT_STATUS.WAITING
+                              ? 'Lễ tân · Đang kết nối…'
+                              : 'Lễ tân · Sẵn sàng hỗ trợ'}
                       </span>
                     </div>
                   </div>
@@ -500,6 +624,24 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
               <div data-wave className="flex-none pb-4">
                 <ModeToggle mode={mode} setMode={setMode} />
               </div>
+
+              {/* Handoff status banner (Live mode) */}
+              {mode === 'Live' && escalated && (
+                <div className="flex-none pb-3">
+                  <div className={`flex items-center gap-2 px-3.5 py-2 rounded-2xl text-[11px] font-semibold border ${
+                    session?.status === CHAT_STATUS.WITH_AGENT
+                      ? 'bg-emerald-400/15 border-emerald-300/30 text-emerald-200'
+                      : 'bg-amber-400/15 border-amber-300/30 text-amber-100'
+                  }`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${
+                      session?.status === CHAT_STATUS.WITH_AGENT ? 'bg-emerald-400' : 'bg-amber-400 animate-pulse'
+                    }`} />
+                    {session?.status === CHAT_STATUS.WITH_AGENT
+                      ? 'Bạn đang được lễ tân hỗ trợ trực tiếp.'
+                      : 'Đã chuyển tới lễ tân — vui lòng chờ trong giây lát…'}
+                  </div>
+                </div>
+              )}
 
               {/* Messages — THE scroll region (flex-1 + min-h-0 + overflow-y-auto) */}
               <div
@@ -546,6 +688,13 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
                     <TypingIndicator />
                   </div>
                 )}
+
+                {mode === 'Live' && session?.agentTyping && (
+                  <div className="flex flex-col items-start">
+                    <span className="text-[10px] font-medium text-white/45 mb-1 px-1.5">Lễ tân đang gõ…</span>
+                    <TypingIndicator />
+                  </div>
+                )}
               </div>
 
               {/* Suggestion chips — anchored bottom */}
@@ -570,7 +719,7 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
                     ref={inputRef}
                     type="text"
                     value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
+                    onChange={(e) => { setInputValue(e.target.value); signalPatientTyping(); }}
                     onKeyDown={handleKeyDown}
                     placeholder={mode === 'AI' ? 'Hỏi DermaSmart AI bất cứ điều gì…' : 'Nhắn tin cho lễ tân…'}
                     className="flex-1 bg-transparent border-none outline-none text-sm text-white placeholder:text-white/40"
