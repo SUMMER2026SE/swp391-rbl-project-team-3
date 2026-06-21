@@ -2,7 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDoctorController } from '../controllers/useDoctorController';
 import { useAuth } from '../context/AuthContext';
+import { useFeedbackController } from '../controllers/useFeedbackController';
 import BookAppointmentForm from '../components/PatientPortal/BookAppointmentForm';
+import FeedbackCard from '../components/shared/FeedbackCard';
 import '../index.css';
 
 function DoctorProfilePage() {
@@ -12,6 +14,23 @@ function DoctorProfilePage() {
     const doctor = getDoctorDetails(id);
     const { user } = useAuth();
     const [isBookingOpen, setIsBookingOpen] = useState(false);
+
+    const { feedbacks } = useFeedbackController();
+    const publicFeedbacks = (Array.isArray(feedbacks) ? feedbacks : []).filter(
+        f => {
+            if (f.status !== 'published') return false;
+            // Check if the feedback is relevant to this doctor/technician
+            const isForDoctor = f.doctorId === id;
+            const isForTech = f.technicianId === id;
+            if (!isForDoctor && !isForTech) return false;
+            // Check if the relevant comment is public
+            if (isForDoctor && (f.isDoctorPublic ?? f.isPublic ?? true) && f.doctorComment) return true;
+            if (isForTech && (f.isTechnicianPublic ?? true) && f.technicianComment) return true;
+            // Fallback for old data without new fields
+            if ((isForDoctor || isForTech) && f.isPublic === true && !f.doctorComment && !f.technicianComment && f.comment) return true;
+            return false;
+        }
+    );
 
     const handleBookClick = () => {
         if (!user) {
@@ -97,8 +116,14 @@ function DoctorProfilePage() {
                         <div style={{ display: 'flex', justifyContent: 'center', gap: '1.5rem', marginBottom: '2rem', color: 'rgba(255,255,255,0.8)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(0,0,0,0.2)', padding: '0.5rem 1rem', borderRadius: '12px' }}>
                                 <span className="material-symbols-outlined" style={{ color: '#fbbf24' }}>star</span>
-                                <span style={{ fontWeight: 600 }}>{doctor.rating}</span>
-                                <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>({doctor.reviewsCount})</span>
+                                {doctor.reviewsCount > 0 ? (
+                                    <>
+                                        <span style={{ fontWeight: 600 }}>{doctor.rating}</span>
+                                        <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>({doctor.reviewsCount})</span>
+                                    </>
+                                ) : (
+                                    <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>Chưa có đánh giá</span>
+                                )}
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(0,0,0,0.2)', padding: '0.5rem 1rem', borderRadius: '12px' }}>
                                 <span className="material-symbols-outlined" style={{ color: '#38bdf8' }}>work</span>
@@ -175,6 +200,25 @@ function DoctorProfilePage() {
                             </div>
                         </div>
 
+                    </div>
+                </div>
+
+                {/* Patient Feedbacks Section */}
+                <div style={{ marginTop: '2rem' }}>
+                    <h2 style={{ color: 'white', fontSize: '1.5rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <span className="material-symbols-outlined" style={{ color: '#fbbf24' }}>star</span>
+                        Đánh giá từ bệnh nhân
+                    </h2>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        {publicFeedbacks.length > 0 ? (
+                            publicFeedbacks.map(fb => (
+                                <FeedbackCard key={fb.id} fb={fb} showDoctor={false} showPatient={true} />
+                            ))
+                        ) : (
+                            <div style={{ background: 'rgba(255,255,255,0.05)', padding: '2rem', borderRadius: '16px', textAlign: 'center', color: 'rgba(255,255,255,0.6)' }}>
+                                Bác sĩ chưa có đánh giá công khai nào.
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

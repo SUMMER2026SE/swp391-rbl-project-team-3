@@ -2,11 +2,13 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Star, MessageSquare, TrendingUp, Wrench, ThumbsUp } from 'lucide-react';
 import { useFeedbackController } from '../../controllers/useFeedbackController';
+import { useAuth } from '../../context/AuthContext';
 import FeedbackCard, { StarDisplay, CRITERIA_META } from '../shared/FeedbackCard';
 
 export default function TechnicianFeedbackView({ technicianId }) {
-  // KTV được lưu dưới doctorId trong feedback (vì dùng chung field)
-  const resolvedId = technicianId || 'doc-03';
+  // Lấy ID thật của KTV
+  const { user } = useAuth();
+  const resolvedId = technicianId || user?.id || 'doc-03';
   const { feedbacks, getStats } = useFeedbackController();
 
   const [feedbackList, setFeedbackList] = React.useState([]);
@@ -15,11 +17,24 @@ export default function TechnicianFeedbackView({ technicianId }) {
     setFeedbackList(Array.isArray(feedbacks) ? feedbacks : []);
   }, [feedbacks]);
 
+  // Lọc đánh giá thuộc về KTV này
   const ownPublished = (Array.isArray(feedbackList) ? feedbackList : []).filter(
-    f => f?.doctorId === resolvedId && f?.status === 'published'
+    f => f?.technicianId === resolvedId && f?.status === 'published'
   );
+  
+  // Tính điểm trung bình riêng cho KTV
+  let techTotal = 0;
+  let techCount = 0;
+  ownPublished.forEach(f => {
+    if (f.technicianRating) {
+      techTotal += f.technicianRating;
+      techCount++;
+    }
+  });
+  const techAvg = techCount > 0 ? (techTotal / techCount).toFixed(1) : 0;
+
   const visibleFeedbacks = (Array.isArray(feedbackList) ? feedbackList : []).filter(
-    f => f?.status === 'published' && (f?.doctorId === resolvedId || f?.isPublic === true)
+    f => f?.status === 'published' && (f?.technicianId === resolvedId || f?.isPublic === true)
   );
   const stats = getStats(ownPublished) || {
     total: 0,
@@ -35,7 +50,7 @@ export default function TechnicianFeedbackView({ technicianId }) {
   const statCards = [
     {
       label: 'Điểm trung bình',
-      value: stats?.avg > 0 ? stats.avg : '—',
+      value: techAvg > 0 ? techAvg : '—',
       sub: '/5 sao',
       color: 'amber',
       icon: Star,

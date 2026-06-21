@@ -97,7 +97,7 @@ function AppointmentCard({ apt, index, isUpcoming, onCancel, onReschedule, onVie
       <div className="flex items-center gap-3 mb-4">
         <span className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
           <CreditCard className="w-3.5 h-3.5 text-sky-500" />
-          {apt.fee}
+          Phí khám: {apt.fee}
         </span>
         {apt.paymentStatus && <StatusBadge text={apt.paymentStatus} type="payment" />}
         {/* Show star rating if feedback exists */}
@@ -761,29 +761,33 @@ function ViewFeedbackModal({ apt, feedback, onClose }) {
                   </div>
                 ))}
                 {/* Comment */}
-                {feedback.comment && (() => {
-                  try {
-                    if (feedback.comment.startsWith('{') || feedback.comment.startsWith('[')) {
-                      const parsed = JSON.parse(feedback.comment);
-                      return (
-                        <div className="space-y-2 border-t border-amber-200 pt-3 not-italic text-left text-sm">
+                {(() => {
+                  if (feedback.doctorComment || feedback.technicianComment) {
+                    return (
+                      <div className="space-y-2 border-t border-amber-200 pt-3 not-italic text-left text-sm">
+                        {feedback.doctorComment && (
                           <div>
                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Nhận xét Bác sĩ:</span>
-                            <p className="text-slate-700 italic mt-0.5">"{parsed.doctorComment}" <span className="text-[9px] text-slate-400 font-semibold">({parsed.doctorPublic ? 'Công khai' : 'Ẩn'})</span></p>
+                            <p className="text-slate-700 italic mt-0.5">"{feedback.doctorComment}" <span className="text-[9px] text-slate-400 font-semibold">({(feedback.isDoctorPublic ?? true) ? 'Công khai' : 'Ẩn'})</span></p>
                           </div>
-                          {parsed.techComment && (
-                            <div>
-                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Nhận xét Kỹ thuật viên:</span>
-                              <p className="text-slate-700 italic mt-0.5">"{parsed.techComment}" <span className="text-[9px] text-slate-400 font-semibold">({parsed.techPublic ? 'Công khai' : 'Ẩn'})</span></p>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    }
-                  } catch(e) {}
-                  return (
-                    <p className="text-sm text-slate-700 italic border-t border-amber-200 pt-3">"{feedback.comment}"</p>
-                  );
+                        )}
+                        {feedback.technicianComment && (
+                          <div>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Nhận xét Kỹ thuật viên:</span>
+                            <p className="text-slate-700 italic mt-0.5">"{feedback.technicianComment}" <span className="text-[9px] text-slate-400 font-semibold">({(feedback.isTechnicianPublic ?? true) ? 'Công khai' : 'Ẩn'})</span></p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+                  if (feedback.comment) {
+                    return (
+                      <div className="border-t border-amber-200 pt-3 text-sm italic text-slate-700">
+                        "{feedback.comment}"
+                      </div>
+                    );
+                  }
+                  return null;
                 })()}
                 {/* Images */}
                 {feedback.images?.length > 0 && (

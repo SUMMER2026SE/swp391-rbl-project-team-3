@@ -131,12 +131,7 @@ export default function DoctorFeedbackView({ doctorId }) {
 
                 <p className="text-sm text-slate-700 leading-relaxed">
                   {(() => {
-                    try {
-                      if (fb?.comment && (fb.comment.startsWith('{') || fb.comment.startsWith('['))) {
-                        const parsed = JSON.parse(fb.comment);
-                        return parsed.doctorComment || '';
-                      }
-                    } catch(e) {}
+                    if (fb?.doctorComment) return fb.doctorComment;
                     return fb?.comment || '';
                   })()}
                 </p>

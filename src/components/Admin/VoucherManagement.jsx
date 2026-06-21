@@ -585,7 +585,7 @@ function VoucherCard({ v, onEdit, onToggle, onDelete, onCopy, idx }) {
             <Edit3 className="w-3.5 h-3.5" /> Sửa
           </button>
           <button
-            onClick={() => onToggle(v.id)}
+            onClick={() => onToggle(v.id, v.isActive)}
             disabled={isExpiredOrFull}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
               isExpiredOrFull
@@ -654,8 +654,8 @@ export default function VoucherManagement() {
     }
   };
 
-  const handleToggle = async (id) => {
-    const res = await toggleStatus(id);
+  const handleToggle = async (id, currentStatus) => {
+    const res = await toggleStatus(id, currentStatus);
     if (res.success) showToast('Đã cập nhật trạng thái voucher.');
     else showToast(res.error, 'error');
   };

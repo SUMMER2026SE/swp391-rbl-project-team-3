@@ -24,25 +24,34 @@ import '../index.css';
 
 // Component for fetching and displaying doctor/tech reviews
 function DoctorReviewsList({ doctorId, isTechnician }) {
-  const { feedbacks, isLoading } = useFeedbackController({ doctorId });
+  // For technicians, we need all feedbacks and filter by technicianId locally
+  // For doctors, filter by doctorId at fetch level
+  const { feedbacks, isLoading } = useFeedbackController(isTechnician ? {} : { doctorId });
   
   if (isLoading) return <div className="text-slate-500 text-sm mt-6 animate-pulse">Đang tải đánh giá...</div>;
 
   // Filter public comments
   const visibleFeedbacks = (feedbacks || []).map(fb => {
-    try {
-      if (fb.comment && (fb.comment.startsWith('{') || fb.comment.startsWith('['))) {
-        const parsed = JSON.parse(fb.comment);
-        if (isTechnician) {
-          return parsed.techPublic ? { ...fb, commentText: parsed.techComment } : null;
-        } else {
-          return parsed.doctorPublic ? { ...fb, commentText: parsed.doctorComment } : null;
-        }
+    if (isTechnician) {
+      // Only show feedbacks where this person is the technician
+      if (String(fb.technicianId || fb.technician_id) !== String(doctorId)) return null;
+      if (fb.technicianComment && (fb.isTechnicianPublic ?? true)) {
+        return { ...fb, commentText: fb.technicianComment };
       }
-    } catch (e) {}
+    } else {
+      // For doctors — feedbacks are already filtered by doctorId
+      if (fb.doctorComment && (fb.isDoctorPublic ?? true)) {
+        return { ...fb, commentText: fb.doctorComment };
+      }
+    }
+    
     // Legacy fallback
-    if (isTechnician) return null; // legacy feedbacks don't have technician reviews
-    return fb.isPublic !== false ? { ...fb, commentText: fb.comment } : null;
+    if (!fb.doctorComment && !fb.technicianComment && fb.comment) {
+      if (isTechnician) return null;
+      return (fb.isPublic !== false || (fb.isDoctorPublic ?? true)) ? { ...fb, commentText: fb.comment } : null;
+    }
+    
+    return null;
   }).filter(Boolean);
 
   if (visibleFeedbacks.length === 0) return <div className="text-slate-500 text-sm mt-6 bg-slate-50/80 backdrop-blur-sm p-4 rounded-2xl border border-slate-100">Chưa có đánh giá nào cho chuyên gia này.</div>;
@@ -126,7 +135,7 @@ function AllDoctorsModal({ isOpen, onClose, doctors, onSelectDoctor }) {
                   <div className="flex flex-wrap items-center gap-2 mt-2">
                     <span className="text-[11px] font-bold text-sky-600 bg-sky-50 px-2 py-1 rounded-md">{doc.experience || 'Chưa cập nhật'}</span>
                     <span className="text-[11px] font-bold text-amber-500 bg-amber-50 px-2 py-1 rounded-md flex items-center gap-0.5">
-                      {doc.rating ? `${doc.rating} ⭐ (${doc.reviewsCount || 0})` : 'Chưa có đánh giá'}
+                      {doc.reviewsCount > 0 ? `${doc.rating} ⭐ (${doc.reviewsCount})` : 'Chưa có đánh giá'}
                     </span>
                   </div>
                 </div>
@@ -932,7 +941,7 @@ function LandingPage({ onLogout }) {
                       <div className="bg-slate-50 rounded p-3 flex flex-col gap-1">
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Đánh giá</span>
                         <span className="text-[13px] font-bold text-slate-700">
-                          {doc.rating ? `${doc.rating} ⭐ (${doc.reviewsCount || 0})` : 'Chưa có đánh giá'}
+                          {doc.reviewsCount > 0 ? `${doc.rating} ⭐ (${doc.reviewsCount})` : 'Chưa có đánh giá'}
                         </span>
                       </div>
                       <div className="bg-slate-50 rounded p-3 flex flex-col gap-1">

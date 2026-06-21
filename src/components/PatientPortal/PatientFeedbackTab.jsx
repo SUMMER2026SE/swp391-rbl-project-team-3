@@ -11,6 +11,7 @@ import {
 import { useFeedbackController } from '../../controllers/useFeedbackController';
 import { useAppointmentController } from '../../controllers/useAppointmentController';
 import { AppointmentModel } from '../../models/AppointmentModel';
+import { useTechnicians } from '../../hooks/useDoctors';
 import FeedbackFormModal from './FeedbackFormModal';
 import InvoiceDetailModal from './InvoiceDetailModal';
 
@@ -46,6 +47,18 @@ const RATING_COLORS = {
 // ─── Feedback Card (Patient's own review) ─────────────────────────────────────
 function MyFeedbackCard({ fb }) {
   const [expanded, setExpanded] = useState(false);
+  const { technicians } = useTechnicians();
+
+  const calcAvg = (criteria) => {
+    if (!criteria) return fb?.overallRating || 0;
+    const vals = Object.values(criteria).filter(v => v > 0);
+    if (vals.length === 0) return fb.overallRating;
+    const sum = vals.reduce((a, b) => a + b, 0);
+    return Math.round((sum / vals.length) * 10) / 10;
+  };
+  
+  const avgStar = calcAvg(fb.criteriaRatings);
+  const techName = fb?.technicianId ? technicians?.find?.(t => String(t.id || t.user_id) === String(fb.technicianId))?.name : null;
 
   return (
     <motion.div
@@ -61,7 +74,10 @@ function MyFeedbackCard({ fb }) {
           <div>
             <div className="flex items-center gap-2 mb-1">
               <Stethoscope className="w-4 h-4 text-emerald-500" />
-              <span className="text-sm font-bold text-slate-800">{fb.doctorName}</span>
+              <span className="text-sm font-bold text-slate-800">
+                {fb.doctorName}
+                {techName && <span className="text-slate-500 font-normal"> / {techName}</span>}
+              </span>
             </div>
             <div className="flex items-center gap-2 text-xs text-slate-400">
               <Calendar className="w-3 h-3" />
@@ -71,18 +87,35 @@ function MyFeedbackCard({ fb }) {
             </div>
           </div>
           <div className="flex flex-col items-end gap-1.5 shrink-0">
-            <StarDisplay value={fb.overallRating} size="sm" />
-            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${RATING_COLORS[fb.overallRating]}`}>
-              {RATING_LABELS[fb.overallRating]}
+            <StarDisplay value={Math.round(avgStar)} size="sm" />
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${RATING_COLORS[Math.round(avgStar)] || 'text-slate-500 bg-slate-50 border-slate-200'}`}>
+              {RATING_LABELS[Math.round(avgStar)] || 'Chưa đánh giá'}
             </span>
           </div>
         </div>
 
-        {/* Comment */}
-        <p className="text-sm text-slate-700 leading-relaxed mb-3">
-          {fb.isAnonymous && <span className="text-[10px] font-bold text-violet-600 bg-violet-50 border border-violet-200 rounded-full px-2 py-0.5 mr-2">Ẩn danh</span>}
-          "{fb.comment}"
-        </p>
+        <div className="text-sm text-slate-700 leading-relaxed mb-3">
+          {fb.isAnonymous && <span className="text-[10px] font-bold text-violet-600 bg-violet-50 border border-violet-200 rounded-full px-2 py-0.5 mr-2 inline-block mb-1">Ẩn danh</span>}
+          
+          <div className="space-y-2 not-italic text-left mt-2">
+            {fb.doctorComment && (
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Nhận xét Bác sĩ:</span>
+                <p className="text-sm text-slate-700 italic">"{fb.doctorComment}" {!fb.isDoctorPublic && <span className="text-[9px] text-slate-400 font-semibold">(Ẩn)</span>}</p>
+              </div>
+            )}
+            {fb.technicianComment && (
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Nhận xét Kỹ thuật viên:</span>
+                <p className="text-sm text-slate-700 italic">"{fb.technicianComment}" {!fb.isTechnicianPublic && <span className="text-[9px] text-slate-400 font-semibold">(Ẩn)</span>}</p>
+              </div>
+            )}
+            {/* Fallback for old feedbacks that might still just use the 'comment' field as string */}
+            {!fb.doctorComment && !fb.technicianComment && fb.comment && (
+               <p>"{fb.comment}"</p>
+            )}
+          </div>
+        </div>
 
         {/* Images */}
         {fb.images?.length > 0 && (
@@ -180,6 +213,7 @@ export default function PatientFeedbackTab({ user, feedbackAptId, setFeedbackApt
   const patientId = user?.id || 'pat-01';
   const { feedbacks, getFeedbackByAppointment, getStats } = useFeedbackController({ patientId });
   const { appointments } = useAppointmentController(patientId);
+  const { technicians } = useTechnicians();
   const [writeTarget, setWriteTarget] = useState(null);
 
   const [expandedFeedbackAptId, setExpandedFeedbackAptId] = useState(null);
@@ -302,6 +336,18 @@ export default function PatientFeedbackTab({ user, feedbackAptId, setFeedbackApt
               const fb = getFeedbackByAppointment(apt.id);
               const isHighlighted = feedbackAptId === apt.id;
               const isExpanded = expandedFeedbackAptId === apt.id;
+
+              const calcAvg = (criteria) => {
+                if (!criteria) return fb?.overallRating || 0;
+                const vals = Object.values(criteria).filter(v => v > 0);
+                if (vals.length === 0) return fb.overallRating;
+                const sum = vals.reduce((a, b) => a + b, 0);
+                return Math.round((sum / vals.length) * 10) / 10;
+              };
+              
+              const avgStar = fb ? calcAvg(fb.criteriaRatings) : 0;
+              const techName = fb?.technicianId ? technicians?.find?.(t => String(t.id || t.user_id) === String(fb.technicianId))?.name : null;
+
               return (
                 <div 
                   key={apt.id} 
@@ -318,7 +364,10 @@ export default function PatientFeedbackTab({ user, feedbackAptId, setFeedbackApt
                       <div>
                         <div className="flex items-center gap-2 mb-1">
                           <Stethoscope className="w-4 h-4 text-emerald-500" />
-                          <span className="text-sm font-bold text-slate-800">{apt.doctorName}</span>
+                          <span className="text-sm font-bold text-slate-800">
+                            {apt.doctorName}
+                            {techName && <span className="text-slate-500 font-normal"> / {techName}</span>}
+                          </span>
                         </div>
                         <div className="flex items-center gap-2 text-xs text-slate-400">
                           <Calendar className="w-3 h-3" />
@@ -335,7 +384,7 @@ export default function PatientFeedbackTab({ user, feedbackAptId, setFeedbackApt
                               Đã đánh giá
                             </span>
                             <div className="mt-1">
-                              <StarDisplay value={fb.overallRating} size="xs" />
+                              <StarDisplay value={Math.round(avgStar)} size="xs" />
                             </div>
                           </div>
                         ) : (
@@ -350,32 +399,31 @@ export default function PatientFeedbackTab({ user, feedbackAptId, setFeedbackApt
                       <div className="space-y-3">
                         {fb.isAnonymous && <span className="text-[10px] font-bold text-violet-600 bg-violet-50 border border-violet-200 rounded-full px-2 py-0.5 mb-2 inline-block">Ẩn danh</span>}
                         {(() => {
-                          try {
-                            if (fb.comment && (fb.comment.startsWith('{') || fb.comment.startsWith('['))) {
-                              const parsed = JSON.parse(fb.comment);
-                              return (
-                                <div className="space-y-2 text-left not-italic">
+                          if (fb.doctorComment || fb.technicianComment) {
+                            return (
+                              <div className="space-y-2 text-left not-italic">
+                                {fb.doctorComment && (
                                   <div>
                                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Nhận xét Bác sĩ:</span>
                                     <p className="text-sm text-slate-700 italic mt-0.5">
-                                      "{parsed.doctorComment}" <span className="text-[9px] text-slate-400 font-semibold">({parsed.doctorPublic ? 'Công khai' : 'Ẩn'})</span>
+                                      "{fb.doctorComment}" <span className="text-[9px] text-slate-400 font-semibold">({(fb.isDoctorPublic ?? true) ? 'Công khai' : 'Ẩn'})</span>
                                     </p>
                                   </div>
-                                  {parsed.techComment && (
-                                    <div>
-                                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Nhận xét Kỹ thuật viên:</span>
-                                      <p className="text-sm text-slate-700 italic mt-0.5">
-                                        "{parsed.techComment}" <span className="text-[9px] text-slate-400 font-semibold">({parsed.techPublic ? 'Công khai' : 'Ẩn'})</span>
-                                      </p>
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            }
-                          } catch (e) {}
+                                )}
+                                {fb.technicianComment && (
+                                  <div>
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Nhận xét Kỹ thuật viên:</span>
+                                    <p className="text-sm text-slate-700 italic mt-0.5">
+                                      "{fb.technicianComment}" <span className="text-[9px] text-slate-400 font-semibold">({(fb.isTechnicianPublic ?? true) ? 'Công khai' : 'Ẩn'})</span>
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          }
                           return (
                             <p className="text-sm text-slate-700 leading-relaxed italic">
-                              "{fb.comment}"
+                              {fb.comment ? `"${fb.comment}"` : <span className="text-slate-400">Chưa có nhận xét.</span>}
                             </p>
                           );
                         })()}

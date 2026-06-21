@@ -59,6 +59,7 @@ export const AppointmentModel = {
     return {
       ...row,
       id: row.appointment_id || row.id,
+      doctorId: row.doctor_id,
       doctorName: doc ? doc.name : 'Bác sĩ',
       patientName: row.patient_name || row.patientName || 'Bệnh nhân',
       reason: row.reason,
@@ -379,8 +380,17 @@ export const AppointmentModel = {
     const { markAppointmentPaid = true } = options;
     try {
       const appointmentId = payData.appointment_id || payData.appointmentId || null;
-      const finalAmount = payData.final_amount ?? payData.amount ?? payData.total_amount ?? 0;
-      const totalAmount = payData.total_amount ?? payData.amount ?? finalAmount;
+      
+      let existingFinal = 0;
+      if (appointmentId) {
+        const { data: existing } = await supabase.from('payments').select('final_amount').eq('appointment_id', appointmentId).single();
+        if (existing) existingFinal = existing.final_amount || 0;
+      }
+
+      const currentFinalAmount = payData.final_amount ?? payData.amount ?? payData.total_amount ?? 0;
+      const accumulatedFinalAmount = existingFinal + currentFinalAmount;
+
+      const totalAmount = payData.total_amount ?? payData.amount ?? currentFinalAmount;
       const discountAmount = payData.discount_amount ?? payData.discount ?? 0;
       const method = payData.payment_method || payData.method || 'QR Code';
 
@@ -404,7 +414,7 @@ export const AppointmentModel = {
         voucher_id: voucherId,
         total_amount: totalAmount,
         discount_amount: discountAmount,
-        final_amount: finalAmount,
+        final_amount: accumulatedFinalAmount,
         payment_method: method,
         payment_status: 'PAID',
         paid_at: new Date().toISOString(),
@@ -412,7 +422,7 @@ export const AppointmentModel = {
         status: 'Paid',
       };
 
-      const { data, error } = await supabase.from('payments').insert([row]).select();
+      const { data, error } = await supabase.from('payments').upsert([row], { onConflict: 'appointment_id' }).select();
       if (error) throw error;
 
       // Also track in the invoices table
@@ -420,7 +430,7 @@ export const AppointmentModel = {
         await supabase.from('invoices').insert([{
           appointment_id: appointmentId,
           patient_id: isValidUuid(pId) ? pId : proxyGuestId,
-          total_amount: finalAmount,
+          total_amount: currentFinalAmount,
           status: 'PAID',
           payment_method: method,
           transaction_id: `TXN-${data[0].id || Date.now()}`
@@ -435,7 +445,7 @@ export const AppointmentModel = {
       return data[0];
     } catch (e) {
       console.warn('Supabase create error (payments):', e.message);
-      return null;
+      return { error: e };
     }
   },
 

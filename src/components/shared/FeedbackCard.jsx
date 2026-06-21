@@ -11,6 +11,7 @@ import {
   Building2, ChevronDown, ChevronUp, Reply, Eye, EyeOff,
   Flag, MessageSquare, CheckCircle2,
 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 // ─── Star Display ─────────────────────────────────────────────────────────────
 export function StarDisplay({ value, size = 'sm' }) {
@@ -73,6 +74,10 @@ export default function FeedbackCard({
   onFlag,
   highlightKey,
 }) {
+  const { user } = useAuth();
+  const role = user?.role;
+  const isMyFeedback = user?.id === fb.patientId;
+
   const [expanded, setExpanded] = useState(false);
 
   const statusMeta = STATUS_STYLES[fb.status] || STATUS_STYLES.published;
@@ -132,10 +137,18 @@ export default function FeedbackCard({
 
           {/* Rating + badges */}
           <div className="flex flex-col items-end gap-1 shrink-0">
-            <StarDisplay value={fb.overallRating} size="sm" />
-            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${RATING_COLORS[fb.overallRating] || ''}`}>
-              {RATING_LABELS[fb.overallRating]}
-            </span>
+            {(() => {
+              const displayRating = highlightKey === 'technician' ? (fb.technicianRating || fb.overallRating) : fb.overallRating;
+              const safeRating = Math.max(1, Math.min(5, Math.round(displayRating || 5)));
+              return (
+                <>
+                  <StarDisplay value={displayRating} size="sm" />
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${RATING_COLORS[safeRating] || ''}`}>
+                    {RATING_LABELS[safeRating]}
+                  </span>
+                </>
+              );
+            })()}
             {showStatus && (
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusMeta.cls}`}>
                 {statusMeta.label}
@@ -147,32 +160,53 @@ export default function FeedbackCard({
         {/* ── Comment ── */}
         <div className="text-sm text-slate-700 leading-relaxed mb-3 italic">
           {(() => {
-            try {
-              if (fb.comment && (fb.comment.startsWith('{') || fb.comment.startsWith('['))) {
-                const parsed = JSON.parse(fb.comment);
-                if (highlightKey === 'technician') {
-                  return <p>"{parsed.techComment || 'Chưa có nhận xét KTV'}"</p>;
-                } else if (highlightKey === 'doctor') {
-                  return <p>"{parsed.doctorComment || 'Chưa có nhận xét Bác sĩ'}"</p>;
-                } else {
-                  return (
-                    <div className="space-y-1.5 not-italic text-left">
-                      <div>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Bác sĩ:</span>
-                        <p className="text-sm text-slate-700 italic">"{parsed.doctorComment}" <span className="text-[9px] text-slate-400 font-semibold">({parsed.doctorPublic ? 'Công khai' : 'Ẩn'})</span></p>
-                      </div>
-                      {parsed.techComment && (
-                        <div>
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Kỹ thuật viên:</span>
-                          <p className="text-sm text-slate-700 italic">"{parsed.techComment}" <span className="text-[9px] text-slate-400 font-semibold">({parsed.techPublic ? 'Công khai' : 'Ẩn'})</span></p>
-                        </div>
-                      )}
+            const canSeePrivate = role === 'admin' || role === 'doctor' || role === 'technician' || isMyFeedback;
+            
+            const docCommentStr = fb.doctorComment;
+            const isDocPublic = fb.isDoctorPublic ?? true;
+            const techCommentStr = fb.technicianComment;
+            const isTechPublic = fb.isTechnicianPublic ?? true;
+
+            const showDoc = docCommentStr && (isDocPublic || canSeePrivate);
+            const showTech = techCommentStr && (isTechPublic || canSeePrivate);
+
+            // Fallback for old feedbacks if any
+            if (!docCommentStr && !techCommentStr && fb.comment) {
+               return <p>"{fb.comment}"</p>;
+            }
+
+            if (!showDoc && !showTech) {
+              return <p className="text-slate-400 italic">Đánh giá đã được ẩn hoặc chưa có nhận xét.</p>;
+            }
+
+            if (highlightKey === 'technician') {
+              if (!showTech) return <p className="text-slate-400 italic">Nhận xét đã được ẩn.</p>;
+              return <p>"{techCommentStr}" {!isTechPublic && <span className="text-[10px] text-slate-400 font-semibold">(Ẩn)</span>}</p>;
+            } else if (highlightKey === 'doctor') {
+              if (!showDoc) return <p className="text-slate-400 italic">Nhận xét đã được ẩn.</p>;
+              return <p>"{docCommentStr}" {!isDocPublic && <span className="text-[10px] text-slate-400 font-semibold">(Ẩn)</span>}</p>;
+            } else {
+              return (
+                <div className="space-y-2 not-italic text-left">
+                  {showDoc && (
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                        Bác sĩ {fb.overallRating ? <StarDisplay value={fb.overallRating} size="xs" /> : null}
+                      </span>
+                      <p className="text-sm text-slate-700 italic">"{docCommentStr}" {!isDocPublic && <span className="text-[9px] text-slate-400 font-semibold">(Ẩn)</span>}</p>
                     </div>
-                  );
-                }
-              }
-            } catch (e) {}
-            return <p>"{fb.comment}"</p>;
+                  )}
+                  {showTech && (
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                        Kỹ thuật viên {fb.technicianRating ? <StarDisplay value={fb.technicianRating} size="xs" /> : null}
+                      </span>
+                      <p className="text-sm text-slate-700 italic">"{techCommentStr}" {!isTechPublic && <span className="text-[9px] text-slate-400 font-semibold">(Ẩn)</span>}</p>
+                    </div>
+                  )}
+                </div>
+              );
+            }
           })()}
         </div>
 
