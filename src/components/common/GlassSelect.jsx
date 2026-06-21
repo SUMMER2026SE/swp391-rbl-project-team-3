@@ -65,7 +65,7 @@ export default function GlassSelect({
         aria-expanded={open}
         className={`${GLASS_INPUT} w-full flex items-center justify-between gap-2 cursor-pointer disabled:opacity-50 ${buttonClassName}`}
       >
-        <span className={`flex items-center gap-2 truncate ${selected ? '' : 'text-slate-800'}`}>
+        <span className={`flex items-center gap-2 truncate text-base font-semibold ${selected ? '' : 'text-slate-800'}`}>
           {selected?.icon ? <selected.icon className="w-4 h-4 shrink-0 text-slate-500" /> : null}
           <span className="truncate">{selected ? selected.label : placeholder}</span>
         </span>
@@ -89,7 +89,7 @@ export default function GlassSelect({
             className={`${GLASS_BASE} !bg-white/95 absolute z-[100] left-0 right-0 mt-2 p-1.5 max-h-60 overflow-auto origin-top ${menuClassName}`}
           >
             {items.length === 0 ? (
-              <li className="px-3 py-2 text-sm text-slate-800">Không có lựa chọn</li>
+              <li className="px-4 py-3 text-base text-slate-800">Không có lựa chọn</li>
             ) : (
               items.map((o) => {
                 const active = String(o.value) === String(value);
@@ -99,8 +99,8 @@ export default function GlassSelect({
                     role="option"
                     aria-selected={active}
                     onClick={() => pick(o.value)}
-                    className={`flex items-center justify-between gap-2 px-3 py-2 rounded-2xl text-sm font-medium text-gray-800 hover:bg-white/40 cursor-pointer transition-colors ${
-                      active ? 'bg-white/30' : ''
+                    className={`flex items-center justify-between gap-2 px-4 py-3 rounded-2xl text-base font-semibold text-gray-800 hover:bg-teal-50/80 cursor-pointer transition-colors ${
+                      active ? 'bg-teal-100/30' : ''
                     }`}
                   >
                     <span className="flex items-center gap-2 truncate">

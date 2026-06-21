@@ -196,7 +196,7 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
     
     return doctors?.filter?.(doc => {
       // Bác sĩ phải có lịch phân công vào ngày này
-      return adminSchedules.some(s => String(s.doctor_id || s.doctorId) === String(doc.user_id || doc.id) && (s.work_date === selectedDate || s.date === selectedDate) && s.status === 'Đã xác nhận');
+      return adminSchedules.some(s => String(s.doctor_id || s.doctorId) === String(doc.user_id || doc.id) && (s.work_date === selectedDate || s.date === selectedDate) && (s.status === 'Đã xác nhận' || s.status === 'Đã phân công'));
     });
   }, [selectedDate, doctors, adminSchedules]);
 
@@ -233,10 +233,10 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
       
       // Check if it fits the doctor's shift
       let outsideShift = true;
-      const docShift = adminSchedules.find(s => String(s.doctor_id) === String(dId) && s.work_date === dDate);
+      const docShift = adminSchedules.find(s => String(s.doctor_id || s.doctorId) === String(dId) && (s.work_date === dDate || s.date === dDate));
       if (docShift) {
-         const shiftStart = docShift.start_time.slice(0, 5);
-         const shiftEnd = docShift.end_time.slice(0, 5);
+         const shiftStart = (docShift.start_time || docShift.startTime || '').slice(0, 5);
+         const shiftEnd = (docShift.end_time || docShift.endTime || '').slice(0, 5);
          if (dTime >= shiftStart && dTime < shiftEnd) {
              outsideShift = false;
          }
@@ -272,8 +272,11 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
       slotsToDisplay.sort((a, b) => a.time.localeCompare(b.time));
     }
     
-    // Chỉ hiện các khung giờ có thể đặt được (không bị full/booked)
-    return slotsToDisplay.filter(slot => !slot.isBooked);
+    // Chỉ hiện các khung giờ có thể đặt được và loại bỏ khung giờ nghỉ (11:00 & 11:30)
+    return slotsToDisplay.filter(slot => {
+      const t = slot.time.trim();
+      return t !== '11:00' && t !== '11:30' && t !== '11:00 AM' && t !== '11:30 AM';
+    });
   })();
 
   // Lưu ý: Không ép buộc chọn bác sĩ, hệ thống có thể random assign nếu selectedDoctor rỗng, 
@@ -400,7 +403,7 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/40 backdrop-blur-md font-sans"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-slate-900/50 backdrop-blur-md font-sans"
       onClick={step === 'payment' ? undefined : onClose}
     >
       <motion.div
@@ -408,7 +411,7 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.9, opacity: 0, y: 20 }}
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-        className="w-[95vw] md:w-[85vw] lg:w-[80vw] max-w-6xl bg-white/40 backdrop-blur-2xl border border-white/60 shadow-xl rounded-3xl p-8 relative max-h-[90vh] overflow-y-auto custom-scrollbar"
+        className="w-[95vw] md:w-[85vw] lg:w-[80vw] max-w-6xl bg-white/60 backdrop-blur-2xl border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.12)] rounded-3xl p-8 relative max-h-[90vh] overflow-y-auto custom-scrollbar"
         onClick={e => e.stopPropagation()}
       >
         {/* Close */}
@@ -448,76 +451,82 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
               {/* ─── LEFT COLUMN: Doctor, Date & Contact ─── */}
               <div className="space-y-4">
                 {/* 0. Date — custom Liquid Glass calendar (replaces native date input) */}
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-bold text-slate-900 uppercase tracking-wider mb-2">
-                    <Calendar className="w-4 h-4 text-teal-500" />
-                    Bước 1: Chọn ngày khám
-                  </label>
-                  <GlassDatePicker
-                    value={selectedDate}
-                    min={minDate}
-                    onChange={(d) => { setSelectedDate(d); setSelectedTime(''); }}
-                  />
+                <div className="relative z-[60]">
+                  <div>
+                    <label className="flex items-center gap-2 text-sm font-bold text-slate-900 uppercase tracking-wider mb-2">
+                      <Calendar className="w-4 h-4 text-teal-500" />
+                      Bước 1: Chọn ngày khám
+                    </label>
+                    <GlassDatePicker
+                      value={selectedDate}
+                      min={minDate}
+                      onChange={(d) => { setSelectedDate(d); setSelectedTime(''); }}
+                    />
+                  </div>
                 </div>
 
                 {/* 1. Doctor — visible to ALL users (guests + logged-in) */}
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-bold text-slate-900 uppercase tracking-wider mb-2">
-                    <User className="w-4 h-4 text-indigo-500" />
-                    Bước 2: Chọn bác sĩ
-                  </label>
-                  <GlassSelect
-                    value={selectedDoctor}
-                    onChange={(v) => { setSelectedDoctor(v); setSelectedTime(''); }}
-                    placeholder="Tự động chọn bác sĩ phù hợp"
-                    buttonClassName="p-4 text-sm text-slate-900 font-medium"
-                    options={[
-                      { value: '', label: 'Không chọn — hệ thống tự sắp xếp' },
-                      ...(doctors || []).map(doc => ({
-                        value: doc.user_id || doc.id,
-                        label: `${/^(BS|ThS|TS|PGS|GS|CN|KTV)/i.test((doc.name || '').trim()) ? '' : 'BS. '}${doc.name}${doc.specialties && doc.specialties.length > 0 ? ` (${doc.specialties.join(', ')})` : ''}`,
-                      })),
-                    ]}
-                  />
+                <div className="relative z-[50]">
+                  <div>
+                    <label className="flex items-center gap-2 text-sm font-bold text-slate-900 uppercase tracking-wider mb-2">
+                      <User className="w-4 h-4 text-indigo-500" />
+                      Bước 2: Chọn bác sĩ
+                    </label>
+                    <GlassSelect
+                      value={selectedDoctor}
+                      onChange={(v) => { setSelectedDoctor(v); setSelectedTime(''); }}
+                      placeholder="Tự động chọn bác sĩ phù hợp"
+                      buttonClassName="p-4 text-base text-slate-900 font-semibold"
+                      options={[
+                        { value: '', label: 'Không chọn — hệ thống tự sắp xếp' },
+                        ...(doctors || []).map(doc => ({
+                          value: doc.user_id || doc.id,
+                          label: `${/^(BS|ThS|TS|PGS|GS|CN|KTV)/i.test((doc.name || '').trim()) ? '' : 'BS. '}${doc.name}${doc.specialties && doc.specialties.length > 0 ? ` (${doc.specialties.join(', ')})` : ''}`,
+                        })),
+                      ]}
+                    />
+                  </div>
                 </div>
 
                 {/* 5. Contact */}
-                <div className="border-t border-slate-150 pt-4">
-                  {user ? (
-                    <div className="bg-sky-50/50 border border-sky-100/50 rounded-2xl p-4 flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-sky-100 text-sky-700 flex items-center justify-center font-bold text-sm">
-                        {user.name.charAt(0)}
+                <div className="relative z-[40]">
+                  <div className="border-t border-slate-150 pt-4">
+                    {user ? (
+                      <div className="bg-sky-50/50 border border-sky-100/50 rounded-2xl p-4 flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-sky-100 text-sky-700 flex items-center justify-center font-bold text-sm">
+                          {user.name.charAt(0)}
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-600 font-bold uppercase tracking-wider">Đang đặt với tài khoản</p>
+                          <p className="text-sm font-bold text-slate-800">{user.name}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-xs text-slate-600 font-bold uppercase tracking-wider">Đang đặt với tài khoản</p>
-                        <p className="text-sm font-bold text-slate-800">{user.name}</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <p className="text-sm font-bold text-slate-900 uppercase tracking-wider">Thông tin liên hệ (Khách vãng lai)</p>
-                      <input
-                        type="text" placeholder="Họ và tên bệnh nhân" required
-                        value={guestName} onChange={e => setGuestName(e.target.value)}
-                        className="w-full p-4 rounded-xl bg-white/50 border border-white/40 text-slate-900 font-medium placeholder-slate-500 outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all text-sm"
-                      />
-                      <div className="grid grid-cols-2 gap-3">
+                    ) : (
+                      <div className="space-y-3">
+                        <p className="text-sm font-bold text-slate-900 uppercase tracking-wider">Thông tin liên hệ (Khách vãng lai)</p>
                         <input
-                          type="tel" placeholder="Số điện thoại" required
-                          value={guestPhone} onChange={e => setGuestPhone(e.target.value)}
-                          className="w-full p-4 rounded-xl bg-white/50 border border-white/40 text-slate-900 font-medium placeholder-slate-500 outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all text-sm"
+                          type="text" placeholder="Họ và tên bệnh nhân" required
+                          value={guestName} onChange={e => setGuestName(e.target.value)}
+                          className="w-full p-4 rounded-xl bg-white/50 border border-white/40 text-slate-900 font-medium placeholder-slate-500 outline-none focus:ring-2 focus:ring-teal-500/50 transition-all text-sm"
                         />
-                        <input
-                          type="email" placeholder="Địa chỉ Email" required
-                          value={guestEmail} onChange={e => setGuestEmail(e.target.value)}
-                          className="w-full p-4 rounded-xl bg-white/50 border border-white/40 text-slate-900 font-medium placeholder-slate-500 outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all text-sm"
-                        />
+                        <div className="grid grid-cols-2 gap-3">
+                          <input
+                            type="tel" placeholder="Số điện thoại" required
+                            value={guestPhone} onChange={e => setGuestPhone(e.target.value)}
+                            className="w-full p-4 rounded-xl bg-white/50 border border-white/40 text-slate-900 font-medium placeholder-slate-500 outline-none focus:ring-2 focus:ring-teal-500/50 transition-all text-sm"
+                          />
+                          <input
+                            type="email" placeholder="Địa chỉ Email" required
+                            value={guestEmail} onChange={e => setGuestEmail(e.target.value)}
+                            className="w-full p-4 rounded-xl bg-white/50 border border-white/40 text-slate-900 font-medium placeholder-slate-500 outline-none focus:ring-2 focus:ring-teal-500/50 transition-all text-sm"
+                          />
+                        </div>
+                        <p className="text-[10px] text-slate-600 italic">
+                          * Lưu ý: Tài khoản bệnh nhân sẽ được tạo tự động dựa trên thông tin trên.
+                        </p>
                       </div>
-                      <p className="text-[10px] text-slate-600 italic">
-                        * Lưu ý: Tài khoản bệnh nhân sẽ được tạo tự động dựa trên thông tin trên.
-                      </p>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -555,14 +564,14 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
                               <Clock className="w-4 h-4 text-amber-500" />
                               Các khung giờ có thể đặt
                             </label>
-                            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-3 gap-3">
+                            <div className="grid grid-cols-4 gap-3 mt-4">
                               {filteredSlots?.map?.(slot => (
                                 <button
                                   key={slot.time}
                                   type="button"
                                   disabled={slot.isBooked}
                                   onClick={() => setSelectedTime(slot.time === selectedTime ? '' : slot.time)}
-                                  className={`py-3 px-4 rounded-xl text-base font-bold text-center cursor-pointer border transition-all ${
+                                  className={`py-2 text-sm font-semibold rounded-xl text-center cursor-pointer border transition-all ${
                                     slot.isBooked
                                       ? 'bg-slate-100/50 border-white/40 text-slate-400 cursor-not-allowed line-through'
                                       : selectedTime === slot.time

@@ -122,9 +122,9 @@ export default function GlassDatePicker({
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="dialog"
         aria-expanded={open}
-        className={`bg-white/50 border border-white/40 text-gray-900 rounded-xl p-4 w-full cursor-pointer flex justify-between items-center outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all ${buttonClassName}`}
+        className={`bg-white/50 border border-white/40 text-gray-900 rounded-xl p-4 w-full cursor-pointer flex justify-between items-center outline-none focus:ring-2 focus:ring-teal-500/50 transition-all ${buttonClassName}`}
       >
-        <span className={selectedDate ? 'text-slate-900 text-sm font-medium' : 'text-slate-800 text-sm font-medium'}>
+        <span className={selectedDate ? 'text-slate-900 text-sm font-semibold' : 'text-slate-800 text-sm font-semibold'}>
           {triggerLabel}
         </span>
         <CalendarIcon className="w-5 h-5 text-teal-500 shrink-0" />
@@ -138,7 +138,7 @@ export default function GlassDatePicker({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.98 }}
             transition={{ duration: 0.18, ease: 'easeOut' }}
-            className="absolute z-[100] mt-2 bg-white/60 backdrop-blur-3xl border border-white/60 shadow-2xl rounded-2xl p-5 w-80 origin-top"
+            className="absolute z-[9999] mt-2 bg-white/95 backdrop-blur-3xl border border-slate-200 shadow-2xl rounded-2xl p-4 w-80 origin-top"
           >
             {/* Month navigation */}
             <div className="flex items-center justify-between mb-4">

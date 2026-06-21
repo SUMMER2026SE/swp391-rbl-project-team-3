@@ -278,7 +278,7 @@ export function useAppointmentController(patientId = null) {
     const dailySchedules = adminSchedules.filter(s => 
       String(s.doctorId || s.doctor_id) === String(docId) && 
       (s.date === date || s.work_date === date) &&
-      s.status === 'Đã xác nhận'
+      (s.status === 'Đã xác nhận' || s.status === 'Đã phân công')
     );
 
     if (dailySchedules.length === 0) {
