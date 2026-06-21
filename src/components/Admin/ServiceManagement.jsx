@@ -10,7 +10,7 @@ export default function ServiceManagement() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' }
-    const [form, setForm] = useState({ name: '', price: '', description: '', status: 'Hoạt động' });
+    const [form, setForm] = useState({ name: '', price: '', description: '', status: 'Hoạt động', duration: 30 });
 
     const notify = useCallback((message, type = 'success') => {
         setToast({ message, type });
@@ -44,7 +44,7 @@ export default function ServiceManagement() {
         try {
             const created = await ServiceModel.create(form);
             setServices((prev) => [created, ...prev]);
-            setForm({ name: '', price: '', description: '', status: 'Hoạt động' });
+            setForm({ name: '', price: '', description: '', status: 'Hoạt động', duration: 30 });
             notify('Đã thêm dịch vụ mới.', 'success');
         } catch (err) {
             console.error('Failed to create service:', err);
@@ -94,9 +94,10 @@ export default function ServiceManagement() {
                     <h3 className="font-extrabold text-lg text-slate-800">Thêm dịch vụ mới</h3>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
                     <Input placeholder="Tên dịch vụ" value={form.name} onChange={(v) => setForm({ ...form, name: v })} />
                     <Input placeholder="Giá dịch vụ" type="number" value={form.price} onChange={(v) => setForm({ ...form, price: v })} />
+                    <Input placeholder="Thời lượng (phút)" type="number" value={form.duration} onChange={(v) => setForm({ ...form, duration: v })} />
                     <Input placeholder="Mô tả" value={form.description} onChange={(v) => setForm({ ...form, description: v })} />
                     <button onClick={createService} disabled={saving} className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-sky-500 text-white rounded-2xl font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-200 disabled:opacity-60">
                         {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Lưu dịch vụ
@@ -127,6 +128,7 @@ export default function ServiceManagement() {
                         <tr>
                             <th className="px-8 py-5 text-xs font-bold text-slate-500 uppercase">Dịch vụ</th>
                             <th className="px-8 py-5 text-xs font-bold text-slate-500 uppercase">Giá</th>
+                            <th className="px-8 py-5 text-xs font-bold text-slate-500 uppercase">Thời lượng (phút)</th>
                             <th className="px-8 py-5 text-xs font-bold text-slate-500 uppercase">Mô tả</th>
                             <th className="px-8 py-5 text-xs font-bold text-slate-500 uppercase">Trạng thái</th>
                             <th className="px-8 py-5 text-xs font-bold text-slate-500 uppercase text-right">Thao tác</th>
@@ -134,11 +136,12 @@ export default function ServiceManagement() {
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                         {filteredServices?.length === 0 ? (
-                            <tr><td colSpan={5} className="px-8 py-12 text-center text-sm text-slate-400 italic">Chưa có dịch vụ nào.</td></tr>
+                            <tr><td colSpan={6} className="px-8 py-12 text-center text-sm text-slate-400 italic">Chưa có dịch vụ nào.</td></tr>
                         ) : filteredServices?.map?.((service) => (
                             <tr key={service.id} className="hover:bg-slate-50/80">
                                 <td className="px-8 py-5"><Input value={service.name} onChange={(v) => updateLocal(service.id, 'name', v)} onBlur={(v) => commitService(service.id, 'name', v)} /></td>
                                 <td className="px-8 py-5"><Input type="number" value={service.price} onChange={(v) => updateLocal(service.id, 'price', v)} onBlur={(v) => commitService(service.id, 'price', v)} /></td>
+                                <td className="px-8 py-5"><Input type="number" value={service.duration} onChange={(v) => updateLocal(service.id, 'duration', v)} onBlur={(v) => commitService(service.id, 'duration', v)} /></td>
                                 <td className="px-8 py-5"><Input value={service.description} onChange={(v) => updateLocal(service.id, 'description', v)} onBlur={(v) => commitService(service.id, 'description', v)} /></td>
                                 <td className="px-8 py-5"><Select value={service.status} onChange={(v) => { updateLocal(service.id, 'status', v); commitService(service.id, 'status', v); }} options={['Hoạt động', 'Tạm ẩn']} /></td>
                                 <td className="px-8 py-5 text-right">

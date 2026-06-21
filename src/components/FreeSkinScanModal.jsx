@@ -55,9 +55,7 @@ const analyzeSkinImage = (img) => {
         const darkRatio = darkPixels / pixelCount;
         const yellowRatio = yellowPixels / pixelCount;
         const avgBrightness = totalBrightness / pixelCount;
-        
-        console.log("Phân tích pixel da:", { redRatio, darkRatio, yellowRatio, avgBrightness });
-        
+
         if (redRatio > 0.08) {
             return {
                 predicted_class: "acne",

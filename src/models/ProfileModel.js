@@ -10,7 +10,6 @@ export const ProfileModel = {
    */
   async getProfile(userId, role) {
     if (!userId) throw new Error('User ID is required');
-    console.log('[ProfileModel] Fetching for User ID:', userId, 'Role:', role);
 
     // 1. Fetch common user info
     let { data: user, error: userError } = await supabase

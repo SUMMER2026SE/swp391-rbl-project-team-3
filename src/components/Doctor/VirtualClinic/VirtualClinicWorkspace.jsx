@@ -129,7 +129,6 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
         'postgres_changes',
         { event: '*', schema: 'public', table: 'service_tickets', filter: `appointment_id=eq.${appointment.id}` },
         () => {
-          console.log('[Workspace] Service tickets changed, reloading tickets only...');
           loadServiceTickets(); // ONLY reload tickets so we don't wipe doctor's draft notes
         }
       )

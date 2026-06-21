@@ -92,6 +92,22 @@ export default function BillingCheckout({
     [appointments]
   );
 
+  // Realtime: the cashier list is derived from appointments (EXAMINED/PAID) and
+  // payments. Refresh the instant a doctor flips an appointment to "Chờ thanh
+  // toán" (Đã khám → EXAMINED) or a payment is recorded, so the desk stays live.
+  useEffect(() => {
+    if (!onRefresh) return undefined;
+    const channel = supabase
+      .channel('receptionist-billing')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, () => { onRefresh(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, () => { onRefresh(); })
+      .subscribe();
+    // CRITICAL: remove the channel on unmount to avoid leaking subscriptions.
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [onRefresh]);
+
   // Fetch services for all items so we can display the correct calculated fee in the list.
   useEffect(() => {
     const fetchAllServices = async () => {

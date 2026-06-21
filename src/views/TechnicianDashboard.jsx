@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { GLASS_INPUT } from '../components/common/GlassCard';
 import { ServiceTicketModel } from '../models/ServiceTicketModel';
+import { supabase } from '../supabaseClient';
 import {
   motion,
   AnimatePresence,
@@ -112,12 +113,24 @@ export default function TechnicianDashboard() {
     }
   }, []);
 
-  // Initial load + light polling so indications a doctor just routed appear
-  // without a manual refresh.
+  // Initial load + Supabase Realtime (replaces the old 5s poll). Refetch the
+  // active queue whenever a service_ticket is INSERTed (doctor routes a new
+  // indication), UPDATEd (a technician claims/completes one), or DELETEd — so
+  // the list reflects another technician's claim the instant it happens.
   useEffect(() => {
     loadTasks();
-    const interval = setInterval(loadTasks, 5000);
-    return () => clearInterval(interval);
+    const channel = supabase
+      .channel('technician-service-tickets')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'service_tickets' },
+        () => { loadTasks(); }
+      )
+      .subscribe();
+    // CRITICAL: tear the channel down on unmount so we don't leak subscriptions.
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [loadTasks]);
 
   /* ───────── dynamic page title ───────── */

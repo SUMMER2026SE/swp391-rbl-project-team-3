@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, Plus, Save, Search, Trash2, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { useDoctors } from '../../hooks/useDoctors';
 import { ConsultationSlotModel } from '../../models/ConsultationSlotModel';
+import { supabase } from '../../supabaseClient';
 import GlassSelect from '../common/GlassSelect';
 
 export default function ConsultationTimeManagement() {
@@ -49,6 +50,20 @@ export default function ConsultationTimeManagement() {
     }, [notify]);
 
     useEffect(() => { loadSlots(); }, [loadSlots]);
+
+    // Realtime: reflect another admin's schedule edits live. Listen on both the
+    // slots and their parent schedules (a schedule change can cascade to slots).
+    useEffect(() => {
+        const channel = supabase
+            .channel('admin-consultation-slots')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'consultation_slots' }, () => { loadSlots(); })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'doctor_schedules' }, () => { loadSlots(); })
+            .subscribe();
+        // CRITICAL: clean up the subscription on unmount.
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [loadSlots]);
 
     // Keep the create-form doctor valid once the doctor list resolves.
     useEffect(() => {
@@ -134,7 +149,7 @@ export default function ConsultationTimeManagement() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
             <div className="backdrop-blur-xl bg-white/75 border border-white/80 shadow-[0_15px_40px_rgba(0,0,0,0.05)] rounded-[2rem] p-8">
                 <div className="flex items-center gap-2 mb-6 pb-4 border-b border-slate-200/50"><Plus className="w-5 h-5 text-indigo-600" /><h3 className="font-extrabold text-lg text-slate-800">Tạo khung giờ khám</h3></div>
-                <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-4">
                     <Select value={form.doctorName} onChange={(v) => setForm({ ...form, doctorName: v })} options={doctorOptions} />
                     <Input type="date" value={form.date} onChange={(v) => setForm({ ...form, date: v })} />
                     <Input type="time" value={form.startTime} onChange={(v) => setForm({ ...form, startTime: v })} />

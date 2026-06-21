@@ -77,9 +77,6 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
   const mouseY = useMotionValue(0);
   const glowBackground = useMotionTemplate`radial-gradient(320px circle at ${mouseX}px ${mouseY}px, rgba(16,185,129,0.04), transparent 80%)`;
 
-  // For Debugging
-  console.log("Current Active Task in Workspace:", task);
-
   const currentProcedure = procedures[activeProcIndex];
   const currentResult = resultsMap[activeProcIndex] || { images: [], metrics: {}, technicianNotes: '' };
 

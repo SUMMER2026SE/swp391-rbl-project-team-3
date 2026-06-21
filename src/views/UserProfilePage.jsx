@@ -619,8 +619,6 @@ export default function UserProfilePage() {
     navigate(-1);
   };
 
-  console.log('DermaSmart Debug - Current Role:', role, '| Computed Bg Image URL:', profileBgImage);
-
   return (
     <div className="min-h-screen bg-slate-50 font-sans antialiased relative">
       {/* Ambient Mesh Blobs */}

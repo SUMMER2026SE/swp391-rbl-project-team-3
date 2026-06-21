@@ -47,6 +47,7 @@ import { useVoucherController } from '../controllers/useVoucherController';
 import { useDoctors } from '../hooks/useDoctors';
 import { AppointmentModel } from '../models/AppointmentModel';
 import { NotificationModel } from '../models/NotificationModel';
+import { supabase } from '../supabaseClient';
 import { ReceptionistChatModel } from '../models/ChatModel';
 import LiquidSidebarMenu from '../components/ui/LiquidSidebarMenu';
 import LiveChatDrawer from '../components/Receptionist/LiveChatDrawer';
@@ -108,6 +109,25 @@ export default function ReceptionistDashboard() {
   } = useVoucherController();
 
   const receptionistId = user?.id || 'staff-01';
+
+  // ─── Realtime: keep the dispatch queue / KPIs live ────────────────────────
+  // Replaces event-driven-only refreshes. Any INSERT (new booking), UPDATE
+  // (check-in, approve, examine, pay) or DELETE on `appointments` re-pulls state
+  // so the Kanban reflects another actor's action the instant it happens.
+  useEffect(() => {
+    const channel = supabase
+      .channel('receptionist-appointments')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'appointments' },
+        () => { refreshState(); }
+      )
+      .subscribe();
+    // CRITICAL: drop the channel on unmount to avoid leaking subscriptions.
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [refreshState]);
 
   // ─── Toast ──────────────────────────────────────────────────────────────
   const showToast = (message, type = 'success') => {
