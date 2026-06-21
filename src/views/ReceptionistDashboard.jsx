@@ -48,7 +48,7 @@ import { useDoctors } from '../hooks/useDoctors';
 import { AppointmentModel } from '../models/AppointmentModel';
 import { NotificationModel } from '../models/NotificationModel';
 import { supabase } from '../supabaseClient';
-import { ReceptionistChatModel } from '../models/ChatModel';
+import { ReceptionistChatModel, subscribeToMessages, unsubscribe } from '../models/ChatModel';
 import LiquidSidebarMenu from '../components/ui/LiquidSidebarMenu';
 import LiveChatDrawer from '../components/Receptionist/LiveChatDrawer';
 import ReceptionistChatTab from '../components/Receptionist/ReceptionistChatTab';
@@ -180,26 +180,35 @@ export default function ReceptionistDashboard() {
     const fetchMsgs = async () => {
       try {
         const msgs = await ReceptionistChatModel.getAllMessages();
-        if (active) {
-          setChatMessages(prev => {
-            if (msgs && prev.length > 0 && msgs.length > prev.length) {
-               const lastMsg = msgs[msgs.length - 1];
-               if (lastMsg && lastMsg.senderRole === 'PATIENT' && activeTab !== 'chat' && !isChatOpen) {
-                  setHasUnreadChat(true);
-               }
-            }
-            return msgs || [];
-          });
-        }
+        if (active) setChatMessages(msgs || []);
       } catch (err) {
         console.error('Error fetching receptionist messages:', err);
       }
     };
     fetchMsgs();
-    const interval = setInterval(fetchMsgs, 2500);
+
+    // Realtime: surface the unread badge the instant a patient message lands
+    // while the receptionist is on another tab / drawer closed.
+    const channel = subscribeToMessages({
+      onEvent: (type, msg) => {
+        if (!active) return;
+        if (type === 'INSERT') {
+          setChatMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
+          if (msg.senderRole === 'PATIENT' && activeTab !== 'chat' && !isChatOpen) {
+            setHasUnreadChat(true);
+          }
+        } else {
+          setChatMessages((prev) => prev.map((m) => (m.id === msg.id ? msg : m)));
+        }
+      },
+    });
+
+    // Safety net for the localStorage-fallback path.
+    const interval = setInterval(fetchMsgs, 5000);
     return () => {
       active = false;
       clearInterval(interval);
+      unsubscribe(channel);
     };
   }, [activeTab, isChatOpen]);
 

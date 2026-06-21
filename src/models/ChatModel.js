@@ -1,6 +1,11 @@
 import { supabase } from '../supabaseClient';
 
 const LOCAL_STORAGE_KEY = 'dermasmart_fallback_messages';
+const SESSION_STORAGE_KEY = 'dermasmart_fallback_chat_sessions';
+
+// Cap every history read so long conversations never balloon the payload /
+// re-render cost. We fetch the most-recent N (DESC) then flip to chronological.
+const HISTORY_LIMIT = 50;
 
 // --- Helper: Local Storage Fallback ---
 const getLocalMessages = () => {
@@ -64,14 +69,18 @@ const mapFromDB = (row) => ({
 export const ChatModel = {
   async getAllMessages() {
     try {
-      const { data, error } = await supabase.from('messages').select('*').order('created_at', { ascending: true });
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(HISTORY_LIMIT);
       if (error) {
         if (error.code === 'PGRST205') {
           return getLocalMessages();
         }
         throw error;
       }
-      return (data || []).map(mapFromDB);
+      return (data || []).map(mapFromDB).reverse();
     } catch (e) {
       console.warn('Supabase fetch error (messages):', e.message);
       return getLocalMessages();
@@ -84,7 +93,8 @@ export const ChatModel = {
         .from('messages')
         .select('*')
         .or(`and(sender_id.eq.${pId},receiver_id.eq.${dId}),and(sender_id.eq.${dId},receiver_id.eq.${pId})`)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: false })
+        .limit(HISTORY_LIMIT);
       if (error) {
         if (error.code === 'PGRST205') {
           return getLocalMessages().filter(m => 
@@ -94,7 +104,7 @@ export const ChatModel = {
         }
         throw error;
       }
-      return (data || []).map(mapFromDB);
+      return (data || []).map(mapFromDB).reverse();
     } catch (e) {
       console.warn('Supabase fetch error (messages between):', e.message);
       return getLocalMessages().filter(m => 
@@ -129,14 +139,18 @@ export const ChatModel = {
 export const ReceptionistChatModel = {
   async getAllMessages() {
     try {
-      const { data, error } = await supabase.from('messages').select('*').order('created_at', { ascending: true });
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(HISTORY_LIMIT);
       if (error) {
         if (error.code === 'PGRST205') {
           return getLocalMessages().filter(m => m.mode === 'Live' || m.mode === 'AI');
         }
         throw error;
       }
-      return (data || []).map(mapFromDB);
+      return (data || []).map(mapFromDB).reverse();
     } catch (e) {
       console.warn('Supabase fetch error (receptionist messages):', e.message);
       return getLocalMessages().filter(m => m.mode === 'Live' || m.mode === 'AI');
@@ -149,14 +163,15 @@ export const ReceptionistChatModel = {
         .from('messages')
         .select('*')
         .eq('patient_id', patientId)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: false })
+        .limit(HISTORY_LIMIT);
       if (error) {
         if (error.code === 'PGRST205') {
           return getLocalMessages().filter(m => m.patientId === patientId);
         }
         throw error;
       }
-      return (data || []).map(mapFromDB);
+      return (data || []).map(mapFromDB).reverse();
     } catch (e) {
       console.warn('Supabase fetch error (receptionist messages for patient):', e.message);
       return getLocalMessages().filter(m => m.patientId === patientId);
@@ -182,4 +197,199 @@ export const ReceptionistChatModel = {
       return addLocalMessage(msgData);
     }
   }
+};
+
+/* ───────────────────────── Realtime ─────────────────────────
+   Subscribe to INSERT + UPDATE on public.messages. Pass `patientId` to scope
+   the channel to one conversation (patient widget) or omit it for the global
+   receptionist feed. `onEvent(type, message)` fires with 'INSERT' | 'UPDATE'
+   and the mapped message. Returns the channel — the caller MUST pass it to
+   `unsubscribe()` in a useEffect cleanup to avoid leaked / duplicated
+   subscriptions. No-ops gracefully when the table is on the localStorage
+   fallback (the channel simply never receives events). */
+export function subscribeToMessages({ patientId, onEvent }) {
+  const scope = patientId || 'all';
+  const filter = patientId ? `patient_id=eq.${patientId}` : undefined;
+  const base = { event: undefined, schema: 'public', table: 'messages', ...(filter ? { filter } : {}) };
+
+  const channel = supabase
+    .channel(`chat-messages-${scope}-${Date.now()}`)
+    .on('postgres_changes', { ...base, event: 'INSERT' }, (p) => onEvent?.('INSERT', mapFromDB(p.new)))
+    .on('postgres_changes', { ...base, event: 'UPDATE' }, (p) => onEvent?.('UPDATE', mapFromDB(p.new)))
+    .subscribe();
+
+  return channel;
+}
+
+/* Subscribe to chat_sessions changes (handoff status + typing flags). Scope to
+   one patient or omit for all. `onEvent('INSERT'|'UPDATE', session)`. */
+export function subscribeToSessions({ patientId, onEvent }) {
+  const scope = patientId || 'all';
+  const filter = patientId ? `patient_id=eq.${patientId}` : undefined;
+  const base = { event: undefined, schema: 'public', table: 'chat_sessions', ...(filter ? { filter } : {}) };
+
+  const channel = supabase
+    .channel(`chat-sessions-${scope}-${Date.now()}`)
+    .on('postgres_changes', { ...base, event: 'INSERT' }, (p) => onEvent?.('INSERT', mapSessionFromDB(p.new)))
+    .on('postgres_changes', { ...base, event: 'UPDATE' }, (p) => onEvent?.('UPDATE', mapSessionFromDB(p.new)))
+    .subscribe();
+
+  return channel;
+}
+
+/* Single teardown helper so call sites never reach into `supabase` directly. */
+export function unsubscribe(channel) {
+  if (channel) supabase.removeChannel(channel);
+}
+
+/* ───────────────────────── Chat sessions (handoff state) ─────────────────────────
+   One row per patient conversation: the Bot→Human handoff state machine plus
+   live typing flags and the agent's read marker. Mirrors the messages model's
+   Supabase-with-localStorage-fallback pattern so the feature degrades cleanly
+   when the chat_sessions table hasn't been migrated yet. */
+
+export const CHAT_STATUS = {
+  BOT: 'BOT',
+  WAITING: 'WAITING_FOR_AGENT',
+  WITH_AGENT: 'WITH_AGENT',
+  RESOLVED: 'RESOLVED',
+};
+
+const mapSessionToDB = (s) => ({
+  patient_id: s.patientId,
+  patient_name: s.patientName,
+  status: s.status,
+  agent_id: s.agentId,
+  agent_typing: s.agentTyping,
+  patient_typing: s.patientTyping,
+  last_read_at: s.lastReadAt,
+  updated_at: new Date().toISOString(),
+});
+
+const mapSessionFromDB = (row) => ({
+  patientId: row.patient_id,
+  patientName: row.patient_name,
+  status: row.status || CHAT_STATUS.BOT,
+  agentId: row.agent_id,
+  agentTyping: !!row.agent_typing,
+  patientTyping: !!row.patient_typing,
+  lastReadAt: row.last_read_at,
+  updatedAt: row.updated_at,
+});
+
+const getLocalSessions = () => {
+  try {
+    const data = localStorage.getItem(SESSION_STORAGE_KEY);
+    return data ? JSON.parse(data) : {};
+  } catch { return {}; }
+};
+
+const saveLocalSessions = (map) => {
+  try {
+    localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(map));
+    // Notify other tabs (the storage event only fires cross-tab, not same-tab).
+    window.dispatchEvent(new CustomEvent('dermasmart:sessions'));
+  } catch (e) {
+    console.error('Failed to save fallback chat sessions:', e);
+  }
+};
+
+const upsertLocalSession = (patientId, patch) => {
+  const map = getLocalSessions();
+  const prev = map[patientId] || { patientId, status: CHAT_STATUS.BOT };
+  const next = { ...prev, ...patch, patientId, updatedAt: new Date().toISOString() };
+  map[patientId] = next;
+  saveLocalSessions(map);
+  return next;
+};
+
+export const ChatSessionModel = {
+  async get(patientId) {
+    try {
+      const { data, error } = await supabase
+        .from('chat_sessions')
+        .select('*')
+        .eq('patient_id', patientId)
+        .maybeSingle();
+      if (error) {
+        if (error.code === 'PGRST205') return getLocalSessions()[patientId] || null;
+        throw error;
+      }
+      return data ? mapSessionFromDB(data) : null;
+    } catch (e) {
+      console.warn('Supabase fetch error (chat session):', e.message);
+      return getLocalSessions()[patientId] || null;
+    }
+  },
+
+  async getAll() {
+    try {
+      const { data, error } = await supabase
+        .from('chat_sessions')
+        .select('*')
+        .order('updated_at', { ascending: false })
+        .limit(HISTORY_LIMIT);
+      if (error) {
+        if (error.code === 'PGRST205') return Object.values(getLocalSessions());
+        throw error;
+      }
+      return (data || []).map(mapSessionFromDB);
+    } catch (e) {
+      console.warn('Supabase fetch error (chat sessions):', e.message);
+      return Object.values(getLocalSessions());
+    }
+  },
+
+  // Upsert a partial session patch keyed by patientId.
+  async upsert(patientId, patch) {
+    const row = mapSessionToDB({ patientId, ...patch });
+    // Strip undefined keys so we never null-out columns we didn't intend to set.
+    Object.keys(row).forEach((k) => row[k] === undefined && delete row[k]);
+    try {
+      const { data, error } = await supabase
+        .from('chat_sessions')
+        .upsert(row, { onConflict: 'patient_id' })
+        .select();
+      if (error) {
+        if (error.code === 'PGRST205') return upsertLocalSession(patientId, patch);
+        throw error;
+      }
+      return data && data[0] ? mapSessionFromDB(data[0]) : null;
+    } catch (e) {
+      console.warn('Supabase upsert error (chat session):', e.message);
+      return upsertLocalSession(patientId, patch);
+    }
+  },
+
+  // ── Convenience verbs over upsert ──
+  requestAgent(patientId, patientName) {
+    return this.upsert(patientId, { patientName, status: CHAT_STATUS.WAITING, agentTyping: false });
+  },
+  claim(patientId, agentId) {
+    return this.upsert(patientId, { status: CHAT_STATUS.WITH_AGENT, agentId, lastReadAt: new Date().toISOString() });
+  },
+  setStatus(patientId, status) {
+    return this.upsert(patientId, { status });
+  },
+  setAgentTyping(patientId, typing) {
+    return this.upsert(patientId, { agentTyping: typing });
+  },
+  setPatientTyping(patientId, typing) {
+    return this.upsert(patientId, { patientTyping: typing });
+  },
+  markRead(patientId) {
+    return this.upsert(patientId, { lastReadAt: new Date().toISOString() });
+  },
+
+  // Local-fallback change subscription (same-tab + cross-tab) so the UI stays
+  // live even without the Supabase realtime table. Returns an unsubscribe fn.
+  onLocalChange(cb) {
+    const handler = () => cb(Object.values(getLocalSessions()));
+    window.addEventListener('dermasmart:sessions', handler);
+    window.addEventListener('storage', handler);
+    return () => {
+      window.removeEventListener('dermasmart:sessions', handler);
+      window.removeEventListener('storage', handler);
+    };
+  },
 };
