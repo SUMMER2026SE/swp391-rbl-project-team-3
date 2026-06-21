@@ -41,6 +41,13 @@ export const AppointmentModel = {
     return STATUS_NORMALIZE_MAP[String(status).toUpperCase()] || status;
   },
 
+  // Parse a "HH:mm[:ss]" string into minutes-since-midnight (null when blank).
+  timeToMinutes(timeStr) {
+    if (!timeStr) return null;
+    const [h, m] = String(timeStr).split(':').map(Number);
+    return (h || 0) * 60 + (m || 0);
+  },
+
   // Add `minutes` to a "HH:mm[:ss]" string, returning "HH:mm".
   addMinutesToTime(timeStr, minutes = 30) {
     if (!timeStr) return timeStr;
@@ -326,6 +333,77 @@ export const AppointmentModel = {
       }, { markAppointmentPaid: false });
     }
     return newApt;
+  },
+
+  // Create a follow-up (tái khám) appointment for a doctor's own patient.
+  // This is the SERVER-SIDE guard for the doctor's follow-up picker: it re-runs
+  // the same two constraints the UI enforces, right before the insert, so a slot
+  // that was filled in the gap between the doctor opening the picker and clicking
+  // "create" can never be double-booked (race condition), and a slot outside the
+  // doctor's working shift can never be persisted even if the UI is bypassed.
+  // Returns { data } on success or { error: <vietnamese message> } on rejection.
+  async createFollowUp(followUpData) {
+    const doctorId = followUpData.doctorId || followUpData.doctor_id;
+    const date = followUpData.date || followUpData.appointment_date;
+    const time = (followUpData.time || followUpData.start_time || '').substring(0, 5);
+
+    if (!doctorId || !date || !time) {
+      return { error: 'Thiếu thông tin bác sĩ, ngày hoặc giờ tái khám.' };
+    }
+
+    // Guard 1 — the slot must fall strictly INSIDE one of the doctor's working
+    // shifts for that day (a full 30-minute consultation must fit within it).
+    const { data: shifts, error: shiftErr } = await supabase
+      .from('doctor_shifts')
+      .select('start_time, end_time, status')
+      .eq('doctor_id', doctorId)
+      .eq('work_date', date);
+    if (shiftErr) {
+      return { error: 'Không thể kiểm tra ca làm việc của bác sĩ. Vui lòng thử lại.' };
+    }
+    const slotStart = this.timeToMinutes(time);
+    const slotEnd = slotStart + 30;
+    const withinShift = (shifts || []).some((s) => {
+      const st = this.timeToMinutes(s.start_time);
+      const et = this.timeToMinutes(s.end_time);
+      return st != null && et != null && slotStart >= st && slotEnd <= et;
+    });
+    if (!withinShift) {
+      return { error: 'Khung giờ tái khám không nằm trong ca làm việc của bác sĩ.' };
+    }
+
+    // Guard 2 — re-check the slot is still free for this doctor (race condition).
+    const { data: sameDay, error: aptErr } = await supabase
+      .from('appointments')
+      .select('start_time, status')
+      .eq('doctor_id', doctorId)
+      .eq('appointment_date', date);
+    if (aptErr) {
+      return { error: 'Không thể kiểm tra lịch hẹn hiện có. Vui lòng thử lại.' };
+    }
+    const isTaken = (sameDay || []).some(
+      (a) => !this.isCancelled(a.status) && (a.start_time || '').substring(0, 5) === time
+    );
+    if (isTaken) {
+      return { error: 'Khung giờ này vừa được đặt. Vui lòng chọn khung giờ khác.' };
+    }
+
+    const created = await this.create({
+      doctor_id: doctorId,
+      patient_id: followUpData.patientId || followUpData.patient_id || null,
+      patient_name: followUpData.patientName || followUpData.patient_name || null,
+      appointment_date: date,
+      start_time: time,
+      end_time: this.addMinutesToTime(time, 30),
+      service: followUpData.service || 'Tái khám',
+      fee: followUpData.fee || '300,000 VNĐ',
+      status: 'Đã xác nhận',
+      reason: followUpData.reason || 'Tái khám theo chỉ định của bác sĩ',
+    });
+    if (!created) {
+      return { error: 'Tạo lịch tái khám thất bại. Vui lòng thử lại.' };
+    }
+    return { data: this.mapAppointment(created) };
   },
 
   async addAppointment(aptData) {

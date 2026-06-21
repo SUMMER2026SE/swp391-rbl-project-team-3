@@ -1,5 +1,14 @@
 import React from 'react';
-import { Clock, PlayCircle, Eye } from 'lucide-react';
+import { Clock, PlayCircle, Eye, Users, CheckCircle2, AlarmClock } from 'lucide-react';
+
+// Minutes a checked-in patient has been waiting past their scheduled slot.
+// Only meaningful for today's queue; negative (not yet due) clamps to 0.
+const minutesWaiting = (timeStr) => {
+  if (!timeStr) return 0;
+  const [h, m] = String(timeStr).split(':').map(Number);
+  const now = new Date();
+  return Math.max(0, now.getHours() * 60 + now.getMinutes() - (h * 60 + m));
+};
 
 export default function ScheduleWaitingList({ doctorId, onStartExam, appointments = [] }) {
   const today = new Date().toISOString().split('T')[0];
@@ -17,74 +26,144 @@ export default function ScheduleWaitingList({ doctorId, onStartExam, appointment
     }
   ).sort((a, b) => (a?.time || '').localeCompare(b?.time || ''));
 
+  const waitingCount = todayAppointments.filter((a) => a?.status === 'Đang chờ').length;
+  const examinedCount = todayAppointments.filter((a) => a?.status === 'Đã khám').length;
+  const lateCount = todayAppointments.filter(
+    (a) => a?.status === 'Đang chờ' && minutesWaiting(a?.time) >= 15
+  ).length;
+
+  // Queue position is assigned across WAITING patients only (in time order).
+  let queuePos = 0;
+
   const handleStartExam = (apt) => {
-    if (onStartExam) {
-      onStartExam(apt);
-    }
+    if (onStartExam) onStartExam(apt);
   };
 
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case 'Đã xác nhận':
-      case 'Đang chờ':
-        return <span className="bg-amber-50 text-amber-600 px-3 py-1 rounded-full text-xs font-bold border border-amber-200/50">Đang chờ</span>;
-      case 'Đã khám':
-        return <span className="bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 font-bold px-3 py-1 rounded-full backdrop-blur-md text-xs">Đã khám</span>;
-      case 'Chờ xác nhận':
-        return <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-xs font-bold border border-slate-200/50">Chưa xác nhận</span>;
-      default:
-        return <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-xs font-bold border border-slate-200/50">{status}</span>;
-    }
-  };
+  const stats = [
+    { label: 'Đang chờ khám', value: waitingCount, icon: Users, accent: 'text-amber-600', ring: 'bg-amber-500/10 border-amber-200/60' },
+    { label: 'Đã khám hôm nay', value: examinedCount, icon: CheckCircle2, accent: 'text-emerald-600', ring: 'bg-emerald-500/10 border-emerald-200/60' },
+    { label: 'Chờ quá 15 phút', value: lateCount, icon: AlarmClock, accent: lateCount > 0 ? 'text-rose-600' : 'text-slate-400', ring: lateCount > 0 ? 'bg-rose-500/10 border-rose-200/60' : 'bg-slate-500/5 border-slate-200/60' },
+  ];
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-extrabold text-2xl md:text-3xl text-slate-900 tracking-tight">Hàng chờ & Lịch khám</h1>
-        <p className="text-sm text-slate-500 font-medium mt-1">Danh sách bệnh nhân trong ngày: {today}</p>
+        <h1 className="font-extrabold text-2xl md:text-3xl text-slate-900 tracking-tight">Hàng chờ &amp; Lịch khám</h1>
+        <p className="text-sm md:text-base text-slate-600 font-medium mt-1">Danh sách bệnh nhân trong ngày: {today}</p>
       </div>
+
+      {/* At-a-glance queue stats — fast triage in a busy clinic */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {stats.map((s) => {
+          const Icon = s.icon;
+          return (
+            <div
+              key={s.label}
+              className={`backdrop-blur-xl bg-white/40 border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.05)] rounded-2xl p-4 flex items-center gap-4`}
+            >
+              <div className={`w-11 h-11 rounded-xl border flex items-center justify-center ${s.ring}`}>
+                <Icon className={`w-5 h-5 ${s.accent}`} />
+              </div>
+              <div>
+                <p className={`text-2xl font-extrabold leading-none ${s.accent}`}>{s.value}</p>
+                <p className="text-sm font-bold text-slate-600 mt-1">{s.label}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
       <div className="backdrop-blur-xl bg-white/40 border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.05)] rounded-[2rem] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50/50 border-b border-slate-200/50">
-                <th className="py-4 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider">Thời gian</th>
-                <th className="py-4 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider">Bệnh nhân</th>
-                <th className="py-4 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider">Dịch vụ</th>
-                <th className="py-4 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider">Trạng thái</th>
-                <th className="py-4 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider text-right">Thao tác</th>
+                <th className="py-4 pl-6 pr-2 text-xs font-bold text-slate-500 uppercase tracking-wider w-12">#</th>
+                <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Thời gian</th>
+                <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Bệnh nhân</th>
+                <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Dịch vụ</th>
+                <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Trạng thái</th>
+                <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100/50">
               {todayAppointments?.map?.((apt) => {
                 const isCompleted = apt?.status === 'Đã khám';
+                const isWaiting = apt?.status === 'Đang chờ';
+                const waited = isWaiting ? minutesWaiting(apt?.time) : 0;
+                const isLate = waited >= 15;
+                const isNext = isWaiting && (queuePos === 0); // first still-waiting row
+                const position = isWaiting ? ++queuePos : null;
+
                 return (
-                  <tr 
-                    key={apt?.id} 
-                    className={`transition-colors ${
-                      isCompleted 
-                        ? 'bg-slate-50/30 opacity-70 hover:bg-slate-50/50' 
-                        : 'hover:bg-white/60'
+                  <tr
+                    key={apt?.id}
+                    className={`transition-colors relative ${
+                      isCompleted
+                        ? 'bg-slate-50/30 opacity-70 hover:bg-slate-50/50'
+                        : isLate
+                          ? 'bg-rose-50/40 hover:bg-rose-50/70'
+                          : isNext
+                            ? 'bg-teal-50/40 hover:bg-teal-50/70'
+                            : 'hover:bg-white/60'
                     }`}
                   >
-                    <td className="py-4 px-6">
-                      <div className="flex items-center gap-2 text-slate-700 font-bold">
+                    {/* Position cell doubles as a colored urgency accent bar */}
+                    <td className="py-4 pl-6 pr-2">
+                      <span
+                        className={`inline-flex items-center justify-center w-7 h-7 rounded-lg text-xs font-extrabold border ${
+                          isCompleted
+                            ? 'bg-slate-100 text-slate-400 border-slate-200'
+                            : isLate
+                              ? 'bg-rose-500 text-white border-rose-500 shadow-sm shadow-rose-500/30'
+                              : isNext
+                                ? 'bg-teal-500 text-white border-teal-500 shadow-sm shadow-teal-500/30'
+                                : 'bg-white text-slate-600 border-slate-200'
+                        }`}
+                      >
+                        {position ?? '✓'}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="flex items-center gap-2 text-base text-slate-800 font-bold">
                         <Clock className="w-4 h-4 text-teal-500" />
                         {apt?.time}
                       </div>
+                      {isWaiting && waited > 0 && (
+                        <span className={`mt-1 inline-block text-xs font-bold ${isLate ? 'text-rose-600' : 'text-slate-500'}`}>
+                          Đã chờ {waited} phút
+                        </span>
+                      )}
                     </td>
-                    <td className="py-4 px-6 font-bold text-slate-900">
+                    <td className="py-4 px-4 text-base md:text-lg font-bold text-slate-900">
                       {apt?.patientName}
                     </td>
-                    <td className="py-4 px-6 text-slate-600 text-sm font-medium">
+                    <td className="py-4 px-4 text-slate-600 text-sm md:text-base font-medium">
                       {apt?.service}
                     </td>
-                    <td className="py-4 px-6">
-                      {getStatusBadge(apt?.status)}
+                    <td className="py-4 px-4">
+                      {isCompleted ? (
+                        <span className="bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 font-bold px-3 py-1 rounded-full backdrop-blur-md text-sm">Đã khám</span>
+                      ) : isLate ? (
+                        <span className="inline-flex items-center gap-1 bg-rose-500/10 text-rose-600 px-3 py-1 rounded-full text-sm font-bold border border-rose-300/50">
+                          <AlarmClock className="w-3 h-3" />
+                          Chờ lâu
+                        </span>
+                      ) : isNext ? (
+                        <span className="inline-flex items-center gap-1.5 bg-teal-500/10 text-teal-700 px-3 py-1 rounded-full text-sm font-bold border border-teal-300/50">
+                          <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-teal-500"></span>
+                          </span>
+                          Mời vào khám
+                        </span>
+                      ) : (
+                        <span className="bg-amber-50 text-amber-600 px-3 py-1 rounded-full text-sm font-bold border border-amber-200/50">Đang chờ</span>
+                      )}
                     </td>
                     <td className="py-4 px-6 text-right">
                       {isCompleted ? (
-                        <button 
+                        <button
                           onClick={() => handleStartExam(apt)}
                           className="inline-flex items-center justify-center gap-2 bg-white/40 hover:bg-white/80 border border-slate-200/50 text-slate-700 px-4 py-2 rounded-xl text-sm font-bold shadow-sm hover:shadow active:scale-95 transition-all cursor-pointer backdrop-blur-md"
                         >
@@ -92,15 +171,17 @@ export default function ScheduleWaitingList({ doctorId, onStartExam, appointment
                           Xem lại hồ sơ
                         </button>
                       ) : (
-                        apt?.status !== 'Đã hủy' && (
-                          <button 
-                            onClick={() => handleStartExam(apt)}
-                            className="inline-flex items-center gap-2 bg-gradient-to-r from-teal-500 to-emerald-500 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md shadow-teal-500/20 hover:shadow-lg hover:shadow-teal-500/30 active:scale-95 transition-all"
-                          >
-                            <PlayCircle className="w-4 h-4" />
-                            Bắt đầu khám
-                          </button>
-                        )
+                        <button
+                          onClick={() => handleStartExam(apt)}
+                          className={`inline-flex items-center gap-2 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md active:scale-95 transition-all ${
+                            isNext || isLate
+                              ? 'bg-gradient-to-r from-teal-500 to-emerald-500 shadow-teal-500/30 hover:shadow-lg hover:shadow-teal-500/40 ring-2 ring-teal-300/40'
+                              : 'bg-gradient-to-r from-teal-500 to-emerald-500 shadow-teal-500/20 hover:shadow-lg hover:shadow-teal-500/30'
+                          }`}
+                        >
+                          <PlayCircle className="w-4 h-4" />
+                          Bắt đầu khám
+                        </button>
                       )}
                     </td>
                   </tr>
@@ -108,7 +189,7 @@ export default function ScheduleWaitingList({ doctorId, onStartExam, appointment
               })}
               {todayAppointments.length === 0 && (
                 <tr>
-                  <td colSpan="5" className="py-8 text-center text-slate-500 font-medium">
+                  <td colSpan="6" className="py-8 text-center text-base text-slate-500 font-medium">
                     Không có lịch khám nào trong ngày hôm nay.
                   </td>
                 </tr>

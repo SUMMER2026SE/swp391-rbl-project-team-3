@@ -2,9 +2,8 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Ticket, Plus, Search, Edit3, Trash2, Power, Copy,
-  CheckCircle2, AlertCircle, X, Tag, Calendar, Percent,
-  DollarSign, Users, Layers, Info, TrendingUp, Clock,
-  ChevronDown, Filter,
+  CheckCircle2, AlertCircle, X, Percent, Banknote,
+  Info, TrendingUp, Clock,
 } from 'lucide-react';
 import { useVoucherController } from '../../controllers/useVoucherController';
 
@@ -30,11 +29,6 @@ const EVENT_STYLES = {
 
 function formatCurrency(n) {
   return Number(n).toLocaleString('vi-VN') + ' VNĐ';
-}
-
-function formatDiscount(v) {
-  if (v.discountType === 'Percentage') return `-${v.discountValue}%`;
-  return `-${formatCurrency(v.discountValue)}`;
 }
 
 function usagePercent(v) {
@@ -450,114 +444,123 @@ function VoucherCard({ v, onEdit, onToggle, onDelete, onCopy, idx }) {
 
   const eventStyle = v.eventTag ? (EVENT_STYLES[v.eventTag] || EVENT_STYLES['Mùa hè']) : null;
 
+  // Vibrant "split-ticket" stub gradient — Shopee/Lazada style, keyed off type.
+  const stubGradient =
+    isExpiredOrFull
+      ? 'from-gray-400 to-gray-500'
+      : v.discountType === 'Percentage'
+        ? 'from-orange-500 to-red-500'
+        : v.discountType === 'Fixed'
+          ? 'from-emerald-500 to-teal-600'
+          : 'from-violet-500 to-purple-600';
+
+  const TypeIcon = v.discountType === 'Percentage' ? Percent : Banknote;
+  const typeShort = v.discountType === 'Percentage' ? 'Theo %' : 'Cố định';
+  const remaining = Math.max(0, (v.maxUsage || 0) - (v.usageCount || 0));
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: idx * 0.05 }}
-      className={`bg-white border rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden ${
-        isExpiredOrFull ? 'opacity-70 border-slate-200' :
-        eventStyle ? 'border-transparent ring-1 ring-inset ring-slate-200 hover:ring-indigo-200' :
-        'border-slate-200 hover:border-indigo-200'
+      className={`group relative flex flex-col md:flex-row rounded-2xl overflow-hidden border border-white/60 shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all ${
+        isExpiredOrFull ? 'opacity-90' : ''
       }`}
     >
-      {/* Top accent bar — gradient cho event, solid cho normal */}
-      <div className={`h-1.5 ${
-        eventStyle ? `bg-gradient-to-r ${eventStyle.gradient}` :
-        isActive ? 'bg-gradient-to-r from-indigo-500 to-sky-500' :
-        'bg-slate-200'
-      }`} />
+      {/* ── LEFT STUB · Value Zone ───────────────────────────────────── */}
+      <div className={`relative shrink-0 md:w-[36%] flex flex-col items-center justify-center gap-2 text-white text-center px-4 py-6 bg-gradient-to-br ${stubGradient}`}>
+        <span className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-90">Ưu đãi</span>
 
-      <div className="p-5">
-        {/* Event badge */}
-        {v.eventTag && (
-          <div className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full border mb-3 ${eventStyle?.light || 'bg-slate-100 border-slate-200 text-slate-600'}`}>
-            <span>{v.eventEmoji}</span>
-            {v.eventTag}
+        {v.discountType === 'Percentage' ? (
+          <div className="flex items-start justify-center leading-none">
+            <span className="text-5xl font-black">{v.discountValue}</span>
+            <span className="text-2xl font-black mt-1">%</span>
+          </div>
+        ) : (
+          <div className="leading-none">
+            <span className="text-3xl md:text-4xl font-black break-all">{Number(v.discountValue).toLocaleString('vi-VN')}</span>
+            <span className="block text-sm font-bold mt-1 opacity-90">VNĐ</span>
           </div>
         )}
 
-        {/* Row 1: code + status + discount badge */}
-        <div className="flex items-start justify-between gap-3 mb-3">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="font-mono text-base font-black text-slate-900 tracking-widest">
-                {v.code}
-              </span>
-              <button
-                onClick={() => onCopy(v.code)}
-                title="Copy mã"
-                className="p-1 rounded-lg hover:bg-slate-100 border-none bg-transparent cursor-pointer text-slate-400 hover:text-indigo-600 transition-all"
-              >
-                <Copy className="w-3.5 h-3.5" />
-              </button>
-            </div>
-            <p className="text-xs font-semibold text-slate-700 leading-snug">{v.name}</p>
-            {v.description && (
-              <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-2 leading-relaxed">{v.description}</p>
-            )}
-          </div>
-          <div className="flex flex-col items-end gap-1.5 shrink-0">
-            <span className={`text-lg font-black px-3 py-1 rounded-xl border-2 ${
-              isActive && eventStyle
-                ? `bg-gradient-to-r ${eventStyle.gradient} text-white border-transparent`
-                : isActive
-                  ? 'text-indigo-600 bg-indigo-50 border-indigo-200'
-                  : 'text-slate-500 bg-slate-100 border-slate-200'
-            }`}>
-              {formatDiscount(v)}
+        <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full bg-white/20 border border-white/30 backdrop-blur-sm">
+          <TypeIcon className="w-3.5 h-3.5" /> {typeShort}
+        </span>
+
+        {v.minOrderAmount > 0 && (
+          <span className="text-[10px] font-semibold opacity-90 leading-snug">Đơn tối thiểu {formatCurrency(v.minOrderAmount)}</span>
+        )}
+      </div>
+
+      {/* ── RIGHT BODY · Info Zone ───────────────────────────────────── */}
+      <div className="relative flex-1 flex flex-col bg-white/80 backdrop-blur-xl p-5 border-t-2 md:border-t-0 md:border-l-2 border-dashed border-slate-300">
+        {/* Punched-ticket tear notches along the desktop seam */}
+        <span className="hidden md:block absolute -left-2 -top-2 w-4 h-4 rounded-full bg-slate-50" />
+        <span className="hidden md:block absolute -left-2 -bottom-2 w-4 h-4 rounded-full bg-slate-50" />
+
+        {/* Code pill + copy + status */}
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="font-mono text-sm md:text-base font-black uppercase tracking-[0.15em] text-slate-800 bg-slate-50 border-2 border-dashed border-slate-300 px-2.5 py-1 rounded-lg truncate">
+              {v.code}
             </span>
-            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${STATUS_STYLES[displayStatus] || STATUS_STYLES['Tạm dừng']}`}>
-              {displayStatus}
-            </span>
+            <button
+              onClick={() => onCopy(v.code)}
+              title="Copy mã"
+              className="shrink-0 p-1.5 rounded-lg hover:bg-slate-100 border-none bg-transparent cursor-pointer text-slate-500 hover:text-indigo-600 transition-all"
+            >
+              <Copy className="w-4 h-4" />
+            </button>
           </div>
+          <span className={`shrink-0 text-xs font-bold px-2.5 py-1 rounded-full border ${STATUS_STYLES[displayStatus] || STATUS_STYLES['Tạm dừng']}`}>
+            {displayStatus}
+          </span>
         </div>
 
-        {/* Info grid */}
-        <div className="grid grid-cols-2 gap-2 mb-3 text-xs">
-          <div className="bg-slate-50 rounded-xl p-2.5 flex items-center gap-2">
-            <Calendar className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-            <div className="min-w-0">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Hiệu lực</p>
-              <p className="text-slate-700 font-semibold truncate">{v.validFrom} → {v.validTo}</p>
-            </div>
-          </div>
-          <div className="bg-slate-50 rounded-xl p-2.5 flex items-center gap-2">
-            <DollarSign className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-            <div className="min-w-0">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Đơn tối thiểu</p>
-              <p className="text-slate-700 font-semibold">{v.minOrderAmount > 0 ? formatCurrency(v.minOrderAmount) : 'Không yêu cầu'}</p>
-            </div>
+        {/* Event tag + name + description */}
+        {v.eventTag && (
+          <span className={`inline-flex self-start items-center gap-1.5 text-[11px] font-bold px-2 py-0.5 rounded-full border mb-2 ${eventStyle?.light || 'bg-slate-100 border-slate-200 text-slate-600'}`}>
+            <span>{v.eventEmoji}</span>{v.eventTag}
+          </span>
+        )}
+        <p className="text-base md:text-lg font-bold text-slate-900 leading-snug">{v.name}</p>
+        {v.description && (
+          <p className="text-xs md:text-sm text-slate-500 mt-0.5 line-clamp-2 leading-relaxed">{v.description}</p>
+        )}
+
+        {/* Clean icon-less meta — left-aligned typographic grid */}
+        <div className="mt-3 space-y-1.5 text-sm">
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-slate-500 font-medium shrink-0">Hiệu lực</span>
+            <span className="text-slate-800 font-semibold text-right">{v.validFrom} → {v.validTo}</span>
           </div>
           {v.discountType === 'Percentage' && v.maxDiscountAmount > 0 && (
-            <div className="bg-slate-50 rounded-xl p-2.5 flex items-center gap-2">
-              <Percent className="w-3.5 h-3.5 text-violet-400 shrink-0" />
-              <div className="min-w-0">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Giảm tối đa</p>
-                <p className="text-slate-700 font-semibold">{formatCurrency(v.maxDiscountAmount)}</p>
-              </div>
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-slate-500 font-medium shrink-0">Giảm tối đa</span>
+              <span className="text-slate-800 font-semibold">{formatCurrency(v.maxDiscountAmount)}</span>
             </div>
           )}
-          <div className="bg-slate-50 rounded-xl p-2.5 flex items-center gap-2">
-            <Users className="w-3.5 h-3.5 text-teal-400 shrink-0" />
-            <div className="min-w-0">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Lượt/người</p>
-              <p className="text-slate-700 font-semibold">{v.perUserLimit} lượt</p>
-            </div>
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-slate-500 font-medium shrink-0">Lượt / người</span>
+            <span className="text-slate-800 font-semibold">{v.perUserLimit} lượt</span>
           </div>
-        </div>
-
-        {/* Service tags */}
-        <div className="flex items-start gap-1.5 mb-3">
-          <Layers className="w-3 h-3 text-slate-400 shrink-0 mt-0.5" />
-          <span className="text-[10px] text-slate-500 font-semibold leading-relaxed">{serviceNames}</span>
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-slate-500 font-medium shrink-0">Dịch vụ</span>
+            <span className="text-slate-800 font-semibold text-right truncate">{serviceNames}</span>
+          </div>
         </div>
 
         {/* Usage progress */}
-        <div className="mb-4">
-          <div className="flex justify-between text-[10px] font-semibold text-slate-500 mb-1.5">
-            <span>Lượt dùng: {v.usageCount}/{v.maxUsage}</span>
-            <span className={pct >= 90 ? 'text-rose-500' : pct >= 70 ? 'text-amber-500' : 'text-emerald-600'}>
+        <div className="mt-3">
+          <div className="flex justify-between items-center text-xs font-semibold text-slate-600 mb-1.5">
+            <span>
+              {isExpiredOrFull ? (
+                `Đã dùng ${v.usageCount}/${v.maxUsage}`
+              ) : (
+                <>Còn lại <span className="font-black text-slate-800">{remaining} lượt</span></>
+              )}
+            </span>
+            <span className={`font-bold ${pct >= 90 ? 'text-rose-500' : pct >= 70 ? 'text-amber-500' : 'text-emerald-600'}`}>
               {pct}%
             </span>
           </div>
@@ -569,7 +572,6 @@ function VoucherCard({ v, onEdit, onToggle, onDelete, onCopy, idx }) {
               className={`h-full rounded-full ${
                 pct >= 90 ? 'bg-rose-400' :
                 pct >= 70 ? 'bg-amber-400' :
-                eventStyle ? `bg-gradient-to-r ${eventStyle.gradient}` :
                 'bg-gradient-to-r from-indigo-400 to-sky-400'
               }`}
             />
@@ -577,7 +579,7 @@ function VoucherCard({ v, onEdit, onToggle, onDelete, onCopy, idx }) {
         </div>
 
         {/* Action buttons */}
-        <div className="flex gap-2">
+        <div className="flex gap-2 mt-auto pt-4">
           <button
             onClick={() => onEdit(v)}
             className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-indigo-50 text-indigo-700 border border-indigo-200 text-xs font-bold hover:bg-indigo-100 transition-all cursor-pointer"

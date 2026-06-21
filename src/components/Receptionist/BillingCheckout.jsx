@@ -13,6 +13,8 @@ import {
   CreditCard,
   Banknote,
   Sparkles,
+  Mail,
+  Loader2,
 } from 'lucide-react';
 import { AppointmentModel } from '../../models/AppointmentModel';
 import GlassCard, { GLASS_BASE, GLASS_INPUT } from '../common/GlassCard';
@@ -765,6 +767,22 @@ function StatCard({ label, value, hint, icon: Icon, tone }) {
 }
 
 function ReceiptModal({ receipt, onClose, receptionistId, showToast }) {
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+
+  // Mock the "email the e-invoice to the patient" flow: show a loading state,
+  // simulate the network round-trip, then surface a success toast. Swap the
+  // setTimeout for the real send call (e.g. an edge function) when wired up.
+  const handleSendEmail = async () => {
+    if (isSendingEmail) return;
+    setIsSendingEmail(true);
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      showToast?.('Đã gửi hóa đơn thành công đến email của bệnh nhân!', 'success');
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
+
   return (
     <AnimatePresence>
       {receipt && (
@@ -836,21 +854,39 @@ function ReceiptModal({ receipt, onClose, receptionistId, showToast }) {
               <div className="pt-1 text-center">
                 <span className="text-[8px] text-slate-500 tracking-wider">Cảm ơn quý khách đã tin tưởng DermaSmart!</span>
               </div>
+              <p className="text-xs text-gray-500 italic text-center mt-4">
+                * Bản điện tử của hóa đơn sẽ được gửi qua email bệnh nhân.
+              </p>
             </div>
 
-            <div className="flex gap-3 pt-4">
+            <div className="flex flex-col sm:flex-row gap-3 pt-4">
               <button
                 onClick={onClose}
-                className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 active:scale-95 transition-all cursor-pointer bg-white"
+                className="sm:flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 active:scale-95 transition-all cursor-pointer bg-white"
               >
                 Đóng lại
+              </button>
+              <button
+                onClick={handleSendEmail}
+                disabled={isSendingEmail}
+                className="sm:flex-1 py-3 rounded-xl bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 active:scale-95 transition-all cursor-pointer text-xs font-bold flex justify-center items-center gap-1.5 disabled:opacity-70 disabled:cursor-not-allowed disabled:active:scale-100"
+              >
+                {isSendingEmail ? (
+                  <>
+                    <Loader2 size={18} className="mr-2 animate-spin" /> Đang gửi...
+                  </>
+                ) : (
+                  <>
+                    <Mail size={18} className="mr-2" /> Gửi Email
+                  </>
+                )}
               </button>
               <button
                 onClick={() => {
                   showToast?.('Đang gửi lệnh in hóa đơn...', 'success');
                   window.print?.();
                 }}
-                className="flex-1 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-xs font-bold hover:shadow-lg active:scale-95 transition-all cursor-pointer border-none flex justify-center items-center gap-1.5"
+                className="sm:flex-1 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-xs font-bold hover:shadow-lg active:scale-95 transition-all cursor-pointer border-none flex justify-center items-center gap-1.5"
               >
                 <Printer className="w-4 h-4" /> In hóa đơn
               </button>

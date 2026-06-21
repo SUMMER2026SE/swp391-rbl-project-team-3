@@ -38,7 +38,7 @@ export default function LiquidSidebarMenu({ items, activeId, onChange, isSidebar
                       animate={{ opacity: 1, width: 'auto' }}
                       exit={{ opacity: 0, width: 0 }}
                       transition={{ duration: 0.15 }}
-                      className="text-[14px] whitespace-nowrap overflow-hidden"
+                      className="text-[15px] md:text-base whitespace-nowrap overflow-hidden"
                     >
                       {item.label}
                     </motion.span>
@@ -49,7 +49,7 @@ export default function LiquidSidebarMenu({ items, activeId, onChange, isSidebar
             
             {/* Tooltip for collapsed state */}
             {!isSidebarExpanded && (
-              <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+              <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-slate-800 text-white text-sm font-semibold rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
                 {item.label}
                 <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-slate-800"></div>
               </div>

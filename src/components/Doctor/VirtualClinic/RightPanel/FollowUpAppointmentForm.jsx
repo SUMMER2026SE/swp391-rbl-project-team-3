@@ -1,173 +1,363 @@
-import React, { useMemo, useState, useEffect } from 'react';
-import { CalendarPlus, Clock, Save } from 'lucide-react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import { CalendarPlus, Clock, Save, CalendarX2, Loader2, CheckCircle2, ShieldCheck } from 'lucide-react';
 import GlassCard, { GLASS_INPUT } from '../../../common/GlassCard';
-import { supabase } from '../../../../supabaseClient';
+import { AppointmentModel } from '../../../../models/AppointmentModel';
+import { DoctorScheduleModel, ACTIVE_SHIFT_STATUSES } from '../../../../models/DoctorScheduleModel';
 
-function getDefaultFollowUpDate() {
-    const date = new Date();
-    date.setDate(date.getDate() + 7);
-    return date.toISOString().slice(0, 10);
-}
+const todayStr = () => new Date().toISOString().slice(0, 10);
+const toMinutes = (t) => {
+    if (!t) return null;
+    const [h, m] = String(t).split(':').map(Number);
+    return (h || 0) * 60 + (m || 0);
+};
+const toTimeStr = (mins) =>
+    `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`;
+
+const formatDateLabel = (dateStr) => {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    const weekday = ['CN', 'Th 2', 'Th 3', 'Th 4', 'Th 5', 'Th 6', 'Th 7'][date.getDay()];
+    return { weekday, dayMonth: `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}` };
+};
 
 export default function FollowUpAppointmentForm({ appointment }) {
+    const doctorId = appointment?.doctorId || appointment?.doctor_id || null;
+
     const storageKey = useMemo(
         () => `follow-up-${appointment?.id || appointment?.patientId || 'default'}`,
         [appointment]
     );
 
-    const [followUp, setFollowUp] = useState(() => {
-        const saved = localStorage.getItem(storageKey);
-        return saved
-            ? JSON.parse(saved)
-            : {
-                date: getDefaultFollowUpDate(),
-                time: '09:00',
-                reason: 'Tái khám để đánh giá tiến triển sau điều trị',
-                status: 'Chưa tạo',
-            };
+    // Persisted "already created" marker so re-opening the EMR shows the result.
+    const [created, setCreated] = useState(() => {
+        try {
+            const saved = localStorage.getItem(storageKey);
+            return saved ? JSON.parse(saved) : null;
+        } catch {
+            return null;
+        }
     });
 
+    const [shifts, setShifts] = useState([]);
+    const [loadingShifts, setLoadingShifts] = useState(true);
+    const [selectedDate, setSelectedDate] = useState('');
+    const [selectedTime, setSelectedTime] = useState('');
+    const [reason, setReason] = useState('Tái khám để đánh giá tiến triển sau điều trị');
     const [bookedTimes, setBookedTimes] = useState([]);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState('');
+
+    // ── Fetch the doctor's OWN future working shifts ────────────────────────────
+    useEffect(() => {
+        let active = true;
+        const fetchShifts = async () => {
+            if (!doctorId) {
+                setLoadingShifts(false);
+                return;
+            }
+            setLoadingShifts(true);
+            const all = await DoctorScheduleModel.getShiftsByDoctor(doctorId);
+            if (!active) return;
+            const today = todayStr();
+            const future = (all || []).filter(
+                (s) => s.work_date >= today && ACTIVE_SHIFT_STATUSES.includes(s.status)
+            );
+            setShifts(future);
+            setLoadingShifts(false);
+        };
+        fetchShifts();
+        return () => { active = false; };
+    }, [doctorId]);
+
+    // Group shifts by date → only these dates are selectable.
+    const shiftsByDate = useMemo(() => {
+        const map = {};
+        shifts.forEach((s) => {
+            (map[s.work_date] ||= []).push(s);
+        });
+        return map;
+    }, [shifts]);
+
+    const availableDates = useMemo(
+        () => Object.keys(shiftsByDate).sort(),
+        [shiftsByDate]
+    );
+
+    // Auto-select the first available date once shifts arrive.
+    useEffect(() => {
+        if (!selectedDate && availableDates.length > 0) {
+            setSelectedDate(availableDates[0]);
+        }
+    }, [availableDates, selectedDate]);
+
+    // 30-minute slots generated strictly WITHIN the selected day's shift windows.
+    const slots = useMemo(() => {
+        if (!selectedDate) return [];
+        const set = new Set();
+        (shiftsByDate[selectedDate] || []).forEach((s) => {
+            const start = toMinutes(s.start_time);
+            const end = toMinutes(s.end_time);
+            if (start == null || end == null) return;
+            for (let cur = start; cur + 30 <= end; cur += 30) {
+                set.add(toTimeStr(cur));
+            }
+        });
+        return [...set].sort();
+    }, [selectedDate, shiftsByDate]);
+
+    // Pretty "08:00 - 17:00" summary of the selected day's shift(s).
+    const shiftHoursLabel = useMemo(() => {
+        const list = shiftsByDate[selectedDate] || [];
+        return list
+            .map((s) => `${(s.start_time || '').slice(0, 5)} - ${(s.end_time || '').slice(0, 5)}`)
+            .join(' · ');
+    }, [shiftsByDate, selectedDate]);
+
+    // ── Fetch already-booked slots for the chosen date (real DB columns) ────────
+    const loadBookedTimes = useCallback(async () => {
+        if (!doctorId || !selectedDate) {
+            setBookedTimes([]);
+            return;
+        }
+        const taken = await AppointmentModel.getLockedSlots(selectedDate, doctorId);
+        setBookedTimes(Array.isArray(taken) ? taken : []);
+    }, [doctorId, selectedDate]);
 
     useEffect(() => {
-        const fetchBookedTimes = async () => {
-            const docId = appointment?.doctor_id || appointment?.doctorId;
-            if (!docId || !followUp.date) return;
-            
+        loadBookedTimes();
+    }, [loadBookedTimes]);
+
+    // Keep a chosen slot only while it remains valid for the selected date.
+    useEffect(() => {
+        if (selectedTime && !slots.includes(selectedTime)) {
+            setSelectedTime('');
+        }
+    }, [slots, selectedTime]);
+
+    const isSlotDisabled = useCallback(
+        (timeStr) => {
+            if (bookedTimes.includes(timeStr)) return true;
+
+            // Locked (5-min hold) slots shared via the booking system.
             try {
-                const { data } = await supabase
-                    .from('appointments')
-                    .select('time')
-                    .eq('doctor_id', docId)
-                    .eq('date', followUp.date)
-                    .neq('status', 'Đã hủy');
-                
-                if (data) {
-                    setBookedTimes(data.map(apt => apt.time.substring(0, 5)));
-                } else {
-                    setBookedTimes([]);
-                }
-            } catch (err) {
-                console.error("Failed to fetch booked times:", err);
+                const lockedList = JSON.parse(localStorage.getItem('dermasmart_locked_slots') || '[]');
+                const locked = lockedList.some(
+                    (l) =>
+                        l.lockedUntil > Date.now() &&
+                        String(l.doctorId) === String(doctorId) &&
+                        l.date === selectedDate &&
+                        l.time === timeStr
+                );
+                if (locked) return true;
+            } catch { /* ignore malformed cache */ }
+
+            // Past slots when the selected date is today.
+            if (selectedDate === todayStr()) {
+                const now = new Date();
+                if (toMinutes(timeStr) <= now.getHours() * 60 + now.getMinutes()) return true;
             }
-        };
-        fetchBookedTimes();
-    }, [followUp.date, appointment]);
+            return false;
+        },
+        [bookedTimes, doctorId, selectedDate]
+    );
 
-    const handleCreateFollowUp = () => {
-        if (!followUp.date || !followUp.time || !followUp.reason.trim()) {
-            alert('Vui lòng nhập đầy đủ ngày, giờ và lý do tái khám.');
+    const handleCreateFollowUp = async () => {
+        setError('');
+        if (!selectedDate || !selectedTime) {
+            setError('Vui lòng chọn ngày và khung giờ tái khám.');
+            return;
+        }
+        if (!reason.trim()) {
+            setError('Vui lòng nhập lý do tái khám.');
+            return;
+        }
+        if (isSlotDisabled(selectedTime)) {
+            setError('Khung giờ này không còn trống. Vui lòng chọn khung giờ khác.');
+            await loadBookedTimes();
             return;
         }
 
-        if (followUp.time < '08:00' || followUp.time > '17:00') {
-            alert('Giờ tái khám phải nằm trong giờ làm việc của phòng khám (08:00 - 17:00).');
-            return;
+        setSaving(true);
+        try {
+            const result = await AppointmentModel.createFollowUp({
+                doctorId,
+                patientId: appointment?.patientId || appointment?.patient_id,
+                patientName: appointment?.patientName || appointment?.patient_name,
+                date: selectedDate,
+                time: selectedTime,
+                reason: reason.trim(),
+                service: 'Tái khám',
+                fee: appointment?.fee,
+            });
+
+            if (result?.error) {
+                setError(result.error);
+                await loadBookedTimes(); // surface the slot that was taken under us
+                return;
+            }
+
+            const record = {
+                date: selectedDate,
+                time: selectedTime,
+                reason: reason.trim(),
+                patientName: appointment?.patientName,
+                appointmentId: result.data?.id || null,
+                createdAt: new Date().toISOString(),
+            };
+            setCreated(record);
+            localStorage.setItem(storageKey, JSON.stringify(record));
+            setBookedTimes((prev) => [...new Set([...prev, selectedTime])]);
+            setSelectedTime('');
+        } catch (err) {
+            console.error('Failed to create follow-up:', err);
+            setError('Tạo lịch tái khám thất bại. Vui lòng thử lại.');
+        } finally {
+            setSaving(false);
         }
-
-        const nextFollowUp = {
-            ...followUp,
-            status: 'Đã tạo lịch tái khám',
-            patientName: appointment?.patientName,
-            service: appointment?.service,
-            createdAt: new Date().toISOString(),
-        };
-
-        setFollowUp(nextFollowUp);
-        localStorage.setItem(storageKey, JSON.stringify(nextFollowUp));
-        alert(`Đã tạo lịch tái khám cho ${appointment?.patientName || 'bệnh nhân'} vào ${followUp.date} lúc ${followUp.time}.`);
     };
 
     return (
         <GlassCard className="p-6 mb-6">
-            <div className="flex items-center gap-2 mb-4 pb-4 border-b border-slate-200/40">
-                <CalendarPlus className="w-5 h-5 text-teal-600" />
-                <h3 className="font-extrabold text-lg text-slate-900">Tạo lịch tái khám</h3>
-            </div>
-
-            <div className="mb-5">
-                <label className="block text-xs font-bold text-slate-700 mb-2">Ngày tái khám</label>
-                <input
-                    type="date"
-                    min={new Date().toISOString().slice(0, 10)}
-                    value={followUp.date}
-                    onChange={(e) => setFollowUp({ ...followUp, date: e.target.value, status: 'Chưa tạo' })}
-                    className={`${GLASS_INPUT} w-full py-3 px-4 text-sm font-semibold rounded-xl`}
-                />
-            </div>
-
-            <div className="mb-5">
-                <label className="block text-xs font-bold text-slate-700 mb-2">Giờ tái khám</label>
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                    {Array.from({ length: 19 }).map((_, i) => {
-                        const hour = Math.floor(i / 2) + 8;
-                        const min = i % 2 === 0 ? '00' : '30';
-                        const timeStr = `${hour.toString().padStart(2, '0')}:${min}`;
-                        
-                        // Disable logic for past time if the selected date is today
-                        const isBooked = bookedTimes.includes(timeStr);
-                        
-                        // Check locked slots (5 mins)
-                        const lockedListStr = localStorage.getItem('dermasmart_locked_slots') || '[]';
-                        let lockedList = [];
-                        try { lockedList = JSON.parse(lockedListStr); } catch (e) {}
-                        const activeLocks = lockedList?.filter(l => l.lockedUntil > Date.now());
-                        const docId = appointment?.doctor_id || appointment?.doctorId;
-                        const isLocked = activeLocks.some(l => String(l.doctorId) === String(docId) && l.date === followUp.date && l.time === timeStr);
-
-                        const isToday = followUp.date === new Date().toISOString().slice(0, 10);
-                        const now = new Date();
-                        const currentMins = now.getHours() * 60 + now.getMinutes();
-                        const slotMins = hour * 60 + (i % 2 === 0 ? 0 : 30);
-                        const isPast = isToday && slotMins <= currentMins;
-
-                        const isDisabled = isPast || isBooked || isLocked;
-                        const isSelected = followUp.time === timeStr;
-
-                        return (
-                            <button
-                                key={timeStr}
-                                type="button"
-                                disabled={isDisabled}
-                                onClick={() => setFollowUp({ ...followUp, time: timeStr, status: 'Chưa tạo' })}
-                                className={`px-2 py-2.5 rounded-xl text-xs font-bold text-center border transition-all ${
-                                    isDisabled
-                                        ? 'bg-slate-100 border-slate-200 text-slate-300 cursor-not-allowed line-through'
-                                        : isSelected
-                                            ? 'bg-teal-500 border-teal-500 text-white shadow-md shadow-teal-500/20 cursor-pointer'
-                                            : 'bg-white border-slate-200 text-slate-600 hover:border-teal-300 hover:bg-teal-50 cursor-pointer'
-                                }`}
-                            >
-                                {timeStr}
-                            </button>
-                        );
-                    })}
+            <div className="flex items-center justify-between gap-2 mb-4 pb-4 border-b border-slate-200/40">
+                <div className="flex items-center gap-2">
+                    <CalendarPlus className="w-5 h-5 text-teal-600" />
+                    <h3 className="font-extrabold text-lg text-slate-900">Tạo lịch tái khám</h3>
                 </div>
+                <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-bold text-teal-700 bg-teal-500/10 border border-teal-300/40 px-2.5 py-1 rounded-full">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    Chỉ trong ca làm việc của bạn
+                </span>
             </div>
 
-            <div>
-                <label className="block text-xs font-bold text-slate-700 mb-2">Lý do tái khám</label>
-                <textarea
-                    value={followUp.reason}
-                    onChange={(e) => setFollowUp({ ...followUp, reason: e.target.value, status: 'Chưa tạo' })}
-                    className={`${GLASS_INPUT} w-full py-3 px-4 text-sm font-semibold resize-none rounded-xl`}
-                    rows="2"
-                />
-            </div>
+            {/* Success banner — a follow-up already exists for this exam. */}
+            {created && (
+                <div className="mb-5 flex items-start gap-3 rounded-2xl border border-emerald-300/50 bg-emerald-500/10 px-4 py-3">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
+                    <div className="text-sm">
+                        <p className="font-bold text-emerald-800">Đã tạo lịch tái khám</p>
+                        <p className="text-emerald-700/90 font-medium">
+                            {created.patientName ? `${created.patientName} · ` : ''}
+                            {formatDateLabel(created.date).weekday} {formatDateLabel(created.date).dayMonth} lúc {created.time}
+                        </p>
+                    </div>
+                </div>
+            )}
 
-            <div className="mt-3 flex items-center justify-between gap-3">
-        <span className={`px-3 py-1.5 rounded-full text-xs font-bold border ${followUp.status === 'Đã tạo lịch tái khám' ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60' : 'bg-slate-50 text-slate-500 border-slate-200/60'}`}>
-          {followUp.status}
-        </span>
-                <button
-                    type="button"
-                    onClick={handleCreateFollowUp}
-                    className="bg-gradient-to-r from-sky-500 to-teal-500 text-white py-3 px-5 rounded-xl font-bold shadow-md shadow-sky-500/20 hover:shadow-lg hover:shadow-sky-500/30 active:scale-95 transition-all flex items-center justify-center gap-2"
-                >
-                    <Save className="w-4 h-4" />
-                    Tạo lịch tái khám
-                </button>
-            </div>
+            {loadingShifts ? (
+                <div className="flex items-center justify-center gap-2 py-10 text-slate-500">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span className="text-sm font-semibold">Đang tải ca làm việc của bác sĩ…</span>
+                </div>
+            ) : availableDates.length === 0 ? (
+                <div className="flex flex-col items-center justify-center text-center py-10">
+                    <div className="w-14 h-14 rounded-2xl bg-white/50 border border-white/60 flex items-center justify-center mb-3 shadow-inner">
+                        <CalendarX2 className="w-7 h-7 text-slate-300" />
+                    </div>
+                    <p className="text-sm font-semibold text-slate-600">Bác sĩ chưa có ca làm việc sắp tới</p>
+                    <p className="text-xs text-slate-400 mt-1">
+                        Không thể đặt lịch tái khám cho đến khi có ca trực được phân. Vui lòng liên hệ quản trị viên.
+                    </p>
+                </div>
+            ) : (
+                <>
+                    {/* ── Step 1: choose a day the doctor actually works ──────────── */}
+                    <div className="mb-5">
+                        <label className="block text-xs font-bold text-slate-700 mb-2">
+                            Ngày tái khám <span className="text-slate-400 font-medium">(chỉ hiện ngày bác sĩ có ca trực)</span>
+                        </label>
+                        <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 hide-scrollbar">
+                            {availableDates.map((d) => {
+                                const { weekday, dayMonth } = formatDateLabel(d);
+                                const isActive = selectedDate === d;
+                                return (
+                                    <button
+                                        key={d}
+                                        type="button"
+                                        onClick={() => { setSelectedDate(d); setError(''); }}
+                                        className={`shrink-0 min-w-[72px] px-3 py-2.5 rounded-2xl border text-center transition-all ${
+                                            isActive
+                                                ? 'bg-teal-500 border-teal-500 text-white shadow-md shadow-teal-500/25'
+                                                : 'bg-white/60 border-slate-200 text-slate-600 hover:border-teal-300 hover:bg-teal-50'
+                                        }`}
+                                    >
+                                        <span className={`block text-[10px] font-bold uppercase tracking-wide ${isActive ? 'text-teal-50' : 'text-slate-400'}`}>
+                                            {weekday}
+                                        </span>
+                                        <span className="block text-sm font-extrabold">{dayMonth}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        {shiftHoursLabel && (
+                            <p className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-500">
+                                <Clock className="w-3.5 h-3.5 text-teal-500" />
+                                Ca trực: {shiftHoursLabel}
+                            </p>
+                        )}
+                    </div>
+
+                    {/* ── Step 2: choose a free 30-min slot inside the shift ──────── */}
+                    <div className="mb-5">
+                        <label className="block text-xs font-bold text-slate-700 mb-2">Khung giờ tái khám</label>
+                        {slots.length === 0 ? (
+                            <p className="text-xs text-slate-400 font-medium py-3">Không có khung giờ khả dụng cho ngày này.</p>
+                        ) : (
+                            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                                {slots.map((timeStr) => {
+                                    const disabled = isSlotDisabled(timeStr);
+                                    const isSelected = selectedTime === timeStr;
+                                    return (
+                                        <button
+                                            key={timeStr}
+                                            type="button"
+                                            disabled={disabled}
+                                            title={disabled ? 'Khung giờ đã được đặt hoặc đã qua' : 'Khung giờ trống'}
+                                            onClick={() => { setSelectedTime(timeStr); setError(''); }}
+                                            className={`px-2 py-2.5 rounded-xl text-xs font-bold text-center border transition-all ${
+                                                disabled
+                                                    ? 'bg-slate-100 border-slate-200 text-slate-300 cursor-not-allowed line-through'
+                                                    : isSelected
+                                                        ? 'bg-teal-500 border-teal-500 text-white shadow-md shadow-teal-500/20 cursor-pointer'
+                                                        : 'bg-white border-slate-200 text-slate-600 hover:border-teal-300 hover:bg-teal-50 cursor-pointer'
+                                            }`}
+                                        >
+                                            {timeStr}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="mb-4">
+                        <label className="block text-xs font-bold text-slate-700 mb-2">Lý do tái khám</label>
+                        <textarea
+                            value={reason}
+                            onChange={(e) => setReason(e.target.value)}
+                            className={`${GLASS_INPUT} w-full py-3 px-4 text-sm font-semibold resize-none rounded-xl`}
+                            rows="2"
+                        />
+                    </div>
+
+                    {error && (
+                        <p className="mb-3 text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200/60 rounded-xl px-3 py-2">
+                            {error}
+                        </p>
+                    )}
+
+                    <div className="flex items-center justify-end">
+                        <button
+                            type="button"
+                            disabled={saving || !selectedDate || !selectedTime}
+                            onClick={handleCreateFollowUp}
+                            className="bg-gradient-to-r from-sky-500 to-teal-500 text-white py-3 px-5 rounded-xl font-bold shadow-md shadow-sky-500/20 hover:shadow-lg hover:shadow-sky-500/30 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
+                        >
+                            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                            {saving ? 'Đang tạo lịch…' : created ? 'Tạo lịch tái khám khác' : 'Tạo lịch tái khám'}
+                        </button>
+                    </div>
+                </>
+            )}
         </GlassCard>
     );
 }

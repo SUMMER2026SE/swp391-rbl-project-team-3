@@ -1,5 +1,10 @@
 import { supabase } from '../supabaseClient';
 
+// Shift statuses that represent a REAL, bookable working shift. An assigned shift
+// ('Đã phân công') and a doctor-confirmed shift ('Đã xác nhận') are both active;
+// only revoked/cancelled shifts should ever be excluded from availability lookups.
+export const ACTIVE_SHIFT_STATUSES = ['Đã phân công', 'Đã xác nhận'];
+
 export const DoctorScheduleModel = {
   /**
    * Lấy tất cả ca làm việc
@@ -117,7 +122,7 @@ export const DoctorScheduleModel = {
         .select('*')
         .eq('doctor_id', doctorId)
         .eq('work_date', date)
-        .eq('status', 'Đã phân công');
+        .in('status', ACTIVE_SHIFT_STATUSES);
       if (error) throw error;
       return data || [];
     } catch (e) {

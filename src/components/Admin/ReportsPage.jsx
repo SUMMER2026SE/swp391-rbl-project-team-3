@@ -4,7 +4,8 @@ import {
   TrendingUp, Activity, Calendar, Search, Stethoscope,
   CheckCircle2, Clock, AlertCircle, Info, ShieldAlert,
   Database, User, UserCog, Wrench, ChevronDown, ChevronUp,
-  BarChart3, TrendingDown, Award, XCircle,
+  BarChart3, TrendingDown, XCircle,
+  Ticket, BadgeCheck, Ban, Wallet,
 } from 'lucide-react';
 import GlassSelect from '../common/GlassSelect';
 
@@ -155,30 +156,22 @@ function ServiceReportTab() {
           ))}
         </div>
       </div>
-      {/* KPI cards */}
+      {/* KPI cards — tinted Liquid Glass */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: 'TỔNG LƯỢT ĐẶT',  value: totalUsed,            color: '#4f46e5', lightColor: '#c7d2fe', iconColor: 'text-indigo-500',  iconBg: 'bg-indigo-100/50', icon: Calendar },
-          { label: 'LƯỢT HOÀN THÀNH',value: totalDone,             color: '#10b981', lightColor: '#a7f3d0', iconColor: 'text-emerald-500', iconBg: 'bg-emerald-100/50', icon: CheckCircle2 },
-          { label: 'TỶ LỆ HỦY',      value: `${cancelRate}%`,     color: '#ef4444', lightColor: '#fecaca', iconColor: 'text-rose-500', iconBg: 'bg-rose-100/50', icon: XCircle },
-          { label: 'DOANH THU DV',   value: fmtVND(totalRev),     color: '#b45309', lightColor: '#fde68a', iconColor: 'text-amber-600', iconBg: 'bg-amber-100/50', icon: TrendingUp },
+          { label: 'Lượt đặt',   value: totalUsed,        tint: 'from-blue-50/60 to-white/40 border-blue-100/50',       iconWrap: 'bg-blue-100/60 text-blue-600',       icon: Ticket },
+          { label: 'Hoàn thành', value: totalDone,        tint: 'from-emerald-50/60 to-white/40 border-emerald-100/50', iconWrap: 'bg-emerald-100/60 text-emerald-600', icon: BadgeCheck },
+          { label: 'Tỷ lệ hủy',  value: `${cancelRate}%`, tint: 'from-rose-50/60 to-white/40 border-rose-100/50',       iconWrap: 'bg-rose-100/60 text-rose-600',       icon: Ban },
+          { label: 'Doanh thu',  value: fmtVND(totalRev), tint: 'from-amber-50/60 to-white/40 border-amber-100/50',     iconWrap: 'bg-amber-100/60 text-amber-600',     icon: Wallet },
         ]?.map?.((c, i) => (
           <motion.div key={c.label} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
-            className="bg-white rounded-[18px] p-3.5 shadow-sm relative flex flex-col justify-between min-h-[120px]"
-            style={{ 
-               borderStyle: 'solid',
-               borderWidth: '2px',
-               borderLeftColor: c.color,
-               borderBottomColor: c.color,
-               borderTopColor: c.lightColor,
-               borderRightColor: c.lightColor
-            }}>
-            <div className={`w-9 h-9 rounded-full flex items-center justify-center ${c.iconBg}`}>
-               {c.icon && <c.icon className={`w-4.5 h-4.5 ${c.iconColor}`} />}
+            className={`bg-gradient-to-br ${c.tint} backdrop-blur-xl border rounded-2xl p-4 shadow-lg flex flex-col justify-between min-h-[120px]`}>
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${c.iconWrap}`}>
+               <c.icon className="w-5 h-5" />
             </div>
-            <div className="mt-2">
-              <p className="text-[8px] sm:text-[9px] font-bold text-slate-500 tracking-wider mb-1 uppercase">{c.label}</p>
-              <p className="text-xl sm:text-2xl font-black text-slate-900 leading-tight break-all sm:break-normal">{c.value}</p>
+            <div className="mt-3">
+              <p className="text-xs font-medium text-slate-500 tracking-wider mb-1 uppercase">{c.label}</p>
+              <p className="text-2xl md:text-3xl font-black text-slate-800 leading-tight break-all">{c.value}</p>
             </div>
           </motion.div>
         ))}
@@ -186,11 +179,8 @@ function ServiceReportTab() {
       {/* 2 Main Sections */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         {/* Top dịch vụ sử dụng nhiều nhất (Vertical Bar Chart) */}
-        <div className="bg-white rounded-[18px] p-4 shadow-sm flex flex-col min-h-[240px] lg:col-span-3" style={{ border: '1px solid #f1f5f9' }}>
-          <div className="flex items-center gap-1.5 mb-1.5">
-            <Award className="w-4 h-4 text-amber-500" />
-            <span className="text-sm font-bold text-slate-800">Top dịch vụ sử dụng nhiều nhất</span>
-          </div>
+        <div className="bg-white/60 backdrop-blur-xl border border-white/50 shadow-lg rounded-[18px] p-4 flex flex-col min-h-[240px] lg:col-span-3">
+          <h3 className="text-base md:text-lg font-bold text-slate-800 mb-1.5">Top dịch vụ sử dụng nhiều nhất</h3>
           <div className="flex-1 flex items-end justify-around gap-2 sm:gap-3 px-1.5 pb-3 pt-4">
             {syncedTop4.length === 0 ? (
                <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs pb-8">Chưa có dữ liệu</div>
@@ -228,11 +218,8 @@ function ServiceReportTab() {
         </div>
 
         {/* Doanh thu theo dịch vụ */}
-        <div className="bg-white rounded-[18px] p-4 shadow-sm lg:col-span-2" style={{ border: '1px solid #f1f5f9' }}>
-          <div className="flex items-center gap-1.5 mb-5">
-            <BarChart3 className="w-4 h-4 text-indigo-600" />
-            <span className="text-sm font-bold text-slate-800">Doanh thu theo dịch vụ</span>
-          </div>
+        <div className="bg-white/60 backdrop-blur-xl border border-white/50 shadow-lg rounded-[18px] p-4 lg:col-span-2">
+          <h3 className="text-base md:text-lg font-bold text-slate-800 mb-5">Doanh thu theo dịch vụ</h3>
           <div className="space-y-4">
             {syncedTop4?.map?.((s, i) => {
               const maxRev = Math.max(...syncedTop4?.map?.(x => x.revenue), 1);
@@ -264,12 +251,9 @@ function ServiceReportTab() {
         </div>
       </div>
       {/* Monthly trend */}
-      <div className="bg-white border border-slate-100 rounded-[18px] p-4 shadow-sm">
+      <div className="bg-white/60 backdrop-blur-xl border border-white/50 shadow-lg rounded-[18px] p-4">
         <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-          <div className="flex items-center gap-1.5">
-            <TrendingUp className="w-4 h-4 text-indigo-600" />
-            <span className="text-sm font-bold text-slate-800">Xu hướng sử dụng dịch vụ theo tháng</span>
-          </div>
+          <h3 className="text-base md:text-lg font-bold text-slate-800">Xu hướng sử dụng dịch vụ theo tháng</h3>
           <div className="flex items-center gap-3">
             {top3?.map?.((name, i) => (
               <span key={name} className="flex items-center gap-1 text-[10px] font-bold text-slate-700">
@@ -1117,7 +1101,7 @@ function AppointmentViewHub() {
 
   return (
     <div className="space-y-5">
-      <div className="flex gap-1 bg-slate-100 rounded-2xl p-1.5">
+      <div className="flex gap-1 bg-white/30 backdrop-blur-md border border-white/40 rounded-2xl p-1.5">
         {[
           { id: 'detail', label: 'Chi tiết lịch hẹn',   icon: ChevronDown },
           { id: 'status', label: 'Trạng thái lịch hẹn',  icon: CheckCircle2 },
@@ -1127,8 +1111,8 @@ function AppointmentViewHub() {
             <button key={t.id} onClick={() => setSub(t.id)}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all border-none cursor-pointer ${
                 sub === t.id
-                  ? 'bg-white text-indigo-700 shadow-sm'
-                  : 'bg-transparent text-slate-500 hover:text-slate-700 hover:bg-white/60'
+                  ? 'bg-white text-indigo-700 shadow-sm font-semibold'
+                  : 'bg-transparent text-slate-500 hover:text-slate-700 hover:bg-white/40'
               }`}>
               <Icon className="w-4 h-4" />
               {t.label}
@@ -1171,15 +1155,15 @@ function SystemReportHub() {
   return (
     <div className="space-y-5">
       {/* Inner sub-tab bar */}
-      <div className="flex gap-1 bg-slate-100 rounded-2xl p-1.5 flex-wrap">
+      <div className="flex gap-1 bg-white/30 backdrop-blur-md border border-white/40 rounded-2xl p-1.5 flex-wrap">
         {SYSTEM_SUBTABS?.map?.(t => {
           const Icon = t.icon;
           return (
             <button key={t.id} onClick={() => setSub(t.id)}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all border-none cursor-pointer ${
                 sub === t.id
-                  ? 'bg-white text-indigo-700 shadow-sm'
-                  : 'bg-transparent text-slate-500 hover:text-slate-700 hover:bg-white/60'
+                  ? 'bg-white text-indigo-700 shadow-sm font-semibold'
+                  : 'bg-transparent text-slate-500 hover:text-slate-700 hover:bg-white/40'
               }`}>
               <Icon className="w-4 h-4" />
               {t.label}
@@ -1207,15 +1191,15 @@ export default function ReportsPage() {
   return (
     <div className="space-y-6">
       {/* Main tab bar */}
-      <div className="flex gap-1 bg-slate-100 rounded-2xl p-1.5 flex-wrap">
+      <div className="flex gap-1 bg-white/30 backdrop-blur-md border border-white/40 rounded-2xl p-1.5 flex-wrap">
         {TABS?.map?.(tab => {
           const Icon = tab.icon;
           return (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all border-none cursor-pointer ${
                 activeTab === tab.id
-                  ? 'bg-white text-indigo-700 shadow-sm'
-                  : 'bg-transparent text-slate-500 hover:text-slate-700 hover:bg-white/50'
+                  ? 'bg-white text-indigo-700 shadow-sm font-semibold'
+                  : 'bg-transparent text-slate-500 hover:text-slate-700 hover:bg-white/40'
               }`}>
               <Icon className="w-4 h-4" />
               {tab.label}
