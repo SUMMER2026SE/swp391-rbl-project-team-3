@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Ticket, Plus, Search, Edit3, Trash2, Power, Copy,
@@ -124,20 +125,23 @@ function VoucherFormModal({ initial, onClose, onSave }) {
   const inputCls = "w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-800 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/20 transition-all";
   const labelCls = "block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5";
 
-  return (
+  // Portal to <body> so the overlay escapes the dashboard's `<main z-10>` stacking
+  // context — otherwise the fixed Sidebar (root z-40) paints OVER the overlay.
+  return createPortal(
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[9998] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4"
-      onClick={onClose}
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6"
     >
+      {/* Dedicated overlay — covers the entire viewport incl. Sidebar & Navbar */}
+      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
+
       <motion.div
         initial={{ scale: 0.93, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.93, y: 20 }}
         transition={{ type: 'spring', damping: 26, stiffness: 200 }}
-        className="w-full max-w-2xl bg-white rounded-[2rem] shadow-2xl border border-slate-200 flex flex-col max-h-[92vh] overflow-hidden"
-        onClick={e => e.stopPropagation()}
+        className="relative z-[10000] w-full max-w-2xl bg-white/80 backdrop-blur-xl border border-white/50 shadow-2xl rounded-2xl p-6 overflow-hidden flex flex-col max-h-[90vh]"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-7 pt-6 pb-4 border-b border-slate-100 shrink-0">
+        <div className="flex items-center justify-between pb-4 mb-1 border-b border-slate-100 shrink-0">
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-indigo-50 rounded-xl border border-indigo-100">
               <Ticket className="w-5 h-5 text-indigo-600" />
@@ -156,8 +160,8 @@ function VoucherFormModal({ initial, onClose, onSave }) {
           </button>
         </div>
 
-        {/* Form body */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-7 py-5 space-y-5">
+        {/* Form body — scrolls gracefully on short viewports */}
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto py-5 pr-1 space-y-5">
           {error && (
             <div className="flex items-start gap-2.5 p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-medium">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-500" />
@@ -357,7 +361,7 @@ function VoucherFormModal({ initial, onClose, onSave }) {
         </form>
 
         {/* Footer */}
-        <div className="px-7 py-4 border-t border-slate-100 flex gap-3 shrink-0">
+        <div className="pt-4 mt-1 border-t border-slate-100 flex gap-3 shrink-0">
           <button
             type="submit"
             onClick={handleSubmit}
@@ -373,23 +377,23 @@ function VoucherFormModal({ initial, onClose, onSave }) {
           </button>
         </div>
       </motion.div>
-    </motion.div>
+    </motion.div>,
+    document.body
   );
 }
 
 // ─── Delete Confirm Modal ─────────────────────────────────────────────────────
 function DeleteModal({ voucher, onClose, onConfirm, error }) {
-  return (
+  return createPortal(
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[9998] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4"
-      onClick={onClose}
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6"
     >
+      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
       <motion.div
         initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-        className="w-full max-w-md bg-white rounded-2xl p-7 shadow-2xl border border-slate-200"
-        onClick={e => e.stopPropagation()}
+        className="relative z-[10000] w-full max-w-md bg-white/80 backdrop-blur-xl border border-white/50 rounded-2xl p-7 shadow-2xl"
       >
         <div className="w-14 h-14 bg-rose-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
           <Trash2 className="w-7 h-7 text-rose-500" />
@@ -425,7 +429,8 @@ function DeleteModal({ voucher, onClose, onConfirm, error }) {
           </button>
         </div>
       </motion.div>
-    </motion.div>
+    </motion.div>,
+    document.body
   );
 }
 

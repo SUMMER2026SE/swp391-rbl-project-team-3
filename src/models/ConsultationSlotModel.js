@@ -4,8 +4,8 @@ import { supabase } from '../supabaseClient';
 const STATUS_TO_DB = { 'Trống': 'AVAILABLE', 'Đã đặt': 'BOOKED', 'Đã hủy': 'CANCELLED' };
 const statusFromDb = (s) =>
   s === 'BOOKED' || s === 'Đã đặt' ? 'Đã đặt'
-  : s === 'CANCELLED' || s === 'Đã hủy' ? 'Đã hủy'
-  : 'Trống';
+    : s === 'CANCELLED' || s === 'Đã hủy' ? 'Đã hủy'
+      : 'Trống';
 
 const toDate = (v) => (typeof v === 'string' ? v.slice(0, 10) : new Date(v).toISOString().slice(0, 10));
 const toHHMM = (v) => String(v || '').slice(0, 5);

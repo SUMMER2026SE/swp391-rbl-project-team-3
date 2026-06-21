@@ -31,8 +31,8 @@ export default function GlassSelect({
 
   const items = (Array.isArray(options) ? options : []).map((o) =>
     o && typeof o === 'object'
-      ? { value: o.value, label: o.label ?? String(o.value) }
-      : { value: o, label: String(o) }
+      ? { value: o.value, label: o.label ?? String(o.value), icon: o.icon ?? null }
+      : { value: o, label: String(o), icon: null }
   );
   const selected = items.find((o) => String(o.value) === String(value));
 
@@ -65,8 +65,9 @@ export default function GlassSelect({
         aria-expanded={open}
         className={`${GLASS_INPUT} w-full flex items-center justify-between gap-2 cursor-pointer disabled:opacity-50 ${buttonClassName}`}
       >
-        <span className={`truncate ${selected ? '' : 'text-slate-800'}`}>
-          {selected ? selected.label : placeholder}
+        <span className={`flex items-center gap-2 truncate ${selected ? '' : 'text-slate-800'}`}>
+          {selected?.icon ? <selected.icon className="w-4 h-4 shrink-0 text-slate-500" /> : null}
+          <span className="truncate">{selected ? selected.label : placeholder}</span>
         </span>
         <motion.span
           animate={{ rotate: open ? 180 : 0 }}
@@ -85,7 +86,7 @@ export default function GlassSelect({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.18, ease: 'easeOut' }}
-            className={`${GLASS_BASE} !bg-white/95 absolute z-50 left-0 right-0 mt-2 p-1.5 max-h-60 overflow-auto origin-top ${menuClassName}`}
+            className={`${GLASS_BASE} !bg-white/95 absolute z-[100] left-0 right-0 mt-2 p-1.5 max-h-60 overflow-auto origin-top ${menuClassName}`}
           >
             {items.length === 0 ? (
               <li className="px-3 py-2 text-sm text-slate-800">Không có lựa chọn</li>
@@ -102,7 +103,10 @@ export default function GlassSelect({
                       active ? 'bg-white/30' : ''
                     }`}
                   >
-                    <span className="truncate">{o.label}</span>
+                    <span className="flex items-center gap-2 truncate">
+                      {o.icon ? <o.icon className="w-4 h-4 shrink-0 text-slate-500" /> : null}
+                      <span className="truncate">{o.label}</span>
+                    </span>
                     {active && <Check className="w-4 h-4 text-emerald-600 shrink-0" />}
                   </li>
                 );

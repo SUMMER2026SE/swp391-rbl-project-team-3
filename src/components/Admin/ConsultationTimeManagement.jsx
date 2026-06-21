@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, Plus, Save, Search, Trash2, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Clock, Plus, Save, Search, Trash2, Loader2, CheckCircle2, AlertTriangle, User, Calendar, Tag } from 'lucide-react';
 import { useDoctors } from '../../hooks/useDoctors';
 import { ConsultationSlotModel } from '../../models/ConsultationSlotModel';
 import { supabase } from '../../supabaseClient';
@@ -147,21 +147,45 @@ export default function ConsultationTimeManagement() {
 
     return (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
-            <div className="backdrop-blur-xl bg-white/75 border border-white/80 shadow-[0_15px_40px_rgba(0,0,0,0.05)] rounded-[2rem] p-8">
+            <div className="relative z-20 bg-white/60 backdrop-blur-xl border border-white/50 shadow-lg rounded-2xl p-8">
                 <div className="flex items-center gap-2 mb-6 pb-4 border-b border-slate-200/50"><Plus className="w-5 h-5 text-indigo-600" /><h3 className="font-extrabold text-lg text-slate-800">Tạo khung giờ khám</h3></div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-4">
-                    <Select value={form.doctorName} onChange={(v) => setForm({ ...form, doctorName: v })} options={doctorOptions} />
-                    <Input type="date" value={form.date} onChange={(v) => setForm({ ...form, date: v })} />
-                    <Input type="time" value={form.startTime} onChange={(v) => setForm({ ...form, startTime: v })} />
-                    <Input type="time" value={form.endTime} onChange={(v) => setForm({ ...form, endTime: v })} />
-                    <Select value={form.status} onChange={(v) => setForm({ ...form, status: v })} options={['Trống', 'Đã đặt', 'Đã hủy']} />
-                    <button onClick={createSlot} disabled={saving} className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-sky-500 text-white rounded-2xl font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-200 disabled:opacity-60">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Tạo slot</button>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                    <Select icon={User} iconColor="text-indigo-500" value={form.doctorName} onChange={(v) => setForm({ ...form, doctorName: v })} options={doctorOptions} />
+                    <div className="relative flex items-center w-full bg-white/50 backdrop-blur-md border border-white/60 rounded-xl px-4 py-3 shadow-sm focus-within:ring-2 focus-within:ring-indigo-500/30 transition-all">
+                        <Calendar className="text-blue-500 mr-2 shrink-0" size={20} />
+                        <input
+                            type="date"
+                            value={form.date}
+                            onChange={(e) => setForm({ ...form, date: e.target.value })}
+                            className="!bg-transparent appearance-none border-none outline-none w-full text-slate-800 p-0 focus:ring-0 text-sm font-semibold [&::-webkit-calendar-picker-indicator]:opacity-60 hover:[&::-webkit-calendar-picker-indicator]:opacity-100 cursor-pointer"
+                        />
+                    </div>
+                    <div className="relative flex items-center w-full bg-white/50 backdrop-blur-md border border-white/60 rounded-xl px-4 py-3 shadow-sm focus-within:ring-2 focus-within:ring-indigo-500/30 transition-all">
+                        <Clock className="text-emerald-500 mr-2 shrink-0" size={20} />
+                        <input
+                            type="time"
+                            value={form.startTime}
+                            onChange={(e) => setForm({ ...form, startTime: e.target.value })}
+                            className="!bg-transparent appearance-none border-none outline-none w-full text-slate-800 p-0 focus:ring-0 text-sm font-semibold [&::-webkit-calendar-picker-indicator]:opacity-60 hover:[&::-webkit-calendar-picker-indicator]:opacity-100 cursor-pointer"
+                        />
+                    </div>
+                    <div className="relative flex items-center w-full bg-white/50 backdrop-blur-md border border-white/60 rounded-xl px-4 py-3 shadow-sm focus-within:ring-2 focus-within:ring-indigo-500/30 transition-all">
+                        <Clock className="text-emerald-500 mr-2 shrink-0" size={20} />
+                        <input
+                            type="time"
+                            value={form.endTime}
+                            onChange={(e) => setForm({ ...form, endTime: e.target.value })}
+                            className="!bg-transparent appearance-none border-none outline-none w-full text-slate-800 p-0 focus:ring-0 text-sm font-semibold [&::-webkit-calendar-picker-indicator]:opacity-60 hover:[&::-webkit-calendar-picker-indicator]:opacity-100 cursor-pointer"
+                        />
+                    </div>
+                    <Select icon={Tag} iconColor="text-indigo-500" value={form.status} onChange={(v) => setForm({ ...form, status: v })} options={['Trống', 'Đã đặt', 'Đã hủy']} />
+                    <button onClick={createSlot} disabled={saving} className="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-sky-500 text-white rounded-2xl font-bold text-base flex items-center justify-center gap-2 shadow-lg shadow-indigo-200 disabled:opacity-60">{saving ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />} Thêm khung giờ</button>
                 </div>
             </div>
-            <div className="backdrop-blur-xl bg-white/75 border border-white/80 shadow-[0_15px_40px_rgba(0,0,0,0.05)] rounded-[2rem] overflow-hidden">
+            <div className="relative z-10 bg-white/60 backdrop-blur-xl border border-white/50 shadow-lg rounded-2xl">
                 <div className="p-6 border-b border-slate-200/50 flex flex-col md:flex-row justify-between gap-4 bg-white/40">
                     <div className="flex items-center gap-2"><Clock className="w-5 h-5 text-indigo-600" /><h3 className="font-extrabold text-lg text-slate-800">Danh sách slot</h3></div>
-                    <div className="relative w-full md:w-80"><Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" /><input className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold outline-none" placeholder="Tìm theo bác sĩ/ngày..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
+                    <div className="relative flex items-center w-full md:w-80 bg-white/50 backdrop-blur-md border border-white/60 rounded-xl px-4 py-3 shadow-sm focus-within:ring-2 focus-within:ring-indigo-500/30 transition-all"><Search size={20} className="text-indigo-500 mr-2 shrink-0" /><input className="bg-transparent border-none outline-none w-full text-slate-800 p-0 focus:ring-0 text-sm font-semibold placeholder-slate-400" placeholder="Tìm theo bác sĩ/ngày..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
                 </div>
 
                 {loading ? (
@@ -215,9 +239,31 @@ export default function ConsultationTimeManagement() {
     );
 }
 
-function Input({ value, onChange, onBlur, type = 'text' }) {
-    return <input type={type} value={value} onChange={(e) => onChange(e.target.value)} onBlur={onBlur ? (e) => onBlur(e.target.value) : undefined} className="w-full bg-white border border-slate-200 rounded-2xl py-3 px-4 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400" />;
+function Input({ value, onChange, onBlur, type = 'text', icon: Icon, iconColor }) {
+    return (
+        <div className="relative flex items-center w-full bg-white/50 backdrop-blur-md border border-white/60 rounded-xl px-4 py-3 shadow-sm focus-within:ring-2 focus-within:ring-indigo-500/30 transition-all">
+            {Icon && <Icon size={20} className={`mr-2 shrink-0 ${iconColor || 'text-indigo-500'}`} />}
+            <input 
+                type={type} 
+                value={value} 
+                onChange={(e) => onChange(e.target.value)} 
+                onBlur={onBlur ? (e) => onBlur(e.target.value) : undefined} 
+                className="bg-transparent border-none outline-none w-full text-slate-800 p-0 focus:ring-0 text-sm font-semibold [&::-webkit-calendar-picker-indicator]:opacity-60 hover:[&::-webkit-calendar-picker-indicator]:opacity-100 cursor-pointer" 
+            />
+        </div>
+    );
 }
-function Select({ value, onChange, options }) {
-    return <GlassSelect value={value} onChange={onChange} options={options || []} className="w-full" buttonClassName="py-3 px-4 text-sm font-semibold" />;
+function Select({ value, onChange, options, icon: Icon, iconColor }) {
+    return (
+        <div className="relative w-full">
+            {Icon && <Icon size={20} className={`absolute left-3 top-1/2 -translate-y-1/2 z-10 pointer-events-none ${iconColor || 'text-indigo-500'}`} />}
+            <GlassSelect 
+                value={value} 
+                onChange={onChange} 
+                options={options || []} 
+                className="w-full" 
+                buttonClassName={`py-3 bg-white/50 border border-white/60 text-slate-800 rounded-xl ${Icon ? 'pl-10' : 'px-4'} text-sm font-semibold focus:ring-2 focus:ring-indigo-500/30`} 
+            />
+        </div>
+    );
 }
