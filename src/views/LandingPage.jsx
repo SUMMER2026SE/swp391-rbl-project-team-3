@@ -14,7 +14,7 @@ import {
   useSpring,
   useMotionTemplate,
 } from 'framer-motion';
-import { Key, LogOut, User, Ticket, Tag, Calendar, ArrowRight, ChevronDown, Cpu, ScanFace, CalendarPlus } from 'lucide-react';
+import { Key, LogOut, User, Ticket, ArrowRight, ChevronDown, Cpu, ScanFace, CalendarPlus, Copy, Check } from 'lucide-react';
 import logo from '../assets/logo.png';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
@@ -309,6 +309,109 @@ const LOCAL_MOCK_VOUCHERS = [
     eventEmoji: '✨',
   },
 ];
+
+// Public-facing voucher card — mirrors the Admin "Split-Ticket" Liquid Glass
+// design (VoucherManagement.jsx) so the landing page and back office stay in sync.
+function PublicVoucherCard({ v, i, onBook }) {
+  const [copied, setCopied] = useState(false);
+  const isPercentage = v.discountType === 'Percentage';
+  const stubGradient = isPercentage ? 'from-orange-500 to-red-500' : 'from-emerald-500 to-teal-600';
+  const ctaGradient = isPercentage ? 'from-orange-500 to-red-500' : 'from-emerald-500 to-teal-600';
+  const typeShort = isPercentage ? 'Theo %' : 'Cố định';
+  const remaining = Math.max(0, (v.maxUsage || 0) - (v.usageCount || 0));
+
+  const handleCopy = (e) => {
+    e.stopPropagation();
+    if (!v.code) return;
+    navigator.clipboard?.writeText(v.code).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    });
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      transition={{ delay: i * 0.07, type: 'spring' }}
+      viewport={{ once: false, amount: 0.2 }}
+      onClick={onBook}
+      className="group relative flex flex-col md:flex-row rounded-2xl overflow-hidden border border-white/60 shadow-lg cursor-pointer hover:-translate-y-1 hover:shadow-xl transition-all duration-300"
+    >
+      {/* ── LEFT STUB · Value Zone ── */}
+      <div className={`relative shrink-0 md:w-[36%] flex flex-col items-center justify-center gap-2 text-white text-center px-4 py-6 bg-gradient-to-br ${stubGradient}`}>
+        <span className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-90">Ưu đãi</span>
+        {isPercentage ? (
+          <div className="flex items-start justify-center leading-none">
+            <span className="text-4xl font-black">{v.discountValue}</span>
+            <span className="text-xl font-black mt-0.5">%</span>
+          </div>
+        ) : (
+          <div className="leading-none">
+            <span className="text-3xl font-black break-all">{Number(v.discountValue).toLocaleString('vi-VN')}</span>
+            <span className="block text-sm font-bold mt-1 opacity-90">VNĐ</span>
+          </div>
+        )}
+        <span className="inline-flex items-center text-[11px] font-bold px-2.5 py-1 rounded-full bg-white/20 border border-white/30 backdrop-blur-sm">
+          {typeShort}
+        </span>
+        {v.minOrderAmount > 0 && (
+          <span className="text-[10px] font-semibold opacity-90 leading-snug">Đơn tối thiểu {Number(v.minOrderAmount).toLocaleString('vi-VN')}đ</span>
+        )}
+      </div>
+
+      {/* ── RIGHT BODY · Info Zone ── */}
+      <div className="relative flex-1 flex flex-col bg-white/80 backdrop-blur-xl p-5 border-t-2 md:border-t-0 md:border-l-2 border-dashed border-gray-300">
+        {/* Event tag + name + description */}
+        {v.eventTag && (
+          <span className="inline-flex self-start items-center gap-1.5 text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100/80 text-amber-800 border border-amber-200/60 mb-2">
+            <span>{v.eventEmoji || '🎉'}</span>{v.eventTag}
+          </span>
+        )}
+        <p className="text-base md:text-lg font-bold text-slate-900 leading-snug">{v.name}</p>
+        {v.description && (
+          <p className="text-xs md:text-sm text-slate-500 mt-0.5 line-clamp-2 leading-relaxed">{v.description}</p>
+        )}
+
+        {/* Clean icon-less meta */}
+        <div className="mt-3 space-y-1.5 text-sm">
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-slate-500 font-medium shrink-0">Hạn sử dụng</span>
+            <span className="text-slate-800 font-semibold text-right">{v.validTo}</span>
+          </div>
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-slate-500 font-medium shrink-0">Còn lại</span>
+            <span className="text-slate-800 font-semibold"><span className="font-black">{remaining}</span> lượt</span>
+          </div>
+        </div>
+
+        {/* Code pill + copy — or auto-apply note when the voucher has no code */}
+        {v.code ? (
+          <button
+            onClick={handleCopy}
+            title="Sao chép mã"
+            className="mt-3 self-start inline-flex items-center gap-2 font-mono text-sm font-black uppercase tracking-[0.15em] text-slate-800 bg-slate-100 border-2 border-dashed border-slate-300 px-3 py-1 rounded-lg hover:bg-slate-200 transition-all cursor-pointer"
+          >
+            {v.code}
+            {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4 text-slate-500" />}
+          </button>
+        ) : (
+          <span className="mt-3 self-start text-[11px] font-semibold text-emerald-700 bg-emerald-100/60 border border-emerald-200/60 rounded-full px-2.5 py-1">
+            Tự động áp dụng khi đặt lịch
+          </span>
+        )}
+
+        {/* CTA */}
+        <button
+          onClick={(e) => { e.stopPropagation(); onBook(); }}
+          className={`mt-5 w-full py-2.5 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 border-none cursor-pointer transition-all group-hover:gap-3 bg-gradient-to-r ${ctaGradient} shadow-md hover:shadow-lg`}
+        >
+          Đặt lịch ngay <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+        </button>
+      </div>
+    </motion.div>
+  );
+}
 
 function LandingPage({ onLogout }) {
   const [scrolled, setScrolled] = useState(false);
@@ -1193,93 +1296,9 @@ function LandingPage({ onLogout }) {
 
             {/* Voucher grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {displayVouchers?.map?.((v, i) => {
-                const pct = Math.round((v.usageCount / v.maxUsage) * 100);
-                const isEvent = !!v.eventTag;
-                return (
-                  <motion.div
-                    key={v.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.07, type: 'spring' }}
-                    viewport={{ once: false, amount: 0.2 }}
-                    className="glass-panel liquid-glass rounded-2xl overflow-hidden group hover:-translate-y-1 transition-transform duration-300"
-                  >
-                    {/* Gradient top bar */}
-                    <div className={`h-1.5 ${isEvent ? 'bg-gradient-to-r from-amber-400 via-orange-400 to-rose-400' : 'bg-gradient-to-r from-emerald-400 to-sky-400'}`} />
-
-                    <div className="p-5">
-                      {/* Event badge */}
-                      {v.eventTag && (
-                        <div className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-100/80 text-amber-800 border border-amber-200/60 mb-3">
-                          <span>{v.eventEmoji || '🎉'}</span> {v.eventTag}
-                        </div>
-                      )}
-
-                      {/* Discount badge + name */}
-                      <div className="flex items-start justify-between gap-3 mb-3">                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-on-surface leading-snug">{v.name}</p>
-                          {v.description && (
-                            <p className="text-[11px] text-on-surface-variant mt-1 line-clamp-2 leading-relaxed">{v.description}</p>
-                          )}
-                        </div>
-                        <span className={`shrink-0 text-xl font-black px-3 py-1.5 rounded-xl ${
-                          isEvent
-                            ? 'bg-amber-100 text-amber-700 border-2 border-amber-300'
-                            : 'bg-emerald-100 text-emerald-700 border-2 border-emerald-300'
-                        }`}>
-                          {v.discountType === 'Percentage' ? `-${v.discountValue}%` : `-${Number(v.discountValue).toLocaleString('vi-VN')}đ`}
-                        </span>
-                      </div>
-
-                      {/* Info pills */}
-                      <div className="flex flex-wrap gap-2 mb-3">
-                        <span className="flex items-center gap-1 text-[10px] font-semibold bg-surface-container/60 text-on-surface-variant rounded-full px-2.5 py-1 border border-white/40">
-                          <Calendar className="w-3 h-3" />
-                          HSD: {v.validTo}
-                        </span>
-                        {v.minOrderAmount > 0 && (
-                          <span className="flex items-center gap-1 text-[10px] font-semibold bg-surface-container/60 text-on-surface-variant rounded-full px-2.5 py-1 border border-white/40">
-                            <Tag className="w-3 h-3" />
-                            Từ {Number(v.minOrderAmount).toLocaleString('vi-VN')}đ
-                          </span>
-                        )}
-                        {v.applicableServices.length === 0 && (
-                          <span className="text-[10px] font-semibold bg-emerald-100/60 text-emerald-700 rounded-full px-2.5 py-1 border border-emerald-200/60">
-                            Tất cả dịch vụ
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Usage bar */}
-                      <div className="mb-4">
-                        <div className="flex justify-between text-[10px] text-on-surface-variant font-medium mb-1">
-                          <span>Còn lại: {v.maxUsage - v.usageCount} lượt</span>
-                          <span className={pct > 80 ? 'text-rose-500 font-bold' : ''}>{pct}% đã dùng</span>
-                        </div>
-                        <div className="h-1.5 bg-surface-container/40 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all ${pct > 80 ? 'bg-rose-400' : isEvent ? 'bg-gradient-to-r from-amber-400 to-orange-400' : 'bg-gradient-to-r from-emerald-400 to-sky-400'}`}
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
-                      </div>
-
-                      {/* CTA */}
-                      <button
-                        onClick={() => setIsBookingOpen(true)}
-                        className={`w-full py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 border-none cursor-pointer transition-all group-hover:gap-3 ${
-                          isEvent
-                            ? 'bg-gradient-to-r from-amber-400 to-orange-400 text-white shadow-md shadow-amber-400/25 hover:shadow-lg'
-                            : 'bg-gradient-to-r from-emerald-500 to-sky-500 text-white shadow-md shadow-emerald-500/20 hover:shadow-lg'
-                        }`}
-                      >
-                        Đặt lịch ngay <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-                      </button>
-                    </div>
-                  </motion.div>
-                );
-              })}
+              {displayVouchers?.map?.((v, i) => (
+                <PublicVoucherCard key={v.id} v={v} i={i} onBook={() => setIsBookingOpen(true)} />
+              ))}
             </div>
 
             {/* Bottom note */}
