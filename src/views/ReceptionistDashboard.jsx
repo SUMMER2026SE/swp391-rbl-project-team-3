@@ -445,10 +445,9 @@ export default function ReceptionistDashboard() {
       return;
     }
 
-    if (!selectedTime) {
-      setErrorMessage('Vui lòng chọn khung giờ khám.');
-      return;
-    }
+    const nowForTime = new Date();
+    const currentFormattedTime = `${String(nowForTime.getHours()).padStart(2, '0')}:${String(nowForTime.getMinutes()).padStart(2, '0')}`;
+    const timeToUse = selectedTime || currentFormattedTime;
 
     if (!emailTrim || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrim)) {
       setErrorMessage('Vui lòng nhập Email (Gmail) hợp lệ.');
@@ -493,9 +492,9 @@ export default function ReceptionistDashboard() {
     }
 
     // Determine final doctor ID
-    const finalDocId = selectedDoctor || (workingDocs.find(doc => !isSlotBooked(doc.user_id || doc.id, selectedDate, selectedTime))?.user_id) || (workingDocs.find(doc => !isSlotBooked(doc.user_id || doc.id, selectedDate, selectedTime))?.id);
+    const finalDocId = selectedDoctor || (workingDocs.find(doc => !isSlotBooked(doc.user_id || doc.id, selectedDate, timeToUse))?.user_id) || (workingDocs.find(doc => !isSlotBooked(doc.user_id || doc.id, selectedDate, timeToUse))?.id) || workingDocs[0]?.user_id || workingDocs[0]?.id;
     if (!finalDocId) {
-      setErrorMessage('Không tìm thấy bác sĩ khả dụng cho ngày và giờ đã chọn.');
+      setErrorMessage('Không tìm thấy bác sĩ khả dụng cho ngày đã chọn.');
       return;
     }
 
@@ -591,14 +590,14 @@ export default function ReceptionistDashboard() {
       patientPhone: phoneClean,
       patientEmail: emailTrim,
       date: selectedDate,
-      time: selectedTime,
+      time: timeToUse,
       service: newApt.service || 'Khám Da Liễu Tổng Quát',
       fee: finalFeeVal,
       originalFee: finalFeeVal,
       notes: newApt.notes || 'Khám trực tiếp tại quầy',
       bookingFee: 50000,
       paymentStatus: 'Đã thanh toán',
-      status: 'Đã xác nhận'
+      status: 'Đang chờ'
     };
 
     // Validate booking
@@ -612,7 +611,7 @@ export default function ReceptionistDashboard() {
     try {
       const result = await bookAppointment(bookingPayload);
       if (result.success) {
-        showToast('Đặt lịch và tạo hồ sơ bệnh án thành công!', 'success');
+        showToast('Tạo hồ sơ bệnh án thành công!', 'success');
         setTimeout(() => {
           isSubmittingRef.current = false;
           setIsAddOpen(false);
@@ -740,14 +739,16 @@ export default function ReceptionistDashboard() {
     return slotsToDisplay.filter(slot => !slot.isBooked);
   })();
 
-  const finalDoctorId = selectedDoctor || (workingDocs.find(doc => !isSlotBooked(doc.user_id || doc.id, selectedDate, selectedTime))?.user_id) || (workingDocs.find(doc => !isSlotBooked(doc.user_id || doc.id, selectedDate, selectedTime))?.id);
+  const now = new Date();
+  const currentFormattedTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  const finalDoctorId = selectedDoctor || (workingDocs.find(doc => !isSlotBooked(doc.user_id || doc.id, selectedDate, selectedTime || currentFormattedTime))?.user_id) || (workingDocs.find(doc => !isSlotBooked(doc.user_id || doc.id, selectedDate, selectedTime || currentFormattedTime))?.id) || workingDocs[0]?.user_id || workingDocs[0]?.id;
   const finalDoctorData = finalDoctorId ? doctors.find(d => String(d.user_id || d.id) === String(finalDoctorId)) : null;
 
   const originalAmount = finalDoctorData ? parsePriceToNumber(finalDoctorData.consultationFee) : 0;
   const finalFee = finalDoctorData?.consultationFee || '300,000 VNĐ';
 
   const isContactInfoComplete = newApt.patientName.trim() && newApt.phone.trim() && newApt.email.trim();
-  const isFormComplete = selectedDate && selectedTime && isContactInfoComplete && finalDoctorId;
+  const isFormComplete = selectedDate && isContactInfoComplete && finalDoctorId;
 
   // ─── Derived KPI counts ───────────────────────────────────────────────────
   const todays = useMemo(
@@ -830,11 +831,11 @@ export default function ReceptionistDashboard() {
               className={`w-full bg-gradient-to-r from-teal-600 to-sky-600 text-white rounded-xl font-semibold shadow-md shadow-teal-600/10 hover:shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 text-sm border-none cursor-pointer ${isSidebarExpanded ? 'py-3 px-4' : 'py-3 px-0'}`}
             >
               <Plus className="w-4 h-4 flex-shrink-0" />
-              {isSidebarExpanded && <span className="whitespace-nowrap">Đặt lịch hẹn</span>}
+              {isSidebarExpanded && <span className="whitespace-nowrap">Tạo hồ sơ bệnh án</span>}
             </button>
             {!isSidebarExpanded && (
               <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
-                Đặt lịch hẹn
+                Tạo hồ sơ bệnh án
               </div>
             )}
           </div>
@@ -1076,7 +1077,7 @@ export default function ReceptionistDashboard() {
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
               transition={{ type: 'spring', damping: 25 }}
-              className="fixed inset-0 m-auto w-[95vw] max-w-5xl h-[85vh] overflow-hidden backdrop-blur-3xl bg-white border border-slate-100 rounded-3xl shadow-2xl z-[101] flex flex-col"
+              className="fixed inset-0 m-auto w-[95vw] max-w-2xl h-[85vh] overflow-hidden backdrop-blur-3xl bg-white border border-slate-100 rounded-3xl shadow-2xl z-[101] flex flex-col"
             >
               {/* Header */}
               <div className="flex justify-between items-center px-8 py-4 border-b border-slate-100 shrink-0">
@@ -1084,7 +1085,7 @@ export default function ReceptionistDashboard() {
                   <div className="w-8 h-8 rounded-full bg-[#0d473b] flex items-center justify-center text-white font-extrabold shadow-sm">
                     <Plus className="w-4 h-4" />
                   </div>
-                  <h3 className="font-extrabold text-lg text-[#0d473b] tracking-tight">Đặt lịch hẹn trực tiếp & Tạo hồ sơ</h3>
+                  <h3 className="font-extrabold text-lg text-[#0d473b] tracking-tight">Tạo hồ sơ bệnh án</h3>
                 </div>
                 <button onClick={() => setIsAddOpen(false)} className="w-8 h-8 rounded-full bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-800 flex items-center justify-center cursor-pointer border-none transition-colors">
                   <X className="w-4 h-4" />
@@ -1092,9 +1093,9 @@ export default function ReceptionistDashboard() {
               </div>
 
               {/* Form Content */}
-              <form onSubmit={handleSubmitBooking} className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden text-xs font-semibold text-slate-700">
+              <form onSubmit={handleSubmitBooking} className="flex-1 min-h-0 flex flex-col overflow-hidden text-xs font-semibold text-slate-700">
                 
-                {/* LEFT COLUMN: Scrollable Form Inputs */}
+                {/* Scrollable Form Body */}
                 <div className="flex-1 overflow-y-auto p-8 space-y-5">
                   {errorMessage && (
                     <div className="p-3.5 bg-rose-50 border border-rose-100 text-rose-600 rounded-xl text-xs font-bold flex items-center gap-2">
@@ -1241,91 +1242,31 @@ export default function ReceptionistDashboard() {
                         />
                       </div>
                     </div>
-
                   </div>
                 </div>
 
-                {/* RIGHT COLUMN: Slots, Warnings, Pricing & Actions */}
-                <div className="w-full lg:w-[420px] bg-[#ecf3fa]/60 border-l border-slate-100 flex flex-col p-6 overflow-y-auto shrink-0 justify-between gap-6">
-                  
-                  {/* Slots container or empty calendar message card */}
-                  <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm flex flex-col flex-1 min-h-[320px] justify-center">
-                    {!selectedDate ? (
-                      <div className="text-center py-8 px-4 flex flex-col items-center justify-center gap-3">
-                        <div className="w-12 h-12 rounded-full bg-[#ecf7f5] text-teal-600 flex items-center justify-center shadow-inner">
-                          <Clock className="w-6 h-6" />
-                        </div>
-                        <h4 className="font-bold text-sm text-slate-800">Lịch trống hiển thị tại đây</h4>
-                        <p className="text-[11px] text-slate-400 font-medium max-w-[240px] leading-relaxed">
-                          Chọn ngày khám ở cột bên trái để xem các khung giờ còn trống của bác sĩ.
-                        </p>
-                      </div>
-                    ) : filteredSlots.length === 0 ? (
-                      <div className="text-center py-8 px-4 flex flex-col items-center justify-center gap-2">
-                        <Clock className="w-7 h-7 text-rose-500" />
-                        <h4 className="font-bold text-sm text-rose-500">Hết khung giờ trống</h4>
-                        <p className="text-[11px] text-slate-400 font-medium">
-                          Bác sĩ không có ca trực hoặc đã hết slot khám trống trong ngày này. Vui lòng chọn ngày khác.
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="space-y-4 h-full flex flex-col justify-start">
-                        <h4 className="font-extrabold text-sm text-slate-500 uppercase tracking-wider text-left">Khung giờ còn trống</h4>
-                        <div className="grid grid-cols-3 gap-3 overflow-y-auto pr-1 flex-1">
-                          {filteredSlots.map((slot) => (
-                            <button
-                              key={slot.time}
-                              type="button"
-                              onClick={() => setSelectedTime(slot.time)}
-                              className={`py-3 px-4 rounded-xl font-bold text-sm border text-center transition-all cursor-pointer ${
-                                selectedTime === slot.time
-                                  ? 'bg-[#0d473b] border-[#0d473b] text-white shadow-md shadow-emerald-800/10'
-                                  : 'bg-[#e8f1fb] border-slate-200 text-slate-700 hover:border-teal-500 hover:text-teal-600 hover:bg-[#deebfa]'
-                              }`}
-                            >
-                              {slot.time}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                {/* Persistent Footer Actions */}
+                <div className="px-8 py-5 border-t border-slate-100 bg-[#f8fafc]/90 flex items-center justify-between shrink-0">
+                  <div className="text-left">
+                    <div className="text-[10px] font-black text-slate-400 tracking-wider">GIÁ DỊCH VỤ DỰ KIẾN</div>
+                    <div className="text-[9px] text-slate-400 italic font-medium mt-0.5">(Được xác định theo chỉ định bác sĩ)</div>
                   </div>
-
-                  {/* Warning message card */}
-                  <div className="bg-[#fffbeb] border border-[#fef08a] rounded-2xl p-4 flex gap-3 text-left shadow-sm shrink-0">
-                    <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                    <div className="text-[11px] font-semibold text-amber-800 leading-relaxed">
-                      <span className="font-black">Lưu ý quan trọng:</span> Bệnh nhân cần đến trễ không quá 30 phút so với giờ hẹn, nếu trễ quá lịch khám sẽ tự động hủy trên hệ thống.
-                    </div>
+                  <div className="flex gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setIsAddOpen(false)}
+                      className="px-6 py-2.5 border border-slate-300 rounded-xl text-slate-600 font-bold hover:bg-slate-50 transition-colors text-xs cursor-pointer bg-[#ffffff]"
+                    >
+                      Hủy bỏ
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSubmittingRef.current}
+                      className="px-6 py-2.5 bg-[#0d473b] hover:bg-[#072d24] text-white font-bold rounded-xl text-xs transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border-none shadow-sm"
+                    >
+                      Tạo hồ sơ bệnh án
+                    </button>
                   </div>
-
-                  {/* Bottom details and buttons */}
-                  <div className="space-y-4 shrink-0 mt-auto">
-                    <div className="border-t border-slate-200/60 pt-4 flex items-center justify-between gap-4">
-                      <div className="text-left">
-                        <div className="text-[10px] font-black text-slate-400 tracking-wider">GIÁ DỊCH VỤ DỰ KIẾN</div>
-                        <div className="text-[9px] text-slate-400 italic font-medium mt-0.5">(Được xác định theo chỉ định bác sĩ)</div>
-                      </div>
-                      <div className="flex gap-2.5">
-                        <button
-                          type="button"
-                          onClick={() => setIsAddOpen(false)}
-                          className="px-5 py-3 border border-slate-300 rounded-xl text-slate-600 font-bold hover:bg-slate-50 transition-colors text-xs cursor-pointer bg-[#ffffff]"
-                        >
-                          Hủy bỏ
-                        </button>
-                        <button
-                          type="submit"
-                          disabled={isSubmittingRef.current}
-                          className="px-6 py-2 bg-[#0d473b] hover:bg-[#072d24] text-white font-bold rounded-xl text-xs leading-tight transition-all flex flex-col items-center justify-center min-h-[46px] min-w-[100px] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border-none shadow-sm"
-                        >
-                          <span>Xác nhận</span>
-                          <span>lịch</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
                 </div>
               </form>
             </motion.div>
@@ -1492,7 +1433,7 @@ function OverviewTab({ user, kpi, todays, requests, onGoTab, onApprove, onArrive
             )}
           </div>
           <button onClick={onAdd} className="w-full py-3 rounded-2xl border border-dashed border-slate-300 text-slate-400 hover:bg-white/40 hover:text-emerald-600 hover:border-emerald-300 transition-all text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer bg-transparent">
-            <Plus className="w-4 h-4" /> Tự thêm lịch hẹn trực tiếp
+            <Plus className="w-4 h-4" /> Tạo hồ sơ bệnh án
           </button>
         </motion.div>
       </div>
