@@ -69,39 +69,78 @@ export default function TechnicianDashboard() {
 
   // PHASE 3 — Doctor → Technician read path. Map a service_ticket row into the
   // task shape the workspace/list components already consume.
-  const mapTicket = (t) => ({
-    id: t.id,
-    appointmentId: t.appointment_id,
-    patientId: t.appointment?.patient_id || null,
-    patientName: t.appointment?.patient_name || 'Bệnh nhân',
-    patientGender: t.appointment?.patient_gender || '—',
-    patientAge: calculateAge(t.appointment?.patient_dob),
-    assignedBy: t.appointment?.doctor_name || 'Bác sĩ',
-    notes: t.doctor_note || '',
-    doctorNotes: t.doctor_note || '',
-    procedureType: t.service_name,
-    procedure: t.service_name,
-    service: t.service_name,
-    status:
-      t.status === 'TECH_COMPLETED'
-        ? 'Đã hoàn thành'
-        : t.status === 'IN_PROGRESS'
-        ? 'Đang tiến hành'
-        : 'Chờ thực hiện',
-    technicianId: t.technician_id || null,
-    createdAt: t.created_at,
-    requestTime: t.created_at,
-    resultRecord:
-      t.status === 'TECH_COMPLETED'
-        ? {
-            technicianNotes: t.result_notes || '',
-            images: t.result_image_url
-              ? [{ id: 'res-0', url: t.result_image_url, name: 'result.jpg' }]
-              : [],
-            metrics: {},
-          }
-        : null,
-  });
+  const mapTicket = (t) => {
+    // Hydrate the structured result captured at completion. result_metrics /
+    // result_images are JSONB (2026-06-24 migration); fall back to the legacy
+    // single result_image_url for tickets completed before the migration.
+    const ticketMetrics =
+      t.result_metrics && typeof t.result_metrics === 'object' ? t.result_metrics : {};
+    const ticketImages =
+      Array.isArray(t.result_images) && t.result_images.length > 0
+        ? t.result_images
+        : t.result_image_url
+        ? [{ id: 'res-0', url: t.result_image_url, name: 'result.jpg' }]
+        : [];
+    // The lab-metric grid renders off procedureDetails.metrics. No config column
+    // exists, so recover the metric names from the saved keys (excluding the
+    // free-text fallback) — this is what makes renderLabTestMetrics fire in review.
+    const metricKeys = Object.keys(ticketMetrics).filter((k) => k !== 'fallbackResult');
+
+    // Prefer the doctor-specified config (procedure_details, 2026-06-24 migration)
+    // so the metric-entry grid renders during ACTIVE work — not just review. Fall
+    // back to keys recovered from saved values for tickets created pre-migration.
+    const procedureDetails =
+      t.procedure_details && typeof t.procedure_details === 'object'
+        ? t.procedure_details
+        : metricKeys.length > 0
+        ? { type: 'LabTest', metrics: metricKeys }
+        : undefined;
+
+    return {
+      id: t.id,
+      appointmentId: t.appointment_id,
+      patientId: t.appointment?.patient_id || null,
+      patientName: t.appointment?.patient_name || 'Bệnh nhân',
+      patientGender: t.appointment?.patient_gender || '—',
+      patientAge: calculateAge(t.appointment?.patient_dob),
+      assignedBy: t.appointment?.doctor_name || 'Bác sĩ',
+      notes: t.doctor_note || '',
+      doctorNotes: t.doctor_note || '',
+      procedureType: t.service_name,
+      procedure: t.service_name,
+      service: t.service_name,
+      // Doctor-specified metric config (or recovered from saved values) so both
+      // active entry and review route to the lab grid instead of the fallback
+      // textarea. Omitted when none (imaging / free-text keep name-based detection).
+      procedureDetails,
+      status:
+        t.status === 'TECH_COMPLETED'
+          ? 'Đã hoàn thành'
+          : t.status === 'IN_PROGRESS'
+          ? 'Đang tiến hành'
+          : 'Chờ thực hiện',
+      technicianId: t.technician_id || null,
+      createdAt: t.created_at,
+      requestTime: t.created_at,
+      resultRecord:
+        t.status === 'TECH_COMPLETED'
+          ? {
+              technicianNotes: t.result_notes || '',
+              images: ticketImages,
+              metrics: ticketMetrics,
+              // Single-procedure-per-ticket model → resultsMap index 0 feeds the
+              // Step 2 confirmation summary in TechnicianWorkspace.
+              resultsMap: {
+                0: {
+                  images: ticketImages,
+                  metrics: ticketMetrics,
+                  technicianNotes: t.result_notes || '',
+                },
+              },
+            }
+          : null,
+    };
+  };
 
   const loadTasks = useCallback(async () => {
     try {
@@ -196,7 +235,12 @@ export default function TechnicianDashboard() {
       await ServiceTicketModel.update(taskId, {
         status: 'TECH_COMPLETED',
         result_notes: resultRecord?.technicianNotes || '',
+        // Keep the legacy single-URL column populated for back-compat readers
+        // (Doctor ClinicalHistory / AISkinAnalysis still read result_image_url).
         result_image_url: resultRecord?.images?.[0]?.url || null,
+        // Persist the full captured result so review mode can rehydrate it.
+        result_images: resultRecord?.images || [],
+        result_metrics: resultRecord?.metrics || {},
         technician_id: user?.id || null,
         updated_at: new Date().toISOString(),
       });

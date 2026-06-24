@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Camera, Activity, Sparkles, Droplet, Check, Search, HelpCircle, Loader2, Clock, UserCog } from 'lucide-react';
+import { Camera, Activity, Sparkles, Droplet, Check, Search, HelpCircle, Loader2, Clock, UserCog, Plus, Trash2, FlaskConical } from 'lucide-react';
 import { supabase } from '../../../../supabaseClient';
+import { GLASS_INPUT } from '../../../common/GlassCard';
 
 export default function ServiceSelectionForm({ onSelectionChange, existingTickets = [] }) {
   const [services, setServices] = useState([]);
@@ -11,6 +12,20 @@ export default function ServiceSelectionForm({ onSelectionChange, existingTicket
   const [selectedServices, setSelectedServices] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
+
+  // Doctor-specified lab metrics the technician must measure. Attached to every
+  // selected service so each created ticket carries its own procedure_details.
+  const [requestedMetrics, setRequestedMetrics] = useState(['']);
+
+  // Merge the cleaned metric list onto each selected service and notify the
+  // parent. Centralizes emission so service toggles AND metric edits stay in sync.
+  const emitSelection = (services, metrics = requestedMetrics) => {
+    const cleanMetrics = (Array.isArray(metrics) ? metrics : [])
+      .map((m) => m.trim())
+      .filter(Boolean);
+    const withMetrics = (services || []).map((s) => ({ ...s, requestedMetrics: cleanMetrics }));
+    if (onSelectionChange) onSelectionChange(withMetrics);
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -103,15 +118,33 @@ export default function ServiceSelectionForm({ onSelectionChange, existingTicket
     }
     
     setSelectedServices(updated);
-    if (onSelectionChange) onSelectionChange(updated);
+    emitSelection(updated);
   };
 
   const handleTechnicianChange = (serviceName, techId) => {
-    const updated = selectedServices.map(s => 
+    const updated = selectedServices.map(s =>
       s.name === serviceName ? { ...s, technician_id: techId } : s
     );
     setSelectedServices(updated);
-    if (onSelectionChange) onSelectionChange(updated);
+    emitSelection(updated);
+  };
+
+  // ─── Dynamic lab-metric inputs ──────────────────────────────────────────
+  const handleMetricChange = (index, value) => {
+    const updated = requestedMetrics.map((m, i) => (i === index ? value : m));
+    setRequestedMetrics(updated);
+    emitSelection(selectedServices, updated);
+  };
+
+  const handleAddMetric = () => {
+    setRequestedMetrics((prev) => [...prev, '']);
+  };
+
+  const handleRemoveMetric = (index) => {
+    const filtered = requestedMetrics.filter((_, i) => i !== index);
+    const next = filtered.length > 0 ? filtered : [''];
+    setRequestedMetrics(next);
+    emitSelection(selectedServices, next);
   };
 
   const categories = ['All', ...new Set(services.map(s => s.category))];
@@ -146,7 +179,7 @@ export default function ServiceSelectionForm({ onSelectionChange, existingTicket
             placeholder="Tìm kiếm dịch vụ..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-white/60 border border-slate-200/80 rounded-xl focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all text-slate-800 text-sm"
+            className={`${GLASS_INPUT} w-full pl-10 pr-4 py-2.5 text-sm font-semibold`}
           />
         </div>
         <div className="flex gap-1.5 overflow-x-auto pb-1 md:pb-0 scrollbar-thin">
@@ -164,6 +197,49 @@ export default function ServiceSelectionForm({ onSelectionChange, existingTicket
             </button>
           ))}
         </div>
+      </div>
+
+      {/* ── Dynamic lab metric configuration ── */}
+      <div className="mb-5 flex-shrink-0 rounded-2xl border border-emerald-200/50 bg-emerald-50/30 p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <FlaskConical className="w-4 h-4 text-emerald-600" />
+          <h4 className="text-sm font-extrabold text-slate-800">
+            Chỉ định chỉ số cần đo <span className="font-semibold text-slate-400">(Tùy chọn)</span>
+          </h4>
+        </div>
+
+        <div className="space-y-2">
+          {requestedMetrics.map((metric, idx) => (
+            <div key={idx} className="flex items-center gap-2">
+              <input
+                type="text"
+                value={metric}
+                onChange={(e) => handleMetricChange(idx, e.target.value)}
+                placeholder={`Tên chỉ số (vd: Đường huyết, Men gan)...`}
+                className={`${GLASS_INPUT} flex-1 px-3.5 py-2.5 text-sm font-semibold`}
+              />
+              {requestedMetrics.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => handleRemoveMetric(idx)}
+                  title="Xóa chỉ số"
+                  className="shrink-0 flex items-center gap-1 px-2.5 py-2.5 rounded-xl text-xs font-bold text-rose-500 bg-white/60 border border-rose-200/60 hover:bg-rose-50 hover:text-rose-600 transition-all active:scale-95"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          onClick={handleAddMetric}
+          className="mt-3 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-emerald-700 bg-white/60 border border-emerald-200/70 hover:bg-white hover:border-emerald-300 shadow-sm transition-all active:scale-95"
+        >
+          <Plus className="w-4 h-4" />
+          Thêm chỉ số
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto pr-1 -mr-1 custom-scrollbar min-h-0 space-y-3">

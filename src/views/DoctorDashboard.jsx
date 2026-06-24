@@ -193,6 +193,11 @@ export default function DoctorDashboard() {
           status: 'PENDING',
           doctor_note: noteToSave,
           technician_id: svc?.technician_id || null,
+          // Doctor-specified metrics → drives the technician's lab-metric grid.
+          procedure_details:
+            Array.isArray(svc?.requestedMetrics) && svc.requestedMetrics.length > 0
+              ? { type: 'LabTest', metrics: svc.requestedMetrics }
+              : null,
         });
       }
 
@@ -233,6 +238,11 @@ export default function DoctorDashboard() {
           status: 'PENDING',
           doctor_note: doctorNote,
           technician_id: svc?.technician_id || null,
+          // Doctor-specified metrics → drives the technician's lab-metric grid.
+          procedure_details:
+            Array.isArray(svc?.requestedMetrics) && svc.requestedMetrics.length > 0
+              ? { type: 'LabTest', metrics: svc.requestedMetrics }
+              : null,
         });
       }
 

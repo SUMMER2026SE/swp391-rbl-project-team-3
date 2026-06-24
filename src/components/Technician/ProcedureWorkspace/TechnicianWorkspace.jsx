@@ -3,6 +3,20 @@ import { ArrowLeft, CheckCircle2, Check, ChevronRight, UploadCloud, FlaskConical
 import { motion, AnimatePresence, useMotionValue, useMotionTemplate, animate } from 'framer-motion';
 import LiquidTabSwitcher from '../../ui/LiquidTabSwitcher';
 import { supabase } from '../../../supabaseClient';
+import { GLASS_INPUT } from '../../common/GlassCard';
+
+// ─── Locked Glass (Review / Read-only) Surfaces ──────────────────────────────
+// High-contrast frosted surfaces for completed, non-editable medical results.
+// Replaces the washed-out native `disabled`/gray styling so technicians and
+// doctors can read finalized metrics instantly without contrast strain.
+const LOCKED_GLASS_SURFACE =
+  'relative w-full bg-slate-950/5 backdrop-blur-xl border border-white/40 rounded-xl p-4 shadow-inner text-slate-900 font-medium transition-all';
+const LOCKED_GLASS_FIELD =
+  'relative w-full bg-slate-950/5 backdrop-blur-xl border border-white/40 rounded-xl shadow-inner text-slate-900 font-semibold leading-relaxed cursor-default transition-all';
+const LOCKED_GLASS_LABEL = 'text-teal-950 font-bold text-sm';
+const LOCKED_GLASS_CONTENT = 'text-slate-900 font-semibold text-base leading-relaxed';
+const LOCKED_GLASS_BADGE =
+  'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-teal-500/10 text-teal-800 border border-teal-500/20';
 
 // ─── Animation Variants ──────────────────────────────────────────────────────
 const stepTransition = { type: 'spring', stiffness: 300, damping: 30, mass: 0.8 };
@@ -697,7 +711,13 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
               custom={idx}
               className="glass-inner rounded-xl p-4 shadow-[0_8px_32px_rgba(0,0,0,0.04)]"
             >
-              <label className="block text-xs uppercase tracking-wider text-slate-500 font-semibold mb-2">
+              <label
+                className={`block mb-2 ${
+                  isReviewMode
+                    ? LOCKED_GLASS_LABEL
+                    : 'text-xs uppercase tracking-wider text-slate-500 font-semibold'
+                }`}
+              >
                 {metric}
               </label>
               <input
@@ -706,14 +726,11 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
                 onChange={(e) => handleMetricChange(metric, e.target.value)}
                 readOnly={isReviewMode}
                 placeholder={isReviewMode ? '—' : `Nhập giá trị ${metric}...`}
-                className={`
-                  w-full px-4 py-3 rounded-lg text-sm font-medium text-slate-900 
-                  transition-all duration-200 outline-none
-                  ${isReviewMode
-                    ? 'bg-slate-50 border border-slate-200 cursor-not-allowed text-slate-700'
-                    : 'bg-white border border-slate-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 hover:border-slate-300'
-                  }
-                `}
+                className={
+                  isReviewMode
+                    ? `${LOCKED_GLASS_FIELD} px-4 py-3 text-base`
+                    : `w-full px-4 py-3 text-sm font-semibold text-slate-900 ${GLASS_INPUT}`
+                }
               />
             </motion.div>
           ))}
@@ -730,7 +747,13 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
 
     return (
       <motion.div
-        className="flex flex-col gap-4 min-h-[400px] border-2 border-dashed border-emerald-400 bg-emerald-50/50 p-6 rounded-2xl"
+        className={
+          isReviewMode
+            // Transparent layout wrapper — the parent right panel is already a
+            // glass card, so no background/border/padding here (avoids box-in-a-box).
+            ? 'relative w-full flex flex-col gap-4 transition-all'
+            : 'flex flex-col gap-4 min-h-[400px] border-2 border-dashed border-emerald-400 bg-emerald-50/50 p-6 rounded-2xl'
+        }
         variants={fadeUp}
         initial="hidden"
         animate="visible"
@@ -738,7 +761,9 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
       >
         <div className="flex items-center gap-2 mb-1">
           <FileCheck className="w-5 h-5 text-emerald-600" />
-          <h3 className="text-base font-bold text-slate-900">Nhập kết quả thủ thuật chi tiết</h3>
+          <h3 className={isReviewMode ? 'text-teal-950 font-bold text-lg flex items-center gap-2' : 'text-base font-bold text-slate-900'}>
+            Nhập kết quả thủ thuật chi tiết
+          </h3>
         </div>
 
         <div className="flex-1 flex flex-col min-h-[300px]">
@@ -747,14 +772,12 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
             onChange={(e) => handleMetricChange('fallbackResult', e.target.value)}
             readOnly={isReviewMode}
             placeholder={isReviewMode ? '—' : 'Nhập chi tiết kết quả thủ thuật...'}
-            className={`
-              flex-1 w-full px-4 py-3 rounded-lg text-sm text-slate-900 resize-none
-              transition-all duration-200 outline-none leading-relaxed
-              ${isReviewMode
-                ? 'bg-slate-50 border border-slate-200 cursor-not-allowed text-slate-700'
-                : 'bg-white border border-slate-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 hover:border-slate-300'
-              }
-            `}
+            className={
+              isReviewMode
+                // Recessed, etched-into-panel well — deep readable contrast, no glaring box.
+                ? 'w-full bg-slate-950/5 border border-slate-200/50 rounded-2xl p-5 text-slate-900 font-semibold text-base min-h-[160px] shadow-inner outline-none resize-none leading-relaxed cursor-default'
+                : 'flex-1 w-full px-4 py-3 text-sm font-semibold text-slate-900 resize-none leading-relaxed ' + GLASS_INPUT
+            }
           />
         </div>
       </motion.div>
@@ -780,7 +803,7 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
   const renderStep2 = () => {
     return (
       <motion.div
-        className="flex flex-col gap-5 h-full"
+        className={isReviewMode ? 'flex flex-col gap-8 w-full' : 'flex flex-col gap-5 h-full'}
         variants={fadeUp}
         initial="hidden"
         animate="visible"
@@ -807,7 +830,11 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
             return (
               <motion.div
                 key={idx}
-                className="glass-inner rounded-2xl p-5 border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.03)]"
+                className={
+                  isReviewMode
+                    ? 'bg-white/40 backdrop-blur-md border border-white/60 rounded-3xl p-6 shadow-sm flex flex-col gap-5'
+                    : 'glass-inner rounded-2xl p-5 border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.03)]'
+                }
                 variants={fadeUp}
                 initial="hidden"
                 animate="visible"
@@ -820,9 +847,17 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
                     </span>
                     {pType}
                   </h4>
-                  <span className="text-[10px] uppercase font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">
-                    {isImg ? 'Hình ảnh' : isLab ? 'Xét nghiệm' : 'Khác'}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {isReviewMode && (
+                      <span className={LOCKED_GLASS_BADGE}>
+                        <Check className="w-3 h-3" />
+                        Đã ghi nhận
+                      </span>
+                    )}
+                    <span className="text-[10px] uppercase font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">
+                      {isImg ? 'Hình ảnh' : isLab ? 'Xét nghiệm' : 'Khác'}
+                    </span>
+                  </div>
                 </div>
                 {isImg ? (
                   <div className="space-y-2">
@@ -845,16 +880,61 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
                 ) : isLab && pMetrics.length > 0 ? (
                   <div className="grid grid-cols-2 gap-2 mt-2">
                     {(Array.isArray(pMetrics) ? pMetrics : []).map((m) => (
-                      <div key={m} className="bg-slate-50/50 border border-slate-100 p-2.5 rounded-xl">
-                        <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-semibold">{m}</span>
-                        <span className="text-sm font-bold text-slate-800 block mt-0.5">{procMetrics[m] || '—'}</span>
+                      <div
+                        key={m}
+                        className={
+                          isReviewMode
+                            ? `${LOCKED_GLASS_SURFACE} p-2.5`
+                            : 'bg-slate-50/50 border border-slate-100 p-2.5 rounded-xl'
+                        }
+                      >
+                        <span
+                          className={
+                            isReviewMode
+                              ? `${LOCKED_GLASS_LABEL} block text-xs`
+                              : 'text-[10px] text-slate-400 uppercase tracking-wider block font-semibold'
+                          }
+                        >
+                          {m}
+                        </span>
+                        <span
+                          className={
+                            isReviewMode
+                              ? `${LOCKED_GLASS_CONTENT} block mt-1`
+                              : 'text-sm font-bold text-slate-800 block mt-0.5'
+                          }
+                        >
+                          {procMetrics[m] || '—'}
+                        </span>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="bg-slate-50/50 border border-slate-100 p-2.5 rounded-xl">
-                    <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-semibold">Kết quả chi tiết</span>
-                    <p className="text-sm font-medium text-slate-800 mt-1 whitespace-pre-wrap">{procMetrics.fallbackResult || '—'}</p>
+                  <div
+                    className={
+                      isReviewMode
+                        ? 'flex flex-col gap-2 bg-slate-950/5 rounded-2xl p-5 shadow-inner border border-slate-200/50'
+                        : 'bg-slate-50/50 border border-slate-100 p-2.5 rounded-xl'
+                    }
+                  >
+                    <span
+                      className={
+                        isReviewMode
+                          ? 'text-teal-950 font-bold text-sm'
+                          : 'text-[10px] text-slate-400 uppercase tracking-wider block font-semibold'
+                      }
+                    >
+                      Kết quả chi tiết
+                    </span>
+                    <p
+                      className={
+                        isReviewMode
+                          ? 'text-slate-900 font-semibold text-base break-words whitespace-pre-wrap'
+                          : 'text-sm font-medium text-slate-800 mt-1 whitespace-pre-wrap'
+                      }
+                    >
+                      {procMetrics.fallbackResult || '—'}
+                    </p>
                   </div>
                 )}
               </motion.div>
@@ -869,7 +949,13 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
           animate="visible"
           custom={procedures.length}
         >
-          <label className="block text-xs uppercase tracking-wider text-slate-400 font-semibold mb-2">
+          <label
+            className={`block mb-2 ${
+              isReviewMode
+                ? LOCKED_GLASS_LABEL
+                : 'text-xs uppercase tracking-wider text-slate-400 font-semibold'
+            }`}
+          >
             Ghi chú kỹ thuật viên (Chung)
           </label>
           <textarea
@@ -878,14 +964,12 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
             readOnly={isReviewMode}
             placeholder={isReviewMode ? '—' : 'Nhập ghi chú chung về quá trình thực hiện toàn bộ chỉ định...'}
             rows={3}
-            className={`
-              w-full px-4 py-3 rounded-lg text-sm text-slate-900 resize-none
-              transition-all duration-200 outline-none leading-relaxed
-              ${isReviewMode
-                ? 'bg-slate-50 border border-slate-200 cursor-not-allowed'
-                : 'bg-white border border-slate-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 hover:border-slate-300'
-              }
-            `}
+            className={
+              isReviewMode
+                // Recessed glass well — no inherited rounded-xl/backdrop-blur pill shape.
+                ? 'w-full bg-slate-950/5 border border-slate-200/50 rounded-2xl p-5 text-slate-900 font-semibold text-base min-h-[120px] shadow-inner outline-none resize-none leading-relaxed cursor-default'
+                : 'w-full px-4 py-3 text-sm font-semibold text-slate-900 resize-none leading-relaxed ' + GLASS_INPUT
+            }
           />
         </motion.div>
         {/* ── Action Button ── */}
