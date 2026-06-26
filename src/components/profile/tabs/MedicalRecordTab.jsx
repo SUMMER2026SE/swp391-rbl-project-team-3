@@ -90,21 +90,18 @@ export default function MedicalRecordTab({ profile }) {
           {c.diagnosis}
           {c.diagnosisCode && <span className="text-sm font-bold text-on-surface-variant/40"> · {c.diagnosisCode}</span>}
         </p>
-        {/* doctor + prescription action */}
         <div className="flex items-center justify-between gap-3 mt-2.5">
           <span className="inline-flex items-center gap-1.5 text-sm font-bold text-on-surface-variant/80">
             <Stethoscope className="w-4 h-4 text-emerald-500" /> {c.doctor}
           </span>
-          {c.prescriptions?.length > 0 && (
-            <button
-              onClick={() => setSelected(c.record)}
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:gap-2.5
-                         transition-all bg-primary/10 hover:bg-primary/15 px-3 py-1.5 rounded-full border-none cursor-pointer"
-            >
-              <Pill className="w-3.5 h-3.5" /> Đơn thuốc ({c.prescriptions.length})
-              <ChevronRight className="w-3.5 h-3.5" />
-            </button>
-          )}
+          <button
+            onClick={() => setSelected(c.record)}
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:gap-2.5
+                       transition-all bg-primary/10 hover:bg-primary/15 px-3 py-1.5 rounded-full border-none cursor-pointer"
+          >
+            <FileText className="w-3.5 h-3.5" /> Hồ sơ chi tiết
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
     </div>

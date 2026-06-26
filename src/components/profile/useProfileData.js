@@ -216,6 +216,249 @@ export function useProfileData(authUser) {
       // 4. Transform raw database profile into UI view-model
       const transformed = normalizeProfileData(realData, userRole, metricsData);
 
+      // 5. Fetch clinical history and prescriptions for patient
+      if (userRole === 'PATIENT' && transformed?.medical) {
+        try {
+          const { data: recordsData, error: recordsError } = await supabase
+            .from('medical_records')
+            .select(`
+              record_id,
+              appointment_id,
+              diagnosis,
+              symptoms,
+              doctor_note,
+              created_at,
+              doctor:users!medical_records_doctor_id_users_fkey (
+                full_name
+              )
+            `)
+            .eq('patient_id', user.id)
+            .order('created_at', { ascending: false });
+
+          if (!recordsError && recordsData) {
+            const clinicalHistory = recordsData.map(rec => ({
+              id: rec.record_id,
+              date: new Date(rec.created_at).toLocaleDateString('vi-VN'),
+              specialty: 'Da liễu',
+              doctor: rec.doctor?.full_name || 'Bác sĩ',
+              diagnosis: rec.diagnosis || 'Chưa ghi nhận',
+              diagnosisCode: '',
+              prescriptions: [],
+              record: {
+                id: rec.record_id,
+                appointmentId: rec.appointment_id,
+                date: new Date(rec.created_at).toLocaleDateString('vi-VN'),
+                specialty: 'Da liễu',
+                doctor: rec.doctor?.full_name || 'Bác sĩ',
+                doctorName: rec.doctor?.full_name || 'Bác sĩ',
+                diagnosis: rec.diagnosis || 'Chưa ghi nhận',
+                symptoms: rec.symptoms || 'Chưa ghi nhận',
+                doctorNote: rec.doctor_note || 'Chưa ghi nhận',
+                notes: rec.doctor_note || '',
+                vitalSigns: {
+                  weight: transformed.medical?.vitals?.weight ? `${transformed.medical.vitals.weight} kg` : '—',
+                  height: transformed.medical?.vitals?.height ? `${transformed.medical.vitals.height} cm` : '—',
+                  bloodPressure: '—',
+                  pulse: '—',
+                  temperature: '—',
+                  spo2: '—'
+                },
+                paymentStatus: 'Đã thanh toán',
+                patient: {
+                  id: transformed.id,
+                  fullName: transformed.name,
+                  gender: transformed.gender,
+                  dob: transformed.dob,
+                  phone: transformed.phone,
+                  email: transformed.email,
+                  address: transformed.address,
+                  avatar: transformed.avatar
+                },
+                prescriptions: [],
+                followUps: [],
+                treatmentHistory: []
+              }
+            }));
+
+            // Fetch prescriptions for these records
+            if (clinicalHistory.length > 0) {
+              const recordIds = clinicalHistory.map(c => c.id);
+              const { data: presData, error: presError } = await supabase
+                .from('prescriptions')
+                .select(`
+                  record_id,
+                  prescription_details (
+                    dosage,
+                    frequency,
+                    duration,
+                    instruction,
+                    quantity,
+                    medicine:medicines (medicine_name)
+                  )
+                `)
+                .in('record_id', recordIds);
+
+              if (!presError && presData) {
+                presData.forEach(p => {
+                  const historyItem = clinicalHistory.find(c => c.id === p.record_id);
+                  if (historyItem) {
+                    const mappedPres = (p.prescription_details || []).map(d => ({
+                      name: d.medicine?.medicine_name || 'Thuốc',
+                      type: 'Thuốc',
+                      dosage: d.dosage || '',
+                      frequency: d.frequency || '',
+                      duration: d.duration || '',
+                      instructions: d.instruction || '',
+                      quantity: d.quantity || ''
+                    }));
+                    historyItem.prescriptions = mappedPres;
+                    historyItem.record.prescriptions = mappedPres;
+                  }
+                });
+              }
+            }
+
+            // Fetch service tickets (indications/procedures) for these appointments
+            const appointmentIds = clinicalHistory.map(c => c.record.appointmentId).filter(Boolean);
+            if (appointmentIds.length > 0) {
+              const { data: ticketsData, error: ticketsError } = await supabase
+                .from('service_tickets')
+                .select(`
+                  id,
+                  appointment_id,
+                  service_name,
+                  status,
+                  doctor_note,
+                  result_notes,
+                  updated_at,
+                  technician_id
+                `)
+                .in('appointment_id', appointmentIds);
+
+              if (!ticketsError && ticketsData) {
+                // Fetch unique technicians
+                const techIds = Array.from(new Set(ticketsData.map(t => t.technician_id).filter(Boolean)));
+                let techMap = {};
+                if (techIds.length > 0) {
+                  const { data: usersData } = await supabase
+                    .from('users')
+                    .select('user_id, full_name')
+                    .in('user_id', techIds);
+                  if (usersData) {
+                    usersData.forEach(u => {
+                      techMap[u.user_id] = u.full_name;
+                    });
+                  }
+                }
+
+                // Map tickets to each clinicalHistory item's record
+                ticketsData.forEach(t => {
+                  const historyItem = clinicalHistory.find(c => String(c.record.appointmentId) === String(t.appointment_id));
+                  if (historyItem) {
+                    if (!historyItem.record.treatmentHistory) {
+                      historyItem.record.treatmentHistory = [];
+                    }
+                    // Prevent duplicate ticket inserts
+                    const exists = historyItem.record.treatmentHistory.some(existingT => String(existingT.id) === String(t.id));
+                    if (!exists) {
+                      historyItem.record.treatmentHistory.push({
+                        id: t.id,
+                        procedure: t.service_name || 'Liệu trình điều trị',
+                        duration: t.status === 'TECH_COMPLETED' && t.updated_at 
+                          ? new Date(t.updated_at).toLocaleDateString('vi-VN') 
+                          : (t.status === 'IN_PROGRESS' ? 'Đang thực hiện' : 'Đang chờ thực hiện'),
+                        performedBy: t.technician_id ? (techMap[t.technician_id] || 'Kỹ thuật viên') : 'Chưa phân công',
+                        role: 'Kỹ thuật viên',
+                        result: t.result_notes || t.doctor_note || 'Chưa ghi nhận kết quả.'
+                      });
+                    }
+                  }
+                });
+              }
+            }
+
+            // Fetch follow-up appointments (Tái khám) for patient
+            const { data: followUpsData, error: followUpsError } = await supabase
+              .from('appointments')
+              .select(`
+                appointment_id,
+                appointment_date,
+                start_time,
+                status,
+                service,
+                reason,
+                doctor_id
+              `)
+              .eq('patient_id', user.id)
+              .ilike('service', 'tái khám');
+
+            if (!followUpsError && followUpsData) {
+              // Fetch unique doctors for followups
+              const docIds = Array.from(new Set(followUpsData.map(f => f.doctor_id).filter(Boolean)));
+              let docMap = {};
+              if (docIds.length > 0) {
+                const { data: usersData } = await supabase
+                  .from('users')
+                  .select('user_id, full_name')
+                  .in('user_id', docIds);
+                if (usersData) {
+                  usersData.forEach(u => {
+                    docMap[u.user_id] = u.full_name;
+                  });
+                }
+              }
+
+              // Map each follow-up to the format expected by FollowUpTab in MedicalRecordDetailModal:
+              const mappedFollowUps = followUpsData.map(f => ({
+                id: f.appointment_id,
+                type: 'Tái khám',
+                date: f.appointment_date ? new Date(f.appointment_date).toLocaleDateString('vi-VN') : '—',
+                doctor: f.doctor_id ? (docMap[f.doctor_id] || 'Bác sĩ') : 'Bác sĩ',
+                status: f.status === 'Đã khám' || f.status === 'Reviewed' || f.status === 'Đã thanh toán' 
+                  ? 'Hoàn thành' 
+                  : (f.status === 'Đã hủy' ? 'Đã hủy' : 'Sắp tới'),
+                notes: f.reason || 'Tái khám định kỳ.'
+              }));
+
+              // Associate each follow-up with the closest medical record that happened on or before its date
+              mappedFollowUps.forEach(fu => {
+                const rawFu = followUpsData.find(f => f.appointment_id === fu.id);
+                if (!rawFu || !rawFu.appointment_date) return;
+                const fuDate = new Date(rawFu.appointment_date);
+                
+                let closestRecord = null;
+                let minDiff = Infinity;
+                
+                clinicalHistory.forEach(ch => {
+                  const [d, m, y] = ch.date.split('/').map(Number);
+                  const chDate = new Date(y, m - 1, d);
+                  
+                  const diff = fuDate.getTime() - chDate.getTime();
+                  if (diff >= 0 && diff < minDiff) {
+                    minDiff = diff;
+                    closestRecord = ch;
+                  }
+                });
+
+                if (closestRecord) {
+                  if (!closestRecord.record.followUps) {
+                    closestRecord.record.followUps = [];
+                  }
+                  const exists = closestRecord.record.followUps.some(existingFu => String(existingFu.id) === String(fu.id));
+                  if (!exists) {
+                    closestRecord.record.followUps.push(fu);
+                  }
+                }
+              });
+            }
+
+            transformed.medical.clinicalHistory = clinicalHistory;
+          }
+        } catch (fetchErr) {
+          console.warn('Error fetching clinical history:', fetchErr);
+        }
+      }
+
       setProfile(transformed);
     } catch (err) {
       console.error('Error loading profile:', err);

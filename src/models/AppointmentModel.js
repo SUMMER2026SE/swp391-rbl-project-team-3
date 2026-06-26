@@ -549,6 +549,11 @@ export const AppointmentModel = {
   async validateBooking(bookingData) {
     const { doctorId, patientId, patientPhone, patientEmail, date, time } = bookingData;
     
+    // If this is a receptionist walk-in/direct check-in, bypass validation checks
+    if (bookingData.status === 'Đang chờ') {
+      return { valid: true };
+    }
+    
     // Rule 1: Date must be today or later
     const today = new Date();
     today.setHours(0, 0, 0, 0);

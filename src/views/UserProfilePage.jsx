@@ -367,12 +367,11 @@ function SettingsToggle({ label, description, defaultOn = false }) {
 
 function MedicalRecordsTab({ user }) {
   const patientId = user?.id || 'pat-01';
-  const { getRecords, getRecordById } = useMedicalRecordController(patientId);
-  const records = getRecords();
+  const { records, getRecordById } = useMedicalRecordController(patientId);
   const [selectedRecord, setSelectedRecord] = useState(null);
 
-  const handleOpenRecord = (record) => {
-    const full = getRecordById(record.id);
+  const handleOpenRecord = async (record) => {
+    const full = await getRecordById(record.id);
     setSelectedRecord(full || record);
   };
 
