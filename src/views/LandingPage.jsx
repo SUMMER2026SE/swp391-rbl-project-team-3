@@ -6,6 +6,7 @@ import ChangePasswordModal from './ChangePasswordModal';
 import FreeSkinScanModal from '../components/FreeSkinScanModal';
 import FloatingChatbot from '../components/PatientPortal/FloatingChatbot';
 import BookAppointmentForm from '../components/PatientPortal/BookAppointmentForm';
+import { GLASS_BASE } from '../components/common/GlassCard';
 import {
   motion,
   AnimatePresence,
@@ -1034,7 +1035,7 @@ function LandingPage({ onLogout }) {
               {extendedCarouselItems.map((doc, index) => (
                 <div
                   key={`${doc.id}-${index}`}
-                  className="bg-white rounded-[24px] shadow-sm border border-slate-100 flex flex-col overflow-hidden w-[320px] shrink-0"
+                  className={`${GLASS_BASE} flex flex-col overflow-hidden w-[320px] shrink-0`}
                 >
                   {/* Top Image Box */}
                   <div className="relative w-full h-[320px] bg-slate-100">
@@ -1055,21 +1056,21 @@ function LandingPage({ onLogout }) {
 
                     {/* Stats Grid */}
                     <div className="grid grid-cols-2 gap-2">
-                      <div className="bg-slate-50 rounded p-3 flex flex-col gap-1">
+                      <div className="bg-slate-900/5 shadow-inner border border-slate-200/50 rounded p-3 flex flex-col gap-1">
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Kinh nghiệm</span>
                         <span className="text-[13px] font-bold text-slate-700">{doc.experience || 'Chưa cập nhật'}</span>
                       </div>
-                      <div className="bg-slate-50 rounded p-3 flex flex-col gap-1">
+                      <div className="bg-slate-900/5 shadow-inner border border-slate-200/50 rounded p-3 flex flex-col gap-1">
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Đánh giá</span>
                         <span className="text-[13px] font-bold text-slate-700">
                           {doc.reviewsCount > 0 ? `${doc.rating} ⭐ (${doc.reviewsCount})` : 'Chưa có đánh giá'}
                         </span>
                       </div>
-                      <div className="bg-slate-50 rounded p-3 flex flex-col gap-1">
+                      <div className="bg-slate-900/5 shadow-inner border border-slate-200/50 rounded p-3 flex flex-col gap-1">
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Phí khám</span>
                         <span className="text-[13px] font-bold text-sky-600">{doc.consultationFee || 'Chưa cập nhật'}</span>
                       </div>
-                      <div className="bg-slate-50 rounded p-3 flex flex-col gap-1">
+                      <div className="bg-slate-900/5 shadow-inner border border-slate-200/50 rounded p-3 flex flex-col gap-1">
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Loại hình</span>
                         <span className="text-[13px] font-bold text-slate-700">Khám trực tiếp</span>
                       </div>
@@ -1116,7 +1117,7 @@ function LandingPage({ onLogout }) {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, type: "spring" }}
               viewport={{ once: false, amount: 0.2 }}
-              className="md:col-span-2 glass-panel liquid-glass rounded-2xl p-8 flex flex-col justify-between group hover:bg-surface/60 transition-colors relative overflow-hidden"
+              className={`md:col-span-2 ${GLASS_BASE} liquid-glass p-8 flex flex-col justify-between group hover:bg-surface/60 transition-colors relative overflow-hidden`}
             >
               <div className="absolute -right-20 -top-20 w-64 h-64 bg-primary/10 rounded-full blur-3xl group-hover:bg-primary/20 transition-all duration-500 group-hover:scale-150" />
               <div className="z-10 flex flex-col gap-4 max-w-md">
@@ -1141,7 +1142,7 @@ function LandingPage({ onLogout }) {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, type: "spring" }}
               viewport={{ once: false, amount: 0.2 }}
-              className="glass-panel liquid-glass rounded-2xl p-8 flex flex-col gap-4 group hover:bg-surface/60 transition-colors"
+              className={`${GLASS_BASE} liquid-glass p-8 flex flex-col gap-4 group hover:bg-surface/60 transition-colors`}
             >
               <div className="w-12 h-12 rounded-lg bg-secondary-container text-on-secondary-container flex items-center justify-center mb-2 transition-transform duration-300 group-hover:-translate-y-1">
                 <span className="material-symbols-outlined text-[24px]">receipt_long</span>
@@ -1156,7 +1157,7 @@ function LandingPage({ onLogout }) {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, type: "spring" }}
               viewport={{ once: false, amount: 0.2 }}
-              className="glass-panel liquid-glass rounded-2xl p-8 flex flex-col gap-4 group hover:bg-surface/60 transition-colors"
+              className={`${GLASS_BASE} liquid-glass p-8 flex flex-col gap-4 group hover:bg-surface/60 transition-colors`}
             >
               <div className="w-12 h-12 rounded-lg bg-tertiary-container text-on-tertiary-container flex items-center justify-center mb-2 transition-transform duration-300 group-hover:-translate-y-1">
                 <span className="material-symbols-outlined text-[24px]">inventory_2</span>
@@ -1171,7 +1172,7 @@ function LandingPage({ onLogout }) {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, type: "spring" }}
               viewport={{ once: false, amount: 0.2 }}
-              className="md:col-span-2 glass-panel liquid-glass rounded-2xl p-8 flex flex-row items-center gap-8 group hover:bg-surface/60 transition-colors"
+              className={`md:col-span-2 ${GLASS_BASE} liquid-glass p-8 flex flex-row items-center gap-8 group hover:bg-surface/60 transition-colors`}
             >
               <div className="flex-grow flex flex-col gap-4">
                 <div className="w-12 h-12 rounded-lg bg-surface-variant text-on-surface flex items-center justify-center mb-2 transition-transform duration-300 group-hover:-translate-y-1">
@@ -1196,7 +1197,7 @@ function LandingPage({ onLogout }) {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, type: "spring" }}
               viewport={{ once: false, amount: 0.2 }}
-              className="glass-panel liquid-glass rounded-2xl p-8 flex flex-col items-center text-center gap-4 group hover:bg-surface/60 transition-colors"
+              className={`${GLASS_BASE} liquid-glass p-8 flex flex-col items-center text-center gap-4 group hover:bg-surface/60 transition-colors`}
             >
               <div className="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-2 transition-transform duration-300 group-hover:scale-110">
                 <span className="material-symbols-outlined text-[32px]">verified</span>
@@ -1210,7 +1211,7 @@ function LandingPage({ onLogout }) {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, type: "spring" }}
               viewport={{ once: false, amount: 0.2 }}
-              className="glass-panel liquid-glass rounded-2xl p-8 flex flex-col items-center text-center gap-4 group hover:bg-surface/60 transition-colors"
+              className={`${GLASS_BASE} liquid-glass p-8 flex flex-col items-center text-center gap-4 group hover:bg-surface/60 transition-colors`}
             >
               <div className="w-16 h-16 rounded-full bg-secondary/10 text-secondary flex items-center justify-center mb-2 transition-transform duration-300 group-hover:scale-110">
                 <span className="material-symbols-outlined text-[32px]">timer</span>
@@ -1224,7 +1225,7 @@ function LandingPage({ onLogout }) {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, type: "spring" }}
               viewport={{ once: false, amount: 0.2 }}
-              className="glass-panel liquid-glass rounded-2xl p-8 flex flex-col items-center text-center gap-4 group hover:bg-surface/60 transition-colors"
+              className={`${GLASS_BASE} liquid-glass p-8 flex flex-col items-center text-center gap-4 group hover:bg-surface/60 transition-colors`}
             >
               <div className="w-16 h-16 rounded-full bg-tertiary/10 text-tertiary flex items-center justify-center mb-2 transition-transform duration-300 group-hover:scale-110">
                 <span className="material-symbols-outlined text-[32px]">security</span>
@@ -1339,7 +1340,7 @@ function LandingPage({ onLogout }) {
         whileInView={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, type: "spring" }}
         viewport={{ once: false, amount: 0.2 }}
-        className="w-full px-10 py-12 mt-20 flex flex-col md:flex-row justify-between items-center gap-6 bg-surface-container-low/40 backdrop-blur-xl rounded-t-lg border-t border-white/50 glass-panel liquid-glass"
+        className="w-full px-10 py-12 mt-20 flex flex-col md:flex-row justify-between items-center gap-6 bg-surface-container-low/40 backdrop-blur-xl rounded-t-lg border-t border-white/50 liquid-glass"
       >
         <div className="flex flex-col items-center md:items-start gap-2">
           <img src={logo} alt="DermaSmart Logo" className="h-16 w-auto object-contain" />
@@ -1370,7 +1371,7 @@ function LandingPage({ onLogout }) {
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="w-[70vw] h-[90vh] min-h-[500px] bg-white/60 backdrop-blur-3xl border border-white/80 shadow-2xl rounded-[2.5rem] relative overflow-hidden flex flex-col p-12"
+              className={`w-[95%] md:w-[70vw] h-[90vh] min-h-[500px] ${GLASS_BASE} relative overflow-hidden flex flex-col p-12`}
               onClick={(e) => e.stopPropagation()}
             >
               {/* Close Button */}

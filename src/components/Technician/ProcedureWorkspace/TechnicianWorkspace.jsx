@@ -3,7 +3,7 @@ import { ArrowLeft, CheckCircle2, Check, ChevronRight, UploadCloud, FlaskConical
 import { motion, AnimatePresence, useMotionValue, useMotionTemplate, animate } from 'framer-motion';
 import LiquidTabSwitcher from '../../ui/LiquidTabSwitcher';
 import { supabase } from '../../../supabaseClient';
-import { GLASS_INPUT } from '../../common/GlassCard';
+import { GLASS_BASE, GLASS_INPUT, GLASS_INPUT_RECESSED } from '../../common/GlassCard';
 
 // ─── Locked Glass (Review / Read-only) Surfaces ──────────────────────────────
 // High-contrast frosted surfaces for completed, non-editable medical results.
@@ -329,7 +329,7 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
         whileHover={{ scale: 1.08 }}
         whileTap={{ scale: 0.94 }}
         onClick={() => onBack?.()}
-        className="glass-inner hover:bg-white rounded-full p-2.5 transition-all duration-200 shadow-[0_8px_32px_rgba(0,0,0,0.04)]"
+        className={`${GLASS_BASE} rounded-full p-2.5 transition-all duration-200`}
       >
         <ArrowLeft className="w-5 h-5 text-slate-700" />
       </motion.button>
@@ -379,7 +379,7 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
       >
         {/* CARD 1: Patient Vitals */}
         <motion.div
-          className="glass-3d-soft rounded-3xl p-6 flex flex-col gap-5 border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] shrink-0"
+          className={`${GLASS_BASE} p-6 flex flex-col gap-5 shrink-0`}
           variants={fadeUp}
           initial="hidden"
           animate="visible"
@@ -410,7 +410,7 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
         </motion.div>
         {/* CARD 2: Prescribed Procedures Checklist */}
         <motion.div
-          className="glass-3d-soft rounded-3xl p-6 flex flex-col gap-4 border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] shrink-0"
+          className={`${GLASS_BASE} p-6 flex flex-col gap-4 shrink-0`}
           variants={fadeUp}
           initial="hidden"
           animate="visible"
@@ -475,7 +475,7 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
         </motion.div>
         {/* CARD 3: Doctor's Request */}
         <motion.div
-          className="glass-3d-soft rounded-3xl p-6 flex flex-col gap-5 border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] shrink-0"
+          className={`${GLASS_BASE} p-6 flex flex-col gap-5 shrink-0`}
           variants={fadeUp}
           initial="hidden"
           animate="visible"
@@ -709,7 +709,7 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
               initial="hidden"
               animate="visible"
               custom={idx}
-              className="glass-inner rounded-xl p-4 shadow-[0_8px_32px_rgba(0,0,0,0.04)]"
+              className={`${GLASS_BASE} rounded-xl p-4`}
             >
               <label
                 className={`block mb-2 ${
@@ -775,7 +775,7 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
             className={
               isReviewMode
                 // Recessed, etched-into-panel well — deep readable contrast, no glaring box.
-                ? 'w-full bg-slate-950/5 border border-slate-200/50 rounded-2xl p-5 text-slate-900 font-semibold text-base min-h-[160px] shadow-inner outline-none resize-none leading-relaxed cursor-default'
+                ? `${GLASS_INPUT_RECESSED} text-base min-h-[160px] resize-none leading-relaxed cursor-default`
                 : 'flex-1 w-full px-4 py-3 text-sm font-semibold text-slate-900 resize-none leading-relaxed ' + GLASS_INPUT
             }
           />
@@ -832,8 +832,8 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
                 key={idx}
                 className={
                   isReviewMode
-                    ? 'bg-white/40 backdrop-blur-md border border-white/60 rounded-3xl p-6 shadow-sm flex flex-col gap-5'
-                    : 'glass-inner rounded-2xl p-5 border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.03)]'
+                    ? `${GLASS_BASE} p-6 flex flex-col gap-5`
+                    : `${GLASS_BASE} p-5`
                 }
                 variants={fadeUp}
                 initial="hidden"
@@ -913,7 +913,7 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
                   <div
                     className={
                       isReviewMode
-                        ? 'flex flex-col gap-2 bg-slate-950/5 rounded-2xl p-5 shadow-inner border border-slate-200/50'
+                        ? `${GLASS_INPUT_RECESSED} flex flex-col gap-2`
                         : 'bg-slate-50/50 border border-slate-100 p-2.5 rounded-xl'
                     }
                   >
@@ -943,7 +943,7 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
         </div>
         {/* ── General Technician Notes ── */}
         <motion.div
-          className="glass-inner rounded-xl p-4 shadow-[0_8px_32px_rgba(0,0,0,0.04)]"
+          className={`${GLASS_BASE} rounded-xl p-4`}
           variants={fadeUp}
           initial="hidden"
           animate="visible"
@@ -967,7 +967,7 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
             className={
               isReviewMode
                 // Recessed glass well — no inherited rounded-xl/backdrop-blur pill shape.
-                ? 'w-full bg-slate-950/5 border border-slate-200/50 rounded-2xl p-5 text-slate-900 font-semibold text-base min-h-[120px] shadow-inner outline-none resize-none leading-relaxed cursor-default'
+                ? `${GLASS_INPUT_RECESSED} text-base min-h-[120px] resize-none leading-relaxed cursor-default`
                 : 'w-full px-4 py-3 text-sm font-semibold text-slate-900 resize-none leading-relaxed ' + GLASS_INPUT
             }
           />
@@ -1027,8 +1027,13 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
       onMouseMove={handleMouseMove}
     >
       <motion.div
-        className="bg-white/50 backdrop-blur-xl border border-white/60 rounded-3xl p-8 shadow-[0_8px_32px_rgba(0,0,0,0.04)] flex flex-col h-full overflow-hidden relative"
-        style={{ background: glowBackground }}
+        // Ultimate liquid-glass shell: low-opacity white + heavy blur = light-bending
+        // frosted lens (no solid white frame). Structural classes (flex/h-full/
+        // overflow-hidden) preserved so the absolute-positioned step animation works.
+        className="relative w-full bg-white/20 backdrop-blur-3xl border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.1)] rounded-[2.5rem] p-8 flex flex-col h-full overflow-hidden"
+        // backgroundImage (not the `background` shorthand) so the bg-white/20 tint
+        // survives — the shorthand would wipe the Tailwind background-color.
+        style={{ backgroundImage: glowBackground }}
       >
         {/* Stepper Nav */}
         {renderStepper()}
@@ -1112,7 +1117,7 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
               whileHover={{ scale: 1.02, x: -3 }}
               whileTap={{ scale: 0.98 }}
               onClick={goPrev}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold glass-inner hover:bg-white text-slate-700 transition-all duration-300"
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold ${GLASS_BASE} text-slate-700 transition-all duration-300`}
             >
               <ArrowLeft className="w-4 h-4" />
               Quay lại

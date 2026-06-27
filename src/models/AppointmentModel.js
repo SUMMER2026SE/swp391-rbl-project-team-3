@@ -704,10 +704,15 @@ export const AppointmentModel = {
     return Array.isArray(schedule) ? schedule.map(s => s.day) : [];
   },
 
-  async reschedule(appointmentId, newDate, newTime) {
+  async reschedule(appointmentId, newDate, newTime, newDoctorId = null) {
     const appointments = await this.getAll();
     const apt = appointments.find(a => String(a.id || a.appointment_id) === String(appointmentId));
     if (!apt) throw new Error('Không tìm thấy lịch hẹn.');
+
+    // The patient may move the booking to a DIFFERENT doctor. Fall back to the
+    // current doctor when none is supplied so the legacy "date/time only" callers
+    // keep working unchanged.
+    const targetDoctorId = newDoctorId || apt.doctor_id || apt.doctorId;
 
     // Rule 1: Max 2 reschedules check
     const currentCount = apt.rescheduleCount || apt.reschedule_count || 0;
@@ -731,7 +736,7 @@ export const AppointmentModel = {
 
     // 2. Doctor working schedule check
     const dayOfWeek = this.getLocalDayOfWeek(newDate);
-    const workingDays = this.getDoctorWorkingDays(apt.doctor_id || apt.doctorId);
+    const workingDays = this.getDoctorWorkingDays(targetDoctorId);
     if (workingDays.length > 0 && !workingDays.includes(dayOfWeek)) {
       throw new Error(`Bác sĩ không có lịch trực vào ngày này.`);
     }
@@ -740,7 +745,7 @@ export const AppointmentModel = {
     const isBooked = appointments.some(
       a =>
         String(a.id || a.appointment_id) !== String(appointmentId) &&
-        String(a.doctor_id || a.doctorId) === String(apt.doctor_id || apt.doctorId) &&
+        String(a.doctor_id || a.doctorId) === String(targetDoctorId) &&
         (a.date === newDate || a.appointment_date === newDate) &&
         (a.time === newTime || a.start_time === newTime) &&
         !this.isCancelled(a.status)
@@ -765,6 +770,7 @@ export const AppointmentModel = {
     const isCloseToTime = this.isWithin24h(apt.date || apt.appointment_date, apt.time || apt.start_time);
 
     const baseUpdate = {
+      doctor_id: targetDoctorId,
       appointment_date: newDate,
       start_time: newTime,
       end_time: this.addMinutesToTime(newTime, 30),

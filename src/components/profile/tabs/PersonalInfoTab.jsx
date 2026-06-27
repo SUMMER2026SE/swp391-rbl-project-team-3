@@ -3,7 +3,7 @@
  * ───────────────────────────────────────────────────────────────────────────
  * "Thông tin cá nhân" — the view/edit module shared by every actor.
  *
- *  - Seamless toggle: read rows morph into `.glass-input` controls in place.
+ *  - Seamless toggle: read rows morph into GLASS_INPUT controls in place.
  *  - Robust validation: name (no digits), email + VN phone via the enterprise
  *    regex (profileValidation).
  *  - Async-safe submit: isMounted guard, spinner inside a centered button,
@@ -16,6 +16,7 @@ import ProfileField from '../ProfileField';
 import { STAFF_FIELDS, PATIENT_FIELDS } from '../profileConfig';
 import { validateForm } from '../profileValidation';
 import { ProfileModel } from '../../../models/ProfileModel';
+import { GLASS_BASE } from '../../common/GlassCard';
 
 const formatDob = (dob) => {
   if (!dob) return '';
@@ -147,7 +148,7 @@ export default function PersonalInfoTab({ profile, onSaved }) {
         )}
       </AnimatePresence>
       {/* Fields */}
-      <div className="glass-3d-soft rounded-2xl p-6 space-y-5">
+      <div className={`${GLASS_BASE} p-6 space-y-5`}>
         {fields?.map?.((f) => (
           <ProfileField
             key={f.key}

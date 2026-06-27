@@ -6,6 +6,10 @@
 @tailwind utilities;
 
 @layer components {
+  /* [DEPRECATED 2026-06-27 — Single Source of Truth lockdown]
+     .glass-card / .glass-input removed in favor of the JS tokens in
+     GlassCard.jsx (GLASS_BASE, GLASS_INPUT, GLASS_INPUT_RECESSED). Do NOT
+     reintroduce — import the tokens instead.
   .glass-card {
     @apply bg-white/40 border border-white/50 backdrop-blur-2xl shadow-[0_4px_30px_rgba(0,104,95,0.05)] transition-all duration-300;
   }
@@ -18,6 +22,7 @@
   .glass-input:focus {
     @apply bg-white/90 border-[#00685f] ring-4 ring-[#00685f]/10;
   }
+  */
   .btn-primary {
     @apply bg-gradient-to-br from-[#00685f] to-[#0058be] text-white shadow-[0_4px_15px_rgba(0,104,95,0.2)] transition-all duration-300 border-none cursor-pointer;
   }
@@ -101,6 +106,8 @@ body {
     font-variation-settings: 'FILL' 1, 'wght' 400;
 }
 
+/* [DEPRECATED 2026-06-27 — Single Source of Truth lockdown]
+   .glass-panel removed in favor of GLASS_BASE / <GlassCard> in GlassCard.jsx.
 .glass-panel {
     background-color: rgba(245, 250, 248, 0.4);
     backdrop-filter: blur(24px);
@@ -114,6 +121,7 @@ body {
     border-color: rgba(0, 104, 95, 0.4);
     box-shadow: 0 20px 25px -5px rgba(0, 104, 95, 0.1);
 }
+*/
 
 /* Animations */
 @keyframes float {
@@ -954,6 +962,8 @@ button:active { transform: scale(0.95); }
     box-shadow: 0 20px 40px rgba(20, 184, 166, 0.2);
 }
 
+/* [DEPRECATED 2026-06-27 — Single Source of Truth lockdown]
+   Duplicate .glass-card removed in favor of GLASS_BASE / <GlassCard>.
 .glass-card {
     background-color: rgba(255, 255, 255, 0.4);
     backdrop-filter: blur(24px);
@@ -967,6 +977,7 @@ button:active { transform: scale(0.95); }
     border-color: rgba(255, 255, 255, 0.8);
     box-shadow: 0 10px 15px -3px rgba(0, 104, 95, 0.1), 0 4px 6px -2px rgba(0, 104, 95, 0.05);
 }
+*/
 
 .custom-scrollbar::-webkit-scrollbar {
     width: 4px;
@@ -988,6 +999,9 @@ button:active { transform: scale(0.95); }
    - inset top highlight -> light catching the top bevel (specular)
    - inset bottom shade  -> the thickness of the glass underside
    ================================================================= */
+/* [DEPRECATED 2026-06-27 — Single Source of Truth lockdown]
+   .glass-3d / -soft / -strong / .glass-inner removed in favor of the JS tokens
+   in GlassCard.jsx (GLASS_BASE for panels, GLASS_INPUT_RECESSED for inner wells).
 .glass-3d {
     position: relative;
     background-color: rgba(255, 255, 255, 0.42);
@@ -1004,8 +1018,10 @@ button:active { transform: scale(0.95); }
         border-color 0.5s ease,
         backdrop-filter 0.5s ease;
 }
+*/
 
 /* Softer variant for Doctor workspace — realistic liquid drop feel */
+/* [DEPRECATED 2026-06-27 — Single Source of Truth lockdown]
 .glass-3d-soft {
     position: relative;
     background-color: rgba(255, 255, 255, 0.30);
@@ -1028,8 +1044,10 @@ button:active { transform: scale(0.95); }
         inset 0 1px 3px rgba(255, 255, 255, 0.7);
     border-color: rgba(255, 255, 255, 0.55);
 }
+*/
 
 /* Heavier variant for Navbar / Modals / hero containers */
+/* [DEPRECATED 2026-06-27 — Single Source of Truth lockdown]
 .glass-3d-strong {
     position: relative;
     background-color: rgba(255, 255, 255, 0.55);
@@ -1050,9 +1068,13 @@ button:active { transform: scale(0.95); }
         inset 0 -1px 3px rgba(0, 0, 0, 0.12);
     border-color: rgba(255, 255, 255, 0.85);
 }
+*/
 
 /* High-contrast inner surface — makes form fields / rows POP out of the
    translucent parent so the UI never looks "washed out". (Part 3) */
+/* [DEPRECATED 2026-06-27 — Single Source of Truth lockdown]
+   .glass-inner removed → use GLASS_INPUT (editable) or GLASS_INPUT_RECESSED
+   (read-only wells) from GlassCard.jsx.
 .glass-inner {
     background-color: rgba(255, 255, 255, 0.95);
     border: 1px solid rgba(255, 255, 255, 0.9);
@@ -1061,6 +1083,7 @@ button:active { transform: scale(0.95); }
         0 2px 6px rgba(15, 23, 42, 0.03);
     border-radius: 0.75rem;
 }
+*/
 
 /* =================================================================
    WATER REFRACTION  (Part 1 — SVG <feDisplacementMap> driven)

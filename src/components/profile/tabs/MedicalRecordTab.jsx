@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import ProgressiveList from '../ProgressiveList';
 import MedicalRecordDetailModal from '../../PatientPortal/MedicalRecordDetailModal';
+import { GLASS_BASE } from '../../common/GlassCard';
 
 const SEVERITY_TONE = {
   rose: 'bg-rose-50 text-rose-600 border-rose-100',
@@ -34,7 +35,7 @@ function Section({ icon: Icon, title, subtitle, accent = 'text-primary', tint = 
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.06, type: 'spring', damping: 26, stiffness: 140 }}
-      className="glass-3d-soft rounded-[1.75rem] p-6"
+      className={`${GLASS_BASE} rounded-[1.75rem] p-6`}
     >
       <div className="flex items-center gap-3 mb-5">
         <span className={`w-11 h-11 rounded-2xl flex items-center justify-center ${tint} ${accent}`}>

@@ -27,6 +27,7 @@ import MedicalRecordTab from '../components/profile/tabs/MedicalRecordTab';
 import AppointmentsTab from '../components/PatientPortal/AppointmentsTab';
 import PatientFeedbackTab from '../components/PatientPortal/PatientFeedbackTab';
 import { ProfileModel } from '../models/ProfileModel';
+import { GLASS_BASE } from '../components/common/GlassCard';
 
 import doctorBg from '../assets/doctor.png';
 import patientBg from '../assets/patient.png';
@@ -129,7 +130,7 @@ export default function ProfilePage() {
     return (
       <div className="min-h-screen font-sans antialiased relative bg-[url('https://images.unsplash.com/photo-1557682250-33bd709cbe85?q=80&w=2029&auto=format&fit=crop')] bg-cover bg-fixed bg-center flex items-center justify-center">
         <div className="absolute inset-0 bg-background/80 backdrop-blur-3xl" />
-        <div className="relative z-10 glass-3d rounded-2xl p-6 text-center max-w-md">
+        <div className={`relative z-10 ${GLASS_BASE} p-6 text-center max-w-md`}>
           <h2 className="text-xl font-bold text-rose-600 mb-2">Lỗi tải dữ liệu</h2>
           <p className="text-sm text-on-surface-variant/80 mb-4">{error?.message || 'Không thể lấy thông tin hồ sơ của bạn.'}</p>
           <button onClick={() => window.location.reload()} className="btn-primary px-4 py-2 rounded-xl text-sm font-bold">
@@ -161,8 +162,8 @@ export default function ProfilePage() {
         <div className="flex items-center gap-4 mb-6">
           <button
             onClick={() => navigate(-1)}
-            className="p-2.5 rounded-xl glass-3d-soft text-on-surface-variant hover:text-primary transition-all
-                       active:scale-95 cursor-pointer border-none"
+            className={`p-2.5 rounded-xl ${GLASS_BASE} text-on-surface-variant hover:text-primary transition-all
+                       active:scale-95 cursor-pointer border-none`}
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
@@ -188,7 +189,7 @@ export default function ProfilePage() {
           <div className="md:col-span-8 space-y-5">
             <ProfileTabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 
-            <div className="glass-3d rounded-[2rem] p-6 sm:p-8 min-h-[460px]">
+            <div className="relative flex-1 w-full bg-white/20 backdrop-blur-3xl border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.1)] rounded-[2.5rem] p-8 overflow-y-auto custom-scrollbar min-h-[460px]">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={activeTab}
