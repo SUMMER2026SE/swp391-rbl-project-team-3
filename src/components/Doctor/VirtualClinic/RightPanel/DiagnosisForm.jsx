@@ -1,6 +1,6 @@
 import React from 'react';
 import { Stethoscope } from 'lucide-react';
-import { GLASS_INPUT } from '../../../common/GlassCard';
+import { GLASS_BASE, GLASS_INPUT } from '../../../common/GlassCard';
 import GlassAutoComplete from '../../../common/GlassAutoComplete';
 import { MedicalRecordModel } from '../../../../models/MedicalRecordModel';
 
@@ -8,7 +8,7 @@ export default function DiagnosisForm({ value = '', onChange, isReviewMode = fal
   // Review mode is a plain frosted read-out; live mode is a DB-backed type-ahead
   // querying the `diagnoses` (ICD-10) catalogue in real time.
   return (
-    <div className="glass-3d water-refract rounded-[2rem] p-6 mb-6 relative z-50">
+    <div className={`${GLASS_BASE} water-refract rounded-[2rem] p-6 mb-6 relative z-50`}>
       <div className="flex items-center gap-2 mb-4 pb-4 border-b border-slate-200/40">
         <Stethoscope className="w-5 h-5 text-teal-600" />
         <h3 className="text-lg font-bold text-gray-900 tracking-tight">Chẩn đoán Lâm sàng</h3>

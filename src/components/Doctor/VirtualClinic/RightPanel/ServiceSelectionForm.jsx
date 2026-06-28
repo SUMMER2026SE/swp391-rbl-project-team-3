@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Camera, Activity, Sparkles, Droplet, Check, Search, HelpCircle, Loader2, Clock, UserCog, Plus, Trash2, FlaskConical } from 'lucide-react';
 import { supabase } from '../../../../supabaseClient';
-import { GLASS_INPUT } from '../../../common/GlassCard';
+import { GLASS_BASE, GLASS_INPUT } from '../../../common/GlassCard';
 
 export default function ServiceSelectionForm({ onSelectionChange, existingTickets = [] }) {
   const [services, setServices] = useState([]);
@@ -157,7 +157,7 @@ export default function ServiceSelectionForm({ onSelectionChange, existingTicket
   });
 
   return (
-    <div className="glass-3d water-refract rounded-[2rem] p-6 flex-1 flex flex-col min-h-0">
+    <div className={`${GLASS_BASE} water-refract rounded-[2rem] p-6 flex-1 flex flex-col min-h-0`}>
       <div className="flex items-center justify-between gap-2 mb-4 pb-4 border-b border-slate-200/40 flex-shrink-0">
         <div className="flex items-center gap-2">
           <Activity className="w-5 h-5 text-emerald-600 animate-pulse" />
@@ -190,7 +190,7 @@ export default function ServiceSelectionForm({ onSelectionChange, existingTicket
               className={`px-3.5 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all active:scale-95 border ${
                 activeCategory === cat
                   ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-500/10'
-                  : 'bg-white/50 text-slate-600 border-slate-200/60 hover:bg-white hover:text-slate-900'
+                  : 'bg-white/50 text-slate-600 border-slate-200/60 hover:bg-white/70 hover:text-slate-900'
               }`}
             >
               {cat === 'All' ? 'Tất cả' : cat}
@@ -235,7 +235,7 @@ export default function ServiceSelectionForm({ onSelectionChange, existingTicket
         <button
           type="button"
           onClick={handleAddMetric}
-          className="mt-3 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-emerald-700 bg-white/60 border border-emerald-200/70 hover:bg-white hover:border-emerald-300 shadow-sm transition-all active:scale-95"
+          className="mt-3 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-emerald-700 bg-white/60 border border-emerald-200/70 hover:bg-white/80 hover:border-emerald-300 shadow-sm transition-all active:scale-95"
         >
           <Plus className="w-4 h-4" />
           Thêm chỉ số
@@ -266,7 +266,7 @@ export default function ServiceSelectionForm({ onSelectionChange, existingTicket
                       ? 'border-slate-300 bg-slate-100/50 cursor-not-allowed opacity-80'
                       : isSelected
                         ? 'border-emerald-500/80 bg-emerald-50/40 shadow-[0_8px_20px_rgba(16,185,129,0.08)] ring-2 ring-emerald-500/20 cursor-pointer'
-                        : 'border-slate-200/60 bg-white/50 hover:bg-white hover:border-slate-300 hover:shadow-[0_4px_12px_rgba(0,0,0,0.02)] cursor-pointer'
+                        : 'border-slate-200/60 bg-white/50 hover:bg-white/70 hover:border-slate-300 hover:shadow-[0_4px_12px_rgba(0,0,0,0.02)] cursor-pointer'
                   }`}
                 >
                   {!hasTicket && (

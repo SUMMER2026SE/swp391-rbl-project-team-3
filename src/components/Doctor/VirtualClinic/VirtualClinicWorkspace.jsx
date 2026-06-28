@@ -19,7 +19,7 @@ import { useDoctors } from '../../../hooks/useDoctors';
 import { ServiceTicketModel } from '../../../models/ServiceTicketModel';
 import { MedicalRecordModel } from '../../../models/MedicalRecordModel';
 import { PrescriptionModel } from '../../../models/PrescriptionModel';
-import { GLASS_INPUT } from '../../common/GlassCard';
+import { GLASS_BASE, GLASS_INPUT } from '../../common/GlassCard';
 
 import { supabase } from '../../../supabaseClient';
 
@@ -254,7 +254,7 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
           <button
             onClick={onBack}
             title="Quay lại danh sách khám bệnh"
-            className="p-2.5 glass-inner hover:bg-white rounded-full transition-all active:scale-95 text-slate-600 cursor-pointer border-none"
+            className={`p-2.5 ${GLASS_BASE} rounded-full transition-all active:scale-95 text-slate-600 cursor-pointer border-none`}
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
@@ -370,7 +370,7 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
                   <ServiceSelectionForm onSelectionChange={setSelectedServices} existingTickets={existingTickets} />
 
                   {/* Doctor request notes section */}
-                  <div className="glass-3d-soft rounded-3xl p-5 border border-white/50 bg-white/40 shadow-sm text-left">
+                  <div className={`${GLASS_BASE} p-5 text-left`}>
                     <label className="block text-xs font-black text-gray-500 mb-2 uppercase tracking-wider">
                       Ghi chú / Yêu cầu gửi Kỹ thuật viên
                     </label>
@@ -387,7 +387,7 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
                   <div className="flex gap-4 shrink-0">
                     <button
                       onClick={() => setClinicalStep(1)}
-                      className="flex-1 glass-inner text-slate-700 py-4 px-6 rounded-2xl font-bold tracking-tight hover:bg-white transition-all active:scale-[0.98] flex justify-center items-center gap-2 cursor-pointer border border-slate-200/40 bg-white/40"
+                      className={`flex-1 ${GLASS_BASE} text-slate-700 py-4 px-6 rounded-2xl font-bold tracking-tight transition-all active:scale-[0.98] flex justify-center items-center gap-2 cursor-pointer`}
                     >
                       Quay lại
                     </button>
@@ -447,7 +447,7 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
                     <div className="flex gap-4">
                       <button
                         onClick={() => setClinicalStep(2)}
-                        className="flex-1 glass-inner text-slate-700 py-4 px-6 rounded-2xl font-bold tracking-tight hover:bg-white transition-all active:scale-[0.98] flex justify-center items-center gap-2 cursor-pointer border border-slate-200/40 bg-white/40"
+                        className={`flex-1 ${GLASS_BASE} text-slate-700 py-4 px-6 rounded-2xl font-bold tracking-tight transition-all active:scale-[0.98] flex justify-center items-center gap-2 cursor-pointer`}
                       >
                         Quay lại
                       </button>

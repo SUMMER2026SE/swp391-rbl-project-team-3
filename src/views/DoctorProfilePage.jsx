@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useFeedbackController } from '../controllers/useFeedbackController';
 import BookAppointmentForm from '../components/PatientPortal/BookAppointmentForm';
 import FeedbackCard from '../components/shared/FeedbackCard';
+import { GLASS_BASE } from '../components/common/GlassCard';
 import '../index.css';
 
 function DoctorProfilePage() {
@@ -106,7 +107,7 @@ function DoctorProfilePage() {
 
                 <div className="profile-grid">
                     {/* Left Sidebar */}
-                    <div className="profile-sidebar glass-panel tilt-card" style={{ padding: '2.5rem 2rem', textAlign: 'center', alignSelf: 'start' }}>
+                    <div className={`profile-sidebar ${GLASS_BASE} tilt-card`} style={{ padding: '2.5rem 2rem', textAlign: 'center', alignSelf: 'start' }}>
                         <div className="profile-image-container" style={{ width: '160px', height: '160px', margin: '0 auto 1.5rem', borderRadius: '50%', overflow: 'hidden', border: '4px solid rgba(20, 184, 166, 0.5)', boxShadow: '0 10px 25px rgba(0,0,0,0.3)' }}>
                             <img src={doctor.image} alt={doctor.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         </div>
@@ -149,7 +150,7 @@ function DoctorProfilePage() {
                     {/* Right Content */}
                     <div className="profile-content">
                         {/* Bio Section */}
-                        <div className="glass-panel" style={{ padding: '2.5rem', marginBottom: '1.5rem' }}>
+                        <div className={GLASS_BASE} style={{ padding: '2.5rem', marginBottom: '1.5rem' }}>
                             <h2 style={{ color: 'white', fontSize: '1.5rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '1rem' }}>
                                 <div style={{ background: 'rgba(20, 184, 166, 0.2)', padding: '0.5rem', borderRadius: '10px', display: 'flex' }}>
                                     <span className="material-symbols-outlined" style={{ color: '#14b8a6' }}>person</span>
@@ -160,7 +161,7 @@ function DoctorProfilePage() {
                         </div>
 
                         {/* Specialties */}
-                        <div className="glass-panel" style={{ padding: '2.5rem', marginBottom: '1.5rem' }}>
+                        <div className={GLASS_BASE} style={{ padding: '2.5rem', marginBottom: '1.5rem' }}>
                             <h2 style={{ color: 'white', fontSize: '1.5rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '1rem' }}>
                                 <div style={{ background: 'rgba(56, 189, 248, 0.2)', padding: '0.5rem', borderRadius: '10px', display: 'flex' }}>
                                     <span className="material-symbols-outlined" style={{ color: '#38bdf8' }}>medical_services</span>
@@ -178,7 +179,7 @@ function DoctorProfilePage() {
                         </div>
 
                         {/* Schedule */}
-                        <div className="glass-panel" style={{ padding: '2.5rem' }}>
+                        <div className={GLASS_BASE} style={{ padding: '2.5rem' }}>
                             <h2 style={{ color: 'white', fontSize: '1.5rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '1rem' }}>
                                 <div style={{ background: 'rgba(245, 158, 11, 0.2)', padding: '0.5rem', borderRadius: '10px', display: 'flex' }}>
                                     <span className="material-symbols-outlined" style={{ color: '#f59e0b' }}>calendar_month</span>
