@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 
 export default function LiquidTabSwitcher({ tabs, activeTab, onChange }) {
   return (
-    <div className="flex flex-row overflow-x-auto hide-scrollbar gap-2 p-1 bg-white/20 backdrop-blur-md rounded-2xl border border-white/30 shadow-inner">
+    <div className="flex flex-row overflow-x-auto hide-scrollbar gap-2 p-1 bg-slate-900/5 backdrop-blur-md rounded-2xl border border-white/30 shadow-inner">
       {tabs?.map?.((tab) => {
         const isActive = activeTab === tab.id;
         const Icon = tab.icon;

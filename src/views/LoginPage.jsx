@@ -6,6 +6,7 @@ import { Shield, AlertCircle, CheckCircle, User, Mail, Phone, Lock, Eye, EyeOff,
 import logo from '../assets/logo.png';
 import bgImage from '../assets/bg-login.png';
 import GlassCheckbox from '../components/common/GlassCheckbox';
+import { GLASS_BASE, GLASS_INPUT } from '../components/common/GlassCard';
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -51,7 +52,7 @@ function LoginPage() {
       <div className="flex flex-col min-h-screen w-full relative z-10 text-on-background selection:bg-primary/20 selection:text-primary font-body-md">
 
       <main className="flex-grow flex items-center justify-center p-margin-mobile md:p-margin-desktop relative z-10">
-        <div className="w-full max-w-md glass-card rounded-2xl p-8 md:p-10 relative z-20 bg-white/40 backdrop-blur-xl border border-white/50 shadow-[0_8px_32px_0_rgba(0,104,95,0.08)] mx-auto">
+        <div className={`w-full max-w-md ${GLASS_BASE} p-8 md:p-10 relative z-20 mx-auto`}>
           
           {/* Logo Section */}
           <div className="text-center mb-8">
@@ -122,7 +123,7 @@ function LoginPage() {
                   <div className="relative">
                     <Mail className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-outline w-5 h-5" />
                     <input
-                      className="w-full pl-11 pr-4 py-3 rounded-full glass-input font-body-md text-body-md text-on-surface placeholder:text-outline-variant"
+                      className={`w-full pl-11 pr-4 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md`}
                       id="recovery-email"
                       name="recovery-email"
                       placeholder="name@example.com"
@@ -144,7 +145,7 @@ function LoginPage() {
                   <div className="relative">
                     <Shield className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-outline w-5 h-5" />
                     <input
-                      className="w-full pl-11 pr-4 py-3 rounded-full glass-input font-body-md text-body-md text-on-surface placeholder:text-outline-variant tracking-wider font-semibold text-center"
+                      className={`w-full pl-11 pr-4 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md tracking-wider font-semibold text-center`}
                       id="otp-code"
                       name="otp-code"
                       placeholder="Mã OTP 6 chữ số"
@@ -168,7 +169,7 @@ function LoginPage() {
                     <div className="relative">
                       <Lock className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-outline w-5 h-5" />
                       <input
-                        className="w-full pl-11 pr-10 py-3 rounded-full glass-input font-body-md text-body-md text-on-surface placeholder:text-outline-variant"
+                        className={`w-full pl-11 pr-10 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md`}
                         id="new-password"
                         name="new-password"
                         placeholder="Nhập mật khẩu mới"
@@ -195,7 +196,7 @@ function LoginPage() {
                     <div className="relative">
                       <Key className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-outline w-5 h-5" />
                       <input
-                        className="w-full pl-11 pr-10 py-3 rounded-full glass-input font-body-md text-body-md text-on-surface placeholder:text-outline-variant"
+                        className={`w-full pl-11 pr-10 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md`}
                         id="confirm-new-password"
                         name="confirm-new-password"
                         placeholder="Nhập lại mật khẩu mới"
@@ -259,7 +260,7 @@ function LoginPage() {
                 <div className="relative">
                   <User className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-outline w-5 h-5" />
                   <input
-                    className="w-full pl-11 pr-4 py-3 rounded-full glass-input font-body-md text-body-md text-on-surface placeholder:text-outline-variant"
+                    className={`w-full pl-11 pr-4 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md`}
                     id="fullname"
                     name="fullname"
                     placeholder="Nhập họ và tên của bạn"
@@ -278,7 +279,7 @@ function LoginPage() {
                 <div className="relative">
                   <Mail className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-outline w-5 h-5" />
                   <input
-                    className="w-full pl-11 pr-4 py-3 rounded-full glass-input font-body-md text-body-md text-on-surface placeholder:text-outline-variant"
+                    className={`w-full pl-11 pr-4 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md`}
                     id="email"
                     name="email"
                     placeholder="Nhập địa chỉ email"
@@ -297,7 +298,7 @@ function LoginPage() {
                 <div className="relative">
                   <Phone className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-outline w-5 h-5" />
                   <input
-                    className="w-full pl-11 pr-4 py-3 rounded-full glass-input font-body-md text-body-md text-on-surface placeholder:text-outline-variant"
+                    className={`w-full pl-11 pr-4 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md`}
                     id="phone"
                     name="phone"
                     placeholder="Nhập số điện thoại"
@@ -316,7 +317,7 @@ function LoginPage() {
                 <div className="relative">
                   <Lock className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-outline w-5 h-5" />
                   <input
-                    className="w-full pl-11 pr-10 py-3 rounded-full glass-input font-body-md text-body-md text-on-surface placeholder:text-outline-variant"
+                    className={`w-full pl-11 pr-10 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md`}
                     id="password"
                     name="password"
                     placeholder="Tạo mật khẩu"
@@ -343,7 +344,7 @@ function LoginPage() {
                 <div className="relative">
                   <Key className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-outline w-5 h-5" />
                   <input
-                    className="w-full pl-11 pr-10 py-3 rounded-full glass-input font-body-md text-body-md text-on-surface placeholder:text-outline-variant"
+                    className={`w-full pl-11 pr-10 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md`}
                     id="confirm_password"
                     name="confirm_password"
                     placeholder="Nhập lại mật khẩu"
@@ -425,7 +426,7 @@ function LoginPage() {
                 <div className="relative">
                   <Mail className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-outline w-5 h-5" />
                   <input
-                    className="w-full pl-11 pr-4 py-3 rounded-full glass-input font-body-md text-body-md text-on-surface placeholder:text-outline-variant"
+                    className={`w-full pl-11 pr-4 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md`}
                     id="email"
                     name="email"
                     placeholder="Nhập email hoặc số điện thoại"
@@ -456,7 +457,7 @@ function LoginPage() {
                 <div className="relative">
                   <Lock className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-outline w-5 h-5" />
                   <input
-                    className="w-full pl-11 pr-10 py-3 rounded-full glass-input font-body-md text-body-md text-on-surface placeholder:text-outline-variant"
+                    className={`w-full pl-11 pr-10 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md`}
                     id="password"
                     name="password"
                     placeholder="Nhập mật khẩu"

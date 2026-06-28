@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { User, Activity, AlertTriangle, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PatientModel } from '../../../../models/PatientModel';
+import { GLASS_BASE } from '../../../common/GlassCard';
 
 export default function PatientVitals({ patientId }) {
   const [patient, setPatient] = useState(null);
@@ -16,7 +17,7 @@ export default function PatientVitals({ patientId }) {
   const [showDetails, setShowDetails] = useState(false);
 
   return (
-    <div className="glass-3d-soft water-refract rounded-[2rem] p-6 mb-6">
+    <div className={`${GLASS_BASE} water-refract rounded-[2rem] p-6 mb-6`}>
       <div className="flex items-center gap-2 mb-4 pb-4 border-b border-slate-200/40">
         <User className="w-5 h-5 text-teal-600" />
         <h3 className="font-bold text-lg text-slate-900">Thông tin Bệnh nhân</h3>

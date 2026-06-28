@@ -11,6 +11,7 @@ import React, { useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Camera, Phone, MessageSquare, Mail, IdCard, CalendarClock, ShieldCheck } from 'lucide-react';
 import { ROLE_THEME, ROLE_METRICS } from './profileConfig';
+import { GLASS_BASE } from '../common/GlassCard';
 
 function InfoRow({ icon: Icon, label, value, valueNode }) {
   return (
@@ -74,7 +75,7 @@ export default function ProfileSummaryCard({ profile, onAvatarChange }) {
       initial={{ opacity: 0, x: -24 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ type: 'spring', damping: 24, stiffness: 120 }}
-      className="glass-3d rounded-[2rem] p-7 h-full flex flex-col items-center text-center"
+      className={`${GLASS_BASE} rounded-[2rem] p-7 h-full flex flex-col items-center text-center`}
     >
       {/* Avatar with hover-blur change overlay */}
       <div className="relative group">

@@ -8,6 +8,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Lock, Bell, Eye, EyeOff, Loader2, CheckCircle2, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { AuthModel } from '../../../models/AuthModel';
+import { GLASS_BASE, GLASS_INPUT, GLASS_INPUT_RECESSED } from '../../common/GlassCard';
 
 function PasswordInput({ label, value, onChange, placeholder }) {
   const [show, setShow] = useState(false);
@@ -22,7 +23,7 @@ function PasswordInput({ label, value, onChange, placeholder }) {
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className="glass-input w-full text-[15px] text-on-surface rounded-xl px-4 py-3 pr-12"
+          className={`${GLASS_INPUT} w-full text-[15px] rounded-xl px-4 py-3 pr-12`}
         />
         <button
           type="button"
@@ -39,7 +40,7 @@ function PasswordInput({ label, value, onChange, placeholder }) {
 
 function ToggleRow({ label, description, checked = false, onChange }) {
   return (
-    <div className="flex items-center justify-between gap-4 glass-inner rounded-xl px-4 py-3.5">
+    <div className={`flex items-center justify-between gap-4 ${GLASS_INPUT_RECESSED} px-4 py-3.5`}>
       <div className="min-w-0">
         <p className="text-sm font-bold text-on-surface">{label}</p>
         <p className="text-xs text-on-surface-variant/70 mt-0.5">{description}</p>
@@ -148,7 +149,7 @@ export default function AccountSettingsTab() {
       </AnimatePresence>
 
       {/* Change password */}
-      <div className="glass-3d-soft rounded-2xl p-6">
+      <div className={`${GLASS_BASE} p-6`}>
         <h4 className="flex items-center gap-2 text-base font-extrabold text-on-surface mb-5">
           <Lock className="w-5 h-5 text-primary" /> Đổi mật khẩu
         </h4>
@@ -175,7 +176,7 @@ export default function AccountSettingsTab() {
       </div>
 
       {/* Notifications */}
-      <div className="glass-3d-soft rounded-2xl p-6">
+      <div className={`${GLASS_BASE} p-6`}>
         <h4 className="flex items-center gap-2 text-base font-extrabold text-on-surface mb-5">
           <Bell className="w-5 h-5 text-primary" /> Thông báo
         </h4>

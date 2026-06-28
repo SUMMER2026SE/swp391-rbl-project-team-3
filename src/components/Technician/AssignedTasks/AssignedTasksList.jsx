@@ -1,13 +1,14 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Activity, Clock, Play, CheckCircle2, Eye, Loader2, Lock } from 'lucide-react';
+import { GLASS_BASE } from '../../common/GlassCard';
 
 const AssignedTasksList = ({ tasks, currentTechId, onExecuteTask, onReviewTask }) => {
   const taskList = tasks || [];
 
   if (taskList.length === 0) {
     return (
-      <div className="glass-3d rounded-[1.75rem] overflow-hidden">
+      <div className={`${GLASS_BASE} rounded-[1.75rem] overflow-hidden`}>
         <div className="bg-white/40 backdrop-blur-sm border-b border-white/30 px-8 py-6">
           <div className="flex items-center justify-between">
             <div>
@@ -62,7 +63,7 @@ const AssignedTasksList = ({ tasks, currentTechId, onExecuteTask, onReviewTask }
   };
 
   return (
-    <div className="glass-3d rounded-[1.75rem] overflow-hidden">
+    <div className={`${GLASS_BASE} rounded-[1.75rem] overflow-hidden`}>
       {/* Header */}
       <div className="bg-white/40 backdrop-blur-sm border-b border-white/30 px-8 py-6">
         <div className="flex items-center justify-between">
@@ -224,7 +225,7 @@ const AssignedTasksList = ({ tasks, currentTechId, onExecuteTask, onReviewTask }
                         whileHover={{ scale: 1.04 }}
                         whileTap={{ scale: 0.97 }}
                         onClick={() => onReviewTask?.(task)}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold glass-inner text-slate-700 hover:text-emerald-700 hover:bg-emerald-50/60 transition-all duration-200"
+                        className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold ${GLASS_BASE} text-slate-700 hover:text-emerald-700 hover:bg-emerald-50/60 transition-all duration-200`}
                       >
                         <Eye className="w-4 h-4" />
                         Xem lại kết quả

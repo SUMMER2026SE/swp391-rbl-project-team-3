@@ -2,7 +2,7 @@
  * ProfileField.jsx
  * ───────────────────────────────────────────────────────────────────────────
  * A single labelled field that smoothly toggles between a read view and a
- * controlled `.glass-input`. Layout is identical in both modes (same row
+ * controlled GLASS_INPUT field. Layout is identical in both modes (same row
  * height / paddings) so flipping to edit never shifts the surrounding grid.
  */
 import React from 'react';
@@ -11,6 +11,7 @@ import {
   User, Mail, Phone, MapPin, Calendar, BadgeCheck, Building2,
   Sparkles, CalendarDays, AlertCircle, Lock, Award, Clock
 } from 'lucide-react';
+import { GLASS_INPUT } from '../common/GlassCard';
 
 const ICONS = {
   User, Mail, Phone, MapPin, Calendar, BadgeCheck, Building2,
@@ -55,7 +56,7 @@ export default function ProfileField({
               value={value}
               onChange={(e) => onChange?.(e.target.value)}
               aria-invalid={!!error}
-              className={`glass-input w-full text-[15px] font-medium text-on-surface rounded-xl px-4 py-2.5
+              className={`${GLASS_INPUT} w-full text-[15px] font-medium rounded-xl px-4 py-2.5
                 ${error ? '!border-rose-400 focus:!ring-rose-400/15' : ''}`}
             />
           ) : (

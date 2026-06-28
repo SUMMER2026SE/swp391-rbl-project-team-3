@@ -354,9 +354,9 @@ export function useAppointmentController(patientId = null) {
     return AppointmentModel.validateBooking(bookingData);
   }, []);
 
-  const rescheduleAppointment = useCallback(async (appointmentId, newDate, newTime) => {
+  const rescheduleAppointment = useCallback(async (appointmentId, newDate, newTime, newDoctorId = null) => {
     try {
-      const updatedApt = await AppointmentModel.reschedule(appointmentId, newDate, newTime);
+      const updatedApt = await AppointmentModel.reschedule(appointmentId, newDate, newTime, newDoctorId);
       refreshState();
       return { success: true, appointment: updatedApt };
     } catch (e) {

@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import GlassSelect from '../components/common/GlassSelect';
+import { GLASS_INPUT } from '../components/common/GlassCard';
 import { NotificationModel } from '../models/NotificationModel';
 import { DoctorModel } from '../models/DoctorModel';
 import { AppointmentModel } from '../models/AppointmentModel';
@@ -460,7 +461,7 @@ export default function DoctorDashboard() {
         >
           <div className="flex items-center gap-4">
             <span className="font-black text-2xl text-gradient-emerald md:hidden tracking-tight">DermaSmart</span>
-            <div className="hidden md:flex items-center glass-inner rounded-full pl-4 pr-5 py-2.5 focus-within:ring-2 focus-within:ring-teal-500/30 focus-within:border-teal-400 transition-all">
+            <div className={`hidden md:flex items-center ${GLASS_INPUT} rounded-full pl-4 pr-5 py-2.5 focus-within:border-teal-400`}>
               <Search className="w-[18px] h-[18px] text-slate-400 mr-2.5" />
               <input
                 className="bg-transparent border-none outline-none text-[15px] font-medium text-gray-800 placeholder-gray-500 w-72 p-0 focus:ring-0"
