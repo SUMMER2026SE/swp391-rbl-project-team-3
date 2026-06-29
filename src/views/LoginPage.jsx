@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthController } from '../controllers/useAuthController';
-import { Shield, AlertCircle, CheckCircle, User, Mail, Phone, Lock, Eye, EyeOff, Key, ArrowRight } from 'lucide-react';
+import { Shield, AlertCircle, CheckCircle, User, Mail, Phone, Lock, Eye, EyeOff, Key, ArrowRight, Loader2 } from 'lucide-react';
 import logo from '../assets/logo.png';
 import bgImage from '../assets/bg-login.png';
 import GlassCheckbox from '../components/common/GlassCheckbox';
@@ -23,14 +23,13 @@ function LoginPage() {
     otpInput, setOtpInput,
     isVerifyingOtp, setIsVerifyingOtp,
     isOtpVerified, setIsOtpVerified,
-    regStep, setRegStep,
-    otpCode, setOtpCode,
+    isAwaitingConfirmation,
     showPassword, setShowPassword,
     showConfirmPassword, setShowConfirmPassword,
     confirmPasswordInput, setConfirmPasswordInput,
     loading, errorMsg, successMsg,
     handleGoogleLogin, handleSubmit,
-    handleSendRegEmail, handleVerifyRegOtp, handleCompleteRegistration, resetRegistration,
+    handleRegister, cancelAwaitingConfirmation,
     resetMessages
   } = useAuthController();
 
@@ -255,114 +254,13 @@ function LoginPage() {
               </div>
             </form>
           ) : isRegistering ? (
-            /* ─── PROGRESSIVE REGISTRATION ─── 1: Email · 2: OTP · 3: Details ─── */
-            regStep === 1 ? (
-              /* STEP 1 — Email only */
-              <form onSubmit={handleSendRegEmail} className="space-y-5">
-                <div>
-                  <label className="block font-label-sm text-label-sm text-on-surface mb-1.5" htmlFor="reg-email">
-                    Email
-                  </label>
-                  <div className="relative">
-                    <Mail className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-outline w-5 h-5" />
-                    <input
-                      className={`w-full pl-11 pr-4 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md`}
-                      id="reg-email"
-                      name="reg-email"
-                      placeholder="Nhập địa chỉ email"
-                      type="email"
-                      autoFocus
-                      value={emailInput}
-                      onChange={(e) => setEmailInput(e.target.value)}
-                    />
-                  </div>
-                  <p className="mt-2 ml-1 text-xs text-on-surface-variant">
-                    Chúng tôi sẽ gửi một mã xác nhận gồm 6 chữ số đến email này.
-                  </p>
-                </div>
-
-                <div className="pt-2 w-full flex justify-center items-center">
-                  <button
-                    className="w-full py-3 px-4 rounded-full bg-primary/40 backdrop-blur-md border border-white/50 text-white font-bold shadow-[0_8px_32px_0_rgba(0,104,95,0.2),inset_0_1px_2px_rgba(255,255,255,0.5)] transition-all duration-300 ease-out hover:bg-primary/60 hover:border-white/70 hover:shadow-[0_8px_32px_0_rgba(0,104,95,0.4),inset_0_1px_2px_rgba(255,255,255,0.8)] hover:-translate-y-0.5 flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-                    type="submit"
-                    disabled={loading}
-                  >
-                    <span>Gửi mã xác nhận</span>
-                    <ArrowRight className="w-5 h-5" />
-                  </button>
-                </div>
-              </form>
-            ) : regStep === 2 ? (
-              /* STEP 2 — Verify the 6-digit OTP */
-              <form onSubmit={handleVerifyRegOtp} className="space-y-5">
-                <p className="text-sm text-on-surface-variant text-center -mt-1">
-                  Nhập mã gồm 6 chữ số đã gửi đến{' '}
-                  <span className="font-semibold text-primary break-all">{emailInput}</span>.
-                </p>
-                <input
-                  className={`w-full py-3.5 px-4 ${GLASS_INPUT} font-body-md tracking-widest text-center text-2xl font-bold`}
-                  id="reg-otp"
-                  name="reg-otp"
-                  type="text"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  maxLength={6}
-                  placeholder="••••••"
-                  required
-                  autoFocus
-                  value={otpCode}
-                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
-                />
-
-                <button
-                  className="w-full py-3 px-4 rounded-full bg-primary/40 backdrop-blur-md border border-white/50 text-white font-bold shadow-[0_8px_32px_0_rgba(0,104,95,0.2),inset_0_1px_2px_rgba(255,255,255,0.5)] transition-all duration-300 ease-out hover:bg-primary/60 hover:border-white/70 hover:shadow-[0_8px_32px_0_rgba(0,104,95,0.4),inset_0_1px_2px_rgba(255,255,255,0.8)] hover:-translate-y-0.5 flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-                  type="submit"
-                  disabled={loading}
-                >
-                  <span>Xác nhận OTP</span>
-                  <ArrowRight className="w-5 h-5" />
-                </button>
-
-                <div className="text-center pt-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setRegStep(1);
-                      setOtpCode('');
-                      resetMessages();
-                    }}
-                    className="text-primary hover:text-primary-container font-semibold transition-colors text-sm bg-transparent border-none cursor-pointer"
-                  >
-                    Quay lại
-                  </button>
-                </div>
-              </form>
-            ) : (
-              /* STEP 3 — Email verified & locked; collect the remaining details */
-              <form onSubmit={handleCompleteRegistration} className="space-y-5">
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="block font-label-sm text-label-sm text-on-surface" htmlFor="reg-email-locked">
-                      Email
-                    </label>
-                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-green-700 bg-green-100/70 border border-green-300/60 rounded-full px-2.5 py-0.5">
-                      <CheckCircle className="w-3.5 h-3.5" />
-                      Email đã xác nhận
-                    </span>
-                  </div>
-                  <div className="relative">
-                    <Mail className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-green-600 w-5 h-5" />
-                    <input
-                      className={`w-full pl-11 pr-4 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md opacity-80 cursor-not-allowed`}
-                      id="reg-email-locked"
-                      name="reg-email-locked"
-                      type="email"
-                      disabled
-                      value={emailInput}
-                    />
-                  </div>
-                </div>
-
+            /* FULL REGISTRATION FORM — all fields upfront + cross-tab confirmation UX */
+            <form onSubmit={handleRegister} className="space-y-5">
+              {/* Inputs lock into a disabled, dimmed state while awaiting email confirmation */}
+              <fieldset
+                disabled={isAwaitingConfirmation}
+                className={`space-y-5 border-none p-0 m-0 transition-opacity duration-300 ${isAwaitingConfirmation ? 'opacity-50 pointer-events-none' : ''}`}
+              >
                 <div>
                   <label className="block font-label-sm text-label-sm text-on-surface mb-1.5" htmlFor="fullname">
                     Họ và tên
@@ -375,9 +273,26 @@ function LoginPage() {
                       name="fullname"
                       placeholder="Nhập họ và tên của bạn"
                       type="text"
-                      autoFocus
                       value={fullNameInput}
                       onChange={(e) => setFullNameInput(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-label-sm text-label-sm text-on-surface mb-1.5" htmlFor="email">
+                    Email
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-outline w-5 h-5" />
+                    <input
+                      className={`w-full pl-11 pr-4 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md`}
+                      id="email"
+                      name="email"
+                      placeholder="Nhập địa chỉ email"
+                      type="email"
+                      value={emailInput}
+                      onChange={(e) => setEmailInput(e.target.value)}
                     />
                   </div>
                 </div>
@@ -451,19 +366,39 @@ function LoginPage() {
                     </button>
                   </div>
                 </div>
+              </fieldset>
 
+              {isAwaitingConfirmation ? (
+                /* WAITING STATE — Liquid Glass status banner replaces the submit button */
+                <div className="rounded-2xl bg-primary/10 backdrop-blur-md border border-white/60 shadow-[inset_0_1px_2px_rgba(255,255,255,0.6),0_8px_24px_rgba(0,104,95,0.15)] p-5 text-center">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <Loader2 className="w-5 h-5 text-primary animate-spin" />
+                    <span className="font-bold text-slate-900">Đang chờ xác nhận email...</span>
+                  </div>
+                  <p className="text-sm text-on-surface-variant leading-relaxed mb-4">
+                    Vui lòng kiểm tra hộp thư của bạn và bấm vào liên kết xác nhận. Màn hình này sẽ tự động chuyển tiếp.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={cancelAwaitingConfirmation}
+                    className="w-full py-2.5 px-4 rounded-full bg-white bg-opacity-60 backdrop-blur-md border border-outline-variant text-on-surface font-semibold text-sm flex justify-center items-center gap-2 hover:bg-white hover:bg-opacity-80 transition-colors shadow-sm cursor-pointer"
+                  >
+                    <span>Hủy / Quay lại</span>
+                  </button>
+                </div>
+              ) : (
                 <div className="pt-2 w-full flex justify-center items-center">
                   <button
                     className="w-full py-3 px-4 rounded-full bg-primary/40 backdrop-blur-md border border-white/50 text-white font-bold shadow-[0_8px_32px_0_rgba(0,104,95,0.2),inset_0_1px_2px_rgba(255,255,255,0.5)] transition-all duration-300 ease-out hover:bg-primary/60 hover:border-white/70 hover:shadow-[0_8px_32px_0_rgba(0,104,95,0.4),inset_0_1px_2px_rgba(255,255,255,0.8)] hover:-translate-y-0.5 flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                     type="submit"
                     disabled={loading}
                   >
-                    <span>Hoàn tất đăng ký</span>
+                    <span>Đăng ký</span>
                     <ArrowRight className="w-5 h-5" />
                   </button>
                 </div>
-              </form>
-            )
+              )}
+            </form>
           ) : (
             /* LOGIN FORM */
             <form onSubmit={(e) => handleSubmit(e, from)} className="space-y-5">
@@ -572,10 +507,8 @@ function LoginPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    // Complete state reset so no registration step/field/code leaks
-                    // when switching between the Login and Register tabs.
                     setIsRegistering(!isRegistering);
-                    resetRegistration();
+                    resetMessages();
                   }}
                   className="text-primary hover:text-primary-container font-semibold transition-colors ml-1.5 bg-transparent border-none cursor-pointer"
                 >

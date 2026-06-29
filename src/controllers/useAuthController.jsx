@@ -99,12 +99,11 @@ export function useAuthController(onSuccessCallback = null) {
   const [otpInput, setOtpInput] = useState('');
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [isOtpVerified, setIsOtpVerified] = useState(false);
-  // Progressive registration step — 1: Email · 2: OTP · 3: Details. Drives the
-  // verify-email-first signup UX (signInWithOtp → verifyOtp → updateUser).
-  const [regStep, setRegStep] = useState(1);
-  // 6-digit signup confirmation code (distinct from `otpInput`, which serves the
-  // password-recovery flow). Holds the code entered during registration Step 2.
-  const [otpCode, setOtpCode] = useState('');
+  // Post-signup "waiting room": after a valid signUp(), the form locks into a
+  // status banner until the user clicks the email magic link. Supabase mirrors
+  // the new session across tabs via localStorage, so AuthContext's
+  // onAuthStateChange fires here automatically and redirects.
+  const [isAwaitingConfirmation, setIsAwaitingConfirmation] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -361,8 +360,8 @@ export function useAuthController(onSuccessCallback = null) {
     }
   };
 
-  // ─── Progressive registration: Step 1 → send OTP to email ──────────────────
-  const handleSendRegEmail = async (e) => {
+  // ─── Full-form-upfront registration with cross-tab confirmation UX ─────────
+  const handleRegister = async (e) => {
     if (e) e.preventDefault();
     if (pendingRequestRef.current) return;
     pendingRequestRef.current = true;
@@ -372,96 +371,25 @@ export function useAuthController(onSuccessCallback = null) {
     safeSetSuccess('');
 
     try {
-      const raw = emailInput.trim();
-      if (!raw) {
-        throw new Error('Vui lòng nhập địa chỉ email.');
-      }
-      const normalizedEmail = normalizeEmail(raw);
-      if (!EMAIL_REGEX.test(normalizedEmail)) {
-        throw new Error('Định dạng email không hợp lệ.');
-      }
-
-      console.log('[HungBB-Auth] SEND REG OTP:', { email: normalizedEmail });
-      const { error } = await withTimeout(AuthModel.sendRegistrationOtp(normalizedEmail), 12000);
-      if (error) throw error;
-
-      console.log('[HungBB-Auth] REG OTP SENT — advancing to step 2.');
-      if (isMountedRef.current) {
-        setRegStep(2);
-        safeSetSuccess('Mã xác nhận gồm 6 chữ số đã được gửi đến email của bạn.');
-      }
-    } catch (error) {
-      console.log('[HungBB-Auth] SEND REG OTP FAILED:', error?.message || String(error));
-      safeSetError(toVietnameseAuthError(error));
-    } finally {
-      pendingRequestRef.current = false;
-      safeSetLoading(false);
-    }
-  };
-
-  // ─── Progressive registration: Step 2 → verify OTP, unlock details ─────────
-  const handleVerifyRegOtp = async (e) => {
-    if (e) e.preventDefault();
-    if (pendingRequestRef.current) return;
-    pendingRequestRef.current = true;
-
-    safeSetLoading(true);
-    safeSetError('');
-    safeSetSuccess('');
-
-    try {
-      const normalizedEmail = normalizeEmail(emailInput);
-      const normalizedOtp = otpCode.trim();
-      if (!OTP_REGEX.test(normalizedOtp)) {
-        throw new Error('Mã OTP phải gồm đúng 6 chữ số.');
-      }
-
-      console.log('[HungBB-Auth] VERIFY REG OTP:', { email: normalizedEmail });
-      const { data, error } = await withTimeout(
-        AuthModel.verifySignupOtp(normalizedEmail, normalizedOtp),
-        12000
-      );
-      console.log('[HungBB-Auth] VERIFY REG OTP RESPONSE:', { hasSession: !!data?.session, error });
-
-      if (error) throw error;
-      // A live session proves the email is confirmed; advance to the details step.
-      if (!data?.session) {
-        throw new Error('Token has expired or is invalid');
-      }
-
-      console.log('[HungBB-Auth] REG OTP VERIFIED — advancing to step 3.');
-      if (isMountedRef.current) {
-        setRegStep(3);
-        safeSetSuccess('Email đã được xác nhận! Vui lòng hoàn tất thông tin tài khoản.');
-      }
-    } catch (error) {
-      console.log('[HungBB-Auth] VERIFY REG OTP FAILED:', error?.message || String(error));
-      safeSetError(toVietnameseAuthError(error));
-    } finally {
-      pendingRequestRef.current = false;
-      safeSetLoading(false);
-    }
-  };
-
-  // ─── Progressive registration: Step 3 → set password + metadata, finalize ──
-  const handleCompleteRegistration = async (e) => {
-    if (e) e.preventDefault();
-    if (pendingRequestRef.current) return;
-    pendingRequestRef.current = true;
-
-    safeSetLoading(true);
-    safeSetError('');
-    safeSetSuccess('');
-
-    try {
+      // Validate the ENTIRE form upfront with precise Vietnamese errors.
       const fullName = fullNameInput.trim();
+      const normalizedEmail = normalizeEmail(emailInput);
       const phone = normalizePhone(phoneInput);
 
       if (!fullName) {
         throw new Error('Vui lòng nhập họ và tên.');
       }
+      if (!normalizedEmail) {
+        throw new Error('Vui lòng nhập địa chỉ email.');
+      }
+      if (!EMAIL_REGEX.test(normalizedEmail)) {
+        throw new Error('Định dạng email không hợp lệ.');
+      }
       if (!phone) {
         throw new Error('Vui lòng nhập số điện thoại.');
+      }
+      if (!VN_PHONE_REGEX.test(phone)) {
+        throw new Error('Số điện thoại không đúng định dạng Việt Nam.');
       }
       if (!passwordInput || passwordInput.length < 6) {
         throw new Error('Mật khẩu phải có ít nhất 6 ký tự.');
@@ -470,24 +398,39 @@ export function useAuthController(onSuccessCallback = null) {
         throw new Error('Mật khẩu xác nhận không khớp.');
       }
 
-      console.log('[HungBB-Auth] COMPLETE REGISTRATION:', { fullName, phone });
-      const { error } = await withTimeout(
-        AuthModel.completeUserRegistration(passwordInput, fullName, phone),
+      console.log('[HungBB-Auth] INIT SIGNUP:', { email: normalizedEmail });
+      const { data, error } = await withTimeout(
+        AuthModel.signUp(normalizedEmail, passwordInput, fullName, phone),
         12000
       );
+      console.log('[HungBB-Auth] SIGNUP RESPONSE:', {
+        hasUser: !!data?.user,
+        identities: data?.user?.identities?.length,
+        hasSession: !!data?.session,
+        error,
+      });
+
+      // Surface genuine signup failures (rate limit, invalid email, etc.).
       if (error) throw error;
 
-      console.log('[HungBB-Auth] REGISTRATION COMPLETE — redirecting.');
-      safeSetSuccess('Đăng ký hoàn tất! Đang chuyển hướng...');
-      setTimeout(() => {
-        if (isMountedRef.current) {
-          if (onSuccessCallback) onSuccessCallback();
-          else window.location.href = '/';
-        }
-      }, 800);
-      return;
+      // Enumeration-protection trap: an already-registered email comes back with
+      // a FAKE user (identities: []) and NO error. Treat it as a duplicate.
+      if (!error && data?.user?.identities?.length === 0) {
+        throw new Error('Email hoặc số điện thoại này đã được đăng ký.');
+      }
+
+      // Genuine new signup: session is null until the magic link is clicked.
+      // Enter the waiting room; AuthContext's cross-tab listener finishes the job.
+      if (data?.session === null) {
+        console.log('[HungBB-Auth] SIGNUP OK — awaiting email confirmation.');
+        if (isMountedRef.current) setIsAwaitingConfirmation(true);
+        return;
+      }
+
+      // Fallback: confirmations disabled / immediate session.
+      safeSetSuccess('Đăng ký thành công!');
     } catch (error) {
-      console.log('[HungBB-Auth] COMPLETE REGISTRATION FAILED:', error?.message || String(error));
+      console.log('[HungBB-Auth] SIGNUP FAILED:', error?.message || String(error));
       safeSetError(toVietnameseAuthError(error));
     } finally {
       pendingRequestRef.current = false;
@@ -495,17 +438,10 @@ export function useAuthController(onSuccessCallback = null) {
     }
   };
 
-  // Hard reset of the entire registration wizard — used when the user toggles
-  // back to the Login tab so no step/field/code state leaks across modes.
-  const resetRegistration = () => {
+  // Cancel the waiting room and return to the editable registration form.
+  const cancelAwaitingConfirmation = () => {
     if (!isMountedRef.current) return;
-    setRegStep(1);
-    setOtpCode('');
-    setFullNameInput('');
-    setPhoneInput('');
-    setPasswordInput('');
-    setConfirmPasswordInput('');
-    setAgreeTerms(false);
+    setIsAwaitingConfirmation(false);
     setErrorMsg('');
     setSuccessMsg('');
   };
@@ -542,8 +478,7 @@ export function useAuthController(onSuccessCallback = null) {
     if (isMountedRef.current) {
       setErrorMsg('');
       setSuccessMsg('');
-      setRegStep(1);
-      setOtpCode('');
+      setIsAwaitingConfirmation(false);
     }
   };
 
@@ -570,10 +505,8 @@ export function useAuthController(onSuccessCallback = null) {
     setIsVerifyingOtp,
     isOtpVerified,
     setIsOtpVerified,
-    regStep,
-    setRegStep,
-    otpCode,
-    setOtpCode,
+    isAwaitingConfirmation,
+    setIsAwaitingConfirmation,
     showPassword,
     setShowPassword,
     showConfirmPassword,
@@ -587,10 +520,8 @@ export function useAuthController(onSuccessCallback = null) {
     handleGoogleLogin,
     handleLogout,
     handleSubmit,
-    handleSendRegEmail,
-    handleVerifyRegOtp,
-    handleCompleteRegistration,
-    resetRegistration,
+    handleRegister,
+    cancelAwaitingConfirmation,
     handleResetPassword,
     resetMessages
   };
