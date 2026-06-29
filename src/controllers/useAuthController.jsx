@@ -99,6 +99,12 @@ export function useAuthController(onSuccessCallback = null) {
   const [otpInput, setOtpInput] = useState('');
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [isOtpVerified, setIsOtpVerified] = useState(false);
+  // Progressive registration step — 1: Email · 2: OTP · 3: Details. Drives the
+  // verify-email-first signup UX (signInWithOtp → verifyOtp → updateUser).
+  const [regStep, setRegStep] = useState(1);
+  // 6-digit signup confirmation code (distinct from `otpInput`, which serves the
+  // password-recovery flow). Holds the code entered during registration Step 2.
+  const [otpCode, setOtpCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -230,27 +236,6 @@ export function useAuthController(onSuccessCallback = null) {
             }
           }, 2000);
         }
-      } else if (isRegistering) {
-        // REGISTRATION FLOW
-        if (!fullNameInput.trim()) {
-          throw new Error('Vui lòng nhập họ và tên.');
-        }
-        const normalizedEmail = normalizeEmail(emailInput);
-        if (classifyIdentifier(normalizedEmail) !== 'EMAIL') {
-          throw new Error('Email không đúng định dạng.');
-        }
-        const normalizedPhone = normalizePhone(phoneInput);
-        if (!VN_PHONE_REGEX.test(normalizedPhone)) {
-          throw new Error('Số điện thoại không đúng định dạng Việt Nam.');
-        }
-        assertStrongPassword(passwordInput);
-        assertPasswordConfirmed(passwordInput, confirmPasswordInput);
-        if (!agreeTerms) {
-          throw new Error('Bạn cần đồng ý với Điều khoản dịch vụ.');
-        }
-
-        await withTimeout(AuthModel.signUp(normalizedEmail, passwordInput, fullNameInput.trim(), 'PATIENT', normalizedPhone), 12000);
-        safeSetSuccess('Đăng ký thành công! Vui lòng xác nhận email trước khi đăng nhập.');
       } else {
         // LOGIN FLOW
         if (!emailInput.trim() || !passwordInput) {
@@ -376,6 +361,155 @@ export function useAuthController(onSuccessCallback = null) {
     }
   };
 
+  // ─── Progressive registration: Step 1 → send OTP to email ──────────────────
+  const handleSendRegEmail = async (e) => {
+    if (e) e.preventDefault();
+    if (pendingRequestRef.current) return;
+    pendingRequestRef.current = true;
+
+    safeSetLoading(true);
+    safeSetError('');
+    safeSetSuccess('');
+
+    try {
+      const raw = emailInput.trim();
+      if (!raw) {
+        throw new Error('Vui lòng nhập địa chỉ email.');
+      }
+      const normalizedEmail = normalizeEmail(raw);
+      if (!EMAIL_REGEX.test(normalizedEmail)) {
+        throw new Error('Định dạng email không hợp lệ.');
+      }
+
+      console.log('[HungBB-Auth] SEND REG OTP:', { email: normalizedEmail });
+      const { error } = await withTimeout(AuthModel.sendRegistrationOtp(normalizedEmail), 12000);
+      if (error) throw error;
+
+      console.log('[HungBB-Auth] REG OTP SENT — advancing to step 2.');
+      if (isMountedRef.current) {
+        setRegStep(2);
+        safeSetSuccess('Mã xác nhận gồm 6 chữ số đã được gửi đến email của bạn.');
+      }
+    } catch (error) {
+      console.log('[HungBB-Auth] SEND REG OTP FAILED:', error?.message || String(error));
+      safeSetError(toVietnameseAuthError(error));
+    } finally {
+      pendingRequestRef.current = false;
+      safeSetLoading(false);
+    }
+  };
+
+  // ─── Progressive registration: Step 2 → verify OTP, unlock details ─────────
+  const handleVerifyRegOtp = async (e) => {
+    if (e) e.preventDefault();
+    if (pendingRequestRef.current) return;
+    pendingRequestRef.current = true;
+
+    safeSetLoading(true);
+    safeSetError('');
+    safeSetSuccess('');
+
+    try {
+      const normalizedEmail = normalizeEmail(emailInput);
+      const normalizedOtp = otpCode.trim();
+      if (!OTP_REGEX.test(normalizedOtp)) {
+        throw new Error('Mã OTP phải gồm đúng 6 chữ số.');
+      }
+
+      console.log('[HungBB-Auth] VERIFY REG OTP:', { email: normalizedEmail });
+      const { data, error } = await withTimeout(
+        AuthModel.verifySignupOtp(normalizedEmail, normalizedOtp),
+        12000
+      );
+      console.log('[HungBB-Auth] VERIFY REG OTP RESPONSE:', { hasSession: !!data?.session, error });
+
+      if (error) throw error;
+      // A live session proves the email is confirmed; advance to the details step.
+      if (!data?.session) {
+        throw new Error('Token has expired or is invalid');
+      }
+
+      console.log('[HungBB-Auth] REG OTP VERIFIED — advancing to step 3.');
+      if (isMountedRef.current) {
+        setRegStep(3);
+        safeSetSuccess('Email đã được xác nhận! Vui lòng hoàn tất thông tin tài khoản.');
+      }
+    } catch (error) {
+      console.log('[HungBB-Auth] VERIFY REG OTP FAILED:', error?.message || String(error));
+      safeSetError(toVietnameseAuthError(error));
+    } finally {
+      pendingRequestRef.current = false;
+      safeSetLoading(false);
+    }
+  };
+
+  // ─── Progressive registration: Step 3 → set password + metadata, finalize ──
+  const handleCompleteRegistration = async (e) => {
+    if (e) e.preventDefault();
+    if (pendingRequestRef.current) return;
+    pendingRequestRef.current = true;
+
+    safeSetLoading(true);
+    safeSetError('');
+    safeSetSuccess('');
+
+    try {
+      const fullName = fullNameInput.trim();
+      const phone = normalizePhone(phoneInput);
+
+      if (!fullName) {
+        throw new Error('Vui lòng nhập họ và tên.');
+      }
+      if (!phone) {
+        throw new Error('Vui lòng nhập số điện thoại.');
+      }
+      if (!passwordInput || passwordInput.length < 6) {
+        throw new Error('Mật khẩu phải có ít nhất 6 ký tự.');
+      }
+      if (passwordInput !== confirmPasswordInput) {
+        throw new Error('Mật khẩu xác nhận không khớp.');
+      }
+
+      console.log('[HungBB-Auth] COMPLETE REGISTRATION:', { fullName, phone });
+      const { error } = await withTimeout(
+        AuthModel.completeUserRegistration(passwordInput, fullName, phone),
+        12000
+      );
+      if (error) throw error;
+
+      console.log('[HungBB-Auth] REGISTRATION COMPLETE — redirecting.');
+      safeSetSuccess('Đăng ký hoàn tất! Đang chuyển hướng...');
+      setTimeout(() => {
+        if (isMountedRef.current) {
+          if (onSuccessCallback) onSuccessCallback();
+          else window.location.href = '/';
+        }
+      }, 800);
+      return;
+    } catch (error) {
+      console.log('[HungBB-Auth] COMPLETE REGISTRATION FAILED:', error?.message || String(error));
+      safeSetError(toVietnameseAuthError(error));
+    } finally {
+      pendingRequestRef.current = false;
+      safeSetLoading(false);
+    }
+  };
+
+  // Hard reset of the entire registration wizard — used when the user toggles
+  // back to the Login tab so no step/field/code state leaks across modes.
+  const resetRegistration = () => {
+    if (!isMountedRef.current) return;
+    setRegStep(1);
+    setOtpCode('');
+    setFullNameInput('');
+    setPhoneInput('');
+    setPasswordInput('');
+    setConfirmPasswordInput('');
+    setAgreeTerms(false);
+    setErrorMsg('');
+    setSuccessMsg('');
+  };
+
   const handleResetPassword = async (e) => {
     if (e) e.preventDefault();
     if (pendingRequestRef.current) return;
@@ -408,6 +542,8 @@ export function useAuthController(onSuccessCallback = null) {
     if (isMountedRef.current) {
       setErrorMsg('');
       setSuccessMsg('');
+      setRegStep(1);
+      setOtpCode('');
     }
   };
 
@@ -434,6 +570,10 @@ export function useAuthController(onSuccessCallback = null) {
     setIsVerifyingOtp,
     isOtpVerified,
     setIsOtpVerified,
+    regStep,
+    setRegStep,
+    otpCode,
+    setOtpCode,
     showPassword,
     setShowPassword,
     showConfirmPassword,
@@ -447,6 +587,10 @@ export function useAuthController(onSuccessCallback = null) {
     handleGoogleLogin,
     handleLogout,
     handleSubmit,
+    handleSendRegEmail,
+    handleVerifyRegOtp,
+    handleCompleteRegistration,
+    resetRegistration,
     handleResetPassword,
     resetMessages
   };
