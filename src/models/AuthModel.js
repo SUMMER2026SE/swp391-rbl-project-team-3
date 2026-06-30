@@ -12,19 +12,28 @@ export const AuthModel = {
     return subscription;
   },
 
-  async signUp(email, password, fullName, phone) {
-    // Standard email-confirmation signup. Returns the raw { data, error } pair so
-    // the controller can detect both edge cases: an empty `identities` array
-    // (Supabase's enumeration-protection "fake user" = email already exists) and
-    // a null session (a genuine new signup pending email confirmation).
-    const { data, error } = await supabase.auth.signUp({
+  async sendMagicLink(email) {
+    // "Draft & Sync" step 1: email the user a magic link. shouldCreateUser
+    // defaults to true, so a passwordless user is provisioned. The redirect lands
+    // back on the registration form (?mode=register) so the draft re-hydrates and
+    // the new session flips the email status to verified.
+    const { data, error } = await supabase.auth.signInWithOtp({
       email,
-      password,
       options: {
-        data: {
-          full_name: fullName,
-          phone: phone,
-        }
+        emailRedirectTo: window.location.origin + '/login?mode=register'
+      }
+    });
+    return { data, error };
+  },
+
+  async finalizeRegistration(password, fullName, phone) {
+    // "Draft & Sync" step 2: the magic link established a session, so updateUser
+    // attaches the chosen password + profile metadata to the authenticated user.
+    const { data, error } = await supabase.auth.updateUser({
+      password,
+      data: {
+        full_name: fullName,
+        phone: phone,
       }
     });
     return { data, error };

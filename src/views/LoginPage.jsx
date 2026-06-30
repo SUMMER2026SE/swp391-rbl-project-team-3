@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthController } from '../controllers/useAuthController';
-import { Shield, AlertCircle, CheckCircle, User, Mail, Phone, Lock, Eye, EyeOff, Key, ArrowRight, Loader2 } from 'lucide-react';
+import { Shield, AlertCircle, CheckCircle, User, Mail, Phone, Lock, Eye, EyeOff, Key, ArrowRight } from 'lucide-react';
 import logo from '../assets/logo.png';
 import bgImage from '../assets/bg-login.png';
 import GlassCheckbox from '../components/common/GlassCheckbox';
@@ -23,13 +23,13 @@ function LoginPage() {
     otpInput, setOtpInput,
     isVerifyingOtp, setIsVerifyingOtp,
     isOtpVerified, setIsOtpVerified,
-    isAwaitingConfirmation,
+    isEmailVerified,
     showPassword, setShowPassword,
     showConfirmPassword, setShowConfirmPassword,
     confirmPasswordInput, setConfirmPasswordInput,
     loading, errorMsg, successMsg,
     handleGoogleLogin, handleSubmit,
-    handleRegister, cancelAwaitingConfirmation,
+    handleRegister, handleSendVerificationLink,
     resetMessages
   } = useAuthController();
 
@@ -254,150 +254,151 @@ function LoginPage() {
               </div>
             </form>
           ) : isRegistering ? (
-            /* FULL REGISTRATION FORM — all fields upfront + cross-tab confirmation UX */
+            /* DRAFT & SYNC REGISTRATION — single form, email verified via magic link */
             <form onSubmit={handleRegister} className="space-y-5">
-              {/* Inputs lock into a disabled, dimmed state while awaiting email confirmation */}
-              <fieldset
-                disabled={isAwaitingConfirmation}
-                className={`space-y-5 border-none p-0 m-0 transition-opacity duration-300 ${isAwaitingConfirmation ? 'opacity-50 pointer-events-none' : ''}`}
-              >
-                <div>
-                  <label className="block font-label-sm text-label-sm text-on-surface mb-1.5" htmlFor="fullname">
-                    Họ và tên
-                  </label>
-                  <div className="relative">
-                    <User className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-outline w-5 h-5" />
-                    <input
-                      className={`w-full pl-11 pr-4 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md`}
-                      id="fullname"
-                      name="fullname"
-                      placeholder="Nhập họ và tên của bạn"
-                      type="text"
-                      value={fullNameInput}
-                      onChange={(e) => setFullNameInput(e.target.value)}
-                    />
-                  </div>
+              <div>
+                <label className="block font-label-sm text-label-sm text-on-surface mb-1.5" htmlFor="fullname">
+                  Họ và tên
+                </label>
+                <div className="relative">
+                  <User className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-outline w-5 h-5" />
+                  <input
+                    className={`w-full pl-11 pr-4 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md`}
+                    id="fullname"
+                    name="fullname"
+                    placeholder="Nhập họ và tên của bạn"
+                    type="text"
+                    value={fullNameInput}
+                    onChange={(e) => setFullNameInput(e.target.value)}
+                  />
                 </div>
+              </div>
 
-                <div>
-                  <label className="block font-label-sm text-label-sm text-on-surface mb-1.5" htmlFor="email">
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block font-label-sm text-label-sm text-on-surface" htmlFor="email">
                     Email
                   </label>
-                  <div className="relative">
-                    <Mail className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-outline w-5 h-5" />
-                    <input
-                      className={`w-full pl-11 pr-4 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md`}
-                      id="email"
-                      name="email"
-                      placeholder="Nhập địa chỉ email"
-                      type="email"
-                      value={emailInput}
-                      onChange={(e) => setEmailInput(e.target.value)}
-                    />
-                  </div>
+                  {isEmailVerified ? (
+                    <span className="inline-flex items-center">
+                      <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 mr-2 animate-pulse"></span>
+                      <span className="text-emerald-600 font-medium text-sm">Email đã được xác nhận</span>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center">
+                      <span className="inline-block w-2 h-2 rounded-full bg-rose-500 mr-2"></span>
+                      <span className="text-rose-500 font-medium text-sm">Email chưa xác nhận</span>
+                    </span>
+                  )}
                 </div>
-
-                <div>
-                  <label className="block font-label-sm text-label-sm text-on-surface mb-1.5" htmlFor="phone">
-                    Số điện thoại
-                  </label>
-                  <div className="relative">
-                    <Phone className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-outline w-5 h-5" />
-                    <input
-                      className={`w-full pl-11 pr-4 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md`}
-                      id="phone"
-                      name="phone"
-                      placeholder="Nhập số điện thoại"
-                      type="tel"
-                      value={phoneInput}
-                      onChange={(e) => setPhoneInput(e.target.value)}
-                    />
-                  </div>
+                <div className="relative">
+                  <Mail className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-outline w-5 h-5" />
+                  <input
+                    className={`w-full pl-11 pr-4 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md`}
+                    id="email"
+                    name="email"
+                    placeholder="Nhập địa chỉ email"
+                    type="email"
+                    value={emailInput}
+                    onChange={(e) => setEmailInput(e.target.value)}
+                  />
                 </div>
-
-                <div>
-                  <label className="block font-label-sm text-label-sm text-on-surface mb-1.5" htmlFor="password">
-                    Mật khẩu
-                  </label>
-                  <div className="relative">
-                    <Lock className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-outline w-5 h-5" />
-                    <input
-                      className={`w-full pl-11 pr-10 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md`}
-                      id="password"
-                      name="password"
-                      placeholder="Tạo mật khẩu (tối thiểu 6 ký tự)"
-                      type={showPassword ? 'text' : 'password'}
-                      value={passwordInput}
-                      onChange={(e) => setPasswordInput(e.target.value)}
-                    />
+                {!isEmailVerified && (
+                  <div className="mt-2 flex justify-end">
                     <button
-                      aria-label="Hiện mật khẩu"
-                      className="absolute right-3.5 top-1/2 transform -translate-y-1/2 text-outline hover:text-primary transition-colors focus:outline-none bg-transparent border-none"
                       type="button"
-                      onClick={() => setShowPassword(!showPassword)}
+                      onClick={handleSendVerificationLink}
+                      disabled={loading}
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary bg-white/50 backdrop-blur-md border border-white/60 rounded-full px-3 py-1.5 hover:bg-white/70 transition-colors shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {showPassword ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+                      <Mail className="w-3.5 h-3.5" />
+                      Gửi link xác nhận
                     </button>
                   </div>
-                </div>
+                )}
+              </div>
 
-                <div>
-                  <label className="block font-label-sm text-label-sm text-on-surface mb-1.5" htmlFor="confirm_password">
-                    Xác nhận mật khẩu
-                  </label>
-                  <div className="relative">
-                    <Key className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-outline w-5 h-5" />
-                    <input
-                      className={`w-full pl-11 pr-10 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md`}
-                      id="confirm_password"
-                      name="confirm_password"
-                      placeholder="Nhập lại mật khẩu"
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      value={confirmPasswordInput}
-                      onChange={(e) => setConfirmPasswordInput(e.target.value)}
-                    />
-                    <button
-                      aria-label="Hiện xác nhận mật khẩu"
-                      className="absolute right-3.5 top-1/2 transform -translate-y-1/2 text-outline hover:text-primary transition-colors focus:outline-none bg-transparent border-none"
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    >
-                      {showConfirmPassword ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
-                    </button>
-                  </div>
+              <div>
+                <label className="block font-label-sm text-label-sm text-on-surface mb-1.5" htmlFor="phone">
+                  Số điện thoại
+                </label>
+                <div className="relative">
+                  <Phone className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-outline w-5 h-5" />
+                  <input
+                    className={`w-full pl-11 pr-4 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md`}
+                    id="phone"
+                    name="phone"
+                    placeholder="Nhập số điện thoại"
+                    type="tel"
+                    value={phoneInput}
+                    onChange={(e) => setPhoneInput(e.target.value)}
+                  />
                 </div>
-              </fieldset>
+              </div>
 
-              {isAwaitingConfirmation ? (
-                /* WAITING STATE — Liquid Glass status banner replaces the submit button */
-                <div className="rounded-2xl bg-primary/10 backdrop-blur-md border border-white/60 shadow-[inset_0_1px_2px_rgba(255,255,255,0.6),0_8px_24px_rgba(0,104,95,0.15)] p-5 text-center">
-                  <div className="flex items-center justify-center gap-2 mb-2">
-                    <Loader2 className="w-5 h-5 text-primary animate-spin" />
-                    <span className="font-bold text-slate-900">Đang chờ xác nhận email...</span>
-                  </div>
-                  <p className="text-sm text-on-surface-variant leading-relaxed mb-4">
-                    Vui lòng kiểm tra hộp thư của bạn và bấm vào liên kết xác nhận. Màn hình này sẽ tự động chuyển tiếp.
-                  </p>
+              <div>
+                <label className="block font-label-sm text-label-sm text-on-surface mb-1.5" htmlFor="password">
+                  Mật khẩu
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-outline w-5 h-5" />
+                  <input
+                    className={`w-full pl-11 pr-10 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md`}
+                    id="password"
+                    name="password"
+                    placeholder="Tạo mật khẩu (tối thiểu 6 ký tự)"
+                    type={showPassword ? 'text' : 'password'}
+                    value={passwordInput}
+                    onChange={(e) => setPasswordInput(e.target.value)}
+                  />
                   <button
+                    aria-label="Hiện mật khẩu"
+                    className="absolute right-3.5 top-1/2 transform -translate-y-1/2 text-outline hover:text-primary transition-colors focus:outline-none bg-transparent border-none"
                     type="button"
-                    onClick={cancelAwaitingConfirmation}
-                    className="w-full py-2.5 px-4 rounded-full bg-white bg-opacity-60 backdrop-blur-md border border-outline-variant text-on-surface font-semibold text-sm flex justify-center items-center gap-2 hover:bg-white hover:bg-opacity-80 transition-colors shadow-sm cursor-pointer"
+                    onClick={() => setShowPassword(!showPassword)}
                   >
-                    <span>Hủy / Quay lại</span>
+                    {showPassword ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
                   </button>
                 </div>
-              ) : (
-                <div className="pt-2 w-full flex justify-center items-center">
+              </div>
+
+              <div>
+                <label className="block font-label-sm text-label-sm text-on-surface mb-1.5" htmlFor="confirm_password">
+                  Xác nhận mật khẩu
+                </label>
+                <div className="relative">
+                  <Key className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-outline w-5 h-5" />
+                  <input
+                    className={`w-full pl-11 pr-10 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md`}
+                    id="confirm_password"
+                    name="confirm_password"
+                    placeholder="Nhập lại mật khẩu"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={confirmPasswordInput}
+                    onChange={(e) => setConfirmPasswordInput(e.target.value)}
+                  />
                   <button
-                    className="w-full py-3 px-4 rounded-full bg-primary/40 backdrop-blur-md border border-white/50 text-white font-bold shadow-[0_8px_32px_0_rgba(0,104,95,0.2),inset_0_1px_2px_rgba(255,255,255,0.5)] transition-all duration-300 ease-out hover:bg-primary/60 hover:border-white/70 hover:shadow-[0_8px_32px_0_rgba(0,104,95,0.4),inset_0_1px_2px_rgba(255,255,255,0.8)] hover:-translate-y-0.5 flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-                    type="submit"
-                    disabled={loading}
+                    aria-label="Hiện xác nhận mật khẩu"
+                    className="absolute right-3.5 top-1/2 transform -translate-y-1/2 text-outline hover:text-primary transition-colors focus:outline-none bg-transparent border-none"
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   >
-                    <span>Đăng ký</span>
-                    <ArrowRight className="w-5 h-5" />
+                    {showConfirmPassword ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
                   </button>
                 </div>
-              )}
+              </div>
+
+              <div className="pt-2 w-full flex justify-center items-center">
+                <button
+                  className={`w-full py-3 px-4 rounded-full bg-primary/40 backdrop-blur-md border border-white/50 text-white font-bold shadow-[0_8px_32px_0_rgba(0,104,95,0.2),inset_0_1px_2px_rgba(255,255,255,0.5)] transition-all duration-300 ease-out hover:bg-primary/60 hover:border-white/70 hover:shadow-[0_8px_32px_0_rgba(0,104,95,0.4),inset_0_1px_2px_rgba(255,255,255,0.8)] hover:-translate-y-0.5 flex justify-center items-center gap-2 disabled:cursor-not-allowed disabled:transform-none ${!isEmailVerified ? 'opacity-50' : ''}`}
+                  type="submit"
+                  disabled={loading}
+                  title={!isEmailVerified ? 'Vui lòng xác nhận email trước khi đăng ký.' : undefined}
+                >
+                  <span>Đăng ký</span>
+                  <ArrowRight className="w-5 h-5" />
+                </button>
+              </div>
             </form>
           ) : (
             /* LOGIN FORM */

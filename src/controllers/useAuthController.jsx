@@ -76,8 +76,12 @@ const withTimeout = (promise, timeoutMs = 15000) => {
 };
 
 export function useAuthController(onSuccessCallback = null) {
-  const { login } = useAuth();
-  
+  const { login, session } = useAuth();
+
+  // Email is "verified" once a Supabase session exists — i.e. the user clicked
+  // the magic link (this tab, or another tab that synced via localStorage).
+  const isEmailVerified = !!session;
+
   const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [fullNameInput, setFullNameInput] = useState('');
@@ -95,15 +99,52 @@ export function useAuthController(onSuccessCallback = null) {
       window.history.replaceState({}, document.title);
     }
   }, [location.state]);
+
+  // ─── Draft & Sync: HYDRATE on mount ────────────────────────────────────────
+  // When the magic link reopens the form (?mode=register) — possibly in a brand
+  // new tab — restore the half-filled draft from localStorage so nothing is lost.
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('mode') !== 'register') return;
+    setIsRegistering(true);
+    try {
+      const raw = localStorage.getItem('derma_draft_form');
+      if (!raw) return;
+      const draft = JSON.parse(raw);
+      if (draft.fullName) setFullNameInput(draft.fullName);
+      if (draft.email) setEmailInput(draft.email);
+      if (draft.phone) setPhoneInput(draft.phone);
+      if (draft.password) setPasswordInput(draft.password);
+    } catch {
+      // Corrupt draft — ignore and start fresh.
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ─── Draft & Sync: PERSIST on change ───────────────────────────────────────
+  // Mirror every keystroke of the registration form to localStorage so the data
+  // survives a cross-tab magic-link round trip. Scoped to register mode so we
+  // never capture the login form's email/password.
+  useEffect(() => {
+    if (!isRegistering) return;
+    try {
+      localStorage.setItem(
+        'derma_draft_form',
+        JSON.stringify({
+          fullName: fullNameInput,
+          email: emailInput,
+          phone: phoneInput,
+          password: passwordInput,
+        })
+      );
+    } catch {
+      // Storage full / unavailable — non-fatal.
+    }
+  }, [isRegistering, fullNameInput, emailInput, phoneInput, passwordInput]);
   const [isForgotPass, setIsForgotPass] = useState(false);
   const [otpInput, setOtpInput] = useState('');
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [isOtpVerified, setIsOtpVerified] = useState(false);
-  // Post-signup "waiting room": after a valid signUp(), the form locks into a
-  // status banner until the user clicks the email magic link. Supabase mirrors
-  // the new session across tabs via localStorage, so AuthContext's
-  // onAuthStateChange fires here automatically and redirects.
-  const [isAwaitingConfirmation, setIsAwaitingConfirmation] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -361,6 +402,40 @@ export function useAuthController(onSuccessCallback = null) {
   };
 
   // ─── Full-form-upfront registration with cross-tab confirmation UX ─────────
+  // ─── Draft & Sync: dispatch the email magic link ───────────────────────────
+  const handleSendVerificationLink = async (e) => {
+    if (e) e.preventDefault();
+    if (pendingRequestRef.current) return;
+    pendingRequestRef.current = true;
+
+    safeSetLoading(true);
+    safeSetError('');
+    safeSetSuccess('');
+
+    try {
+      const normalizedEmail = normalizeEmail(emailInput);
+      if (!normalizedEmail) {
+        throw new Error('Vui lòng nhập địa chỉ email.');
+      }
+      if (!EMAIL_REGEX.test(normalizedEmail)) {
+        throw new Error('Định dạng email không hợp lệ.');
+      }
+
+      console.log('[HungBB-Auth] SEND MAGIC LINK:', { email: normalizedEmail });
+      const { error } = await withTimeout(AuthModel.sendMagicLink(normalizedEmail), 12000);
+      if (error) throw error;
+
+      safeSetSuccess('Đã gửi link, vui lòng kiểm tra hộp thư.');
+    } catch (error) {
+      console.log('[HungBB-Auth] SEND MAGIC LINK FAILED:', error?.message || String(error));
+      safeSetError(toVietnameseAuthError(error));
+    } finally {
+      pendingRequestRef.current = false;
+      safeSetLoading(false);
+    }
+  };
+
+  // ─── Draft & Sync: finalize once the email is verified (session exists) ─────
   const handleRegister = async (e) => {
     if (e) e.preventDefault();
     if (pendingRequestRef.current) return;
@@ -371,19 +446,17 @@ export function useAuthController(onSuccessCallback = null) {
     safeSetSuccess('');
 
     try {
-      // Validate the ENTIRE form upfront with precise Vietnamese errors.
+      // Gate the whole flow on a verified email (a live session).
+      if (!isEmailVerified) {
+        throw new Error('Vui lòng xác nhận email trước khi đăng ký.');
+      }
+
+      // Validate the remaining fields with precise Vietnamese errors.
       const fullName = fullNameInput.trim();
-      const normalizedEmail = normalizeEmail(emailInput);
       const phone = normalizePhone(phoneInput);
 
       if (!fullName) {
         throw new Error('Vui lòng nhập họ và tên.');
-      }
-      if (!normalizedEmail) {
-        throw new Error('Vui lòng nhập địa chỉ email.');
-      }
-      if (!EMAIL_REGEX.test(normalizedEmail)) {
-        throw new Error('Định dạng email không hợp lệ.');
       }
       if (!phone) {
         throw new Error('Vui lòng nhập số điện thoại.');
@@ -398,52 +471,31 @@ export function useAuthController(onSuccessCallback = null) {
         throw new Error('Mật khẩu xác nhận không khớp.');
       }
 
-      console.log('[HungBB-Auth] INIT SIGNUP:', { email: normalizedEmail });
-      const { data, error } = await withTimeout(
-        AuthModel.signUp(normalizedEmail, passwordInput, fullName, phone),
+      console.log('[HungBB-Auth] FINALIZE REGISTRATION:', { fullName, phone });
+      const { error } = await withTimeout(
+        AuthModel.finalizeRegistration(passwordInput, fullName, phone),
         12000
       );
-      console.log('[HungBB-Auth] SIGNUP RESPONSE:', {
-        hasUser: !!data?.user,
-        identities: data?.user?.identities?.length,
-        hasSession: !!data?.session,
-        error,
-      });
-
-      // Surface genuine signup failures (rate limit, invalid email, etc.).
       if (error) throw error;
 
-      // Enumeration-protection trap: an already-registered email comes back with
-      // a FAKE user (identities: []) and NO error. Treat it as a duplicate.
-      if (!error && data?.user?.identities?.length === 0) {
-        throw new Error('Email hoặc số điện thoại này đã được đăng ký.');
-      }
-
-      // Genuine new signup: session is null until the magic link is clicked.
-      // Enter the waiting room; AuthContext's cross-tab listener finishes the job.
-      if (data?.session === null) {
-        console.log('[HungBB-Auth] SIGNUP OK — awaiting email confirmation.');
-        if (isMountedRef.current) setIsAwaitingConfirmation(true);
-        return;
-      }
-
-      // Fallback: confirmations disabled / immediate session.
-      safeSetSuccess('Đăng ký thành công!');
+      // Success: discard the draft and land the user inside the app.
+      localStorage.removeItem('derma_draft_form');
+      console.log('[HungBB-Auth] REGISTRATION COMPLETE — redirecting.');
+      safeSetSuccess('Đăng ký hoàn tất! Đang chuyển hướng...');
+      setTimeout(() => {
+        if (isMountedRef.current) {
+          if (onSuccessCallback) onSuccessCallback();
+          else window.location.href = '/';
+        }
+      }, 800);
+      return;
     } catch (error) {
-      console.log('[HungBB-Auth] SIGNUP FAILED:', error?.message || String(error));
+      console.log('[HungBB-Auth] FINALIZE REGISTRATION FAILED:', error?.message || String(error));
       safeSetError(toVietnameseAuthError(error));
     } finally {
       pendingRequestRef.current = false;
       safeSetLoading(false);
     }
-  };
-
-  // Cancel the waiting room and return to the editable registration form.
-  const cancelAwaitingConfirmation = () => {
-    if (!isMountedRef.current) return;
-    setIsAwaitingConfirmation(false);
-    setErrorMsg('');
-    setSuccessMsg('');
   };
 
   const handleResetPassword = async (e) => {
@@ -478,7 +530,6 @@ export function useAuthController(onSuccessCallback = null) {
     if (isMountedRef.current) {
       setErrorMsg('');
       setSuccessMsg('');
-      setIsAwaitingConfirmation(false);
     }
   };
 
@@ -505,8 +556,7 @@ export function useAuthController(onSuccessCallback = null) {
     setIsVerifyingOtp,
     isOtpVerified,
     setIsOtpVerified,
-    isAwaitingConfirmation,
-    setIsAwaitingConfirmation,
+    isEmailVerified,
     showPassword,
     setShowPassword,
     showConfirmPassword,
@@ -521,7 +571,7 @@ export function useAuthController(onSuccessCallback = null) {
     handleLogout,
     handleSubmit,
     handleRegister,
-    cancelAwaitingConfirmation,
+    handleSendVerificationLink,
     handleResetPassword,
     resetMessages
   };
