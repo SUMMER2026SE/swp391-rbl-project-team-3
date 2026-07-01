@@ -42,6 +42,7 @@ import {
   PanelLeftOpen,
   Calendar,
   AlertTriangle,
+  Sun,
 } from 'lucide-react';
 import { useAppointmentController } from '../controllers/useAppointmentController';
 import { useMedicalRecordController } from '../controllers/useMedicalRecordController';
@@ -1332,7 +1333,8 @@ function OverviewTab({ user, kpi, todays, requests, onGoTab, onApprove, onArrive
     <motion.div variants={stagger} initial="hidden" animate="visible" className="space-y-8">
       <motion.div variants={fadeInUp} className="flex flex-col gap-1">
         <div className="flex items-center gap-2">
-          <h2 className="font-black text-2xl md:text-3xl text-gray-900 tracking-tight">Chào, {user?.name || 'Lễ tân'} 👋</h2>
+          <Sun className="w-6 h-6 text-amber-500 shrink-0" strokeWidth={1.5} />
+          <h2 className="font-black text-2xl md:text-3xl text-gray-900 tracking-tight">Chào, {user?.name || 'Lễ tân'}</h2>
         </div>
         <p className="text-sm text-slate-500 font-medium">Tổng quan hoạt động quầy lễ tân hôm nay ({TODAY_STR})</p>
       </motion.div>

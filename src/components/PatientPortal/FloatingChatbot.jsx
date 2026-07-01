@@ -378,7 +378,7 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
         senderId: 'system',
         senderName: 'DermaSmart',
         senderRole: 'BOT',
-        text: note || 'Mình đã kết nối bạn với lễ tân. Vui lòng chờ trong giây lát, nhân viên sẽ phản hồi ngay ạ! 💬',
+        text: note || 'Mình đã kết nối bạn với lễ tân. Vui lòng chờ trong giây lát, nhân viên sẽ phản hồi ngay ạ!',
         mode: 'Live',
         patientId,
       });
@@ -451,7 +451,7 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
 
           // Auto-handoff: if DermaBot signalled it wants a human, escalate.
           if (isHandoffReply(replyText)) {
-            await escalateToHuman('Tôi sẽ kết nối bạn với Lễ tân ngay bây giờ. Vui lòng chờ trong giây lát ạ! 💬');
+            await escalateToHuman('Tôi sẽ kết nối bạn với Lễ tân ngay bây giờ. Vui lòng chờ trong giây lát ạ!');
           }
         } catch (err) {
           console.error('AI (Gemini) reply failed:', err);

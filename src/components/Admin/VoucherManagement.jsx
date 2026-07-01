@@ -1,10 +1,15 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import { vi } from 'date-fns/locale';
+import { ymdToDate, dateToYmd } from '../../utils/dateAdapters';
 import {
   Ticket, Plus, Search, Edit3, Trash2, Power, Copy,
   CheckCircle2, AlertCircle, X, Percent, Banknote,
   Info, TrendingUp, Clock,
+  Stethoscope, Flower2, Flower, Sparkles, TreePine, Cake, Gift, Tag, Sun, PartyPopper, Ban,
 } from 'lucide-react';
 import { useVoucherController } from '../../controllers/useVoucherController';
 
@@ -16,17 +21,52 @@ const STATUS_STYLES = {
   'Hết lượt':  'bg-rose-50   text-rose-600   border-rose-200',
 };
 
-// Event tag → gradient/color mapping
+// Event tag → gradient / light-pill / color-themed Lucide icon mapping.
+// The `icon` + `iconColor` give each category an at-a-glance visual identity
+// (replacing the legacy emojis) while staying on the premium thin-stroke standard.
 const EVENT_STYLES = {
-  'Ngày Thầy Thuốc Việt Nam': { gradient: 'from-sky-400 to-blue-500',    light: 'bg-sky-50 border-sky-200 text-sky-700' },
-  'Quốc tế Phụ nữ 8/3':      { gradient: 'from-rose-400 to-pink-500',   light: 'bg-rose-50 border-rose-200 text-rose-700' },
-  'Ngày Phụ nữ Việt Nam 20/10':{ gradient: 'from-pink-400 to-rose-500',  light: 'bg-pink-50 border-pink-200 text-pink-700' },
-  'Tết Nguyên Đán':            { gradient: 'from-red-500 to-orange-500', light: 'bg-red-50 border-red-200 text-red-700' },
-  'Giáng Sinh':                { gradient: 'from-green-500 to-emerald-500', light: 'bg-emerald-50 border-emerald-200 text-emerald-700' },
-  'Kỷ niệm thành lập':         { gradient: 'from-amber-400 to-yellow-500', light: 'bg-amber-50 border-amber-200 text-amber-700' },
-  'Black Friday':               { gradient: 'from-slate-700 to-slate-900', light: 'bg-slate-100 border-slate-300 text-slate-800' },
-  'Mùa hè':                    { gradient: 'from-orange-400 to-amber-500', light: 'bg-orange-50 border-orange-200 text-orange-700' },
+  'Ngày Thầy Thuốc Việt Nam':  { gradient: 'from-sky-400 to-blue-500',      light: 'bg-sky-50 border-sky-200 text-sky-700',             icon: Stethoscope, iconColor: 'text-sky-500',     stubBg: 'bg-sky-500' },
+  'Quốc tế Phụ nữ 8/3':        { gradient: 'from-rose-400 to-pink-500',     light: 'bg-rose-50 border-rose-200 text-rose-700',          icon: Flower2,     iconColor: 'text-pink-500',    stubBg: 'bg-pink-500' },
+  'Ngày Phụ nữ Việt Nam 20/10':{ gradient: 'from-pink-400 to-rose-500',     light: 'bg-pink-50 border-pink-200 text-pink-700',          icon: Flower,      iconColor: 'text-rose-500',    stubBg: 'bg-rose-500' },
+  'Tết Nguyên Đán':            { gradient: 'from-red-500 to-orange-500',    light: 'bg-red-50 border-red-200 text-red-700',             icon: Sparkles,    iconColor: 'text-red-500',     stubBg: 'bg-red-500' },
+  'Giáng Sinh':                { gradient: 'from-green-500 to-emerald-500', light: 'bg-emerald-50 border-emerald-200 text-emerald-700', icon: TreePine,    iconColor: 'text-emerald-500', stubBg: 'bg-emerald-500' },
+  'Kỷ niệm thành lập':         { gradient: 'from-amber-400 to-yellow-500',  light: 'bg-amber-50 border-amber-200 text-amber-700',       icon: Cake,        iconColor: 'text-amber-500',   stubBg: 'bg-amber-500' },
+  'Black Friday':              { gradient: 'from-slate-700 to-slate-900',   light: 'bg-slate-100 border-slate-300 text-slate-800',      icon: Tag,         iconColor: 'text-slate-800',   stubBg: 'bg-slate-800' },
+  'Mùa hè':                    { gradient: 'from-orange-400 to-amber-500',  light: 'bg-orange-50 border-orange-200 text-orange-700',    icon: Sun,         iconColor: 'text-orange-500',  stubBg: 'bg-orange-500' },
 };
+
+// Smart, fuzzy style resolver for the UI. Real DB tags drift from the canonical
+// EVENT_STYLES keys ("Hè", "Laser", "Noel"…), so we keyword-match instead of doing
+// a strict object lookup. Returns icon + iconColor + stubBg (card stub) + light
+// (badge pill). Any non-empty custom tag still gets a themed fallback.
+export const getEventStyle = (rawTag) => {
+  if (!rawTag) return null;
+  const tag = rawTag.toLowerCase();
+
+  if (tag.includes('hè') || tag.includes('summer'))    return { icon: Sun,         iconColor: 'text-orange-500',  stubBg: 'bg-orange-500',  light: 'bg-orange-50 border-orange-200 text-orange-700' };
+  if (tag.includes('laser'))                           return { icon: Sparkles,    iconColor: 'text-rose-500',    stubBg: 'bg-rose-500',    light: 'bg-rose-50 border-rose-200 text-rose-700' };
+  if (tag.includes('tết') || tag.includes('tet'))      return { icon: Sparkles,    iconColor: 'text-red-500',     stubBg: 'bg-red-500',     light: 'bg-red-50 border-red-200 text-red-700' };
+  if (tag.includes('phụ nữ') || tag.includes('8/3') || tag.includes('20/10'))
+                                                       return { icon: Flower2,     iconColor: 'text-pink-500',    stubBg: 'bg-pink-500',    light: 'bg-pink-50 border-pink-200 text-pink-700' };
+  if (tag.includes('giáng sinh') || tag.includes('noel'))
+                                                       return { icon: TreePine,    iconColor: 'text-emerald-500', stubBg: 'bg-emerald-500', light: 'bg-emerald-50 border-emerald-200 text-emerald-700' };
+  if (tag.includes('sinh nhật') || tag.includes('kỷ niệm'))
+                                                       return { icon: Gift,        iconColor: 'text-amber-500',   stubBg: 'bg-amber-500',   light: 'bg-amber-50 border-amber-200 text-amber-700' };
+  if (tag.includes('thầy thuốc'))                      return { icon: Stethoscope, iconColor: 'text-sky-500',     stubBg: 'bg-sky-500',     light: 'bg-sky-50 border-sky-200 text-sky-700' };
+  if (tag.includes('black friday'))                    return { icon: Tag,         iconColor: 'text-slate-800',   stubBg: 'bg-slate-800',   light: 'bg-slate-100 border-slate-300 text-slate-800' };
+
+  // Fallback for custom events not in the list.
+  return { icon: PartyPopper, iconColor: 'text-violet-500', stubBg: 'bg-violet-500', light: 'bg-violet-50 border-violet-200 text-violet-700' };
+};
+
+// Defensive render-level emoji strip for values that may arrive dirty from the DB
+// (e.g. an eventTag saved as "☀️ Mùa hè"). Targets pictographic / symbol / dingbat /
+// arrow / variation-selector ranges ONLY — deliberately clear of the Vietnamese
+// Latin blocks (U+00C0–U+1EF9) so diacritics like ế, ữ, Đ are never touched.
+const EMOJI_RE = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{2190}-\u{21FF}\u{2300}-\u{23FF}\u{FE00}-\u{FE0F}\u{200D}]/gu;
+function stripEmoji(s) {
+  return typeof s === 'string' ? s.replace(EMOJI_RE, '').trim() : s;
+}
 
 function formatCurrency(n) {
   return Number(n).toLocaleString('vi-VN') + ' VNĐ';
@@ -281,11 +321,30 @@ function VoucherFormModal({ initial, onClose, onSave }) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={labelCls}>Ngày bắt đầu <span className="text-rose-400">*</span></label>
-              <input type="date" value={form.validFrom} onChange={e => set('validFrom', e.target.value)} required className={inputCls} />
+              <DatePicker
+                selected={ymdToDate(form.validFrom)}
+                onChange={(date) => set('validFrom', dateToYmd(date))}
+                locale={vi}
+                dateFormat="dd/MM/yyyy"
+                placeholderText="dd/mm/yyyy"
+                portalId="root-portal"
+                required
+                className={inputCls}
+              />
             </div>
             <div>
               <label className={labelCls}>Ngày kết thúc <span className="text-rose-400">*</span></label>
-              <input type="date" value={form.validTo} onChange={e => set('validTo', e.target.value)} required className={inputCls} />
+              <DatePicker
+                selected={ymdToDate(form.validTo)}
+                onChange={(date) => set('validTo', dateToYmd(date))}
+                locale={vi}
+                dateFormat="dd/MM/yyyy"
+                placeholderText="dd/mm/yyyy"
+                minDate={ymdToDate(form.validFrom) || undefined}
+                portalId="root-portal"
+                required
+                className={inputCls}
+              />
             </div>
           </div>
 
@@ -294,17 +353,19 @@ function VoucherFormModal({ initial, onClose, onSave }) {
             <label className={labelCls}>Gắn sự kiện đặc biệt (tuỳ chọn)</label>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {[
-                { tag: null,                            emoji: '🏷️', label: 'Không' },
-                { tag: 'Ngày Thầy Thuốc Việt Nam',     emoji: '🩺', label: 'Ngày Thầy Thuốc 27/02' },
-                { tag: 'Quốc tế Phụ nữ 8/3',           emoji: '🌸', label: 'Quốc tế Phụ nữ 8/3' },
-                { tag: 'Ngày Phụ nữ Việt Nam 20/10',   emoji: '💐', label: 'Phụ nữ VN 20/10' },
-                { tag: 'Tết Nguyên Đán',                emoji: '🧧', label: 'Tết Nguyên Đán' },
-                { tag: 'Giáng Sinh',                    emoji: '🎄', label: 'Giáng Sinh' },
-                { tag: 'Kỷ niệm thành lập',             emoji: '🎂', label: 'Kỷ niệm thành lập' },
-                { tag: 'Black Friday',                  emoji: '🖤', label: 'Black Friday' },
-                { tag: 'Mùa hè',                        emoji: '☀️', label: 'Mùa hè' },
+                { tag: null,                            label: 'Không' },
+                { tag: 'Ngày Thầy Thuốc Việt Nam',     label: 'Ngày Thầy Thuốc 27/02' },
+                { tag: 'Quốc tế Phụ nữ 8/3',           label: 'Quốc tế Phụ nữ 8/3' },
+                { tag: 'Ngày Phụ nữ Việt Nam 20/10',   label: 'Phụ nữ VN 20/10' },
+                { tag: 'Tết Nguyên Đán',                label: 'Tết Nguyên Đán' },
+                { tag: 'Giáng Sinh',                    label: 'Giáng Sinh' },
+                { tag: 'Kỷ niệm thành lập',             label: 'Kỷ niệm thành lập' },
+                { tag: 'Black Friday',                  label: 'Black Friday' },
+                { tag: 'Mùa hè',                        label: 'Mùa hè' },
               ]?.map?.(opt => {
                 const isSelected = (form.eventTag || null) === opt.tag;
+                const OptIcon = opt.tag ? (EVENT_STYLES[opt.tag]?.icon || Tag) : Ban;
+                const optIconColor = opt.tag ? (EVENT_STYLES[opt.tag]?.iconColor || 'text-slate-500') : 'text-slate-300';
                 return (
                   <button
                     key={String(opt.tag)}
@@ -316,7 +377,7 @@ function VoucherFormModal({ initial, onClose, onSave }) {
                         : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-200 hover:bg-slate-50'
                     }`}
                   >
-                    <span>{opt.emoji}</span>
+                    <OptIcon className={`w-4 h-4 shrink-0 ${optIconColor}`} strokeWidth={1.5} />
                     <span className="truncate">{opt.label}</span>
                   </button>
                 );
@@ -447,17 +508,23 @@ function VoucherCard({ v, onEdit, onToggle, onDelete, onCopy, idx }) {
     ? safeServices.map(id => ([]).find(s => s.id === id)?.name || id).join(', ')
     : 'Tất cả dịch vụ';
 
-  const eventStyle = v.eventTag ? (EVENT_STYLES[v.eventTag] || EVENT_STYLES['Mùa hè']) : null;
+  const cleanEventTag = stripEmoji(v.eventTag);
+  const eventStyle = getEventStyle(cleanEventTag);
+  const EventIcon = eventStyle?.icon;
 
-  // Vibrant "split-ticket" stub gradient — Shopee/Lazada style, keyed off type.
-  const stubGradient =
+  // Stub background — the ticket's "value zone". Event-category color wins so
+  // vouchers are distinguishable at a glance; otherwise fall back to the vibrant
+  // discount-type gradient (Shopee/Lazada style). Expired/used stay muted gray.
+  const stubClass =
     isExpiredOrFull
-      ? 'from-gray-400 to-gray-500'
-      : v.discountType === 'Percentage'
-        ? 'from-orange-500 to-red-500'
-        : v.discountType === 'Fixed'
-          ? 'from-emerald-500 to-teal-600'
-          : 'from-violet-500 to-purple-600';
+      ? 'bg-gradient-to-br from-gray-400 to-gray-500'
+      : eventStyle?.stubBg
+        ? eventStyle.stubBg
+        : v.discountType === 'Percentage'
+          ? 'bg-gradient-to-br from-orange-500 to-red-500'
+          : v.discountType === 'Fixed'
+            ? 'bg-gradient-to-br from-emerald-500 to-teal-600'
+            : 'bg-gradient-to-br from-violet-500 to-purple-600';
 
   const TypeIcon = v.discountType === 'Percentage' ? Percent : Banknote;
   const typeShort = v.discountType === 'Percentage' ? 'Theo %' : 'Cố định';
@@ -473,7 +540,7 @@ function VoucherCard({ v, onEdit, onToggle, onDelete, onCopy, idx }) {
       }`}
     >
       {/* ── LEFT STUB · Value Zone ───────────────────────────────────── */}
-      <div className={`relative shrink-0 md:w-[36%] flex flex-col items-center justify-center gap-2 text-white text-center px-4 py-6 bg-gradient-to-br ${stubGradient}`}>
+      <div className={`relative shrink-0 md:w-[36%] flex flex-col items-center justify-center gap-2 text-white text-center px-4 py-6 ${stubClass}`}>
         <span className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-90">Ưu đãi</span>
 
         {v.discountType === 'Percentage' ? (
@@ -523,9 +590,9 @@ function VoucherCard({ v, onEdit, onToggle, onDelete, onCopy, idx }) {
         </div>
 
         {/* Event tag + name + description */}
-        {v.eventTag && (
+        {cleanEventTag && (
           <span className={`inline-flex self-start items-center gap-1.5 text-[11px] font-bold px-2 py-0.5 rounded-full border mb-2 ${eventStyle?.light || 'bg-slate-100 border-slate-200 text-slate-600'}`}>
-            <span>{v.eventEmoji}</span>{v.eventTag}
+            {EventIcon && <EventIcon className={`w-3.5 h-3.5 ${eventStyle?.iconColor || ''}`} strokeWidth={1.5} />}{cleanEventTag}
           </span>
         )}
         <p className="text-base md:text-lg font-bold text-slate-900 leading-snug">{v.name}</p>
@@ -733,8 +800,8 @@ export default function VoucherManagement() {
         <div className="flex items-center gap-1.5">
           {[
             { key: 'all',    label: 'Tất cả' },
-            { key: 'event',  label: '🎉 Sự kiện' },
-            { key: 'normal', label: '🏷️ Thường' },
+            { key: 'event',  label: 'Sự kiện' },
+            { key: 'normal', label: 'Thường' },
           ]?.map?.(t => (
             <button
               key={t.key}
@@ -777,7 +844,8 @@ export default function VoucherManagement() {
           <div className="flex items-center gap-2 mb-4">
             <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
             <span className="text-xs font-bold text-slate-500 uppercase tracking-widest px-3 flex items-center gap-1.5">
-              🎉 Khuyến mãi sự kiện đặc biệt
+              <PartyPopper className="w-4 h-4 text-amber-500" strokeWidth={1.5} />
+              Khuyến mãi sự kiện đặc biệt
               <span className="bg-indigo-100 text-indigo-700 rounded-full px-2 py-0.5 font-black">{eventVouchers.length}</span>
             </span>
             <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
@@ -802,7 +870,8 @@ export default function VoucherManagement() {
             <div className="flex items-center gap-2 mb-4">
               <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
               <span className="text-xs font-bold text-slate-500 uppercase tracking-widest px-3 flex items-center gap-1.5">
-                🏷️ Voucher thông thường
+                <Tag className="w-4 h-4 text-slate-400" strokeWidth={1.5} />
+                Voucher thông thường
                 <span className="bg-slate-100 text-slate-600 rounded-full px-2 py-0.5 font-black">{normalVouchers.length}</span>
               </span>
               <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-200 to-transparent" />

@@ -1,10 +1,41 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { CalendarDays, Plus, Save, Search, RefreshCw, Trash2 } from 'lucide-react';
+import { CalendarDays, Plus, Save, Search, RefreshCw, Trash2, Clock } from 'lucide-react';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import { vi } from 'date-fns/locale';
+import { hmToDate } from '../../utils/dateAdapters';
 import { useDoctors } from '../../hooks/useDoctors';
 import { DoctorScheduleModel } from '../../models/DoctorScheduleModel';
 import GlassCheckbox from '../common/GlassCheckbox';
 import GlassSelect from '../common/GlassSelect';
+
+// Shared Liquid Glass field styling for the DatePicker inputs.
+// Higher-contrast resting state so fields "pop" out of the glass background.
+const GLASS_PICKER_CLS = 'w-full bg-white/80 border border-slate-200/80 text-slate-800 text-sm rounded-xl shadow-sm focus:bg-white focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 block p-3 outline-none transition-all placeholder-slate-400';
+
+// ── Date/Time <-> string adapters ─────────────────────────────────────────────
+// react-datepicker works with Date objects, but form state (and the backend)
+// stay on the existing string contract ('yyyy-MM-dd' / 'HH:mm'). We convert only
+// at the input boundary, so all validation & submit logic below is untouched.
+const dateStrToDate = (s) => {
+    if (!s) return null;
+    const [y, m, d] = s.split('-').map(Number);
+    return new Date(y, m - 1, d); // local midnight — mirrors native <input type="date">
+};
+const dateToDateStr = (d) => {
+    if (!d) return '';
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+};
+const timeToTimeStr = (d) => {
+    if (!d) return '';
+    const h = String(d.getHours()).padStart(2, '0');
+    const mi = String(d.getMinutes()).padStart(2, '0');
+    return `${h}:${mi}`;
+};
 
 const getVietnameseDayName = (dateString) => {
     const days = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
@@ -34,17 +65,25 @@ export default function DoctorScheduleManagement() {
     
     const [schedules, setSchedules] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [form, setForm] = useState({ 
-        doctorId: '', 
-        startDate: '', 
-        endDate: '', 
-        selectedDays: [1, 2, 3, 4, 5], 
-        startTime: '08:00', 
-        endTime: '17:00', 
-        room: 'Phòng khám 1', 
-        status: 'Đã phân công' 
+    const [form, setForm] = useState({
+        doctorId: '',
+        startDate: '',
+        endDate: '',
+        selectedDays: [1, 2, 3, 4, 5],
+        room: 'Phòng khám 1',
+        status: 'Đã phân công'
     });
+    // A doctor can work several shifts per day (morning / afternoon / …). Each holds
+    // Date objects (react-datepicker native); we format to 'HH:mm' at submit time.
+    const [shifts, setShifts] = useState([{ id: Date.now(), startTime: null, endTime: null }]);
     const [searchTerm, setSearchTerm] = useState('');
+
+    const handleAddShift = () =>
+        setShifts(prev => [...prev, { id: Date.now(), startTime: null, endTime: null }]);
+    const handleRemoveShift = (id) =>
+        setShifts(prev => (prev.length > 1 ? prev.filter(s => s.id !== id) : prev));
+    const handleShiftChange = (id, field, date) =>
+        setShifts(prev => prev.map(s => (s.id === id ? { ...s, [field]: date } : s)));
 
     React.useEffect(() => {
         if (doctors.length > 0 && !form.doctorId) {
@@ -64,8 +103,8 @@ export default function DoctorScheduleManagement() {
     }, []);
 
     const createSchedule = async () => {
-        if (!form.startDate || !form.endDate || !form.startTime || !form.endTime || !form.doctorId) {
-            alert('Vui lòng chọn đầy đủ bác sĩ, khoảng thời gian và giờ làm việc.');
+        if (!form.startDate || !form.endDate || !form.doctorId) {
+            alert('Vui lòng chọn đầy đủ bác sĩ và khoảng thời gian.');
             return;
         }
         if (form.startDate > form.endDate) {
@@ -76,13 +115,26 @@ export default function DoctorScheduleManagement() {
             alert('Không thể chọn ngày bắt đầu trong quá khứ.');
             return;
         }
-        if (form.startTime >= form.endTime) {
-            alert('Giờ bắt đầu phải nhỏ hơn giờ kết thúc.');
-            return;
-        }
         if (form.selectedDays.length === 0) {
             alert('Vui lòng chọn ít nhất một thứ trong tuần.');
             return;
+        }
+
+        // Format the shift Date objects → 'HH:mm' strings (backend contract) and
+        // drop any incomplete rows.
+        const cleanShifts = shifts
+            .map(s => ({ start_time: timeToTimeStr(s.startTime), end_time: timeToTimeStr(s.endTime) }))
+            .filter(s => s.start_time && s.end_time);
+
+        if (cleanShifts.length === 0) {
+            alert('Vui lòng nhập đầy đủ giờ cho ít nhất một ca làm việc.');
+            return;
+        }
+        for (const s of cleanShifts) {
+            if (s.start_time >= s.end_time) {
+                alert(`Giờ bắt đầu (${s.start_time}) phải nhỏ hơn giờ kết thúc (${s.end_time}).`);
+                return;
+            }
         }
 
         const selectedDoc = doctors.find(d => d.id === form.doctorId);
@@ -95,16 +147,19 @@ export default function DoctorScheduleManagement() {
         while (currDate <= endD) {
             if (form.selectedDays.includes(currDate.getDay())) {
                 const dateStr = currDate.toISOString().split('T')[0];
-                newShifts.push({
-                    doctor_id: form.doctorId,
-                    doctor_name: docName,
-                    work_date: dateStr,
-                    day_of_week: getVietnameseDayName(dateStr),
-                    start_time: form.startTime,
-                    end_time: form.endTime,
-                    room: form.room,
-                    status: form.status
-                });
+                // One row per (matching day × shift).
+                for (const s of cleanShifts) {
+                    newShifts.push({
+                        doctor_id: form.doctorId,
+                        doctor_name: docName,
+                        work_date: dateStr,
+                        day_of_week: getVietnameseDayName(dateStr),
+                        start_time: s.start_time,
+                        end_time: s.end_time,
+                        room: form.room,
+                        status: form.status
+                    });
+                }
             }
             currDate.setDate(currDate.getDate() + 1);
         }
@@ -118,6 +173,7 @@ export default function DoctorScheduleManagement() {
             const addedShifts = await DoctorScheduleModel.createShifts(newShifts);
             setSchedules([...addedShifts, ...schedules]);
             setForm(prev => ({ ...prev, startDate: '', endDate: '' }));
+            setShifts([{ id: Date.now(), startTime: null, endTime: null }]);
             alert(`Đã tạo thành công ${addedShifts.length} ca làm việc!`);
         } catch (e) {
             alert('Lỗi khi lưu lịch làm việc: ' + e.message);
@@ -256,29 +312,46 @@ export default function DoctorScheduleManagement() {
                     <Plus className="w-5 h-5 text-indigo-600" />
                     <h3 className="font-extrabold text-lg text-slate-800">Tạo lịch làm việc</h3>
                 </div>
-                <div className="flex flex-col gap-4">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <Select value={form.doctorId} onChange={(v) => setForm({ ...form, doctorId: v })} options={doctors.map(d => ({ label: d.name, value: d.id }))} loading={docsLoading} error={docsError} />
+                <div className="flex flex-col gap-6">
+                    {/* ── Group 1 · Thông tin chung ─────────────────────────────── */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="flex flex-col">
+                            <span className="text-xs font-semibold text-slate-500 mb-1">Bác sĩ</span>
+                            <Select value={form.doctorId} onChange={(v) => setForm({ ...form, doctorId: v })} options={doctors.map(d => ({ label: d.name, value: d.id }))} loading={docsLoading} error={docsError} />
+                        </div>
+                        <div className="flex flex-col">
+                            <span className="text-xs font-semibold text-slate-500 mb-1">Phòng khám</span>
+                            <Select value={form.room} onChange={(v) => setForm({ ...form, room: v })} options={['Phòng khám 1', 'Phòng khám 2', 'Phòng khám 3', 'Phòng online'].map(r => ({ label: r, value: r }))} />
+                        </div>
+                    </div>
+
+                    {/* ── Group 2 · Chu kỳ lặp ──────────────────────────────────── */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="flex flex-col">
                             <span className="text-xs font-semibold text-slate-500 mb-1">Từ ngày</span>
-                            <Input type="date" value={form.startDate} onChange={(v) => setForm({ ...form, startDate: v })} min={getTodayString()} />
+                            <DatePicker
+                                selected={dateStrToDate(form.startDate)}
+                                onChange={(date) => setForm({ ...form, startDate: dateToDateStr(date) })}
+                                locale={vi}
+                                dateFormat="dd/MM/yyyy"
+                                minDate={new Date()}
+                                placeholderText="dd/mm/yyyy"
+                                className={GLASS_PICKER_CLS}
+                            />
                         </div>
                         <div className="flex flex-col">
                             <span className="text-xs font-semibold text-slate-500 mb-1">Đến ngày</span>
-                            <Input type="date" value={form.endDate} onChange={(v) => setForm({ ...form, endDate: v })} min={form.startDate || getTodayString()} />
+                            <DatePicker
+                                selected={dateStrToDate(form.endDate)}
+                                onChange={(date) => setForm({ ...form, endDate: dateToDateStr(date) })}
+                                locale={vi}
+                                dateFormat="dd/MM/yyyy"
+                                minDate={dateStrToDate(form.startDate) || new Date()}
+                                placeholderText="dd/mm/yyyy"
+                                className={GLASS_PICKER_CLS}
+                            />
                         </div>
-                        <Select value={form.room} onChange={(v) => setForm({ ...form, room: v })} options={['Phòng khám 1', 'Phòng khám 2', 'Phòng khám 3', 'Phòng online'].map(r => ({ label: r, value: r }))} />
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                        <div className="flex flex-col">
-                            <span className="text-xs font-semibold text-slate-500 mb-1">Giờ bắt đầu</span>
-                            <Input type="time" value={form.startTime} onChange={(v) => setForm({ ...form, startTime: v })} />
-                        </div>
-                        <div className="flex flex-col">
-                            <span className="text-xs font-semibold text-slate-500 mb-1">Giờ kết thúc</span>
-                            <Input type="time" value={form.endTime} onChange={(v) => setForm({ ...form, endTime: v })} />
-                        </div>
-                        <div className="md:col-span-2 flex flex-col justify-end">
+                        <div className="md:col-span-2 flex flex-col">
                             <span className="text-xs font-semibold text-slate-500 mb-2">Áp dụng cho các ngày trong tuần:</span>
                             <div className="flex flex-wrap gap-3 items-center">
                                 {DAYS_OF_WEEK.map(day => (
@@ -295,11 +368,76 @@ export default function DoctorScheduleManagement() {
                                         <span className="text-sm font-semibold text-slate-700">{day.label}</span>
                                     </label>
                                 ))}
-                                <button onClick={createSchedule} className="ml-auto px-6 py-3 h-[46px] bg-gradient-to-r from-indigo-600 to-sky-500 text-white rounded-2xl font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-200 hover:scale-105 transition-transform">
-                                    <Save className="w-4 h-4" /> Tạo lịch
-                                </button>
                             </div>
                         </div>
+                    </div>
+
+                    {/* ── Group 3 · Các ca làm việc (dynamic) ───────────────────── */}
+                    <div className="p-5 bg-slate-50/50 rounded-2xl border border-slate-200/60 col-span-full">
+                        <div className="flex items-center gap-2 mb-4">
+                            <Clock className="w-5 h-5 text-emerald-600" />
+                            <h4 className="text-sm font-bold text-slate-700">Các ca làm việc</h4>
+                        </div>
+                        <div className="flex flex-col gap-3">
+                            {shifts.map((shift) => (
+                                <div key={shift.id} className="flex flex-col sm:flex-row gap-3 sm:items-end">
+                                    <div className="flex flex-col flex-1">
+                                        <span className="text-xs font-semibold text-slate-500 mb-1">Giờ bắt đầu</span>
+                                        <DatePicker
+                                            selected={shift.startTime}
+                                            onChange={(date) => handleShiftChange(shift.id, 'startTime', date)}
+                                            showTimeSelect
+                                            showTimeSelectOnly
+                                            timeIntervals={30}
+                                            timeCaption="Giờ"
+                                            dateFormat="HH:mm"
+                                            locale={vi}
+                                            placeholderText="HH:mm"
+                                            className={GLASS_PICKER_CLS}
+                                        />
+                                    </div>
+                                    <div className="flex flex-col flex-1">
+                                        <span className="text-xs font-semibold text-slate-500 mb-1">Giờ kết thúc</span>
+                                        <DatePicker
+                                            selected={shift.endTime}
+                                            onChange={(date) => handleShiftChange(shift.id, 'endTime', date)}
+                                            showTimeSelect
+                                            showTimeSelectOnly
+                                            timeIntervals={30}
+                                            timeCaption="Giờ"
+                                            dateFormat="HH:mm"
+                                            locale={vi}
+                                            placeholderText="HH:mm"
+                                            className={GLASS_PICKER_CLS}
+                                        />
+                                    </div>
+                                    {shifts.length > 1 && (
+                                        <button
+                                            type="button"
+                                            onClick={() => handleRemoveShift(shift.id)}
+                                            title="Xóa ca này"
+                                            className="shrink-0 h-[46px] px-3 flex items-center justify-center text-rose-500 hover:bg-rose-50 rounded-xl transition-colors"
+                                        >
+                                            <Trash2 className="w-5 h-5" />
+                                        </button>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                        <button
+                            type="button"
+                            onClick={handleAddShift}
+                            className="mt-4 w-full flex items-center justify-center gap-2 py-2.5 border-2 border-dashed border-emerald-300 text-emerald-600 font-semibold text-sm rounded-xl hover:bg-emerald-50 transition-colors"
+                        >
+                            <Plus className="w-4 h-4" /> Thêm ca làm việc
+                        </button>
+                    </div>
+
+                    {/* ── Group 4 · Submit footer ───────────────────────────────── */}
+                    <div className="flex justify-end pt-4 border-t border-slate-200/50">
+                        <button onClick={createSchedule} className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-sky-500 text-white rounded-2xl font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-200 hover:scale-105 transition-transform">
+                            <Save className="w-4 h-4" /> Tạo lịch
+                        </button>
                     </div>
                 </div>
             </div>
@@ -321,7 +459,24 @@ export default function DoctorScheduleManagement() {
                                 <td className="px-8 py-5"><Select value={group.doctor_id || ''} onChange={(v) => updateGroup(group, 'doctorId', v)} options={doctors.map(d => ({ label: d.name, value: d.id }))} /></td>
                                 <td className="px-8 py-5"><span className="text-sm text-slate-600 font-medium">{group.dateRange}</span></td>
                                 <td className="px-8 py-5"><span className="font-bold text-slate-700 text-xs">{group.daysStr}</span></td>
-                                <td className="px-8 py-5"><div className="grid grid-cols-2 gap-2"><Input type="time" value={group.start_time ? group.start_time.slice(0,5) : ''} onChange={(v) => updateGroup(group, 'startTime', v)} /><Input type="time" value={group.end_time ? group.end_time.slice(0,5) : ''} onChange={(v) => updateGroup(group, 'endTime', v)} /></div></td>
+                                <td className="px-8 py-5"><div className="grid grid-cols-2 gap-2">
+                                    <DatePicker
+                                        selected={hmToDate(group.start_time ? group.start_time.slice(0, 5) : '')}
+                                        onChange={(date) => updateGroup(group, 'startTime', timeToTimeStr(date))}
+                                        showTimeSelect showTimeSelectOnly timeIntervals={30} timeCaption="Giờ"
+                                        dateFormat="HH:mm" locale={vi} placeholderText="HH:mm"
+                                        portalId="root-portal"
+                                        className="w-full bg-white/80 border border-slate-200/80 text-slate-800 shadow-sm focus:bg-white focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 outline-none transition-all rounded-lg p-2 text-sm"
+                                    />
+                                    <DatePicker
+                                        selected={hmToDate(group.end_time ? group.end_time.slice(0, 5) : '')}
+                                        onChange={(date) => updateGroup(group, 'endTime', timeToTimeStr(date))}
+                                        showTimeSelect showTimeSelectOnly timeIntervals={30} timeCaption="Giờ"
+                                        dateFormat="HH:mm" locale={vi} placeholderText="HH:mm"
+                                        portalId="root-portal"
+                                        className="w-full bg-white/80 border border-slate-200/80 text-slate-800 shadow-sm focus:bg-white focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 outline-none transition-all rounded-lg p-2 text-sm"
+                                    />
+                                </div></td>
                                 <td className="px-8 py-5"><Select value={group.room} onChange={(v) => updateGroup(group, 'room', v)} options={['Phòng khám 1', 'Phòng khám 2', 'Phòng khám 3', 'Phòng online'].map(r => ({ label: r, value: r }))} /></td>
                                 <td className="px-8 py-5"><Select value={group.status} onChange={(v) => updateGroup(group, 'status', v)} options={['Đã phân công', 'Đã xác nhận', 'Đã hủy'].map(s => ({ label: s, value: s }))} /></td>
                                 <td className="px-4 py-5 text-center">
@@ -343,9 +498,6 @@ export default function DoctorScheduleManagement() {
     );
 }
 
-function Input({ value, onChange, type = 'text', ...props }) {
-    return <input type={type} value={value} onChange={(e) => onChange(e.target.value)} className="w-full bg-white border border-slate-200 rounded-2xl py-3 px-4 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400" {...props} />;
-}
 function Select({ value, onChange, options, loading, error }) {
     const opts = error
         ? [{ value: '', label: `Lỗi: ${String(error)}` }]

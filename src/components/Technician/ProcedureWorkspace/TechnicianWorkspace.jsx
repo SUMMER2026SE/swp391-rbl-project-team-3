@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, CheckCircle2, Check, ChevronRight, UploadCloud, FlaskConical, FileCheck, XCircle, Image as ImageIcon, X, Stethoscope, Loader2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Check, ChevronRight, UploadCloud, FlaskConical, FileCheck, XCircle, Image as ImageIcon, X, Stethoscope, Loader2, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence, useMotionValue, useMotionTemplate, animate } from 'framer-motion';
 import LiquidTabSwitcher from '../../ui/LiquidTabSwitcher';
 import { supabase } from '../../../supabaseClient';
@@ -492,7 +492,7 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
             <div className="rounded-2xl p-5 bg-amber-50 border border-amber-200 shadow-sm">
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-7 h-7 rounded-full bg-amber-100 flex items-center justify-center">
-                  <span className="text-amber-600 text-sm">⚠️</span>
+                  <AlertTriangle className="w-4 h-4 text-amber-600" />
                 </div>
                 <h4 className="text-xs uppercase tracking-wider text-amber-800 font-bold">
                   Ghi chú / Yêu cầu từ Bác sĩ

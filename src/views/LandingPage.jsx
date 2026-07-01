@@ -15,7 +15,7 @@ import {
   useSpring,
   useMotionTemplate,
 } from 'framer-motion';
-import { Key, LogOut, User, Ticket, ArrowRight, ChevronDown, Cpu, ScanFace, CalendarPlus, Copy, Check } from 'lucide-react';
+import { Key, LogOut, User, Ticket, ArrowRight, ChevronDown, Cpu, ScanFace, CalendarPlus, Copy, Check, Sparkles } from 'lucide-react';
 import logo from '../assets/logo.png';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
@@ -136,7 +136,7 @@ function AllDoctorsModal({ isOpen, onClose, doctors, onSelectDoctor }) {
                   <div className="flex flex-wrap items-center gap-2 mt-2">
                     <span className="text-[11px] font-bold text-sky-600 bg-sky-50 px-2 py-1 rounded-md">{doc.experience || 'Chưa cập nhật'}</span>
                     <span className="text-[11px] font-bold text-amber-500 bg-amber-50 px-2 py-1 rounded-md flex items-center gap-0.5">
-                      {doc.reviewsCount > 0 ? `${doc.rating} ⭐ (${doc.reviewsCount})` : 'Chưa có đánh giá'}
+                      {doc.reviewsCount > 0 ? `${doc.rating} ★ (${doc.reviewsCount})` : 'Chưa có đánh giá'}
                     </span>
                   </div>
                 </div>
@@ -293,7 +293,6 @@ const LOCAL_MOCK_VOUCHERS = [
     maxUsage: 100,
     usageCount: 88,
     eventTag: 'Hè Rực Rỡ',
-    eventEmoji: '☀️',
   },
   {
     id: 'mock-v-03',
@@ -307,7 +306,6 @@ const LOCAL_MOCK_VOUCHERS = [
     maxUsage: 500,
     usageCount: 210,
     eventTag: 'AI 2.0',
-    eventEmoji: '✨',
   },
 ];
 
@@ -366,7 +364,7 @@ function PublicVoucherCard({ v, i, onBook }) {
         {/* Event tag + name + description */}
         {v.eventTag && (
           <span className="inline-flex self-start items-center gap-1.5 text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100/80 text-amber-800 border border-amber-200/60 mb-2">
-            <span>{v.eventEmoji || '🎉'}</span>{v.eventTag}
+            <Sparkles className="w-3 h-3 text-amber-500" strokeWidth={1.5} />{v.eventTag}
           </span>
         )}
         <p className="text-base md:text-lg font-bold text-slate-900 leading-snug">{v.name}</p>
@@ -1063,7 +1061,7 @@ function LandingPage({ onLogout }) {
                       <div className="bg-slate-900/5 shadow-inner border border-slate-200/50 rounded p-3 flex flex-col gap-1">
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Đánh giá</span>
                         <span className="text-[13px] font-bold text-slate-700">
-                          {doc.reviewsCount > 0 ? `${doc.rating} ⭐ (${doc.reviewsCount})` : 'Chưa có đánh giá'}
+                          {doc.reviewsCount > 0 ? `${doc.rating} ★ (${doc.reviewsCount})` : 'Chưa có đánh giá'}
                         </span>
                       </div>
                       <div className="bg-slate-900/5 shadow-inner border border-slate-200/50 rounded p-3 flex flex-col gap-1">

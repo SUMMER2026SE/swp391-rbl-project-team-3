@@ -25,6 +25,8 @@ import {
   MessageSquare,
   Wrench,
   Shield,
+  Camera,
+  Check,
 } from 'lucide-react';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -598,8 +600,10 @@ function ImagesTab({ record }) {
                   }}
                 />
               </AnimatePresence>
-              <div className={`absolute top-2 left-2 px-2 py-1 rounded-lg text-[10px] font-bold ${mode === 'before' ? 'bg-rose-500 text-white' : 'bg-emerald-500 text-white'}`}>
-                {mode === 'before' ? `📷 Trước — ${img.beforeDate}` : `✅ Sau — ${img.afterDate}`}
+              <div className={`absolute top-2 left-2 flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold ${mode === 'before' ? 'bg-rose-500 text-white' : 'bg-emerald-500 text-white'}`}>
+                {mode === 'before'
+                  ? <><Camera className="w-3 h-3" /> Trước — {img.beforeDate}</>
+                  : <><Check className="w-3 h-3" /> Sau — {img.afterDate}</>}
               </div>
             </div>
 
