@@ -52,7 +52,14 @@ function AppContent() {
         
         <Route
           path="/login"
-          element={!user ? <LoginPage /> : <Navigate to={getDashboardPath(user.role)} replace />}
+          element={
+            // Draft & Sync: stay on the registration form when the magic link
+            // returns (?mode=register) even though a session now exists, so the
+            // user can finish filling the form instead of being bounced away.
+            (!user || new URLSearchParams(window.location.search).get('mode') === 'register')
+              ? <LoginPage />
+              : <Navigate to={getDashboardPath(user.role)} replace />
+          }
         />
 
         <Route

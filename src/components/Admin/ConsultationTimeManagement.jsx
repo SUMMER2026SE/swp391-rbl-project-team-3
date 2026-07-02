@@ -1,10 +1,19 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, Plus, Save, Search, Trash2, Loader2, CheckCircle2, AlertTriangle, User, Calendar, Tag } from 'lucide-react';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import { vi } from 'date-fns/locale';
 import { useDoctors } from '../../hooks/useDoctors';
 import { ConsultationSlotModel } from '../../models/ConsultationSlotModel';
 import { supabase } from '../../supabaseClient';
 import GlassSelect from '../common/GlassSelect';
+import { ymdToDate, dateToYmd, hmToDate, dateToHm } from '../../utils/dateAdapters';
+
+// Compact synced picker style for inline table cells (smaller padding than forms).
+const TABLE_DP_CLS = 'w-full bg-white/80 border border-slate-200/80 text-slate-800 shadow-sm focus:bg-white focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 outline-none focus:outline-none transition-all rounded-lg p-2 text-sm';
+// Transparent picker input that sits inside the form's focus-within field wrapper.
+const FIELD_DP_CLS = 'w-full bg-transparent text-slate-800 text-sm border-none border-transparent focus:border-transparent focus:ring-0 shadow-none outline-none p-0';
 
 export default function ConsultationTimeManagement() {
     const { doctors } = useDoctors();
@@ -101,11 +110,6 @@ export default function ConsultationTimeManagement() {
         }
     };
 
-    // Update local state for responsive typing without a DB write per keystroke.
-    const updateLocal = (id, field, value) => {
-        setSlots((prev) => prev.map((s) => (s.id === id ? { ...s, [field]: value } : s)));
-    };
-
     // Merge a patch into the row and persist the WHOLE row (the model re-resolves
     // schedule_id from doctor+date). Captures the merged row inside the updater.
     const persist = async (id, patch) => {
@@ -151,31 +155,48 @@ export default function ConsultationTimeManagement() {
                 <div className="flex items-center gap-2 mb-6 pb-4 border-b border-slate-200/50"><Plus className="w-5 h-5 text-indigo-600" /><h3 className="font-extrabold text-lg text-slate-800">Tạo khung giờ khám</h3></div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
                     <Select icon={User} iconColor="text-indigo-500" value={form.doctorName} onChange={(v) => setForm({ ...form, doctorName: v })} options={doctorOptions} />
-                    <div className="relative flex items-center w-full bg-white/50 backdrop-blur-md border border-white/60 rounded-xl px-4 py-3 shadow-sm focus-within:ring-2 focus-within:ring-indigo-500/30 transition-all">
-                        <Calendar className="text-blue-500 mr-2 shrink-0" size={20} />
-                        <input
-                            type="date"
-                            value={form.date}
-                            onChange={(e) => setForm({ ...form, date: e.target.value })}
-                            className="!bg-transparent appearance-none border-none outline-none w-full text-slate-800 p-0 focus:ring-0 text-sm font-semibold [&::-webkit-calendar-picker-indicator]:opacity-60 hover:[&::-webkit-calendar-picker-indicator]:opacity-100 cursor-pointer"
+                    <div className="flex-1 bg-white/80 border border-slate-200/80 rounded-xl flex items-center px-4 py-2.5 shadow-sm focus-within:ring-2 focus-within:ring-emerald-500/40 focus-within:border-emerald-500 transition-all">
+                        <Calendar className="w-5 h-5 text-emerald-600 mr-2 shrink-0" strokeWidth={1.5} />
+                        <DatePicker
+                            selected={ymdToDate(form.date)}
+                            onChange={(date) => setForm({ ...form, date: dateToYmd(date) })}
+                            locale={vi}
+                            dateFormat="dd/MM/yyyy"
+                            placeholderText="dd/mm/yyyy"
+                            wrapperClassName="flex-1 min-w-0"
+                            className={FIELD_DP_CLS}
                         />
                     </div>
-                    <div className="relative flex items-center w-full bg-white/50 backdrop-blur-md border border-white/60 rounded-xl px-4 py-3 shadow-sm focus-within:ring-2 focus-within:ring-indigo-500/30 transition-all">
-                        <Clock className="text-emerald-500 mr-2 shrink-0" size={20} />
-                        <input
-                            type="time"
-                            value={form.startTime}
-                            onChange={(e) => setForm({ ...form, startTime: e.target.value })}
-                            className="!bg-transparent appearance-none border-none outline-none w-full text-slate-800 p-0 focus:ring-0 text-sm font-semibold [&::-webkit-calendar-picker-indicator]:opacity-60 hover:[&::-webkit-calendar-picker-indicator]:opacity-100 cursor-pointer"
+                    <div className="flex-1 bg-white/80 border border-slate-200/80 rounded-xl flex items-center px-4 py-2.5 shadow-sm focus-within:ring-2 focus-within:ring-emerald-500/40 focus-within:border-emerald-500 transition-all">
+                        <Clock className="w-5 h-5 text-emerald-600 mr-2 shrink-0" strokeWidth={1.5} />
+                        <DatePicker
+                            selected={hmToDate(form.startTime)}
+                            onChange={(date) => setForm({ ...form, startTime: dateToHm(date) })}
+                            showTimeSelect
+                            showTimeSelectOnly
+                            timeIntervals={30}
+                            timeCaption="Giờ"
+                            dateFormat="HH:mm"
+                            locale={vi}
+                            placeholderText="HH:mm"
+                            wrapperClassName="flex-1 min-w-0"
+                            className={FIELD_DP_CLS}
                         />
                     </div>
-                    <div className="relative flex items-center w-full bg-white/50 backdrop-blur-md border border-white/60 rounded-xl px-4 py-3 shadow-sm focus-within:ring-2 focus-within:ring-indigo-500/30 transition-all">
-                        <Clock className="text-emerald-500 mr-2 shrink-0" size={20} />
-                        <input
-                            type="time"
-                            value={form.endTime}
-                            onChange={(e) => setForm({ ...form, endTime: e.target.value })}
-                            className="!bg-transparent appearance-none border-none outline-none w-full text-slate-800 p-0 focus:ring-0 text-sm font-semibold [&::-webkit-calendar-picker-indicator]:opacity-60 hover:[&::-webkit-calendar-picker-indicator]:opacity-100 cursor-pointer"
+                    <div className="flex-1 bg-white/80 border border-slate-200/80 rounded-xl flex items-center px-4 py-2.5 shadow-sm focus-within:ring-2 focus-within:ring-emerald-500/40 focus-within:border-emerald-500 transition-all">
+                        <Clock className="w-5 h-5 text-emerald-600 mr-2 shrink-0" strokeWidth={1.5} />
+                        <DatePicker
+                            selected={hmToDate(form.endTime)}
+                            onChange={(date) => setForm({ ...form, endTime: dateToHm(date) })}
+                            showTimeSelect
+                            showTimeSelectOnly
+                            timeIntervals={30}
+                            timeCaption="Giờ"
+                            dateFormat="HH:mm"
+                            locale={vi}
+                            placeholderText="HH:mm"
+                            wrapperClassName="flex-1 min-w-0"
+                            className={FIELD_DP_CLS}
                         />
                     </div>
                     <Select icon={Tag} iconColor="text-indigo-500" value={form.status} onChange={(v) => setForm({ ...form, status: v })} options={['Trống', 'Đã đặt', 'Đã hủy']} />
@@ -203,8 +224,35 @@ export default function ConsultationTimeManagement() {
                         ) : filteredSlots?.map?.((slot) => (
                             <tr key={slot.id} className="hover:bg-slate-50/80">
                                 <td className="px-8 py-5"><Select value={idToName[String(slot.doctorId)] || doctorOptions[0]} onChange={(v) => persist(slot.id, { doctorId: nameToId[v] })} options={doctorOptions} /></td>
-                                <td className="px-8 py-5"><Input type="date" value={slot.date} onChange={(v) => updateLocal(slot.id, 'date', v)} onBlur={(v) => persist(slot.id, { date: v })} /></td>
-                                <td className="px-8 py-5"><div className="grid grid-cols-2 gap-2"><Input type="time" value={slot.startTime} onChange={(v) => updateLocal(slot.id, 'startTime', v)} onBlur={(v) => persist(slot.id, { startTime: v })} /><Input type="time" value={slot.endTime} onChange={(v) => updateLocal(slot.id, 'endTime', v)} onBlur={(v) => persist(slot.id, { endTime: v })} /></div></td>
+                                <td className="px-8 py-5">
+                                    <DatePicker
+                                        selected={ymdToDate(slot.date)}
+                                        onChange={(date) => persist(slot.id, { date: dateToYmd(date) })}
+                                        locale={vi}
+                                        dateFormat="dd/MM/yyyy"
+                                        placeholderText="dd/mm/yyyy"
+                                        withPortal
+                                        className={TABLE_DP_CLS}
+                                    />
+                                </td>
+                                <td className="px-8 py-5"><div className="grid grid-cols-2 gap-2">
+                                    <DatePicker
+                                        selected={hmToDate(slot.startTime)}
+                                        onChange={(date) => persist(slot.id, { startTime: dateToHm(date) })}
+                                        showTimeSelect showTimeSelectOnly timeIntervals={30} timeCaption="Giờ"
+                                        dateFormat="HH:mm" locale={vi} placeholderText="HH:mm"
+                                        withPortal
+                                        className={TABLE_DP_CLS}
+                                    />
+                                    <DatePicker
+                                        selected={hmToDate(slot.endTime)}
+                                        onChange={(date) => persist(slot.id, { endTime: dateToHm(date) })}
+                                        showTimeSelect showTimeSelectOnly timeIntervals={30} timeCaption="Giờ"
+                                        dateFormat="HH:mm" locale={vi} placeholderText="HH:mm"
+                                        withPortal
+                                        className={TABLE_DP_CLS}
+                                    />
+                                </div></td>
                                 <td className="px-8 py-5"><Select value={slot.status} onChange={(v) => persist(slot.id, { status: v })} options={['Trống', 'Đã đặt', 'Đã hủy']} /></td>
                                 <td className="px-8 py-5 text-right">
                                     <button onClick={() => deleteSlot(slot.id)} title="Xóa slot" className="inline-flex items-center justify-center w-10 h-10 rounded-xl text-rose-500 bg-rose-50/60 border border-rose-100 hover:bg-rose-500 hover:text-white transition-colors">
@@ -239,20 +287,6 @@ export default function ConsultationTimeManagement() {
     );
 }
 
-function Input({ value, onChange, onBlur, type = 'text', icon: Icon, iconColor }) {
-    return (
-        <div className="relative flex items-center w-full bg-white/50 backdrop-blur-md border border-white/60 rounded-xl px-4 py-3 shadow-sm focus-within:ring-2 focus-within:ring-indigo-500/30 transition-all">
-            {Icon && <Icon size={20} className={`mr-2 shrink-0 ${iconColor || 'text-indigo-500'}`} />}
-            <input 
-                type={type} 
-                value={value} 
-                onChange={(e) => onChange(e.target.value)} 
-                onBlur={onBlur ? (e) => onBlur(e.target.value) : undefined} 
-                className="bg-transparent border-none outline-none w-full text-slate-800 p-0 focus:ring-0 text-sm font-semibold [&::-webkit-calendar-picker-indicator]:opacity-60 hover:[&::-webkit-calendar-picker-indicator]:opacity-100 cursor-pointer" 
-            />
-        </div>
-    );
-}
 function Select({ value, onChange, options, icon: Icon, iconColor }) {
     return (
         <div className="relative w-full">

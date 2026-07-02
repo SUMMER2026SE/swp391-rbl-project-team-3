@@ -110,6 +110,13 @@ export default function DoctorScheduleManagement() {
     };
     const [searchTerm, setSearchTerm] = useState('');
 
+    const handleAddShift = () =>
+        setShifts(prev => [...prev, { id: Date.now(), startTime: null, endTime: null }]);
+    const handleRemoveShift = (id) =>
+        setShifts(prev => (prev.length > 1 ? prev.filter(s => s.id !== id) : prev));
+    const handleShiftChange = (id, field, date) =>
+        setShifts(prev => prev.map(s => (s.id === id ? { ...s, [field]: date } : s)));
+
     React.useEffect(() => {
         if (doctors.length > 0 && !form.doctorId) {
             setForm(prev => ({ ...prev, doctorId: doctors[0].id }));
@@ -238,6 +245,7 @@ export default function DoctorScheduleManagement() {
             const addedShifts = await DoctorScheduleModel.createShifts(newShifts);
             setSchedules([...addedShifts, ...schedules]);
             setForm(prev => ({ ...prev, startDate: '', endDate: '' }));
+            setShifts([{ id: Date.now(), startTime: null, endTime: null }]);
             alert(`Đã tạo thành công ${addedShifts.length} ca làm việc!`);
         } catch (e) {
             alert('Lỗi khi lưu lịch làm việc: ' + e.message);
@@ -381,11 +389,27 @@ export default function DoctorScheduleManagement() {
                         <Select value={form.doctorId} onChange={(v) => setForm({ ...form, doctorId: v })} options={doctors.map(d => ({ label: d.name, value: d.id }))} loading={docsLoading} error={docsError} />
                         <div className="flex flex-col">
                             <span className="text-xs font-semibold text-slate-500 mb-1">Từ ngày</span>
-                            <Input type="date" value={form.startDate} onChange={(v) => setForm({ ...form, startDate: v })} min={getTodayString()} />
+                            <DatePicker
+                                selected={dateStrToDate(form.startDate)}
+                                onChange={(date) => setForm({ ...form, startDate: dateToDateStr(date) })}
+                                locale={vi}
+                                dateFormat="dd/MM/yyyy"
+                                minDate={new Date()}
+                                placeholderText="dd/mm/yyyy"
+                                className={GLASS_PICKER_CLS}
+                            />
                         </div>
                         <div className="flex flex-col">
                             <span className="text-xs font-semibold text-slate-500 mb-1">Đến ngày</span>
-                            <Input type="date" value={form.endDate} onChange={(v) => setForm({ ...form, endDate: v })} min={form.startDate || getTodayString()} />
+                            <DatePicker
+                                selected={dateStrToDate(form.endDate)}
+                                onChange={(date) => setForm({ ...form, endDate: dateToDateStr(date) })}
+                                locale={vi}
+                                dateFormat="dd/MM/yyyy"
+                                minDate={dateStrToDate(form.startDate) || new Date()}
+                                placeholderText="dd/mm/yyyy"
+                                className={GLASS_PICKER_CLS}
+                            />
                         </div>
                     </div>
                     <div className="flex flex-wrap gap-2 items-center pb-2 border-b border-dashed border-slate-200/50">
@@ -440,11 +464,76 @@ export default function DoctorScheduleManagement() {
                                         <span className="text-sm font-semibold text-slate-700">{day.label}</span>
                                     </label>
                                 ))}
-                                <button onClick={createSchedule} className="ml-auto px-6 py-3 h-[46px] bg-gradient-to-r from-indigo-600 to-sky-500 text-white rounded-2xl font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-200 hover:scale-105 transition-transform">
-                                    <Save className="w-4 h-4" /> Tạo lịch
-                                </button>
                             </div>
                         </div>
+                    </div>
+
+                    {/* ── Group 3 · Các ca làm việc (dynamic) ───────────────────── */}
+                    <div className="p-5 bg-slate-50/50 rounded-2xl border border-slate-200/60 col-span-full">
+                        <div className="flex items-center gap-2 mb-4">
+                            <Clock className="w-5 h-5 text-emerald-600" />
+                            <h4 className="text-sm font-bold text-slate-700">Các ca làm việc</h4>
+                        </div>
+                        <div className="flex flex-col gap-3">
+                            {shifts.map((shift) => (
+                                <div key={shift.id} className="flex flex-col sm:flex-row gap-3 sm:items-end">
+                                    <div className="flex flex-col flex-1">
+                                        <span className="text-xs font-semibold text-slate-500 mb-1">Giờ bắt đầu</span>
+                                        <DatePicker
+                                            selected={shift.startTime}
+                                            onChange={(date) => handleShiftChange(shift.id, 'startTime', date)}
+                                            showTimeSelect
+                                            showTimeSelectOnly
+                                            timeIntervals={30}
+                                            timeCaption="Giờ"
+                                            dateFormat="HH:mm"
+                                            locale={vi}
+                                            placeholderText="HH:mm"
+                                            className={GLASS_PICKER_CLS}
+                                        />
+                                    </div>
+                                    <div className="flex flex-col flex-1">
+                                        <span className="text-xs font-semibold text-slate-500 mb-1">Giờ kết thúc</span>
+                                        <DatePicker
+                                            selected={shift.endTime}
+                                            onChange={(date) => handleShiftChange(shift.id, 'endTime', date)}
+                                            showTimeSelect
+                                            showTimeSelectOnly
+                                            timeIntervals={30}
+                                            timeCaption="Giờ"
+                                            dateFormat="HH:mm"
+                                            locale={vi}
+                                            placeholderText="HH:mm"
+                                            className={GLASS_PICKER_CLS}
+                                        />
+                                    </div>
+                                    {shifts.length > 1 && (
+                                        <button
+                                            type="button"
+                                            onClick={() => handleRemoveShift(shift.id)}
+                                            title="Xóa ca này"
+                                            className="shrink-0 h-[46px] px-3 flex items-center justify-center text-rose-500 hover:bg-rose-50 rounded-xl transition-colors"
+                                        >
+                                            <Trash2 className="w-5 h-5" />
+                                        </button>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                        <button
+                            type="button"
+                            onClick={handleAddShift}
+                            className="mt-4 w-full flex items-center justify-center gap-2 py-2.5 border-2 border-dashed border-emerald-300 text-emerald-600 font-semibold text-sm rounded-xl hover:bg-emerald-50 transition-colors"
+                        >
+                            <Plus className="w-4 h-4" /> Thêm ca làm việc
+                        </button>
+                    </div>
+
+                    {/* ── Group 4 · Submit footer ───────────────────────────────── */}
+                    <div className="flex justify-end pt-4 border-t border-slate-200/50">
+                        <button onClick={createSchedule} className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-sky-500 text-white rounded-2xl font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-200 hover:scale-105 transition-transform">
+                            <Save className="w-4 h-4" /> Tạo lịch
+                        </button>
                     </div>
                 </div>
             </div>
@@ -488,9 +577,6 @@ export default function DoctorScheduleManagement() {
     );
 }
 
-function Input({ value, onChange, type = 'text', ...props }) {
-    return <input type={type} value={value} onChange={(e) => onChange(e.target.value)} className="w-full bg-white border border-slate-200 rounded-2xl py-3 px-4 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400" {...props} />;
-}
 function Select({ value, onChange, options, loading, error }) {
     const opts = error
         ? [{ value: '', label: `Lỗi: ${String(error)}` }]

@@ -1,4 +1,5 @@
 import React from 'react';
+import { AlertTriangle } from 'lucide-react';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -30,8 +31,8 @@ class ErrorBoundary extends React.Component {
           justifyContent: 'center',
           boxSizing: 'border-box'
         }}>
-          <h1 style={{ fontSize: '2rem', marginBottom: '20px', borderBottom: '2px solid #f5c2c7', paddingBottom: '10px' }}>
-            🚨 Application Crashed
+          <h1 style={{ fontSize: '2rem', marginBottom: '20px', borderBottom: '2px solid #f5c2c7', paddingBottom: '10px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <AlertTriangle size={28} strokeWidth={1.5} /> Application Crashed
           </h1>
           <h2 style={{ fontSize: '1.2rem', marginBottom: '10px' }}>Error Message:</h2>
           <pre style={{ backgroundColor: '#f8d7da', padding: '15px', borderRadius: '8px', overflowX: 'auto', width: '100%', border: '1px solid #f5c2c7', marginBottom: '20px', whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}>

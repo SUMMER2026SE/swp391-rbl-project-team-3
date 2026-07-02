@@ -76,8 +76,12 @@ const withTimeout = (promise, timeoutMs = 15000) => {
 };
 
 export function useAuthController(onSuccessCallback = null) {
-  const { login } = useAuth();
-  
+  const { login, session } = useAuth();
+
+  // Email is "verified" once a Supabase session exists — i.e. the user clicked
+  // the magic link (this tab, or another tab that synced via localStorage).
+  const isEmailVerified = !!session;
+
   const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [fullNameInput, setFullNameInput] = useState('');
@@ -95,6 +99,48 @@ export function useAuthController(onSuccessCallback = null) {
       window.history.replaceState({}, document.title);
     }
   }, [location.state]);
+
+  // ─── Draft & Sync: HYDRATE on mount ────────────────────────────────────────
+  // When the magic link reopens the form (?mode=register) — possibly in a brand
+  // new tab — restore the half-filled draft from localStorage so nothing is lost.
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('mode') !== 'register') return;
+    setIsRegistering(true);
+    try {
+      const raw = localStorage.getItem('derma_draft_form');
+      if (!raw) return;
+      const draft = JSON.parse(raw);
+      if (draft.fullName) setFullNameInput(draft.fullName);
+      if (draft.email) setEmailInput(draft.email);
+      if (draft.phone) setPhoneInput(draft.phone);
+      if (draft.password) setPasswordInput(draft.password);
+    } catch {
+      // Corrupt draft — ignore and start fresh.
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ─── Draft & Sync: PERSIST on change ───────────────────────────────────────
+  // Mirror every keystroke of the registration form to localStorage so the data
+  // survives a cross-tab magic-link round trip. Scoped to register mode so we
+  // never capture the login form's email/password.
+  useEffect(() => {
+    if (!isRegistering) return;
+    try {
+      localStorage.setItem(
+        'derma_draft_form',
+        JSON.stringify({
+          fullName: fullNameInput,
+          email: emailInput,
+          phone: phoneInput,
+          password: passwordInput,
+        })
+      );
+    } catch {
+      // Storage full / unavailable — non-fatal.
+    }
+  }, [isRegistering, fullNameInput, emailInput, phoneInput, passwordInput]);
   const [isForgotPass, setIsForgotPass] = useState(false);
   const [otpInput, setOtpInput] = useState('');
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
@@ -230,27 +276,6 @@ export function useAuthController(onSuccessCallback = null) {
             }
           }, 2000);
         }
-      } else if (isRegistering) {
-        // REGISTRATION FLOW
-        if (!fullNameInput.trim()) {
-          throw new Error('Vui lòng nhập họ và tên.');
-        }
-        const normalizedEmail = normalizeEmail(emailInput);
-        if (classifyIdentifier(normalizedEmail) !== 'EMAIL') {
-          throw new Error('Email không đúng định dạng.');
-        }
-        const normalizedPhone = normalizePhone(phoneInput);
-        if (!VN_PHONE_REGEX.test(normalizedPhone)) {
-          throw new Error('Số điện thoại không đúng định dạng Việt Nam.');
-        }
-        assertStrongPassword(passwordInput);
-        assertPasswordConfirmed(passwordInput, confirmPasswordInput);
-        if (!agreeTerms) {
-          throw new Error('Bạn cần đồng ý với Điều khoản dịch vụ.');
-        }
-
-        await withTimeout(AuthModel.signUp(normalizedEmail, passwordInput, fullNameInput.trim(), 'PATIENT', normalizedPhone), 12000);
-        safeSetSuccess('Đăng ký thành công! Vui lòng xác nhận email trước khi đăng nhập.');
       } else {
         // LOGIN FLOW
         if (!emailInput.trim() || !passwordInput) {
@@ -376,6 +401,103 @@ export function useAuthController(onSuccessCallback = null) {
     }
   };
 
+  // ─── Full-form-upfront registration with cross-tab confirmation UX ─────────
+  // ─── Draft & Sync: dispatch the email magic link ───────────────────────────
+  const handleSendVerificationLink = async (e) => {
+    if (e) e.preventDefault();
+    if (pendingRequestRef.current) return;
+    pendingRequestRef.current = true;
+
+    safeSetLoading(true);
+    safeSetError('');
+    safeSetSuccess('');
+
+    try {
+      const normalizedEmail = normalizeEmail(emailInput);
+      if (!normalizedEmail) {
+        throw new Error('Vui lòng nhập địa chỉ email.');
+      }
+      if (!EMAIL_REGEX.test(normalizedEmail)) {
+        throw new Error('Định dạng email không hợp lệ.');
+      }
+
+      console.log('[HungBB-Auth] SEND MAGIC LINK:', { email: normalizedEmail });
+      const { error } = await withTimeout(AuthModel.sendMagicLink(normalizedEmail), 12000);
+      if (error) throw error;
+
+      safeSetSuccess('Đã gửi link, vui lòng kiểm tra hộp thư.');
+    } catch (error) {
+      console.log('[HungBB-Auth] SEND MAGIC LINK FAILED:', error?.message || String(error));
+      safeSetError(toVietnameseAuthError(error));
+    } finally {
+      pendingRequestRef.current = false;
+      safeSetLoading(false);
+    }
+  };
+
+  // ─── Draft & Sync: finalize once the email is verified (session exists) ─────
+  const handleRegister = async (e) => {
+    if (e) e.preventDefault();
+    if (pendingRequestRef.current) return;
+    pendingRequestRef.current = true;
+
+    safeSetLoading(true);
+    safeSetError('');
+    safeSetSuccess('');
+
+    try {
+      // Gate the whole flow on a verified email (a live session).
+      if (!isEmailVerified) {
+        throw new Error('Vui lòng xác nhận email trước khi đăng ký.');
+      }
+
+      // Validate the remaining fields with precise Vietnamese errors.
+      const fullName = fullNameInput.trim();
+      const phone = normalizePhone(phoneInput);
+
+      if (!fullName) {
+        throw new Error('Vui lòng nhập họ và tên.');
+      }
+      if (!phone) {
+        throw new Error('Vui lòng nhập số điện thoại.');
+      }
+      if (!VN_PHONE_REGEX.test(phone)) {
+        throw new Error('Số điện thoại không đúng định dạng Việt Nam.');
+      }
+      if (!passwordInput || passwordInput.length < 6) {
+        throw new Error('Mật khẩu phải có ít nhất 6 ký tự.');
+      }
+      if (passwordInput !== confirmPasswordInput) {
+        throw new Error('Mật khẩu xác nhận không khớp.');
+      }
+
+      console.log('[HungBB-Auth] FINALIZE REGISTRATION:', { fullName, phone });
+      const { error } = await withTimeout(
+        AuthModel.finalizeRegistration(passwordInput, fullName, phone),
+        12000
+      );
+      if (error) throw error;
+
+      // Success: discard the draft and land the user inside the app.
+      localStorage.removeItem('derma_draft_form');
+      console.log('[HungBB-Auth] REGISTRATION COMPLETE — redirecting.');
+      safeSetSuccess('Đăng ký hoàn tất! Đang chuyển hướng...');
+      setTimeout(() => {
+        if (isMountedRef.current) {
+          if (onSuccessCallback) onSuccessCallback();
+          else window.location.href = '/';
+        }
+      }, 800);
+      return;
+    } catch (error) {
+      console.log('[HungBB-Auth] FINALIZE REGISTRATION FAILED:', error?.message || String(error));
+      safeSetError(toVietnameseAuthError(error));
+    } finally {
+      pendingRequestRef.current = false;
+      safeSetLoading(false);
+    }
+  };
+
   const handleResetPassword = async (e) => {
     if (e) e.preventDefault();
     if (pendingRequestRef.current) return;
@@ -434,6 +556,7 @@ export function useAuthController(onSuccessCallback = null) {
     setIsVerifyingOtp,
     isOtpVerified,
     setIsOtpVerified,
+    isEmailVerified,
     showPassword,
     setShowPassword,
     showConfirmPassword,
@@ -447,6 +570,8 @@ export function useAuthController(onSuccessCallback = null) {
     handleGoogleLogin,
     handleLogout,
     handleSubmit,
+    handleRegister,
+    handleSendVerificationLink,
     handleResetPassword,
     resetMessages
   };

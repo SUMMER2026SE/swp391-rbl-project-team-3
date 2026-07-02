@@ -5,6 +5,17 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ──────────────────────────────────────────────────────────────────────────
+   PREMIUM ICONOGRAPHY — single source of truth for icon stroke weight.
+   lucide-react renders every icon as <svg class="lucide …" stroke-width="2">.
+   A CSS declaration overrides the SVG presentation attribute, so this one rule
+   forces EVERY lucide icon across the app to the thin 1.5 stroke that defines
+   the high-end SaaS aesthetic — no per-instance strokeWidth props required.
+   ────────────────────────────────────────────────────────────────────────── */
+.lucide {
+  stroke-width: 1.5;
+}
+
 @layer components {
   .btn-primary {
     @apply bg-gradient-to-br from-[#00685f] to-[#0058be] text-white shadow-[0_4px_15px_rgba(0,104,95,0.2)] transition-all duration-300 border-none cursor-pointer;
@@ -1066,3 +1077,16 @@ input[type="password"]::-ms-clear {
 input[type="password"]::-webkit-reveal {
     display: none;
 }
+
+/* --- Liquid Glass React DatePicker --- */
+.react-datepicker-wrapper { width: 100%; display: block; }
+.react-datepicker { font-family: inherit !important; background-color: rgba(255, 255, 255, 0.85) !important; backdrop-filter: blur(16px) !important; -webkit-backdrop-filter: blur(16px) !important; border: 1px solid rgba(255, 255, 255, 0.4) !important; border-radius: 1.25rem !important; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08) !important; padding: 0.5rem !important; }
+.react-datepicker__header { background-color: transparent !important; border-bottom: 1px solid rgba(0, 0, 0, 0.05) !important; padding-top: 0.5rem !important; }
+.react-datepicker__current-month, .react-datepicker-time__header { color: #1e293b !important; font-weight: 700 !important; font-size: 1rem !important; text-transform: capitalize; }
+.react-datepicker__day-name { color: #64748b !important; font-weight: 600 !important; }
+.react-datepicker__day, .react-datepicker__time-name { color: #334155 !important; border-radius: 50% !important; transition: all 0.2s ease; }
+.react-datepicker__day:hover, .react-datepicker__time-list-item:hover { background-color: rgba(16, 185, 129, 0.15) !important; }
+.react-datepicker__day--selected, .react-datepicker__day--keyboard-selected, .react-datepicker__time-list-item--selected { background-color: #10b981 !important; color: white !important; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3) !important; font-weight: bold !important; border-radius: 50% !important; }
+.react-datepicker__time-list-item--selected { border-radius: 0.5rem !important; }
+.react-datepicker__triangle { display: none !important; }
+.react-datepicker__navigation-icon::before { border-color: #64748b !important; }

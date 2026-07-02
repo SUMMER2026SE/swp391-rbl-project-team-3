@@ -33,6 +33,7 @@ import TechnicianOverview from '../components/Technician/Overview/TechnicianOver
 import AssignedTasksList from '../components/Technician/AssignedTasks/AssignedTasksList';
 import TechnicianSchedule from '../components/Technician/WorkSchedule/TechnicianSchedule';
 import TechnicianWorkspace from '../components/Technician/ProcedureWorkspace/TechnicianWorkspace';
+import TechnicianResultReview from '../components/Technician/ProcedureWorkspace/TechnicianResultReview';
 import TechnicianFeedbackView from '../components/Technician/TechnicianFeedbackView';
 import LiquidSidebarMenu from '../components/ui/LiquidSidebarMenu';
 import logo from '../assets/logo.png';
@@ -290,11 +291,12 @@ export default function TechnicianDashboard() {
   const renderContent = () => {
     if (activeTask) {
       if (activeTask.status === 'Đã hoàn thành') {
+        // Completed tickets are READ-ONLY → use the liquid-glass review view that
+        // matches the dashboard baseline, not the data-entry stepper workspace.
         return (
-          <TechnicianWorkspace
+          <TechnicianResultReview
             task={activeTask}
             onBack={() => setActiveTask(null)}
-            isReviewMode={true}
           />
         );
       }

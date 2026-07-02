@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Star, Send, Eye, EyeOff, Image, Stethoscope,
   Clock, Building2, Wrench, Sparkles, CheckCircle2,
-  AlertCircle, Camera, Trash2,
+  AlertCircle, Camera, Trash2, Check, Loader2, ArrowRight,
 } from 'lucide-react';
 import { useFeedbackController } from '../../controllers/useFeedbackController';
 import { useAuth } from '../../context/AuthContext';
@@ -197,7 +197,7 @@ export default function FeedbackFormModal({ apt, onClose, onSubmitted }) {
                     step === s ? 'bg-amber-400 text-white shadow-md shadow-amber-400/30' :
                     step > s  ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-400'
                   }`}>
-                    {step > s ? '✓' : s}
+                    {step > s ? <Check className="w-4 h-4" /> : s}
                   </div>
                   <span className={`text-xs font-semibold ${step === s ? 'text-slate-800' : 'text-slate-400'}`}>
                     {s === 1 ? 'Đánh giá sao' : 'Chi tiết & Ảnh'}
@@ -518,9 +518,9 @@ export default function FeedbackFormModal({ apt, onClose, onSubmitted }) {
                   }`}
                 >
                   {isSubmitting ? (
-                    <span className="animate-spin">⏳</span>
+                    <Loader2 className="w-4 h-4 animate-spin" />
                   ) : step === 1 ? (
-                    <>Tiếp theo <span className="text-lg">→</span></>
+                    <>Tiếp theo <ArrowRight className="w-4 h-4" /></>
                   ) : (
                     <><Send className="w-4 h-4" /> Gửi đánh giá</>
                   )}
