@@ -23,6 +23,7 @@ import ProfileTabs from '../components/profile/ProfileTabs';
 import PersonalInfoTab from '../components/profile/tabs/PersonalInfoTab';
 import AccountSettingsTab from '../components/profile/tabs/AccountSettingsTab';
 import StaffInsightsTab from '../components/profile/tabs/StaffInsightsTab';
+import MedicalLoader from '../components/common/MedicalLoader';
 import MedicalRecordTab from '../components/profile/tabs/MedicalRecordTab';
 import AppointmentsTab from '../components/PatientPortal/AppointmentsTab';
 import PatientFeedbackTab from '../components/PatientPortal/PatientFeedbackTab';
@@ -114,14 +115,12 @@ export default function ProfilePage() {
     setProfile(normalized);
   };
 
+  const profileBgImage = getProfileBackground(user?.role);
+
   if (isLoading) {
     return (
-      <div className="min-h-screen font-sans antialiased relative bg-[url('https://images.unsplash.com/photo-1557682250-33bd709cbe85?q=80&w=2029&auto=format&fit=crop')] bg-cover bg-fixed bg-center flex items-center justify-center">
-        <div className="absolute inset-0 bg-background/80 backdrop-blur-3xl" />
-        <div className="relative z-10 flex flex-col items-center gap-3">
-          <Loader2 className="w-10 h-10 animate-spin text-primary" />
-          <p className="text-sm font-bold text-on-surface-variant/70">Đang tải hồ sơ...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-[#9ea5b0]">
+        <MedicalLoader />
       </div>
     );
   }
@@ -141,7 +140,7 @@ export default function ProfilePage() {
     );
   }
 
-  const profileBgImage = getProfileBackground(user?.role);
+  // profileBgImage already defined above
 
   return (
     <div className="min-h-screen relative overflow-hidden">

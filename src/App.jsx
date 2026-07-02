@@ -12,6 +12,7 @@ import TechnicianDashboard from './views/TechnicianDashboard';
 import ProfilePage from './views/ProfilePage';
 import ProtectedRoute from './components/ProtectedRoute';
 import LiquidGlassFilter from './components/common/LiquidGlassFilter';
+import MedicalLoader from './components/common/MedicalLoader';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -26,8 +27,8 @@ function AppContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-10 h-10 rounded-full border-4 border-slate-200 border-t-sky-500 animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-[#9ea5b0]">
+        <MedicalLoader />
       </div>
     );
   }

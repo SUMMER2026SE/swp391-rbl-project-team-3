@@ -83,6 +83,60 @@ const FilterDropdown = ({ label, icon: Icon, options, value, onChange, placehold
   );
 };
 
+const generateHistoricalMockData = () => {
+  const doctors = ['BS. CKII. Trần Văn A', 'ThS. BS. Nguyễn Thị B', 'BS. Trần Quốc Minh', 'BS. Lê Hoàng Nam'];
+  const methods = ['Tiền mặt', 'Chuyển khoản', 'Thẻ'];
+  const services = [
+    { name: 'Khám da liễu tổng quát', type: 'KHÁM BỆNH', minAmount: 150000, maxAmount: 300000 },
+    { name: 'Điều trị mụn chuẩn y khoa', type: 'GÓI LIỆU TRÌNH', minAmount: 800000, maxAmount: 2500000 },
+    { name: 'Xét nghiệm dị ứng da', type: 'XÉT NGHIỆM', minAmount: 500000, maxAmount: 1200000 },
+    { name: 'Liệu trình trẻ hóa da Laser', type: 'GÓI LIỆU TRÌNH', minAmount: 3000000, maxAmount: 8000000 },
+    { name: 'Khám kiểm tra nốt ruồi lạ', type: 'KHÁM BỆNH', minAmount: 200000, maxAmount: 400000 }
+  ];
+  
+  const mockTransactions = [];
+  let idCounter = 10000;
+  
+  const years = [2023, 2024, 2025, 2026];
+  
+  years.forEach(y => {
+    const maxMonth = y === 2026 ? 6 : 12;
+    for (let m = 1; m <= maxMonth; m++) {
+      const numTx = Math.floor(Math.random() * 14) + 12;
+      for (let i = 0; i < numTx; i++) {
+        const d = Math.floor(Math.random() * 28) + 1;
+        const dd = String(d).padStart(2, '0');
+        const mm = String(m).padStart(2, '0');
+        
+        const doc = doctors[Math.floor(Math.random() * doctors.length)];
+        const method = methods[Math.floor(Math.random() * methods.length)];
+        const svc = services[Math.floor(Math.random() * services.length)];
+        
+        const amount = Math.floor(
+          (Math.random() * (svc.maxAmount - svc.minAmount) + svc.minAmount) / 10000
+        ) * 10000;
+        
+        const hour = Math.floor(Math.random() * 13) + 8;
+        const minute = Math.floor(Math.random() * 4) * 15;
+        const timeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+        
+        mockTransactions.push({
+          id: `mock-${idCounter++}`,
+          amount,
+          date: `${dd}/${mm}/${y}`,
+          time: timeStr,
+          method,
+          doctor: doc,
+          service: svc.name,
+          type: svc.type
+        });
+      }
+    }
+  });
+  
+  return mockTransactions;
+};
+
 export default function RevenueStatistics() {
   const [period, setPeriod] = useState('Tháng');
   const [doctor, setDoctor] = useState('all');
@@ -91,6 +145,314 @@ export default function RevenueStatistics() {
   const [showAll, setShowAll] = useState(false);
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const [selectedPeriodValue, setSelectedPeriodValue] = useState('');
+  const [activeDropdown, setActiveDropdown] = useState(null);
+  const tabBarRef = useRef(null);  const prevPeriodRef = useRef(period);
+
+  const parsePeriodContext = (val, per) => {
+    const now = new Date();
+    let y = now.getFullYear();
+    let q = Math.floor(now.getMonth() / 3) + 1;
+    let m = now.getMonth() + 1;
+    let d = now.getDate();
+
+    if (!val) return { y, q, m, d };
+
+    if (per === 'Ngày' || per === 'Tuần') {
+      if (val.includes('-')) {
+        const [yearStr, monthStr, dayStr] = val.split('-');
+        y = parseInt(yearStr, 10);
+        m = parseInt(monthStr, 10);
+        d = parseInt(dayStr, 10);
+        q = Math.floor((m - 1) / 3) + 1;
+      }
+    } else if (per === 'Tháng') {
+      if (val.includes('/')) {
+        const [monthStr, yearStr] = val.split('/');
+        y = parseInt(yearStr, 10);
+        m = parseInt(monthStr, 10);
+        q = Math.floor((m - 1) / 3) + 1;
+        d = 1;
+      }
+    } else if (per === 'Quý') {
+      if (val.includes('/')) {
+        const [qStr, yearStr] = val.split('/');
+        y = parseInt(yearStr, 10);
+        q = parseInt(qStr.replace('Q', ''), 10);
+        m = (q - 1) * 3 + 3;
+        d = 1;
+      }
+    } else if (per === 'Năm') {
+      y = parseInt(val, 10) || now.getFullYear();
+      q = 4;
+      m = 12;
+      d = 31;
+    }
+
+    return { y, q, m, d };
+  };
+
+  const getSelectedYear = () => {
+    if (!selectedPeriodValue) return new Date().getFullYear();
+    if (selectedPeriodValue.includes('-')) {
+      return parseInt(selectedPeriodValue.split('-')[0], 10);
+    }
+    if (selectedPeriodValue.includes('/')) {
+      return parseInt(selectedPeriodValue.split('/')[1], 10);
+    }
+    return parseInt(selectedPeriodValue, 10) || new Date().getFullYear();
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (tabBarRef.current && !tabBarRef.current.contains(event.target)) {
+        setActiveDropdown(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Update selected period value when period changes, preserving hierarchical parent/child boundaries
+  useEffect(() => {
+    const prevPeriod = prevPeriodRef.current;
+    const context = parsePeriodContext(selectedPeriodValue, prevPeriod);
+    const now = new Date();
+    const currentYear = now.getFullYear();
+
+    if (period === 'Ngày') {
+      const lastDay = new Date(context.y, context.m, 0).getDate();
+      setSelectedPeriodValue(`${context.y}-${String(context.m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`);
+    } else if (period === 'Tuần') {
+      const lastDay = new Date(context.y, context.m, 0).getDate();
+      setSelectedPeriodValue(`${context.y}-${String(context.m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`);
+    } else if (period === 'Tháng') {
+      setSelectedPeriodValue(`${String(context.m).padStart(2, '0')}/${context.y}`);
+    } else if (period === 'Quý') {
+      setSelectedPeriodValue(`Q${context.q}/${context.y}`);
+    } else if (period === 'Năm') {
+      setSelectedPeriodValue(String(context.y));
+    }
+
+    prevPeriodRef.current = period;
+  }, [period]);
+
+  const getOptionsForPeriod = (targetPeriod) => {
+    const now = new Date();
+    const currentDay = now.getDate();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    
+    const context = parsePeriodContext(selectedPeriodValue, period);
+    const isCurrentYearSelected = context.y === currentYear;
+
+    if (targetPeriod === 'Ngày') {
+      const list = [];
+      const lastDay = new Date(context.y, context.m, 0).getDate();
+      const refDate = new Date(context.y, context.m - 1, lastDay);
+      
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate() - i);
+        const dd = String(d.getDate()).padStart(2, '0');
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const valStr = `${d.getFullYear()}-${mm}-${dd}`;
+        
+        let label = `${dd}/${mm}/${d.getFullYear()}`;
+        if (d.toDateString() === now.toDateString()) {
+          label = `Hôm nay (${dd}/${mm})`;
+        } else if (new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1).toDateString() === d.toDateString()) {
+          label = `Hôm qua (${dd}/${mm})`;
+        }
+        
+        list.push({ value: valStr, label });
+      }
+      return list;
+    }
+    if (targetPeriod === 'Tuần') {
+      const list = [];
+      
+      // If we are currently scoping by month or quarter, list weeks inside that month/quarter
+      if (period === 'Tháng') {
+        const lastDay = new Date(context.y, context.m, 0).getDate();
+        for (let i = 0; i < 5; i++) {
+          const endDate = new Date(context.y, context.m - 1, lastDay - (i * 7));
+          const startDate = new Date(context.y, context.m - 1, lastDay - (i * 7) - 6);
+          
+          if (endDate.getMonth() !== context.m - 1) break;
+          
+          const sDd = String(startDate.getDate()).padStart(2, '0');
+          const sMm = String(startDate.getMonth() + 1).padStart(2, '0');
+          const eDd = String(endDate.getDate()).padStart(2, '0');
+          const eMm = String(endDate.getMonth() + 1).padStart(2, '0');
+          
+          const valStr = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
+          list.push({
+            value: valStr,
+            label: `${sDd}/${sMm}/${startDate.getFullYear()} - ${eDd}/${eMm}/${endDate.getFullYear()}`
+          });
+        }
+        return list;
+      }
+      
+      if (period === 'Quý') {
+        const lastMonth = context.q * 3;
+        const lastDayOfQuarter = new Date(context.y, lastMonth, 0).getDate();
+        for (let i = 0; i < 12; i++) {
+          const endDate = new Date(context.y, lastMonth - 1, lastDayOfQuarter - (i * 7));
+          const startDate = new Date(context.y, lastMonth - 1, lastDayOfQuarter - (i * 7) - 6);
+          
+          const endDateQuarter = Math.floor(endDate.getMonth() / 3) + 1;
+          if (endDateQuarter !== context.q) break;
+          
+          const sDd = String(startDate.getDate()).padStart(2, '0');
+          const sMm = String(startDate.getMonth() + 1).padStart(2, '0');
+          const eDd = String(endDate.getDate()).padStart(2, '0');
+          const eMm = String(endDate.getMonth() + 1).padStart(2, '0');
+          
+          const valStr = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
+          list.push({
+            value: valStr,
+            label: `${sDd}/${sMm}/${startDate.getFullYear()} - ${eDd}/${eMm}/${endDate.getFullYear()}`
+          });
+        }
+        return list;
+      }
+
+      // Default fallback week builder
+      const lastDay = new Date(context.y, context.m, 0).getDate();
+      const refDate = new Date(context.y, context.m - 1, lastDay);
+      for (let i = 0; i < 5; i++) {
+        const endDate = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate() - (i * 7));
+        const startDate = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate() - (i * 7) - 6);
+        
+        const sDd = String(startDate.getDate()).padStart(2, '0');
+        const sMm = String(startDate.getMonth() + 1).padStart(2, '0');
+        const eDd = String(endDate.getDate()).padStart(2, '0');
+        const eMm = String(endDate.getMonth() + 1).padStart(2, '0');
+        
+        const valStr = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
+        let label = `${sDd}/${sMm}/${startDate.getFullYear()} - ${eDd}/${eMm}/${endDate.getFullYear()}`;
+        list.push({ value: valStr, label });
+      }
+      return list;
+    }
+    if (targetPeriod === 'Tháng') {
+      const list = [];
+      
+      // If currently selected tab is Quarter, show only months of that quarter
+      if (period === 'Quý') {
+        for (let i = 2; i >= 0; i--) {
+          const monthIdx = (context.q - 1) * 3 + i;
+          const mStr = String(monthIdx + 1).padStart(2, '0');
+          list.push({
+            value: `${mStr}/${context.y}`,
+            label: `Tháng ${mStr}/${context.y}`
+          });
+        }
+        return list;
+      }
+
+      // Default: show months of the selected year
+      const startMonth = isCurrentYearSelected ? currentMonth : 11;
+      for (let i = 0; i < 12; i++) {
+        const d = new Date(context.y, startMonth - i, 1);
+        const m = d.getMonth() + 1;
+        const y = d.getFullYear();
+        if (y !== context.y) break;
+        const mStr = String(m).padStart(2, '0');
+        
+        let label = `Tháng ${mStr}/${y}`;
+        if (y === currentYear && m - 1 === currentMonth) {
+          label = `Tháng này (${mStr}/${y})`;
+        } else if (y === currentYear && m - 1 === currentMonth - 1) {
+          label = `Tháng trước (${mStr}/${y})`;
+        }
+        
+        list.push({ value: `${mStr}/${y}`, label });
+      }
+      return list;
+    }
+    if (targetPeriod === 'Quý') {
+      const list = [];
+      const startQuarter = isCurrentYearSelected ? Math.floor(currentMonth / 3) : 3;
+      
+      for (let i = 0; i <= startQuarter; i++) {
+        const q = startQuarter - i + 1;
+        list.push({
+          value: `Q${q}/${context.y}`,
+          label: (q === Math.floor(currentMonth / 3) + 1 && isCurrentYearSelected) ? `Quý này (Quý ${q}/${context.y})` : `Quý ${q}/${context.y}`
+        });
+      }
+      return list;
+    }
+    if (targetPeriod === 'Năm') {
+      const list = [];
+      for (let i = 0; i < 5; i++) {
+        const y = currentYear - i;
+        list.push({
+          value: String(y),
+          label: y === currentYear ? `Năm nay (${y})` : `Năm ${y}`
+        });
+      }
+      return list;
+    }
+    return [];
+  };
+
+  const getPeriodDetailsLabel = () => {
+    if (!selectedPeriodValue) return '';
+
+    if (period === 'Ngày') {
+      const [y, m, d] = selectedPeriodValue.split('-');
+      return `Ngày ${d}/${m}/${y}`;
+    }
+    if (period === 'Tuần') {
+      const [y, m, d] = selectedPeriodValue.split('-').map(Number);
+      const endDate = new Date(y, m - 1, d);
+      const startDate = new Date(y, m - 1, d - 6);
+      
+      const sDd = String(startDate.getDate()).padStart(2, '0');
+      const sMm = String(startDate.getMonth() + 1).padStart(2, '0');
+      const eDd = String(endDate.getDate()).padStart(2, '0');
+      const eMm = String(endDate.getMonth() + 1).padStart(2, '0');
+      return `Tuần từ ${sDd}/${sMm}/${startDate.getFullYear()} đến ${eDd}/${eMm}/${endDate.getFullYear()}`;
+    }
+    if (period === 'Tháng') {
+      return `Tháng ${selectedPeriodValue}`;
+    }
+    if (period === 'Quý') {
+      return `${selectedPeriodValue}`;
+    }
+    if (period === 'Năm') {
+      return `Năm ${selectedPeriodValue}`;
+    }
+    return '';
+  };
+
+  const getChartDescription = () => {
+    if (!selectedPeriodValue) return '';
+
+    if (period === 'Ngày') {
+      const [y, m, d] = selectedPeriodValue.split('-');
+      return `Doanh thu theo giờ (Ngày ${d}/${m}/${y})`;
+    }
+    if (period === 'Tuần') {
+      const [y, m, d] = selectedPeriodValue.split('-').map(Number);
+      const endDate = new Date(y, m - 1, d);
+      const eDd = String(endDate.getDate()).padStart(2, '0');
+      const eMm = String(endDate.getMonth() + 1).padStart(2, '0');
+      return `Doanh thu 7 ngày qua (Đến ngày ${eDd}/${eMm}/${endDate.getFullYear()})`;
+    }
+    if (period === 'Tháng') {
+      return `Doanh thu 6 tháng gần nhất (Đến tháng ${selectedPeriodValue})`;
+    }
+    if (period === 'Quý') {
+      return `Doanh thu 4 quý gần nhất (Đến ${selectedPeriodValue})`;
+    }
+    return `Doanh thu 4 năm gần nhất (Đến năm ${selectedPeriodValue})`;
+  };
 
   // Pull real revenue from the payments table and shape it into the transaction
   // model the charts expect ({ amount, date 'DD/MM/YYYY', time, method, doctor,
@@ -124,7 +486,10 @@ export default function RevenueStatistics() {
             type,
           };
         });
-        if (active) setTransactions(mapped);
+        if (active) {
+          const historicalMock = generateHistoricalMockData();
+          setTransactions([...historicalMock, ...mapped]);
+        }
       } catch (e) {
         console.warn('Revenue fetch error:', e.message);
         if (active) setTransactions([]);
@@ -140,11 +505,7 @@ export default function RevenueStatistics() {
   const types = useMemo(() => [...new Set(transactions?.map?.(t => t.type))], [transactions]);
 
   const filteredData = useMemo(() => {
-    const now = new Date();
-    const currentDay = now.getDate();
-    const currentMonth = now.getMonth(); // 0-indexed
-    const currentYear = now.getFullYear();
-    const currentQuarter = Math.floor(currentMonth / 3);
+    if (!selectedPeriodValue) return [];
 
     return transactions?.filter?.(t => {
       if (doctor !== 'all' && t.doctor !== doctor) return false;
@@ -157,20 +518,33 @@ export default function RevenueStatistics() {
       const txYear = parseInt(yyyy, 10);
       const txQuarter = Math.floor(txMonth / 3);
 
-      if (period === 'Ngày' && (txDay !== currentDay || txMonth !== currentMonth || txYear !== currentYear)) return false;
-      if (period === 'Tuần') {
-        const txDate = new Date(txYear, txMonth, txDay);
-        const today = new Date(currentYear, currentMonth, currentDay);
-        const diffDays = (today - txDate) / (1000 * 60 * 60 * 24);
-        if (diffDays < 0 || diffDays > 6) return false;
+      if (period === 'Ngày') {
+        const [selYear, selMonth, selDay] = selectedPeriodValue.split('-').map(Number);
+        return txDay === selDay && txMonth === (selMonth - 1) && txYear === selYear;
       }
-      if (period === 'Tháng' && (txMonth !== currentMonth || txYear !== currentYear)) return false;
-      if (period === 'Quý' && (txQuarter !== currentQuarter || txYear !== currentYear)) return false;
-      if (period === 'Năm' && txYear !== currentYear) return false;
+      if (period === 'Tuần') {
+        const [selYear, selMonth, selDay] = selectedPeriodValue.split('-').map(Number);
+        const endDate = new Date(selYear, selMonth - 1, selDay);
+        const txDate = new Date(txYear, txMonth, txDay);
+        const diffDays = (endDate - txDate) / (1000 * 60 * 60 * 24);
+        return diffDays >= 0 && diffDays <= 6;
+      }
+      if (period === 'Tháng') {
+        const [selMonthStr, selYearStr] = selectedPeriodValue.split('/');
+        return txMonth === (parseInt(selMonthStr, 10) - 1) && txYear === parseInt(selYearStr, 10);
+      }
+      if (period === 'Quý') {
+        const [selQStr, selYearStr] = selectedPeriodValue.split('/');
+        const selQuarter = parseInt(selQStr.replace('Q', ''), 10) - 1;
+        return txQuarter === selQuarter && txYear === parseInt(selYearStr, 10);
+      }
+      if (period === 'Năm') {
+        return txYear === parseInt(selectedPeriodValue, 10);
+      }
 
       return true;
     });
-  }, [transactions, doctor, method, type, period]);
+  }, [transactions, doctor, method, type, period, selectedPeriodValue]);
 
   const totalRevenue = filteredData.reduce((sum, t) => sum + t.amount, 0);
   const totalTransactions = filteredData.length;
@@ -221,6 +595,8 @@ export default function RevenueStatistics() {
   }, [filteredData, totalRevenue, methods]);
 
   const chartData = useMemo(() => {
+    if (!selectedPeriodValue) return [];
+
     const rawFiltered = transactions?.filter?.(t => {
       if (doctor !== 'all' && t.doctor !== doctor) return false;
       if (method !== 'all' && t.method !== method) return false;
@@ -231,38 +607,85 @@ export default function RevenueStatistics() {
     let rawData = [];
     const nowC = new Date();
     const currentYear = nowC.getFullYear();
-    const todayStr = `${String(nowC.getDate()).padStart(2, '0')}/${String(nowC.getMonth() + 1).padStart(2, '0')}/${currentYear}`;
 
     if (period === 'Ngày') {
+      const [selYear, selMonth, selDay] = selectedPeriodValue.split('-').map(Number);
+      const targetDateStr = `${String(selDay).padStart(2, '0')}/${String(selMonth).padStart(2, '0')}/${selYear}`;
       const hours = { '09:00': 0, '10:00': 0, '11:00': 0, '12:00': 0, '13:00': 0, '14:00': 0, '15:00': 0, '16:00': 0 };
       rawFiltered.forEach(t => {
-        if (t.date === todayStr) {
+        if (t.date === targetDateStr) {
           const hour = t.time.split(':')[0] + ':00';
           if (hours[hour] !== undefined) hours[hour] += t.amount;
         }
       });
       rawData = Object.keys(hours)?.map?.(h => ({ label: h, value: hours[h] }));
     } else if (period === 'Tuần') {
-      const days = { '05/06': 0, '06/06': 0, '07/06': 0, '08/06': 0, '09/06': 0, '10/06': 0, '11/06': 0 };
+      const [selYear, selMonth, selDay] = selectedPeriodValue.split('-').map(Number);
+      const endDate = new Date(selYear, selMonth - 1, selDay);
+      
+      const days = {};
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate() - i);
+        const label = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+        days[label] = 0;
+      }
+      
       rawFiltered.forEach(t => {
         const [dd, mm, yyyy] = t.date.split('/');
-        const dayLabel = `${dd}/${mm}`;
-        if (days[dayLabel] !== undefined) days[dayLabel] += t.amount;
+        const txDay = parseInt(dd, 10);
+        const txMonth = parseInt(mm, 10) - 1;
+        const txYear = parseInt(yyyy, 10);
+        
+        const txDate = new Date(txYear, txMonth, txDay);
+        const diffDays = (endDate - txDate) / (1000 * 60 * 60 * 24);
+        
+        if (diffDays >= 0 && diffDays <= 6) {
+          const dayLabel = `${String(txDay).padStart(2, '0')}/${String(txMonth + 1).padStart(2, '0')}`;
+          if (days[dayLabel] !== undefined) days[dayLabel] += t.amount;
+        }
       });
       rawData = Object.keys(days)?.map?.(d => ({ label: d, value: days[d] }));
     } else if (period === 'Tháng') {
-      const months = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+      const [selMonthStr, selYearStr] = selectedPeriodValue.split('/');
+      const selMonthIdx = parseInt(selMonthStr, 10) - 1;
+      const selYearVal = parseInt(selYearStr, 10);
+      
+      const months = {};
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(selYearVal, selMonthIdx - i, 1);
+        const mVal = d.getMonth() + 1;
+        const yVal = d.getFullYear();
+        const label = `${mVal}/${yVal}`;
+        months[label] = 0;
+      }
+      
       rawFiltered.forEach(t => {
         const [dd, mm, yyyy] = t.date.split('/');
         const txMonth = parseInt(mm, 10);
         const txYear = parseInt(yyyy, 10);
-        if (txYear === currentYear && txMonth >= 1 && txMonth <= 6) {
-          months[txMonth] += t.amount;
+        const label = `${txMonth}/${txYear}`;
+        if (months[label] !== undefined) {
+          months[label] += t.amount;
         }
       });
-      rawData = Object.keys(months)?.map?.(m => ({ label: `Tháng ${m}`, value: months[m] }));
+      rawData = Object.keys(months)?.map?.(m => ({ label: `T${m}`, value: months[m] }));
     } else if (period === 'Quý') {
-      const quarters = { 'Q3/25': 0, 'Q4/25': 0, 'Q1/26': 0, 'Q2/26': 0 };
+      const [selQStr, selYearStr] = selectedPeriodValue.split('/');
+      const selQuarter = parseInt(selQStr.replace('Q', ''), 10) - 1;
+      const selYearVal = parseInt(selYearStr, 10);
+      
+      const quarters = {};
+      const refMonth = selQuarter * 3 + 2;
+      let tempDate = new Date(selYearVal, refMonth, 1);
+      
+      for (let i = 3; i >= 0; i--) {
+        const d = new Date(tempDate.getFullYear(), tempDate.getMonth() - (i * 3), 1);
+        const q = Math.floor(d.getMonth() / 3) + 1;
+        const y = d.getFullYear();
+        const label = `Q${q}/${y.toString().slice(2)}`;
+        quarters[label] = 0;
+      }
+      
       rawFiltered.forEach(t => {
         const [dd, mm, yyyy] = t.date.split('/');
         const txMonth = parseInt(mm, 10) - 1;
@@ -273,7 +696,12 @@ export default function RevenueStatistics() {
       });
       rawData = Object.keys(quarters)?.map?.(q => ({ label: q, value: quarters[q] }));
     } else {
-      const years = { '2023': 0, '2024': 0, '2025': 0, '2026': 0 };
+      const selYearVal = parseInt(selectedPeriodValue, 10);
+      const years = {};
+      for (let i = 3; i >= 0; i--) {
+        const y = selYearVal - i;
+        years[y.toString()] = 0;
+      }
       rawFiltered.forEach(t => {
         const txYear = parseInt(t.date.split('/')[2], 10);
         const yLabel = txYear.toString();
@@ -288,7 +716,7 @@ export default function RevenueStatistics() {
       height: d.value === 0 ? 0 : Math.max((d.value / maxVal) * 100, 12),
       highlight: d.value > 0
     }));
-  }, [transactions, doctor, method, type, period]);
+  }, [transactions, doctor, method, type, period, selectedPeriodValue]);
 
   const getMethodIcon = (name) => {
     if (name.toLowerCase().includes('chuyển khoản')) return Landmark;
@@ -357,19 +785,82 @@ export default function RevenueStatistics() {
   return (
     <div className="space-y-4 bg-transparent pb-6 relative">
       {/* ── Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-3">
-        <div className="flex bg-slate-50 border border-slate-200 rounded-full p-1 gap-1">
-          {['Ngày', 'Tuần', 'Tháng', 'Quý', 'Năm']?.map?.(p => (
-            <button
-              key={p}
-              onClick={() => setPeriod(p)}
-              className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all border-none outline-none cursor-pointer ${
-                period === p ? 'bg-white text-indigo-600 shadow-sm' : 'bg-transparent text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              {p}
-            </button>
-          ))}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white/40 backdrop-blur-md border border-slate-200/50 p-4 rounded-3xl relative z-50">
+        <div className="text-xs sm:text-sm font-semibold text-slate-700">
+          Thời gian thống kê: <span className="text-indigo-600 font-extrabold">{getPeriodDetailsLabel()}</span>
+        </div>
+        <div ref={tabBarRef} className="flex bg-slate-100 border border-slate-200 rounded-full p-1 gap-1 relative z-50">
+          {['Ngày', 'Tuần', 'Tháng', 'Quý', 'Năm']?.map?.(p => {
+            const isActive = period === p;
+            const options = getOptionsForPeriod(p);
+            const isDropdownOpen = activeDropdown === p;
+
+            return (
+              <div key={p} className="relative">
+                <button
+                  onClick={() => {
+                    setPeriod(p);
+                    setActiveDropdown(activeDropdown === p ? null : p);
+                  }}
+                  className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all border-none outline-none cursor-pointer flex items-center gap-1 ${
+                    isActive ? 'bg-white text-indigo-600 shadow-sm' : 'bg-transparent text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  {p} <ChevronDown className={`w-3 h-3 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                <AnimatePresence>
+                  {isDropdownOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-48 bg-white border border-slate-200/50 rounded-2xl shadow-xl z-50 overflow-hidden py-1"
+                    >
+                      <div className="max-h-56 overflow-y-auto custom-scrollbar flex flex-col">
+                        {options.map((opt) => {
+                          const isSelected = selectedPeriodValue === opt.value;
+                          return (
+                            <button
+                              key={opt.value}
+                              onClick={() => {
+                                setSelectedPeriodValue(opt.value);
+                                setActiveDropdown(null);
+                              }}
+                              className={`w-full text-left px-3 py-2 text-xs font-semibold transition-colors hover:bg-slate-50 flex justify-between items-center ${
+                                isSelected ? 'text-indigo-600 bg-indigo-50/50' : 'text-slate-600'
+                              }`}
+                            >
+                              <span className="truncate">{opt.label}</span>
+                              {isSelected && <Check className="w-3 h-3 shrink-0" />}
+                            </button>
+                          );
+                        })}
+                        
+                        {p === 'Ngày' && (
+                          <div className="p-2 border-t border-slate-100 flex flex-col gap-1 bg-slate-50/50">
+                            <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Ngày khác:</span>
+                            <input 
+                              type="date" 
+                              value={selectedPeriodValue.includes('-') ? selectedPeriodValue : ''} 
+                              onChange={(e) => {
+                                if (e.target.value) {
+                                  setSelectedPeriodValue(e.target.value);
+                                  setActiveDropdown(null);
+                                }
+                              }}
+                              className="w-full px-2 py-1 text-xs border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20 bg-white cursor-pointer font-semibold text-slate-700"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            );
+          })}
         </div>
       </div>
       {/* ── Filters ── */}
@@ -462,11 +953,7 @@ export default function RevenueStatistics() {
             <div>
               <h3 className={GLASS_TITLE}>{period === 'Ngày' ? 'Chi tiết doanh thu' : 'Xu hướng doanh thu'}</h3>
               <p className="text-[11px] font-medium text-slate-500 mt-0.5">
-                {period === 'Ngày' ? 'Doanh thu theo giờ (Ngày 11/06/2026)' :
-                 period === 'Tuần' ? 'Doanh thu 7 ngày qua (Đến 11/06/2026)' :
-                 period === 'Tháng' ? 'Doanh thu 6 tháng gần nhất (Đến Tháng 6/2026)' : 
-                 period === 'Quý' ? 'Doanh thu 4 quý gần nhất (Đến Quý 2/2026)' : 
-                 'Doanh thu 4 năm gần nhất (Đến năm 2026)'}
+                {getChartDescription()}
               </p>
             </div>
             {period !== 'Ngày' && (

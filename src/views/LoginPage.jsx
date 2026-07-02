@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthController } from '../controllers/useAuthController';
-import { Shield, AlertCircle, CheckCircle, User, Mail, Phone, Lock, Eye, EyeOff, Key, ArrowRight } from 'lucide-react';
+import { Shield, AlertCircle, CheckCircle, User, Mail, Phone, Lock, Eye, EyeOff, Key, ArrowRight, ChevronLeft } from 'lucide-react';
 import logo from '../assets/logo.png';
 import bgImage from '../assets/bg-login.png';
 import GlassCheckbox from '../components/common/GlassCheckbox';
@@ -50,6 +50,17 @@ function LoginPage() {
 
       {/* Content Wrapper */}
       <div className="flex flex-col min-h-screen w-full relative z-10 text-on-background selection:bg-primary/20 selection:text-primary font-body-md">
+
+      {/* Back to Homepage Button */}
+      <div className="w-full px-margin-mobile md:px-margin-desktop pt-6 flex justify-start relative z-30">
+        <button
+          onClick={() => navigate('/')}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/40 backdrop-blur-md border border-white/50 text-slate-800 font-bold hover:bg-white/60 hover:text-primary transition-all shadow-sm hover:shadow-md cursor-pointer text-xs"
+        >
+          <ChevronLeft className="w-4 h-4" />
+          <span>Quay lại trang chủ</span>
+        </button>
+      </div>
 
       <main className="flex-grow flex items-center justify-center p-margin-mobile md:p-margin-desktop relative z-10">
         <div className={`w-full max-w-md ${GLASS_BASE} p-8 md:p-10 relative z-20 mx-auto`}>

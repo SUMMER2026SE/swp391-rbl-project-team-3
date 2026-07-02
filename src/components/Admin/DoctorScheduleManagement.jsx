@@ -1,10 +1,27 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { CalendarDays, Plus, Save, Search, RefreshCw, Trash2 } from 'lucide-react';
+import { CalendarDays, Plus, Save, Search, RefreshCw, Trash2, Clock } from 'lucide-react';
 import { useDoctors } from '../../hooks/useDoctors';
 import { DoctorScheduleModel } from '../../models/DoctorScheduleModel';
 import GlassCheckbox from '../common/GlassCheckbox';
 import GlassSelect from '../common/GlassSelect';
+
+const START_TIME_SLOTS = [
+    '08:00', '08:30', '09:00', '09:30', '10:00', '10:30',
+    '12:00', '12:30', '13:00', '13:30', '14:00', '14:30',
+    '15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30',
+    '19:00', '19:30', '20:00', '20:30', '21:00'
+];
+
+const END_TIME_SLOTS = [
+    '08:00', '08:30', '09:00', '09:30', '10:00', '10:30',
+    '11:00', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30',
+    '15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30',
+    '19:00', '19:30', '20:00', '20:30', '21:00'
+];
+
+const START_TIME_OPTIONS = START_TIME_SLOTS.map(t => ({ label: t, value: t }));
+const END_TIME_OPTIONS = END_TIME_SLOTS.map(t => ({ label: t, value: t }));
 
 const getVietnameseDayName = (dateString) => {
     const days = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
@@ -29,6 +46,13 @@ const DAYS_OF_WEEK = [
     { label: 'CN', value: 0 },
 ];
 
+const QUICK_SHIFTS = [
+    { id: 'sang', label: 'Sáng (08:00 - 12:00)', start: '08:00', end: '12:00' },
+    { id: 'chieu', label: 'Chiều (13:00 - 17:00)', start: '13:00', end: '17:00' },
+    { id: 'toi', label: 'Tối (17:00 - 21:00)', start: '17:00', end: '21:00' },
+    { id: 'cangay', label: 'Cả ngày (08:00 - 21:00)', start: '08:00', end: '21:00' }
+];
+
 export default function DoctorScheduleManagement() {
     const { doctors, loading: docsLoading, error: docsError } = useDoctors();
     
@@ -40,10 +64,50 @@ export default function DoctorScheduleManagement() {
         endDate: '', 
         selectedDays: [1, 2, 3, 4, 5], 
         startTime: '08:00', 
-        endTime: '17:00', 
+        endTime: '12:00', 
+        selectedShifts: ['sang'],
         room: 'Phòng khám 1', 
         status: 'Đã phân công' 
     });
+
+    const handleShiftClick = (shiftId) => {
+        setForm(prev => {
+            let newSelected = [...(prev.selectedShifts || [])];
+            
+            if (shiftId === 'cangay') {
+                if (newSelected.includes('cangay')) {
+                    newSelected = [];
+                } else {
+                    newSelected = ['cangay'];
+                }
+            } else {
+                newSelected = newSelected.filter(id => id !== 'cangay');
+                if (newSelected.includes(shiftId)) {
+                    newSelected = newSelected.filter(id => id !== shiftId);
+                } else {
+                    newSelected.push(shiftId);
+                }
+            }
+            
+            let start = prev.startTime;
+            let end = prev.endTime;
+            if (newSelected.length > 0) {
+                const lastId = newSelected[newSelected.length - 1];
+                const shiftObj = QUICK_SHIFTS.find(s => s.id === lastId);
+                if (shiftObj) {
+                    start = shiftObj.start;
+                    end = shiftObj.end;
+                }
+            }
+            
+            return {
+                ...prev,
+                selectedShifts: newSelected,
+                startTime: start,
+                endTime: end
+            };
+        });
+    };
     const [searchTerm, setSearchTerm] = useState('');
 
     React.useEffect(() => {
@@ -51,6 +115,33 @@ export default function DoctorScheduleManagement() {
             setForm(prev => ({ ...prev, doctorId: doctors[0].id }));
         }
     }, [doctors]);
+
+    React.useEffect(() => {
+        if (form.startDate && form.endDate) {
+            const [sYear, sMonth, sDay] = form.startDate.split('-').map(Number);
+            const [eYear, eMonth, eDay] = form.endDate.split('-').map(Number);
+            
+            const start = new Date(sYear, sMonth - 1, sDay);
+            const end = new Date(eYear, eMonth - 1, eDay);
+            
+            if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && start <= end) {
+                const days = new Set();
+                let current = new Date(start);
+                const diffTime = Math.abs(end - start);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                
+                if (diffDays >= 7) {
+                    setForm(prev => ({ ...prev, selectedDays: [1, 2, 3, 4, 5, 6, 0] }));
+                } else {
+                    while (current <= end) {
+                        days.add(current.getDay());
+                        current.setDate(current.getDate() + 1);
+                    }
+                    setForm(prev => ({ ...prev, selectedDays: Array.from(days) }));
+                }
+            }
+        }
+    }, [form.startDate, form.endDate]);
 
     const fetchSchedules = async () => {
         setIsLoading(true);
@@ -64,8 +155,8 @@ export default function DoctorScheduleManagement() {
     }, []);
 
     const createSchedule = async () => {
-        if (!form.startDate || !form.endDate || !form.startTime || !form.endTime || !form.doctorId) {
-            alert('Vui lòng chọn đầy đủ bác sĩ, khoảng thời gian và giờ làm việc.');
+        if (!form.startDate || !form.endDate || !form.doctorId) {
+            alert('Vui lòng chọn đầy đủ bác sĩ và khoảng thời gian.');
             return;
         }
         if (form.startDate > form.endDate) {
@@ -76,13 +167,40 @@ export default function DoctorScheduleManagement() {
             alert('Không thể chọn ngày bắt đầu trong quá khứ.');
             return;
         }
-        if (form.startTime >= form.endTime) {
-            alert('Giờ bắt đầu phải nhỏ hơn giờ kết thúc.');
-            return;
-        }
         if (form.selectedDays.length === 0) {
             alert('Vui lòng chọn ít nhất một thứ trong tuần.');
             return;
+        }
+
+        // Xác định danh sách các ca cần tạo
+        let shiftsToCreate = [];
+        if (form.selectedShifts && form.selectedShifts.length > 0) {
+            form.selectedShifts.forEach(shiftId => {
+                const shiftObj = QUICK_SHIFTS.find(s => s.id === shiftId);
+                if (shiftObj) {
+                    if (shiftObj.id === 'cangay') {
+                        shiftsToCreate.push({ start: '08:00', end: '12:00' });
+                        shiftsToCreate.push({ start: '13:00', end: '21:00' });
+                    } else {
+                        shiftsToCreate.push({ start: shiftObj.start, end: shiftObj.end });
+                    }
+                }
+            });
+        } else {
+            if (!form.startTime || !form.endTime) {
+                alert('Vui lòng chọn giờ làm việc.');
+                return;
+            }
+            if (form.startTime >= form.endTime) {
+                alert('Giờ bắt đầu phải nhỏ hơn giờ kết thúc.');
+                return;
+            }
+            if (form.startTime < '12:00' && form.endTime > '13:00') {
+                shiftsToCreate.push({ start: form.startTime, end: '12:00' });
+                shiftsToCreate.push({ start: '13:00', end: form.endTime });
+            } else {
+                shiftsToCreate.push({ start: form.startTime, end: form.endTime });
+            }
         }
 
         const selectedDoc = doctors.find(d => d.id === form.doctorId);
@@ -95,15 +213,17 @@ export default function DoctorScheduleManagement() {
         while (currDate <= endD) {
             if (form.selectedDays.includes(currDate.getDay())) {
                 const dateStr = currDate.toISOString().split('T')[0];
-                newShifts.push({
-                    doctor_id: form.doctorId,
-                    doctor_name: docName,
-                    work_date: dateStr,
-                    day_of_week: getVietnameseDayName(dateStr),
-                    start_time: form.startTime,
-                    end_time: form.endTime,
-                    room: form.room,
-                    status: form.status
+                shiftsToCreate.forEach(s => {
+                    newShifts.push({
+                        doctor_id: form.doctorId,
+                        doctor_name: docName,
+                        work_date: dateStr,
+                        day_of_week: getVietnameseDayName(dateStr),
+                        start_time: s.start,
+                        end_time: s.end,
+                        room: form.room,
+                        status: form.status
+                    });
                 });
             }
             currDate.setDate(currDate.getDate() + 1);
@@ -257,7 +377,7 @@ export default function DoctorScheduleManagement() {
                     <h3 className="font-extrabold text-lg text-slate-800">Tạo lịch làm việc</h3>
                 </div>
                 <div className="flex flex-col gap-4">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <Select value={form.doctorId} onChange={(v) => setForm({ ...form, doctorId: v })} options={doctors.map(d => ({ label: d.name, value: d.id }))} loading={docsLoading} error={docsError} />
                         <div className="flex flex-col">
                             <span className="text-xs font-semibold text-slate-500 mb-1">Từ ngày</span>
@@ -267,16 +387,41 @@ export default function DoctorScheduleManagement() {
                             <span className="text-xs font-semibold text-slate-500 mb-1">Đến ngày</span>
                             <Input type="date" value={form.endDate} onChange={(v) => setForm({ ...form, endDate: v })} min={form.startDate || getTodayString()} />
                         </div>
-                        <Select value={form.room} onChange={(v) => setForm({ ...form, room: v })} options={['Phòng khám 1', 'Phòng khám 2', 'Phòng khám 3', 'Phòng online'].map(r => ({ label: r, value: r }))} />
+                    </div>
+                    <div className="flex flex-wrap gap-2 items-center pb-2 border-b border-dashed border-slate-200/50">
+                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mr-2">Chọn nhanh ca:</span>
+                        {QUICK_SHIFTS.map(shift => {
+                            const isSelected = form.selectedShifts?.includes(shift.id);
+                            return (
+                                <button
+                                    key={shift.id}
+                                    type="button"
+                                    onClick={() => handleShiftClick(shift.id)}
+                                    className={`px-3 py-1.5 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+                                        isSelected
+                                            ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm'
+                                            : 'bg-indigo-50/50 border-indigo-100 text-indigo-600 hover:bg-indigo-100 hover:border-indigo-200'
+                                    }`}
+                                >
+                                    {shift.label}
+                                </button>
+                            );
+                        })}
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                         <div className="flex flex-col">
-                            <span className="text-xs font-semibold text-slate-500 mb-1">Giờ bắt đầu</span>
-                            <Input type="time" value={form.startTime} onChange={(v) => setForm({ ...form, startTime: v })} />
+                            <span className="text-xs font-semibold text-slate-500 mb-1 flex items-center gap-1">
+                                <Clock className="w-3.5 h-3.5 text-indigo-500" />
+                                Giờ bắt đầu
+                            </span>
+                            <Select value={form.startTime} onChange={(v) => setForm({ ...form, startTime: v, selectedShifts: [] })} options={START_TIME_OPTIONS} />
                         </div>
                         <div className="flex flex-col">
-                            <span className="text-xs font-semibold text-slate-500 mb-1">Giờ kết thúc</span>
-                            <Input type="time" value={form.endTime} onChange={(v) => setForm({ ...form, endTime: v })} />
+                            <span className="text-xs font-semibold text-slate-500 mb-1 flex items-center gap-1">
+                                <Clock className="w-3.5 h-3.5 text-indigo-500" />
+                                Giờ kết thúc
+                            </span>
+                            <Select value={form.endTime} onChange={(v) => setForm({ ...form, endTime: v, selectedShifts: [] })} options={END_TIME_OPTIONS} />
                         </div>
                         <div className="md:col-span-2 flex flex-col justify-end">
                             <span className="text-xs font-semibold text-slate-500 mb-2">Áp dụng cho các ngày trong tuần:</span>
@@ -321,7 +466,7 @@ export default function DoctorScheduleManagement() {
                                 <td className="px-8 py-5"><Select value={group.doctor_id || ''} onChange={(v) => updateGroup(group, 'doctorId', v)} options={doctors.map(d => ({ label: d.name, value: d.id }))} /></td>
                                 <td className="px-8 py-5"><span className="text-sm text-slate-600 font-medium">{group.dateRange}</span></td>
                                 <td className="px-8 py-5"><span className="font-bold text-slate-700 text-xs">{group.daysStr}</span></td>
-                                <td className="px-8 py-5"><div className="grid grid-cols-2 gap-2"><Input type="time" value={group.start_time ? group.start_time.slice(0,5) : ''} onChange={(v) => updateGroup(group, 'startTime', v)} /><Input type="time" value={group.end_time ? group.end_time.slice(0,5) : ''} onChange={(v) => updateGroup(group, 'endTime', v)} /></div></td>
+                                <td className="px-8 py-5"><div className="grid grid-cols-2 gap-2 min-w-[180px]"><Select value={group.start_time ? group.start_time.slice(0,5) : ''} onChange={(v) => updateGroup(group, 'startTime', v)} options={START_TIME_OPTIONS} /><Select value={group.end_time ? group.end_time.slice(0,5) : ''} onChange={(v) => updateGroup(group, 'endTime', v)} options={END_TIME_OPTIONS} /></div></td>
                                 <td className="px-8 py-5"><Select value={group.room} onChange={(v) => updateGroup(group, 'room', v)} options={['Phòng khám 1', 'Phòng khám 2', 'Phòng khám 3', 'Phòng online'].map(r => ({ label: r, value: r }))} /></td>
                                 <td className="px-8 py-5"><Select value={group.status} onChange={(v) => updateGroup(group, 'status', v)} options={['Đã phân công', 'Đã xác nhận', 'Đã hủy'].map(s => ({ label: s, value: s }))} /></td>
                                 <td className="px-4 py-5 text-center">

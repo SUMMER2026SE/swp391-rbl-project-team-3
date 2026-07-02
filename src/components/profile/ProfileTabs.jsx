@@ -23,7 +23,7 @@ export default function ProfileTabs({ tabs, activeTab, onChange }) {
             onClick={() => onChange(tab.id)}
             className={`relative flex items-center justify-center gap-1.5 px-1 py-2.5 rounded-xl text-xs sm:text-sm font-bold
                         border-none cursor-pointer transition-colors duration-200 z-10 flex-1 min-w-0
-                        ${isActive ? 'text-white' : 'text-on-surface-variant hover:text-on-surface bg-transparent'}`}
+                        ${isActive ? 'text-white' : 'text-slate-800 hover:text-black bg-transparent'}`}
           >
             {isActive && (
               <motion.span
