@@ -1,10 +1,35 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { CalendarDays, Plus, Save, Search, RefreshCw, Trash2, Clock } from 'lucide-react';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import { vi } from 'date-fns/locale';
+import { hmToDate } from '../../utils/dateAdapters';
 import { useDoctors } from '../../hooks/useDoctors';
 import { DoctorScheduleModel } from '../../models/DoctorScheduleModel';
 import GlassCheckbox from '../common/GlassCheckbox';
 import GlassSelect from '../common/GlassSelect';
+
+const GLASS_PICKER_CLS = 'w-full bg-white/80 border border-slate-200/80 text-slate-800 text-sm rounded-xl shadow-sm focus:bg-white focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 block p-3 outline-none transition-all placeholder-slate-400';
+
+const dateStrToDate = (s) => {
+    if (!s) return null;
+    const [y, m, d] = s.split('-').map(Number);
+    return new Date(y, m - 1, d);
+};
+const dateToDateStr = (d) => {
+    if (!d) return '';
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+};
+const timeToTimeStr = (d) => {
+    if (!d) return '';
+    const h = String(d.getHours()).padStart(2, '0');
+    const mi = String(d.getMinutes()).padStart(2, '0');
+    return `${h}:${mi}`;
+};
 
 const START_TIME_SLOTS = [
     '08:00', '08:30', '09:00', '09:30', '10:00', '10:30',
@@ -46,13 +71,6 @@ const DAYS_OF_WEEK = [
     { label: 'CN', value: 0 },
 ];
 
-const QUICK_SHIFTS = [
-    { id: 'sang', label: 'Sáng (08:00 - 12:00)', start: '08:00', end: '12:00' },
-    { id: 'chieu', label: 'Chiều (13:00 - 17:00)', start: '13:00', end: '17:00' },
-    { id: 'toi', label: 'Tối (17:00 - 21:00)', start: '17:00', end: '21:00' },
-    { id: 'cangay', label: 'Cả ngày (08:00 - 21:00)', start: '08:00', end: '21:00' }
-];
-
 export default function DoctorScheduleManagement() {
     const { doctors, loading: docsLoading, error: docsError } = useDoctors();
     
@@ -65,49 +83,11 @@ export default function DoctorScheduleManagement() {
         selectedDays: [1, 2, 3, 4, 5], 
         startTime: '08:00', 
         endTime: '12:00', 
-        selectedShifts: ['sang'],
         room: 'Phòng khám 1', 
         status: 'Đã phân công' 
     });
+    const [shifts, setShifts] = useState([{ id: Date.now(), startTime: null, endTime: null }]);
 
-    const handleShiftClick = (shiftId) => {
-        setForm(prev => {
-            let newSelected = [...(prev.selectedShifts || [])];
-            
-            if (shiftId === 'cangay') {
-                if (newSelected.includes('cangay')) {
-                    newSelected = [];
-                } else {
-                    newSelected = ['cangay'];
-                }
-            } else {
-                newSelected = newSelected.filter(id => id !== 'cangay');
-                if (newSelected.includes(shiftId)) {
-                    newSelected = newSelected.filter(id => id !== shiftId);
-                } else {
-                    newSelected.push(shiftId);
-                }
-            }
-            
-            let start = prev.startTime;
-            let end = prev.endTime;
-            if (newSelected.length > 0) {
-                const lastId = newSelected[newSelected.length - 1];
-                const shiftObj = QUICK_SHIFTS.find(s => s.id === lastId);
-                if (shiftObj) {
-                    start = shiftObj.start;
-                    end = shiftObj.end;
-                }
-            }
-            
-            return {
-                ...prev,
-                selectedShifts: newSelected,
-                startTime: start,
-                endTime: end
-            };
-        });
-    };
     const [searchTerm, setSearchTerm] = useState('');
 
     const handleAddShift = () =>
@@ -181,33 +161,19 @@ export default function DoctorScheduleManagement() {
 
         // Xác định danh sách các ca cần tạo
         let shiftsToCreate = [];
-        if (form.selectedShifts && form.selectedShifts.length > 0) {
-            form.selectedShifts.forEach(shiftId => {
-                const shiftObj = QUICK_SHIFTS.find(s => s.id === shiftId);
-                if (shiftObj) {
-                    if (shiftObj.id === 'cangay') {
-                        shiftsToCreate.push({ start: '08:00', end: '12:00' });
-                        shiftsToCreate.push({ start: '13:00', end: '21:00' });
-                    } else {
-                        shiftsToCreate.push({ start: shiftObj.start, end: shiftObj.end });
-                    }
-                }
-            });
+        if (!form.startTime || !form.endTime) {
+            alert('Vui lòng chọn giờ làm việc.');
+            return;
+        }
+        if (form.startTime >= form.endTime) {
+            alert('Giờ bắt đầu phải nhỏ hơn giờ kết thúc.');
+            return;
+        }
+        if (form.startTime < '12:00' && form.endTime > '13:00') {
+            shiftsToCreate.push({ start: form.startTime, end: '12:00' });
+            shiftsToCreate.push({ start: '13:00', end: form.endTime });
         } else {
-            if (!form.startTime || !form.endTime) {
-                alert('Vui lòng chọn giờ làm việc.');
-                return;
-            }
-            if (form.startTime >= form.endTime) {
-                alert('Giờ bắt đầu phải nhỏ hơn giờ kết thúc.');
-                return;
-            }
-            if (form.startTime < '12:00' && form.endTime > '13:00') {
-                shiftsToCreate.push({ start: form.startTime, end: '12:00' });
-                shiftsToCreate.push({ start: '13:00', end: form.endTime });
-            } else {
-                shiftsToCreate.push({ start: form.startTime, end: form.endTime });
-            }
+            shiftsToCreate.push({ start: form.startTime, end: form.endTime });
         }
 
         const selectedDoc = doctors.find(d => d.id === form.doctorId);
@@ -385,8 +351,11 @@ export default function DoctorScheduleManagement() {
                     <h3 className="font-extrabold text-lg text-slate-800">Tạo lịch làm việc</h3>
                 </div>
                 <div className="flex flex-col gap-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <Select value={form.doctorId} onChange={(v) => setForm({ ...form, doctorId: v })} options={doctors.map(d => ({ label: d.name, value: d.id }))} loading={docsLoading} error={docsError} />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                        <div className="flex flex-col">
+                            <span className="text-xs font-semibold text-slate-500 mb-1">Bác sĩ</span>
+                            <Select value={form.doctorId} onChange={(v) => setForm({ ...form, doctorId: v })} options={doctors.map(d => ({ label: d.name, value: d.id }))} loading={docsLoading} error={docsError} />
+                        </div>
                         <div className="flex flex-col">
                             <span className="text-xs font-semibold text-slate-500 mb-1">Từ ngày</span>
                             <DatePicker
@@ -412,40 +381,21 @@ export default function DoctorScheduleManagement() {
                             />
                         </div>
                     </div>
-                    <div className="flex flex-wrap gap-2 items-center pb-2 border-b border-dashed border-slate-200/50">
-                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mr-2">Chọn nhanh ca:</span>
-                        {QUICK_SHIFTS.map(shift => {
-                            const isSelected = form.selectedShifts?.includes(shift.id);
-                            return (
-                                <button
-                                    key={shift.id}
-                                    type="button"
-                                    onClick={() => handleShiftClick(shift.id)}
-                                    className={`px-3 py-1.5 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
-                                        isSelected
-                                            ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm'
-                                            : 'bg-indigo-50/50 border-indigo-100 text-indigo-600 hover:bg-indigo-100 hover:border-indigo-200'
-                                    }`}
-                                >
-                                    {shift.label}
-                                </button>
-                            );
-                        })}
-                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                         <div className="flex flex-col">
                             <span className="text-xs font-semibold text-slate-500 mb-1 flex items-center gap-1">
                                 <Clock className="w-3.5 h-3.5 text-indigo-500" />
                                 Giờ bắt đầu
                             </span>
-                            <Select value={form.startTime} onChange={(v) => setForm({ ...form, startTime: v, selectedShifts: [] })} options={START_TIME_OPTIONS} />
+                            <Select value={form.startTime} onChange={(v) => setForm({ ...form, startTime: v })} options={START_TIME_OPTIONS} />
                         </div>
                         <div className="flex flex-col">
                             <span className="text-xs font-semibold text-slate-500 mb-1 flex items-center gap-1">
                                 <Clock className="w-3.5 h-3.5 text-indigo-500" />
                                 Giờ kết thúc
                             </span>
-                            <Select value={form.endTime} onChange={(v) => setForm({ ...form, endTime: v, selectedShifts: [] })} options={END_TIME_OPTIONS} />
+                            <Select value={form.endTime} onChange={(v) => setForm({ ...form, endTime: v })} options={END_TIME_OPTIONS} />
                         </div>
                         <div className="md:col-span-2 flex flex-col justify-end">
                             <span className="text-xs font-semibold text-slate-500 mb-2">Áp dụng cho các ngày trong tuần:</span>
