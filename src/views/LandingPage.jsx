@@ -17,6 +17,8 @@ import {
 } from 'framer-motion';
 import { Key, LogOut, User, Ticket, ArrowRight, ChevronDown, Cpu, ScanFace, CalendarPlus, Copy, Check, Sparkles } from 'lucide-react';
 import logo from '../assets/logo.png';
+import landingpageBg from '../assets/landingpage.png';
+import technologyBg from '../assets/technology.png';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { useFeedbackController } from '../controllers/useFeedbackController';
@@ -900,7 +902,8 @@ function LandingPage({ onLogout }) {
       {/* Hero Section */}
       <section className="w-full min-h-screen relative flex items-center justify-center overflow-hidden py-24 md:py-32">
         <motion.div 
-          className="absolute inset-[-5%] z-[-2] bg-[url('https://lh3.googleusercontent.com/aida-public/AB6AXuC7OT0v_iIuLuAj_638_No62Zj23gC1KQA7roRACzLjiLa5jYLAeKega8Dwb-SCFvAu5Wi76p09MdxZi4j754BX_lNLTfkZCLy5KVnCsbssI9kcKe7I1gyOu_UFP7ghIVcH8gTGb_kWawh0YavzsSvrhfktOTAUAg2pxD1M8u98KkgOAtzwFbpk4n96RScPsHIQbMA-3RuJ5zI46ePjON42HR0UcsNyVNnvLQ-x3ohlqvWYp2bCJhaXVe8-aGw1R2b7KpQ6Qj13ZEX8')] bg-cover bg-center bg-no-repeat"
+          className="absolute inset-[-5%] z-[-2] bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: `url(${landingpageBg})` }}
           animate={{ y: [0, -25, 0] }}
           transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
         />
@@ -1318,7 +1321,7 @@ function LandingPage({ onLogout }) {
       >
         <motion.div 
           className="absolute inset-[-5%] z-[-2] bg-center bg-cover"
-          style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuATpqIKoVRl7pbivP-KIqn3TPymxL55zcg2m9ulYRdNEVVWWHKWDgGrOirVUvNF6-bbY-Snh17jZaI1zxpJJFHn7kZ_zcWda-zVuOv8TtMrB3wb2RZZ19uNbhN7NwcpDFyNuoA91FjUSsSUd2c2wPjZcaPZxLaSY7Dn8MlIS4BHuiNdLzj1yCLDPaTpr24iUQkcehOjH72t20QJw1YaLpD8kgkbK8eSjyyCZOLZgHB7WY-LxS_NJ6c-OO0XHpyyAhDIhFheTmEhIRMq')" }}
+          style={{ backgroundImage: `url(${technologyBg})` }}
           animate={{ y: [0, -25, 0] }}
           transition={{ repeat: Infinity, duration: 7, ease: "easeInOut", delay: 1 }}
         />

@@ -10,7 +10,7 @@ import { DoctorScheduleModel } from '../../models/DoctorScheduleModel';
 import GlassCheckbox from '../common/GlassCheckbox';
 import GlassSelect from '../common/GlassSelect';
 
-const GLASS_PICKER_CLS = 'w-full bg-white/80 border border-slate-200/80 text-slate-800 text-sm rounded-xl shadow-sm focus:bg-white focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 block p-3 outline-none transition-all placeholder-slate-400';
+const GLASS_PICKER_CLS = 'w-full bg-white/50 backdrop-blur-md border border-white/60 text-slate-800 text-sm rounded-xl shadow-sm focus:bg-white/70 focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 block p-3 outline-none transition-all placeholder-slate-400';
 
 const dateStrToDate = (s) => {
     if (!s) return null;
@@ -540,7 +540,7 @@ function Select({ value, onChange, options, loading, error }) {
             options={opts}
             placeholder="Trống"
             className="w-full"
-            buttonClassName="py-3 px-4 text-sm font-semibold"
+            buttonClassName="py-3 px-4 bg-white/50 backdrop-blur-md border border-white/60 text-slate-800 rounded-xl text-sm font-semibold shadow-sm focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-all"
         />
     );
 }
