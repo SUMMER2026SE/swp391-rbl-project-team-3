@@ -135,9 +135,9 @@ function LoginPage() {
                     Địa chỉ Email
                   </label>
                   <div className="relative">
-                    <Mail className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-outline w-5 h-5" />
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 z-10 pointer-events-none text-outline w-5 h-5" />
                     <input
-                      className={`w-full pl-11 pr-4 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md`}
+                      className={`w-full pl-12 pr-4 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md [&:-webkit-autofill]:[transition-delay:9999s] [&:-webkit-autofill]:[-webkit-text-fill-color:#1e293b]`}
                       id="recovery-email"
                       name="recovery-email"
                       placeholder="name@example.com"
@@ -157,9 +157,9 @@ function LoginPage() {
                     Mã xác thực OTP
                   </label>
                   <div className="relative">
-                    <Shield className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-outline w-5 h-5" />
+                    <Shield className="absolute left-4 top-1/2 -translate-y-1/2 z-10 pointer-events-none text-outline w-5 h-5" />
                     <input
-                      className={`w-full pl-11 pr-4 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md tracking-wider font-semibold text-center`}
+                      className={`w-full pl-12 pr-4 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md tracking-wider font-semibold text-center [&:-webkit-autofill]:[transition-delay:9999s] [&:-webkit-autofill]:[-webkit-text-fill-color:#1e293b]`}
                       id="otp-code"
                       name="otp-code"
                       placeholder="Mã OTP 6 chữ số"
@@ -181,9 +181,9 @@ function LoginPage() {
                       Mật khẩu mới
                     </label>
                     <div className="relative">
-                      <Lock className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-outline w-5 h-5" />
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 z-10 pointer-events-none text-outline w-5 h-5" />
                       <input
-                        className={`w-full pl-11 pr-10 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md`}
+                        className={`w-full pl-12 pr-12 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md [&:-webkit-autofill]:[transition-delay:9999s] [&:-webkit-autofill]:[-webkit-text-fill-color:#1e293b]`}
                         id="new-password"
                         name="new-password"
                         placeholder="Nhập mật khẩu mới"
@@ -194,7 +194,7 @@ function LoginPage() {
                       />
                       <button
                         aria-label="Hiện mật khẩu"
-                        className="absolute right-3.5 top-1/2 transform -translate-y-1/2 text-outline hover:text-primary transition-colors focus:outline-none bg-transparent border-none"
+                        className="absolute right-4 top-1/2 -translate-y-1/2 z-10 text-outline hover:text-primary transition-colors focus:outline-none bg-transparent border-none"
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
                       >
@@ -208,9 +208,9 @@ function LoginPage() {
                       Xác nhận mật khẩu mới
                     </label>
                     <div className="relative">
-                      <Key className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-outline w-5 h-5" />
+                      <Key className="absolute left-4 top-1/2 -translate-y-1/2 z-10 pointer-events-none text-outline w-5 h-5" />
                       <input
-                        className={`w-full pl-11 pr-10 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md`}
+                        className={`w-full pl-12 pr-12 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md [&:-webkit-autofill]:[transition-delay:9999s] [&:-webkit-autofill]:[-webkit-text-fill-color:#1e293b]`}
                         id="confirm-new-password"
                         name="confirm-new-password"
                         placeholder="Nhập lại mật khẩu mới"
@@ -221,7 +221,7 @@ function LoginPage() {
                       />
                       <button
                         aria-label="Hiện xác nhận mật khẩu"
-                        className="absolute right-3.5 top-1/2 transform -translate-y-1/2 text-outline hover:text-primary transition-colors focus:outline-none bg-transparent border-none"
+                        className="absolute right-4 top-1/2 -translate-y-1/2 z-10 text-outline hover:text-primary transition-colors focus:outline-none bg-transparent border-none"
                         type="button"
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                       >
@@ -272,9 +272,9 @@ function LoginPage() {
                   Họ và tên
                 </label>
                 <div className="relative">
-                  <User className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-outline w-5 h-5" />
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 z-10 pointer-events-none text-outline w-5 h-5" />
                   <input
-                    className={`w-full pl-11 pr-4 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md`}
+                    className={`w-full pl-12 pr-4 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md [&:-webkit-autofill]:[transition-delay:9999s] [&:-webkit-autofill]:[-webkit-text-fill-color:#1e293b]`}
                     id="fullname"
                     name="fullname"
                     placeholder="Nhập họ và tên của bạn"
@@ -303,9 +303,9 @@ function LoginPage() {
                   )}
                 </div>
                 <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-outline w-5 h-5" />
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 z-10 pointer-events-none text-outline w-5 h-5" />
                   <input
-                    className={`w-full pl-11 pr-4 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md`}
+                    className={`w-full pl-12 pr-4 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md [&:-webkit-autofill]:[transition-delay:9999s] [&:-webkit-autofill]:[-webkit-text-fill-color:#1e293b]`}
                     id="email"
                     name="email"
                     placeholder="Nhập địa chỉ email"
@@ -334,9 +334,9 @@ function LoginPage() {
                   Số điện thoại
                 </label>
                 <div className="relative">
-                  <Phone className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-outline w-5 h-5" />
+                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 z-10 pointer-events-none text-outline w-5 h-5" />
                   <input
-                    className={`w-full pl-11 pr-4 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md`}
+                    className={`w-full pl-12 pr-4 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md [&:-webkit-autofill]:[transition-delay:9999s] [&:-webkit-autofill]:[-webkit-text-fill-color:#1e293b]`}
                     id="phone"
                     name="phone"
                     placeholder="Nhập số điện thoại"
@@ -352,9 +352,9 @@ function LoginPage() {
                   Mật khẩu
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-outline w-5 h-5" />
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 z-10 pointer-events-none text-outline w-5 h-5" />
                   <input
-                    className={`w-full pl-11 pr-10 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md`}
+                    className={`w-full pl-12 pr-12 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md [&:-webkit-autofill]:[transition-delay:9999s] [&:-webkit-autofill]:[-webkit-text-fill-color:#1e293b]`}
                     id="password"
                     name="password"
                     placeholder="Tạo mật khẩu (tối thiểu 6 ký tự)"
@@ -364,7 +364,7 @@ function LoginPage() {
                   />
                   <button
                     aria-label="Hiện mật khẩu"
-                    className="absolute right-3.5 top-1/2 transform -translate-y-1/2 text-outline hover:text-primary transition-colors focus:outline-none bg-transparent border-none"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 z-10 text-outline hover:text-primary transition-colors focus:outline-none bg-transparent border-none"
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                   >
@@ -378,9 +378,9 @@ function LoginPage() {
                   Xác nhận mật khẩu
                 </label>
                 <div className="relative">
-                  <Key className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-outline w-5 h-5" />
+                  <Key className="absolute left-4 top-1/2 -translate-y-1/2 z-10 pointer-events-none text-outline w-5 h-5" />
                   <input
-                    className={`w-full pl-11 pr-10 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md`}
+                    className={`w-full pl-12 pr-12 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md [&:-webkit-autofill]:[transition-delay:9999s] [&:-webkit-autofill]:[-webkit-text-fill-color:#1e293b]`}
                     id="confirm_password"
                     name="confirm_password"
                     placeholder="Nhập lại mật khẩu"
@@ -390,7 +390,7 @@ function LoginPage() {
                   />
                   <button
                     aria-label="Hiện xác nhận mật khẩu"
-                    className="absolute right-3.5 top-1/2 transform -translate-y-1/2 text-outline hover:text-primary transition-colors focus:outline-none bg-transparent border-none"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 z-10 text-outline hover:text-primary transition-colors focus:outline-none bg-transparent border-none"
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   >
@@ -419,9 +419,9 @@ function LoginPage() {
                   Email hoặc Số điện thoại
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-outline w-5 h-5" />
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 z-10 pointer-events-none text-outline w-5 h-5" />
                   <input
-                    className={`w-full pl-11 pr-4 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md`}
+                    className={`w-full pl-12 pr-4 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md [&:-webkit-autofill]:[transition-delay:9999s] [&:-webkit-autofill]:[-webkit-text-fill-color:#1e293b]`}
                     id="email"
                     name="email"
                     placeholder="Nhập email hoặc số điện thoại"
@@ -450,9 +450,9 @@ function LoginPage() {
                   </button>
                 </div>
                 <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-outline w-5 h-5" />
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 z-10 pointer-events-none text-outline w-5 h-5" />
                   <input
-                    className={`w-full pl-11 pr-10 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md`}
+                    className={`w-full pl-12 pr-12 py-3 rounded-full ${GLASS_INPUT} font-body-md text-body-md [&:-webkit-autofill]:[transition-delay:9999s] [&:-webkit-autofill]:[-webkit-text-fill-color:#1e293b]`}
                     id="password"
                     name="password"
                     placeholder="Nhập mật khẩu"
@@ -463,7 +463,7 @@ function LoginPage() {
                   />
                   <button
                     aria-label="Hiện mật khẩu"
-                    className="absolute right-3.5 top-1/2 transform -translate-y-1/2 text-outline hover:text-primary transition-colors focus:outline-none bg-transparent border-none"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 z-10 text-outline hover:text-primary transition-colors focus:outline-none bg-transparent border-none"
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                   >
