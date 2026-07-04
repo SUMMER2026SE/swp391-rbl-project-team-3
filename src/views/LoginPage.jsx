@@ -535,7 +535,7 @@ function LoginPage() {
       {/* Footer from HTML */}
       <footer className="w-full py-8 flex flex-col md:flex-row justify-between items-center px-margin-desktop gap-4 bg-transparent mt-auto relative z-10 border-t border-white/10">
         <div className="font-label-sm text-xs text-on-surface-variant text-center md:text-left opacity-80">
-          © 2024 DermaSmart. Hệ thống quản lý da liễu AI cao cấp.
+          © 2026 DermaSmart. Hệ thống quản lý da liễu AI cao cấp.
         </div>
         <div className="flex gap-6">
           <a

@@ -515,7 +515,42 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
             <span className="lg-fab-glow" aria-hidden="true" />
             <span className="lg-fab-float">
               <span className="lg-fab-drop">
-                <span className="lg-fab-core" />
+                <svg className="siri-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <radialGradient id="siri-pink-grad" cx="50%" cy="50%" r="50%">
+                      <stop offset="0%" stopColor="#ff2a85" stopOpacity="0.9" />
+                      <stop offset="60%" stopColor="#ff2a85" stopOpacity="0.3" />
+                      <stop offset="100%" stopColor="#8a2be2" stopOpacity="0" />
+                    </radialGradient>
+                    <radialGradient id="siri-blue-grad" cx="50%" cy="50%" r="50%">
+                      <stop offset="0%" stopColor="#0055ff" stopOpacity="0.9" />
+                      <stop offset="50%" stopColor="#00aaff" stopOpacity="0.4" />
+                      <stop offset="100%" stopColor="#4169e1" stopOpacity="0" />
+                    </radialGradient>
+                    <radialGradient id="siri-teal-grad" cx="50%" cy="50%" r="50%">
+                      <stop offset="0%" stopColor="#00ffff" stopOpacity="0.9" />
+                      <stop offset="60%" stopColor="#00f5d4" stopOpacity="0.3" />
+                      <stop offset="100%" stopColor="#017a6e" stopOpacity="0" />
+                    </radialGradient>
+                    <radialGradient id="siri-purple-grad" cx="50%" cy="50%" r="50%">
+                      <stop offset="0%" stopColor="#8a2be2" stopOpacity="0.9" />
+                      <stop offset="60%" stopColor="#aa00ff" stopOpacity="0.3" />
+                      <stop offset="100%" stopColor="#7a00ff" stopOpacity="0" />
+                    </radialGradient>
+                    <radialGradient id="siri-white-grad" cx="50%" cy="50%" r="50%">
+                      <stop offset="0%" stopColor="#ffffff" stopOpacity="0.95" />
+                      <stop offset="40%" stopColor="#e0ffff" stopOpacity="0.5" />
+                      <stop offset="100%" stopColor="#00ffff" stopOpacity="0" />
+                    </radialGradient>
+                  </defs>
+                  <g style={{ mixBlendMode: 'screen' }}>
+                    <path className="siri-path siri-path-pink" d="M 50 15 C 75 35, 25 65, 50 85 C 75 65, 25 35, 50 15 Z" fill="url(#siri-pink-grad)" />
+                    <path className="siri-path siri-path-blue" d="M 15 50 C 35 75, 65 25, 85 50 C 65 75, 35 25, 15 50 Z" fill="url(#siri-blue-grad)" />
+                    <path className="siri-path siri-path-teal" d="M 22 22 C 45 65, 55 35, 78 78 C 55 65, 45 35, 22 22 Z" fill="url(#siri-teal-grad)" />
+                    <path className="siri-path siri-path-purple" d="M 78 22 C 55 65, 45 35, 22 78 C 45 65, 55 35, 78 22 Z" fill="url(#siri-purple-grad)" />
+                    <path className="siri-path siri-path-white" d="M 50 35 C 55 45, 65 50, 65 50 C 65 50, 55 55, 50 65 C 45 55, 35 50, 35 50 C 35 50, 45 45, 50 35 Z" fill="url(#siri-white-grad)" />
+                  </g>
+                </svg>
                 <span className="lg-fab-shine" />
                 <span className="lg-fab-shine-sub" />
               </span>
@@ -592,7 +627,42 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
                 <div className="flex items-center gap-3 min-w-0">
                   {/* Mini water-drop — same identity as the trigger button */}
                   <div className="lg-mini-drop relative w-11 h-11 shrink-0">
-                    <span className="lg-mini-drop-core" />
+                    <svg className="siri-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <defs>
+                        <radialGradient id="siri-pink-grad-mini" cx="50%" cy="50%" r="50%">
+                          <stop offset="0%" stopColor="#ff2a85" stopOpacity="0.9" />
+                          <stop offset="60%" stopColor="#ff2a85" stopOpacity="0.3" />
+                          <stop offset="100%" stopColor="#8a2be2" stopOpacity="0" />
+                        </radialGradient>
+                        <radialGradient id="siri-blue-grad-mini" cx="50%" cy="50%" r="50%">
+                          <stop offset="0%" stopColor="#0055ff" stopOpacity="0.9" />
+                          <stop offset="50%" stopColor="#00aaff" stopOpacity="0.4" />
+                          <stop offset="100%" stopColor="#4169e1" stopOpacity="0" />
+                        </radialGradient>
+                        <radialGradient id="siri-teal-grad-mini" cx="50%" cy="50%" r="50%">
+                          <stop offset="0%" stopColor="#00ffff" stopOpacity="0.9" />
+                          <stop offset="60%" stopColor="#00f5d4" stopOpacity="0.3" />
+                          <stop offset="100%" stopColor="#017a6e" stopOpacity="0" />
+                        </radialGradient>
+                        <radialGradient id="siri-purple-grad-mini" cx="50%" cy="50%" r="50%">
+                          <stop offset="0%" stopColor="#8a2be2" stopOpacity="0.9" />
+                          <stop offset="60%" stopColor="#aa00ff" stopOpacity="0.3" />
+                          <stop offset="100%" stopColor="#7a00ff" stopOpacity="0" />
+                        </radialGradient>
+                        <radialGradient id="siri-white-grad-mini" cx="50%" cy="50%" r="50%">
+                          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.95" />
+                          <stop offset="40%" stopColor="#e0ffff" stopOpacity="0.5" />
+                          <stop offset="100%" stopColor="#00ffff" stopOpacity="0" />
+                        </radialGradient>
+                      </defs>
+                      <g style={{ mixBlendMode: 'screen' }}>
+                        <path className="siri-path siri-path-pink" d="M 50 15 C 75 35, 25 65, 50 85 C 75 65, 25 35, 50 15 Z" fill="url(#siri-pink-grad-mini)" />
+                        <path className="siri-path siri-path-blue" d="M 15 50 C 35 75, 65 25, 85 50 C 65 75, 35 25, 15 50 Z" fill="url(#siri-blue-grad-mini)" />
+                        <path className="siri-path siri-path-teal" d="M 22 22 C 45 65, 55 35, 78 78 C 55 65, 45 35, 22 22 Z" fill="url(#siri-teal-grad-mini)" />
+                        <path className="siri-path siri-path-purple" d="M 78 22 C 55 65, 45 35, 22 78 C 45 65, 55 35, 78 22 Z" fill="url(#siri-purple-grad-mini)" />
+                        <path className="siri-path siri-path-white" d="M 50 35 C 55 45, 65 50, 65 50 C 65 50, 55 55, 50 65 C 45 55, 35 50, 35 50 C 35 50, 45 45, 50 35 Z" fill="url(#siri-white-grad-mini)" />
+                      </g>
+                    </svg>
                     <span className="lg-mini-drop-shine" />
                   </div>
                   <div className="min-w-0">

@@ -274,41 +274,20 @@
   position: absolute;
   inset: 0;
   overflow: hidden;
-  /* dark-tinted glass so the screen-blended rainbow core stays vivid
-     even over a light page; light top-left for the glassy highlight */
-  background: radial-gradient(130% 130% at 30% 22%,
-    rgba(255, 255, 255, 0.22) 0%,
-    rgba(12, 16, 44, 0.42) 55%,
-    rgba(6, 9, 28, 0.55) 100%);
-  -webkit-backdrop-filter: blur(8px) saturate(150%);
-  backdrop-filter: blur(8px) saturate(150%);
+  /* dark-tinted glass but highly transparent so it blurs the background instead of blocking it */
+  background: radial-gradient(120% 120% at 30% 20%,
+    rgba(255, 255, 255, 0.3) 0%,
+    rgba(20, 16, 45, 0.25) 50%,
+    rgba(5, 7, 28, 0.45) 100%);
+  -webkit-backdrop-filter: blur(10px) saturate(150%);
+  backdrop-filter: blur(10px) saturate(150%);
   box-shadow:
-    inset 3px 3px 5px rgba(255, 255, 255, 0.45),   /* top specular bevel */
-    inset -3px -3px 7px rgba(255, 255, 255, 0.12), /* soft lower rim     */
-    inset 5px -5px 10px rgba(0, 0, 0, 0.28),       /* curved inner shade */
-    0 8px 20px rgba(2, 18, 60, 0.45);              /* drop floats above  */
+    inset 2px 2px 5px rgba(255, 255, 255, 0.45),   /* top specular bevel */
+    inset -2px -2px 5px rgba(255, 255, 255, 0.15), /* soft lower rim     */
+    inset 3px -3px 6px rgba(0, 0, 0, 0.25),        /* curved inner shade */
+    0 8px 20px rgba(2, 10, 40, 0.35);             /* drop floats above  */
   animation: lg-fab-wobble 6s ease-in-out infinite;
   will-change: border-radius;
-}
-
-/* Spinning conic Siri-core (the SkinAI palette), blurred + screen. */
-.lg-fab-core {
-  position: absolute;
-  inset: 18%;
-  border-radius: 50%;
-  background: conic-gradient(from 0deg, #ff2a85, #8a2be2, #4169e1, #00ffff, #ff2a85);
-  filter: blur(7px);
-  opacity: 0.95;
-  mix-blend-mode: screen;
-  animation: lg-fab-spin 4s linear infinite, lg-fab-pulse 3s ease-in-out infinite alternate;
-}
-.lg-fab-core::after {
-  content: '';
-  position: absolute;
-  inset: 28%;
-  background: #fff;
-  border-radius: 50%;
-  filter: blur(5px);
 }
 
 /* Specular highlights (front + lower) for the wet-glass read. */
@@ -362,35 +341,17 @@
    (rainbow Siri-core in glass), so the chat header matches the FAB. */
 .lg-mini-drop {
   overflow: hidden;
-  background: radial-gradient(130% 130% at 30% 22%,
-    rgba(255, 255, 255, 0.22) 0%,
-    rgba(12, 16, 44, 0.40) 60%,
-    rgba(6, 9, 28, 0.50) 100%);
+  background: radial-gradient(120% 120% at 30% 20%,
+    rgba(255, 255, 255, 0.3) 0%,
+    rgba(20, 16, 45, 0.25) 50%,
+    rgba(5, 7, 28, 0.45) 100%);
   box-shadow:
-    inset 2px 2px 4px rgba(255, 255, 255, 0.42),
-    inset -2px -2px 5px rgba(255, 255, 255, 0.10),
-    inset 3px -3px 7px rgba(0, 0, 0, 0.28),
-    0 6px 16px rgba(2, 18, 60, 0.40);
+    inset 1.5px 1.5px 3px rgba(255, 255, 255, 0.45),
+    inset -1.5px -1.5px 4px rgba(255, 255, 255, 0.15),
+    inset 2.5px -2.5px 5px rgba(0, 0, 0, 0.25),
+    0 6px 16px rgba(2, 10, 40, 0.3);
   animation: lg-fab-wobble 7s ease-in-out infinite;
   will-change: border-radius;
-}
-.lg-mini-drop-core {
-  position: absolute;
-  inset: 16%;
-  border-radius: 50%;
-  background: conic-gradient(from 0deg, #ff2a85, #8a2be2, #4169e1, #00ffff, #ff2a85);
-  filter: blur(5px);
-  opacity: 0.95;
-  mix-blend-mode: screen;
-  animation: lg-fab-spin 4s linear infinite, lg-fab-pulse 3s ease-in-out infinite alternate;
-}
-.lg-mini-drop-core::after {
-  content: '';
-  position: absolute;
-  inset: 30%;
-  background: #fff;
-  border-radius: 50%;
-  filter: blur(3px);
 }
 .lg-mini-drop-shine {
   position: absolute;
@@ -407,5 +368,123 @@
 @media (prefers-reduced-motion: reduce) {
   .lg-blob, .lg-orb, .lg-typing-dot, .lg-edge-border-system,
   .lg-fab-glow, .lg-fab-float, .lg-fab-drop, .lg-fab-core,
-  .lg-mini-drop, .lg-mini-drop-core { animation: none !important; }
+  .lg-mini-drop, .lg-mini-drop-core,
+  .siri-path-pink, .siri-path-blue, .siri-path-teal, .siri-path-purple, .siri-path-white { animation: none !important; }
+}
+
+/* Siri SVG & Paths styling */
+.siri-svg {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  inset: 0;
+  transform: scale(1.05); /* slightly scale up to fill the droplet mask beautifully */
+  pointer-events: none;
+}
+
+.siri-path {
+  transform-origin: 50% 50%;
+  mix-blend-mode: screen;
+  will-change: transform, opacity;
+}
+
+.siri-path-pink {
+  filter: blur(5px);
+  animation: siri-pink-motion 7s ease-in-out infinite alternate;
+}
+
+.siri-path-blue {
+  filter: blur(6px);
+  animation: siri-blue-motion 9s ease-in-out infinite alternate;
+}
+
+.siri-path-teal {
+  filter: blur(5px);
+  animation: siri-teal-motion 8s ease-in-out infinite alternate;
+}
+
+.siri-path-purple {
+  filter: blur(7px);
+  animation: siri-purple-motion 10s ease-in-out infinite alternate;
+}
+
+.siri-path-white {
+  filter: blur(3px);
+  animation: siri-white-motion 4s ease-in-out infinite alternate;
+}
+
+/* Animations that rotate, scale, translate to create fluid morphing */
+@keyframes siri-pink-motion {
+  0% {
+    transform: rotate(0deg) scale(0.9) translate(-2px, -3px);
+    opacity: 0.75;
+  }
+  50% {
+    transform: rotate(180deg) scale(1.1) translate(3px, 1px);
+    opacity: 0.9;
+  }
+  100% {
+    transform: rotate(360deg) scale(0.95) translate(-1px, 2px);
+    opacity: 0.8;
+  }
+}
+
+@keyframes siri-blue-motion {
+  0% {
+    transform: rotate(360deg) scale(1.1) translate(3px, 2px);
+    opacity: 0.8;
+  }
+  50% {
+    transform: rotate(180deg) scale(0.85) translate(-2px, -2px);
+    opacity: 0.7;
+  }
+  100% {
+    transform: rotate(0deg) scale(1.05) translate(1px, -3px);
+    opacity: 0.9;
+  }
+}
+
+@keyframes siri-teal-motion {
+  0% {
+    transform: rotate(-45deg) scale(0.85) translate(-1px, 3px);
+    opacity: 0.7;
+  }
+  50% {
+    transform: rotate(135deg) scale(1.15) translate(2px, -1px);
+    opacity: 0.95;
+  }
+  100% {
+    transform: rotate(315deg) scale(0.9) translate(-3px, -2px);
+    opacity: 0.75;
+  }
+}
+
+@keyframes siri-purple-motion {
+  0% {
+    transform: rotate(90deg) scale(1.05) translate(2px, -2px);
+    opacity: 0.85;
+  }
+  50% {
+    transform: rotate(270deg) scale(0.9) translate(-3px, 3px);
+    opacity: 0.7;
+  }
+  100% {
+    transform: rotate(450deg) scale(1.1) translate(1px, -1px);
+    opacity: 0.9;
+  }
+}
+
+@keyframes siri-white-motion {
+  0% {
+    transform: scale(0.85) translate(-1px, -1px);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.15) translate(1px, 1px);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.95) translate(0px, -2px);
+    opacity: 0.85;
+  }
 }

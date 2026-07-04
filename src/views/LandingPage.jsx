@@ -1345,7 +1345,7 @@ function LandingPage({ onLogout }) {
       >
         <div className="flex flex-col items-center md:items-start gap-2">
           <img src={logo} alt="DermaSmart Logo" className="h-16 w-auto object-contain" />
-          <p className="text-on-surface-variant">© 2024 DermaSmart. Nền tảng y tế số thông minh.</p>
+          <p className="text-on-surface-variant">© 2026 DermaSmart. Nền tảng y tế số thông minh.</p>
         </div>
         <div className="flex flex-wrap items-center justify-center gap-6">
           <a className="text-on-surface-variant hover:text-secondary transition-colors duration-300 no-underline" href="#">Chính sách bảo mật</a>
