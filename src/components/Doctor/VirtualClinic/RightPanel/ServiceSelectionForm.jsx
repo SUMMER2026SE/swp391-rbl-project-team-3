@@ -1,7 +1,45 @@
 import React, { useState, useEffect } from 'react';
-import { Camera, Activity, Sparkles, Droplet, Check, Search, HelpCircle, Loader2, Clock, UserCog, Plus, Trash2, FlaskConical } from 'lucide-react';
+import { Camera, Activity, Sparkles, Droplet, Check, Search, HelpCircle, Loader2, Clock, UserCog, Plus, Trash2, FlaskConical, Microscope, Syringe, Leaf } from 'lucide-react';
 import { supabase } from '../../../../supabaseClient';
 import { GLASS_BASE, GLASS_INPUT } from '../../../common/GlassCard';
+
+const LaserIcon = ({ size = 24, ...props }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    width={size}
+    height={size}
+    {...props}
+  >
+    {/* Vertical laser beam */}
+    <line x1="12" y1="2" x2="12" y2="10" strokeWidth="2.5" />
+    
+    {/* Focal point emitter */}
+    <circle cx="12" cy="12" r="3.5" strokeWidth="1.5" />
+    <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+
+    {/* Starburst rays */}
+    <path d="M12 5.5 L12 2" />
+    <path d="M12 18.5 L12 22" />
+    <path d="M5.5 12 L2 12" />
+    <path d="M18.5 12 L22 12" />
+    <path d="M7.4 7.4 L4.9 4.9" />
+    <path d="M16.6 7.4 L19.1 4.9" />
+    <path d="M7.4 16.6 L4.9 19.1" />
+    <path d="M16.6 16.6 L19.1 19.1" />
+    <path d="M12 8.5 L14 6.5" />
+    <path d="M15.5 12 L17.5 14" />
+    <path d="M12 15.5 L10 17.5" />
+    <path d="M8.5 12 L6.5 10" />
+
+    {/* Surface curve representing targeted skin */}
+    <path d="M4 22c4-1.5 12-1.5 16 0" />
+  </svg>
+);
 
 export default function ServiceSelectionForm({ onSelectionChange, existingTickets = [] }) {
   const [services, setServices] = useState([]);
@@ -38,15 +76,27 @@ export default function ServiceSelectionForm({ onSelectionChange, existingTicket
         
         const mappedServices = (svcData || []).map(s => {
           let icon = Sparkles;
-          if (s.service_name.toLowerCase().includes('soi da')) icon = Camera;
-          else if (s.service_name.toLowerCase().includes('xét nghiệm')) icon = Activity;
-          else if (s.service_name.toLowerCase().includes('peel') || s.service_name.toLowerCase().includes('điện di')) icon = Droplet;
+          const nameLower = s.service_name.toLowerCase();
+          
+          if (nameLower.includes('soi da')) {
+            icon = Microscope;
+          } else if (nameLower.includes('laser')) {
+            icon = LaserIcon;
+          } else if (nameLower.includes('tiêm filler') || nameLower.includes('filler') || nameLower.includes('tiêm')) {
+            icon = Syringe;
+          } else if (nameLower.includes('trị mụn') || nameLower.includes('trị nám') || nameLower.includes('nám')) {
+            icon = Leaf;
+          } else if (nameLower.includes('xét nghiệm')) {
+            icon = Activity;
+          } else if (nameLower.includes('peel') || nameLower.includes('điện di')) {
+            icon = Droplet;
+          }
           
           return {
             ...s,
             icon,
-            category: s.service_name.toLowerCase().includes('xét nghiệm') ? 'Xét nghiệm lâm sàng' :
-                      s.service_name.toLowerCase().includes('soi da') ? 'Chẩn đoán hình ảnh' :
+            category: nameLower.includes('xét nghiệm') ? 'Xét nghiệm lâm sàng' :
+                      nameLower.includes('soi da') ? 'Chẩn đoán hình ảnh' :
                       'Điều trị / Chăm sóc',
             duration: s.duration_minutes ? `${s.duration_minutes} phút` : '30 phút'
           };

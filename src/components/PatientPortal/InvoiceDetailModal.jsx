@@ -100,6 +100,12 @@ export default function InvoiceDetailModal({ invoice, onClose }) {
                   <span className="text-slate-700 font-bold">{formatVnd(s.price)}</span>
                 </div>
               ))}
+              {invoice.followUpFee > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Đặt lịch tái khám:</span>
+                  <span className="text-slate-700 font-bold">{formatVnd(invoice.followUpFee)}</span>
+                </div>
+              )}
               <div className="border-t border-slate-200 mt-2 pt-2 flex justify-between">
                 <span className="text-slate-500 font-bold">Cộng tiền dịch vụ:</span>
                 <span className="text-slate-700 font-bold">{formatVnd(invoice.total)}</span>
@@ -167,6 +173,7 @@ export default function InvoiceDetailModal({ invoice, onClose }) {
                         <div class="border-double"></div>
                         <div class="flex"><span>Kham: ${invoice.serviceName}</span><span>${formatVnd(invoice.baseTotal || invoice.total)}</span></div>
                         ${invoice.usedServices ? invoice.usedServices.map(s => `<div class="flex"><span>DV: ${s.name}</span><span>${formatVnd(s.price)}</span></div>`).join('') : ''}
+                        ${invoice.followUpFee > 0 ? `<div class="flex"><span>Dat lich tai kham:</span><span>${formatVnd(invoice.followUpFee)}</span></div>` : ''}
                         <div class="border-b"></div>
                         <div class="flex"><span>Cong tien dich vu:</span><span>${formatVnd(invoice.total)}</span></div>
                         \${invoice.discount > 0 ? \`<div class="flex text-emerald"><span>Uu dai:</span><span>-\${formatVnd(invoice.discount)}</span></div>\` : ''}

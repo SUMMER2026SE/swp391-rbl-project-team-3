@@ -82,8 +82,32 @@ export default function DoctorDashboard() {
   // refresh the doctor's queue from Supabase.
   const loadApts = useCallback(async () => {
     if (!currentDoctorId) return;
-    const data = await AppointmentModel.getByDoctorId(currentDoctorId);
-    setAppointments(Array.isArray(data) ? data : []);
+    try {
+      const data = await AppointmentModel.getByDoctorId(currentDoctorId);
+      if (Array.isArray(data) && data.length > 0) {
+        const aptIds = data.map((a) => a.id);
+        const { data: ticketsData, error: ticketsErr } = await supabase
+          .from('service_tickets')
+          .select('appointment_id, status')
+          .in('appointment_id', aptIds);
+
+        if (ticketsErr) throw ticketsErr;
+
+        const populated = data.map((apt) => {
+          const aptTickets = (ticketsData || []).filter((t) => t.appointment_id === apt.id);
+          return {
+            ...apt,
+            serviceTickets: aptTickets,
+          };
+        });
+        setAppointments(populated);
+      } else {
+        setAppointments([]);
+      }
+    } catch (err) {
+      console.error('[DoctorDashboard] Error loading appointments with tickets:', err);
+      setAppointments([]);
+    }
   }, [currentDoctorId]);
 
   useEffect(() => {
@@ -91,11 +115,11 @@ export default function DoctorDashboard() {
   }, [loadApts]);
 
   // PHASE 4 — Realtime Receptionist → Doctor queue. Subscribe to changes on the
-  // appointments rows for THIS doctor; when a receptionist checks a patient in
-  // (status → 'Đang chờ') or any status flips, refetch with zero manual reload.
+  // appointments rows for THIS doctor, and also to service_tickets changes so we
+  // update the waiting state when a technician updates ticket statuses.
   useEffect(() => {
     if (!currentDoctorId) return;
-    const channel = supabase
+    const aptChannel = supabase
       .channel(`doctor-appointments-${currentDoctorId}`)
       .on(
         'postgres_changes',
@@ -103,7 +127,20 @@ export default function DoctorDashboard() {
         () => { loadApts(); }
       )
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+
+    const ticketChannel = supabase
+      .channel(`doctor-tickets-${currentDoctorId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'service_tickets' },
+        () => { loadApts(); }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(aptChannel);
+      supabase.removeChannel(ticketChannel);
+    };
   }, [currentDoctorId, loadApts]);
 
   useEffect(() => {

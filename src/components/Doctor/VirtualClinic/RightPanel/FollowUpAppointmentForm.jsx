@@ -3,6 +3,7 @@ import { CalendarPlus, Clock, Save, CalendarX2, Loader2, CheckCircle2, ShieldChe
 import GlassCard, { GLASS_INPUT } from '../../../common/GlassCard';
 import { AppointmentModel } from '../../../../models/AppointmentModel';
 import { DoctorScheduleModel, ACTIVE_SHIFT_STATUSES } from '../../../../models/DoctorScheduleModel';
+import { DoctorModel } from '../../../../models/DoctorModel';
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 const toMinutes = (t) => {
@@ -38,6 +39,14 @@ export default function FollowUpAppointmentForm({ appointment }) {
         }
     });
 
+    const [doctorsList, setDoctorsList] = useState(() => [
+        {
+            id: doctorId,
+            name: appointment?.doctorName || appointment?.doctor_name || 'Bác sĩ hiện tại'
+        }
+    ]);
+    const [selectedDoctorId, setSelectedDoctorId] = useState(doctorId);
+
     const [shifts, setShifts] = useState([]);
     const [loadingShifts, setLoadingShifts] = useState(true);
     const [selectedDate, setSelectedDate] = useState('');
@@ -47,16 +56,35 @@ export default function FollowUpAppointmentForm({ appointment }) {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
 
-    // ── Fetch the doctor's OWN future working shifts ────────────────────────────
+    // Fetch all active doctors
+    useEffect(() => {
+        let active = true;
+        const loadDoctors = async () => {
+            const allDocs = await DoctorModel.getAllDoctors();
+            if (!active) return;
+            if (allDocs && allDocs.length > 0) {
+                const sortedDocs = [...allDocs].sort((a, b) => {
+                    if (String(a.id) === String(doctorId)) return -1;
+                    if (String(b.id) === String(doctorId)) return 1;
+                    return 0;
+                });
+                setDoctorsList(sortedDocs);
+            }
+        };
+        loadDoctors();
+        return () => { active = false; };
+    }, [doctorId]);
+
+    // ── Fetch the selected doctor's future working shifts ────────────────────────────
     useEffect(() => {
         let active = true;
         const fetchShifts = async () => {
-            if (!doctorId) {
+            if (!selectedDoctorId) {
                 setLoadingShifts(false);
                 return;
             }
             setLoadingShifts(true);
-            const all = await DoctorScheduleModel.getShiftsByDoctor(doctorId);
+            const all = await DoctorScheduleModel.getShiftsByDoctor(selectedDoctorId);
             if (!active) return;
             const today = todayStr();
             const future = (all || []).filter(
@@ -67,7 +95,7 @@ export default function FollowUpAppointmentForm({ appointment }) {
         };
         fetchShifts();
         return () => { active = false; };
-    }, [doctorId]);
+    }, [selectedDoctorId]);
 
     // Group shifts by date → only these dates are selectable.
     const shiftsByDate = useMemo(() => {
@@ -115,13 +143,13 @@ export default function FollowUpAppointmentForm({ appointment }) {
 
     // ── Fetch already-booked slots for the chosen date (real DB columns) ────────
     const loadBookedTimes = useCallback(async () => {
-        if (!doctorId || !selectedDate) {
+        if (!selectedDoctorId || !selectedDate) {
             setBookedTimes([]);
             return;
         }
-        const taken = await AppointmentModel.getLockedSlots(selectedDate, doctorId);
+        const taken = await AppointmentModel.getLockedSlots(selectedDate, selectedDoctorId);
         setBookedTimes(Array.isArray(taken) ? taken : []);
-    }, [doctorId, selectedDate]);
+    }, [selectedDoctorId, selectedDate]);
 
     useEffect(() => {
         loadBookedTimes();
@@ -144,7 +172,7 @@ export default function FollowUpAppointmentForm({ appointment }) {
                 const locked = lockedList.some(
                     (l) =>
                         l.lockedUntil > Date.now() &&
-                        String(l.doctorId) === String(doctorId) &&
+                        String(l.doctorId) === String(selectedDoctorId) &&
                         l.date === selectedDate &&
                         l.time === timeStr
                 );
@@ -158,7 +186,7 @@ export default function FollowUpAppointmentForm({ appointment }) {
             }
             return false;
         },
-        [bookedTimes, doctorId, selectedDate]
+        [bookedTimes, selectedDoctorId, selectedDate]
     );
 
     const handleCreateFollowUp = async () => {
@@ -180,7 +208,7 @@ export default function FollowUpAppointmentForm({ appointment }) {
         setSaving(true);
         try {
             const result = await AppointmentModel.createFollowUp({
-                doctorId,
+                doctorId: selectedDoctorId,
                 patientId: appointment?.patientId || appointment?.patient_id,
                 patientName: appointment?.patientName || appointment?.patient_name,
                 date: selectedDate,
@@ -201,6 +229,7 @@ export default function FollowUpAppointmentForm({ appointment }) {
                 time: selectedTime,
                 reason: reason.trim(),
                 patientName: appointment?.patientName,
+                doctorName: doctorsList.find(d => String(d.id) === String(selectedDoctorId))?.name || '',
                 appointmentId: result.data?.id || null,
                 createdAt: new Date().toISOString(),
             };
@@ -225,7 +254,7 @@ export default function FollowUpAppointmentForm({ appointment }) {
                 </div>
                 <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-bold text-teal-700 bg-teal-500/10 border border-teal-300/40 px-2.5 py-1 rounded-full">
                     <ShieldCheck className="w-3.5 h-3.5" />
-                    Chỉ trong ca làm việc của bạn
+                    {selectedDoctorId === doctorId ? 'Chỉ trong ca làm việc của bạn' : 'Ca trực của bác sĩ được chọn'}
                 </span>
             </div>
 
@@ -237,11 +266,35 @@ export default function FollowUpAppointmentForm({ appointment }) {
                         <p className="font-bold text-emerald-800">Đã tạo lịch tái khám</p>
                         <p className="text-emerald-700/90 font-medium">
                             {created.patientName ? `${created.patientName} · ` : ''}
+                            {created.doctorName ? `Bác sĩ: ${created.doctorName} · ` : ''}
                             {formatDateLabel(created.date).weekday} {formatDateLabel(created.date).dayMonth} lúc {created.time}
                         </p>
                     </div>
                 </div>
             )}
+
+            {/* ── Doctor Selection ──────────── */}
+            <div className="mb-5 text-left">
+                <label className="block text-xs font-bold text-slate-700 mb-2">
+                    Bác sĩ phụ trách tái khám
+                </label>
+                <select
+                    value={selectedDoctorId || ''}
+                    onChange={(e) => {
+                        setSelectedDoctorId(e.target.value);
+                        setSelectedDate('');
+                        setSelectedTime('');
+                        setError('');
+                    }}
+                    className={`${GLASS_INPUT} w-full py-2.5 px-4 text-sm font-semibold rounded-xl bg-white/60 border border-slate-200 text-slate-800`}
+                >
+                    {doctorsList.map((doc) => (
+                        <option key={doc.id} value={doc.id}>
+                            {doc.name} {String(doc.id) === String(doctorId) ? '(Bạn)' : ''}
+                        </option>
+                    ))}
+                </select>
+            </div>
 
             {loadingShifts ? (
                 <div className="flex items-center justify-center gap-2 py-10 text-slate-500">

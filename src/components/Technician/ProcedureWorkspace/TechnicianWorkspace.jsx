@@ -64,7 +64,13 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
   const [direction, setDirection] = useState(1);
   const [isDragOver, setIsDragOver] = useState(false);
   const [activeProcIndex, setActiveProcIndex] = useState(0);
-  const [globalNotes, setGlobalNotes] = useState('');
+  const [globalNotes, setGlobalNotes] = useState(() => {
+    if (!isReviewMode && task?.id) {
+      const saved = localStorage.getItem(`tech_draft_notes_${task.id}`);
+      if (saved !== null) return saved;
+    }
+    return '';
+  });
 
   // Normalize procedures
   const procedures = Array.isArray(task?.procedures) ? task.procedures : [task];
@@ -82,6 +88,16 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
           technicianNotes: task?.resultRecord?.technicianNotes || ''
         }
       };
+    }
+    if (!isReviewMode && task?.id) {
+      const saved = localStorage.getItem(`tech_draft_results_${task.id}`);
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch (e) {
+          console.warn('Failed to parse tech draft results:', e);
+        }
+      }
     }
     return {};
   });
@@ -103,6 +119,19 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
   const isImaging = procedureDetailsType === 'Imaging' || procedureType.toLowerCase().includes('soi da') || procedureType.toLowerCase().includes('chụp');
   const isLabTest = procedureDetailsType === 'LabTest' || procedureType.toLowerCase().includes('xét nghiệm') || procedureType.toLowerCase().includes('máu');
   const metrics = currentProcedure?.procedureDetails?.metrics || [];
+
+  // Save draft to localStorage
+  useEffect(() => {
+    if (!isReviewMode && task?.id) {
+      localStorage.setItem(`tech_draft_results_${task.id}`, JSON.stringify(resultsMap));
+    }
+  }, [resultsMap, isReviewMode, task?.id]);
+
+  useEffect(() => {
+    if (!isReviewMode && task?.id) {
+      localStorage.setItem(`tech_draft_notes_${task.id}`, globalNotes);
+    }
+  }, [globalNotes, isReviewMode, task?.id]);
 
   // ─── Initialize review mode data ────────────────────────────────────────
   useEffect(() => {
@@ -278,6 +307,11 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
       resultsMap,
       completedAt: new Date().toISOString(),
     };
+    // Clean up draft from localStorage
+    if (task?.id) {
+      localStorage.removeItem(`tech_draft_results_${task.id}`);
+      localStorage.removeItem(`tech_draft_notes_${task.id}`);
+    }
     onComplete?.(task?.id, resultRecord);
   };
 
@@ -982,7 +1016,6 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
         >
           {!isReviewMode ? (
             <motion.button
-              whileHover={{ scale: 1.02, y: -1 }}
               whileTap={{ scale: 0.98 }}
               onClick={handleComplete}
               disabled={!areAllProceduresComplete()}
@@ -1001,7 +1034,6 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
             </motion.button>
           ) : (
             <motion.button
-              whileHover={{ scale: 1.02, y: -1 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => onBack?.()}
               className="w-full flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-xl bg-gradient-to-r from-slate-700 to-slate-800 hover:from-slate-800 hover:to-slate-900 text-white text-sm font-bold tracking-wide shadow-lg shadow-slate-300/30 transition-all duration-300"
@@ -1051,7 +1083,7 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
               transition={stepTransition}
               className="absolute inset-0 flex flex-col overflow-hidden"
             >
-              <div className="flex-1 overflow-y-auto hide-scrollbar pr-1">
+              <div className="flex-1 overflow-y-auto overflow-x-hidden hide-scrollbar pr-1">
                 {activeStep === 0 && renderStep1()}
                 {activeStep === 1 && renderStep2()}
               </div>

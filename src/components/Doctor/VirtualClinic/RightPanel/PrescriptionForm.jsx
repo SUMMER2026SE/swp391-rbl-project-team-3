@@ -4,7 +4,7 @@ import { GLASS_INPUT } from '../../../common/GlassCard';
 import GlassAutoComplete from '../../../common/GlassAutoComplete';
 import { PrescriptionModel } from '../../../../models/PrescriptionModel';
 
-export default function PrescriptionForm({ appointmentId, isReviewMode = false, examRecord = null, onChange }) {
+export default function PrescriptionForm({ appointmentId, isReviewMode = false, examRecord = null, initialDiagnosis = '', onChange }) {
   // For the moment, we treat existingPrescription as null
   const existingPrescription = null;
 
@@ -12,6 +12,7 @@ export default function PrescriptionForm({ appointmentId, isReviewMode = false, 
   const [generalInstructions, setGeneralInstructions] = useState('');
   const [followUpDate, setFollowUpDate] = useState('');
   const [followUpNotes, setFollowUpNotes] = useState('');
+  const [diagnosis, setDiagnosis] = useState('');
 
   // Load existing data if available or if in review mode
   useEffect(() => {
@@ -20,10 +21,13 @@ export default function PrescriptionForm({ appointmentId, isReviewMode = false, 
       setGeneralInstructions(examRecord.generalInstructions || '');
       setFollowUpDate(examRecord.followUpDate || '');
       setFollowUpNotes(examRecord.followUpNotes || '');
+      setDiagnosis(examRecord.diagnosis || '');
     } else if (existingPrescription) {
       setMedications(existingPrescription.medications || []);
       setGeneralInstructions(existingPrescription.generalInstructions || '');
     } else {
+      // Initialize with initialDiagnosis for live mode
+      setDiagnosis((prev) => prev || initialDiagnosis || '');
       // Provide a couple of default items for testing if none exist
       setMedications([
         {
@@ -34,7 +38,7 @@ export default function PrescriptionForm({ appointmentId, isReviewMode = false, 
         }
       ]);
     }
-  }, [existingPrescription, isReviewMode, examRecord]);
+  }, [existingPrescription, isReviewMode, examRecord, initialDiagnosis]);
 
   // Bubble changes up to parent component
   useEffect(() => {
@@ -43,10 +47,11 @@ export default function PrescriptionForm({ appointmentId, isReviewMode = false, 
         medications,
         generalInstructions,
         followUpDate,
-        followUpNotes
+        followUpNotes,
+        diagnosis
       });
     }
-  }, [medications, generalInstructions, followUpDate, followUpNotes, onChange, isReviewMode]);
+  }, [medications, generalInstructions, followUpDate, followUpNotes, diagnosis, onChange, isReviewMode]);
 
   // Handlers for medications
   const handleAddMedication = () => {
@@ -245,6 +250,21 @@ export default function PrescriptionForm({ appointmentId, isReviewMode = false, 
               </div>
             )}
           </div>
+        </div>
+
+        {/* Diagnosis Conclusion */}
+        <div className="mt-6 pt-6 border-t border-slate-200/60">
+          <label className="block text-sm font-semibold text-gray-700 mb-2 uppercase tracking-wider">
+            Kết luận chẩn đoán bệnh
+          </label>
+          <textarea
+            value={diagnosis}
+            onChange={(e) => setDiagnosis(e.target.value)}
+            placeholder="Nhập kết luận chẩn đoán bệnh..."
+            rows="2"
+            className={`${getInputClass(isReviewMode)} resize-none`}
+            readOnly={isReviewMode}
+          />
         </div>
 
         {/* General Notes for Patient */}
