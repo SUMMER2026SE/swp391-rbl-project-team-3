@@ -57,9 +57,9 @@ export default {
         "surface-variant": "#dee4e1"
       },
       borderRadius: {
-        "DEFAULT": "1rem",
-        "lg": "2rem",
-        "xl": "3rem",
+        "DEFAULT": "0.375rem",
+        "lg": "0.5rem",
+        "xl": "0.75rem",
         "full": "9999px"
       },
       spacing: {

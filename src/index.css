@@ -1090,3 +1090,12 @@ input[type="password"]::-webkit-reveal {
 .react-datepicker__time-list-item--selected { border-radius: 0.5rem !important; }
 .react-datepicker__triangle { display: none !important; }
 .react-datepicker__navigation-icon::before { border-color: #64748b !important; }
+
+/* Hide scrollbar utility */
+.scrollbar-none::-webkit-scrollbar {
+  display: none !important;
+}
+.scrollbar-none {
+  -ms-overflow-style: none !important;  /* IE and Edge */
+  scrollbar-width: none !important;  /* Firefox */
+}

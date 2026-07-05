@@ -157,7 +157,7 @@ export default function ServiceSelectionForm({ onSelectionChange, existingTicket
   });
 
   return (
-    <div className={`${GLASS_BASE} water-refract rounded-[2rem] p-6 flex-1 flex flex-col min-h-0`}>
+    <div className={`${GLASS_BASE} water-refract rounded-2xl p-6 flex-1 flex flex-col min-h-0`}>
       <div className="flex items-center justify-between gap-2 mb-4 pb-4 border-b border-slate-200/40 flex-shrink-0">
         <div className="flex items-center gap-2">
           <Activity className="w-5 h-5 text-emerald-600 animate-pulse" />

@@ -1,16 +1,17 @@
-import React, { useState, useMemo, lazy, Suspense } from 'react';
+import React, { useState, useMemo, useRef, useEffect, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   TrendingUp, Activity, Calendar, Search, Stethoscope,
   CheckCircle2, Clock, AlertCircle, Info, ShieldAlert,
   Database, User, UserCog, Wrench, ChevronDown, ChevronUp,
   BarChart3, TrendingDown, XCircle,
-  Ticket, BadgeCheck, Ban, Wallet,
+  Ticket, BadgeCheck, Ban, Wallet, Check
 } from 'lucide-react';
 import GlassSelect from '../common/GlassSelect';
-
-
 import { useDoctors } from '../../hooks/useDoctors';
+import { AppointmentModel } from '../../models/AppointmentModel';
+import { DoctorModel } from '../../models/DoctorModel';
+import { ServiceModel } from '../../models/ServiceModel';
 
 const RevenueStatistics = lazy(() => import('./RevenueStatistics'));
 
@@ -45,69 +46,250 @@ function MiniBar({ pct, color = '#6366f1' }) {
 // ══════════════════════════════════════════════════════════════════════════════
 // TAB 1 — Báo cáo dịch vụ
 // ══════════════════════════════════════════════════════════════════════════════
-function ServiceReportTab() {
-  const [period, setPeriod] = useState('Tất cả');
+// ── Robust date parser ───────────────────────────────────────────────────────
+const parseAptDate = (dateStr) => {
+  if (!dateStr) return null;
+  if (dateStr.includes('-')) {
+    const [yyyy, mm, dd] = dateStr.split('-').map(Number);
+    return { day: dd, month: mm - 1, year: yyyy };
+  }
+  if (dateStr.includes('/')) {
+    const [dd, mm, yyyy] = dateStr.split('/').map(Number);
+    return { day: dd, month: mm - 1, year: yyyy };
+  }
+  const d = new Date(dateStr);
+  if (!isNaN(d.getTime())) {
+    return { day: d.getDate(), month: d.getMonth(), year: d.getFullYear() };
+  }
+  return null;
+};
 
-  // Load appointments once
-  const allApts = useMemo(() => {
-    try {
-      const s = localStorage.getItem('dermasmart_appointments');
-      const parsed = s ? JSON.parse(s) : null;
-      // Force update if we added new mock data
-      if (parsed && parsed.length >= ([]).length) return parsed;
-      if (parsed && parsed.length < ([]).length) {
-          localStorage.setItem('dermasmart_appointments', JSON.stringify(([])));
-          return ([]);
+function ServiceReportTab({ allApts, services, loading }) {
+  const [period, setPeriod] = useState('Tháng');
+  const [selectedPeriodValue, setSelectedPeriodValue] = useState('');
+  const [activeDropdown, setActiveDropdown] = useState(null);
+  const tabBarRef = useRef(null);
+  const prevPeriodRef = useRef(period);
+
+  const parsePeriodContext = (val, per) => {
+    const now = new Date();
+    let y = now.getFullYear();
+    let q = Math.floor(now.getMonth() / 3) + 1;
+    let m = now.getMonth() + 1;
+
+    if (!val) return { y, q, m };
+
+    if (per === 'Tháng') {
+      if (val.includes('/')) {
+        const [monthStr, yearStr] = val.split('/');
+        y = parseInt(yearStr, 10);
+        m = parseInt(monthStr, 10);
+        q = Math.floor((m - 1) / 3) + 1;
       }
-      return ([]);
-    } catch { return ([]); }
+    } else if (per === 'Quý') {
+      if (val.includes('/')) {
+        const [qStr, yearStr] = val.split('/');
+        y = parseInt(yearStr, 10);
+        q = parseInt(qStr.replace('Q', ''), 10);
+        m = (q - 1) * 3 + 3;
+      }
+    } else if (per === 'Năm') {
+      y = parseInt(val, 10) || now.getFullYear();
+      q = 4;
+      m = 12;
+    }
+
+    return { y, q, m };
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (tabBarRef.current && !tabBarRef.current.contains(event.target)) {
+        setActiveDropdown(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Update selected period value when period changes
+  useEffect(() => {
+    const prevPeriod = prevPeriodRef.current;
+    if (period === 'Tất cả') {
+      setSelectedPeriodValue('');
+      prevPeriodRef.current = period;
+      return;
+    }
+    const context = parsePeriodContext(selectedPeriodValue, prevPeriod);
+
+    if (period === 'Tháng') {
+      setSelectedPeriodValue(`${String(context.m).padStart(2, '0')}/${context.y}`);
+    } else if (period === 'Quý') {
+      setSelectedPeriodValue(`Q${context.q}/${context.y}`);
+    } else if (period === 'Năm') {
+      setSelectedPeriodValue(String(context.y));
+    }
+
+    prevPeriodRef.current = period;
+  }, [period]);
+
+  const getOptionsForPeriod = (targetPeriod) => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    
+    const context = parsePeriodContext(selectedPeriodValue, period);
+    const isCurrentYearSelected = context.y === currentYear;
+
+    if (targetPeriod === 'Tháng') {
+      const list = [];
+      if (period === 'Quý') {
+        for (let i = 2; i >= 0; i--) {
+          const monthIdx = (context.q - 1) * 3 + i;
+          const mStr = String(monthIdx + 1).padStart(2, '0');
+          list.push({
+            value: `${mStr}/${context.y}`,
+            label: `Tháng ${mStr}/${context.y}`
+          });
+        }
+        return list;
+      }
+
+      const startMonth = isCurrentYearSelected ? currentMonth : 11;
+      for (let i = 0; i < 12; i++) {
+        const d = new Date(context.y, startMonth - i, 1);
+        const m = d.getMonth() + 1;
+        const y = d.getFullYear();
+        if (y !== context.y) break;
+        const mStr = String(m).padStart(2, '0');
+        
+        let label = `Tháng ${mStr}/${y}`;
+        if (y === currentYear && m - 1 === currentMonth) {
+          label = `Tháng này (${mStr}/${y})`;
+        } else if (y === currentYear && m - 1 === currentMonth - 1) {
+          label = `Tháng trước (${mStr}/${y})`;
+        }
+        
+        list.push({ value: `${mStr}/${y}`, label });
+      }
+      return list;
+    }
+    if (targetPeriod === 'Quý') {
+      const list = [];
+      const startQuarter = isCurrentYearSelected ? Math.floor(currentMonth / 3) : 3;
+      
+      for (let i = 0; i <= startQuarter; i++) {
+        const q = startQuarter - i + 1;
+        list.push({
+          value: `Q${q}/${context.y}`,
+          label: (q === Math.floor(currentMonth / 3) + 1 && isCurrentYearSelected) ? `Quý này (Quý ${q}/${context.y})` : `Quý ${q}/${context.y}`
+        });
+      }
+      return list;
+    }
+    if (targetPeriod === 'Năm') {
+      const list = [];
+      for (let i = 0; i < 5; i++) {
+        const y = currentYear - i;
+        list.push({
+          value: String(y),
+          label: y === currentYear ? `Năm nay (${y})` : `Năm ${y}`
+        });
+      }
+      return list;
+    }
+    return [];
+  };
+
+  const getPeriodDetailsLabel = () => {
+    if (period === 'Tất cả') return 'Tất cả thời gian';
+    if (!selectedPeriodValue) return '';
+    if (period === 'Tháng') return `Tháng ${selectedPeriodValue}`;
+    if (period === 'Quý') return `${selectedPeriodValue}`;
+    if (period === 'Năm') return `Năm ${selectedPeriodValue}`;
+    return '';
+  };
 
   // Filter by period
   const apts = useMemo(() => {
-    const now = new Date('2026-06-09');
-    return allApts?.filter?.(a => {
+    if (!allApts) return [];
+    return allApts.filter(a => {
       if (period === 'Tất cả') return true;
-      const d = new Date(a.date);
-      if (period === 'Tháng') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-      if (period === 'Quý') {
-        const qNow = Math.floor(now.getMonth() / 3);
-        const qD = Math.floor(d.getMonth() / 3);
-        return qNow === qD && d.getFullYear() === now.getFullYear();
+      if (!selectedPeriodValue) return false;
+
+      const parsed = parseAptDate(a.date);
+      if (!parsed) return false;
+
+      const { month, year } = parsed;
+      const quarter = Math.floor(month / 3);
+
+      if (period === 'Tháng') {
+        const [selMonthStr, selYearStr] = selectedPeriodValue.split('/');
+        return month === (parseInt(selMonthStr, 10) - 1) && year === parseInt(selYearStr, 10);
       }
-      if (period === 'Năm') return d.getFullYear() === now.getFullYear();
+      if (period === 'Quý') {
+        const [selQStr, selYearStr] = selectedPeriodValue.split('/');
+        const selQuarter = parseInt(selQStr.replace('Q', ''), 10) - 1;
+        return quarter === selQuarter && year === parseInt(selYearStr, 10);
+      }
+      if (period === 'Năm') {
+        return year === parseInt(selectedPeriodValue, 10);
+      }
       return true;
     });
-  }, [allApts, period]);
+  }, [allApts, period, selectedPeriodValue]);
 
   // Usage count per service
   const serviceStats = useMemo(() => {
     const map = {};
+    
+    // Seed with all active services from database
+    const svcs = Array.isArray(services) ? services : [];
+    svcs.forEach(s => {
+      if (s && s.name) {
+        map[s.name] = { name: s.name, total: 0, done: 0, cancelled: 0, revenue: 0 };
+      }
+    });
+
     apts.forEach(a => {
       const key = a.service || 'Khác';
-      if (!map[key]) map[key] = { name: key, total: 0, done: 0, cancelled: 0, revenue: 0 };
-      map[key].total++;
-      if (a.status === 'Đã khám') { map[key].done++; map[key].revenue += parseFee(a.fee); }
-      if (a.status === 'Đã hủy')   map[key].cancelled++;
+      let matchedKey = Object.keys(map).find(k => k.toLowerCase() === key.toLowerCase());
+      if (!matchedKey) {
+        matchedKey = key;
+        map[matchedKey] = { name: key, total: 0, done: 0, cancelled: 0, revenue: 0 };
+      }
+      map[matchedKey].total++;
+      if (a.status === 'Đã khám' || a.status === 'Đã thanh toán') { 
+        map[matchedKey].done++; 
+        map[matchedKey].revenue += parseFee(a.fee); 
+      }
+      if (a.status === 'Đã hủy') {
+        map[matchedKey].cancelled++;
+      }
     });
-    return Object.values(map).sort((a, b) => b.total - a.total);
-  }, [apts]);
 
-  // Monthly trend — last 6 months for top 3 services (uses filtered apts for consistency)
+    // Sort by total bookings descending, then by revenue descending
+    return Object.values(map).sort((a, b) => b.total - a.total || b.revenue - a.revenue);
+  }, [apts, services]);
+
+  // Monthly trend — last 6 months for top 3 services of the selected year
   const MONTHS = ['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6'];
-  const top3 = serviceStats.slice(0, 3)?.map?.(s => s.name);
+  const top3 = serviceStats.slice(0, 3)?.map?.(s => s.name) || [];
   const monthlyTrend = useMemo(() => {
     return MONTHS?.map?.((label, mi) => {
       const row = { label };
       top3.forEach(svc => {
-        row[svc] = apts?.filter?.(a => {
-          const m = new Date(a.date).getMonth();
-          return m === mi && a.service === svc && a.status !== 'Đã hủy';
+        row[svc] = allApts?.filter?.(a => {
+          const parsed = parseAptDate(a.date);
+          if (!parsed) return false;
+          const targetYear = period === 'Tất cả' ? new Date().getFullYear() : parsePeriodContext(selectedPeriodValue, period).y;
+          return parsed.month === mi && parsed.year === targetYear && a.service === svc && a.status !== 'Đã hủy';
         }).length;
       });
       return row;
     });
-  }, [apts, top3.join(',')]);
+  }, [allApts, top3.join(','), period, selectedPeriodValue]);
 
   const TREND_COLORS = ['#4f46e5','#10b981','#d97706'];
   const TREND_TEXT_COLORS = ['text-indigo-600', 'text-emerald-600', 'text-amber-600'];
@@ -123,7 +305,7 @@ function ServiceReportTab() {
     return val;
   };
 
-  const maxTrendVal = Math.max(1, ...monthlyTrend?.map?.(row => Math.max(...top3?.map?.(n => row[n] || 0))));
+  const maxTrendVal = Math.max(1, ...monthlyTrend?.map?.(row => Math.max(...top3?.map?.(n => row[n] || 0))) || [1]);
 
   const syncedTop4 = useMemo(() => {
     if (serviceStats.length <= 4) return serviceStats;
@@ -138,22 +320,90 @@ function ServiceReportTab() {
     return top4;
   }, [serviceStats]);
 
+  if (loading) {
+    return (
+      <div className="min-h-[320px] flex flex-col items-center justify-center gap-3 text-slate-500 bg-white/60 backdrop-blur-xl border border-white/50 rounded-[18px]">
+        <div className="w-10 h-10 rounded-full border-4 border-slate-200 border-t-indigo-500 animate-spin" />
+        <p className="text-sm font-medium">Đang tải dữ liệu dịch vụ…</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4 bg-transparent">
       {/* Header + period */}
-      <div className="flex items-center justify-between flex-wrap gap-2">
+      <div className="flex items-center justify-between flex-wrap gap-2 bg-white/40 backdrop-blur-md border border-slate-200/50 p-4 rounded-[18px] relative z-50">
         <div>
           <h3 className="text-lg font-bold text-slate-900">Báo cáo Dịch vụ</h3>
-          <p className="text-xs text-slate-500 mt-0.5">Thống kê lượt sử dụng, doanh thu và xu hướng theo dịch vụ</p>
+          <p className="text-xs mt-0.5 text-slate-500 font-semibold">
+            Thời gian thống kê: <span className="text-indigo-600 font-extrabold">{getPeriodDetailsLabel()}</span>
+          </p>
         </div>
-        <div className="flex bg-indigo-50/50 border border-indigo-100 rounded-full p-0.5 gap-0.5">
-          {['Tất cả', 'Tháng', 'Quý', 'Năm']?.map?.(p => (
-            <button key={p} onClick={() => setPeriod(p)}
-              className={`px-3 py-1 rounded-full text-[10px] font-semibold transition-all border-none outline-none cursor-pointer ${
-                period === p ? 'bg-white text-indigo-700 shadow-sm' : 'bg-transparent text-slate-500 hover:text-slate-700'}`}>
-              {p}
-            </button>
-          ))}
+        <div ref={tabBarRef} className="flex bg-indigo-50/50 border border-indigo-100 rounded-full p-1 gap-1 relative z-50">
+          {['Tất cả', 'Tháng', 'Quý', 'Năm']?.map?.(p => {
+            const isActive = period === p;
+            const options = p !== 'Tất cả' ? getOptionsForPeriod(p) : [];
+            const isDropdownOpen = activeDropdown === p;
+
+            return (
+              <div key={p} className="relative">
+                <button
+                  onClick={() => {
+                    setPeriod(p);
+                    if (p === 'Tất cả') {
+                      setActiveDropdown(null);
+                      setSelectedPeriodValue('');
+                    } else {
+                      setActiveDropdown(activeDropdown === p ? null : p);
+                    }
+                  }}
+                  className={`px-3 py-1.5 rounded-full text-[10px] font-semibold transition-all border-none outline-none cursor-pointer flex items-center gap-1 ${
+                    isActive ? 'bg-white text-indigo-700 shadow-sm' : 'bg-transparent text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  {p}
+                  {p !== 'Tất cả' && (
+                    <ChevronDown className={`w-3 h-3 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                  )}
+                </button>
+
+                {p !== 'Tất cả' && (
+                  <AnimatePresence>
+                    {isDropdownOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-48 bg-white border border-slate-200/50 rounded-2xl shadow-xl z-55 overflow-hidden py-1"
+                      >
+                        <div className="max-h-56 overflow-y-auto custom-scrollbar flex flex-col">
+                          {options.map((opt) => {
+                            const isSelected = selectedPeriodValue === opt.value;
+                            return (
+                              <button
+                                key={opt.value}
+                                onClick={() => {
+                                  setSelectedPeriodValue(opt.value);
+                                  setActiveDropdown(null);
+                                }}
+                                className={`w-full text-left px-3 py-2 text-xs font-semibold transition-colors hover:bg-slate-50 flex justify-between items-center ${
+                                  isSelected ? 'text-indigo-600 bg-indigo-50/50' : 'text-slate-600'
+                                }`}
+                              >
+                                <span className="truncate">{opt.label}</span>
+                                {isSelected && <Check className="w-3 h-3 shrink-0" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
       {/* KPI cards — tinted Liquid Glass */}
@@ -357,21 +607,17 @@ function ServiceReportTab() {
 // ══════════════════════════════════════════════════════════════════════════════
 // TAB 2 — Báo cáo lịch hẹn
 // ══════════════════════════════════════════════════════════════════════════════
-function AppointmentReportTab() {
+function AppointmentReportTab({ allApts, loading }) {
   const { doctors } = useDoctors();
   const [filterDoctor, setFilterDoctor] = useState('all');
 
-  const allApts = useMemo(() => {
-    try { const s = localStorage.getItem('dermasmart_appointments'); return s ? JSON.parse(s) : ([]); }
-    catch { return ([]); }
-  }, []);
-
-  const apts = useMemo(() =>
-    filterDoctor === 'all' ? allApts : allApts?.filter?.(a => a.doctorId === filterDoctor),
-  [allApts, filterDoctor]);
+  const apts = useMemo(() => {
+    const list = Array.isArray(allApts) ? allApts : [];
+    return filterDoctor === 'all' ? list : list?.filter?.(a => String(a.doctorId) === String(filterDoctor));
+  }, [allApts, filterDoctor]);
 
   const total     = apts.length;
-  const done      = apts?.filter?.(a => a.status === 'Đã khám').length;
+  const done      = apts?.filter?.(a => a.status === 'Đã khám' || a.status === 'Đã thanh toán').length;
   const cancelled = apts?.filter?.(a => a.status === 'Đã hủy').length;
   const pending   = apts?.filter?.(a => ['Đang chờ','Đã xác nhận','Chờ xác nhận'].includes(a.status)).length;
   const online    = apts?.filter?.(a => a.notes?.includes('Portal') || a.notes?.includes('website')).length;
@@ -383,7 +629,7 @@ function AppointmentReportTab() {
       const key = a.date?.slice(0, 7) || '—';
       if (!m[key]) m[key] = { total: 0, done: 0, cancelled: 0 };
       m[key].total++;
-      if (a.status === 'Đã khám') m[key].done++;
+      if (a.status === 'Đã khám' || a.status === 'Đã thanh toán') m[key].done++;
       if (a.status === 'Đã hủy')  m[key].cancelled++;
     });
     return Object.entries(m).sort((a,b) => a[0].localeCompare(b[0]))?.map?.(([k,v]) => ({ month: k, ...v }));
@@ -397,6 +643,15 @@ function AppointmentReportTab() {
   }, [apts]);
 
   const maxHour = Math.max(...byHour?.map?.(h => h.count), 1);
+
+  if (loading) {
+    return (
+      <div className="min-h-[320px] flex flex-col items-center justify-center gap-3 text-slate-500 bg-white/60 backdrop-blur-xl border border-white/50 rounded-[18px]">
+        <div className="w-10 h-10 rounded-full border-4 border-slate-200 border-t-indigo-500 animate-spin" />
+        <p className="text-sm font-medium">Đang tải dữ liệu lịch hẹn…</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -481,26 +736,32 @@ function AppointmentReportTab() {
 // ══════════════════════════════════════════════════════════════════════════════
 // TAB 3 — Báo cáo nhân viên
 // ══════════════════════════════════════════════════════════════════════════════
-function EmployeeReportTab() {
+function EmployeeReportTab({ allApts, loading }) {
   const { doctors } = useDoctors();
-  const allApts = useMemo(() => {
-    try { const s = localStorage.getItem('dermasmart_appointments'); return s ? JSON.parse(s) : ([]); }
-    catch { return ([]); }
-  }, []);
 
   const docStats = useMemo(() => {
+    const list = Array.isArray(allApts) ? allApts : [];
     return doctors?.map?.(doc => {
-      const mine = allApts?.filter?.(a => a.doctorId === doc.id);
-      const done = mine?.filter?.(a => a.status === 'Đã khám');
+      const mine = list?.filter?.(a => String(a.doctorId) === String(doc.id));
+      const done = mine?.filter?.(a => a.status === 'Đã khám' || a.status === 'Đã thanh toán');
       const cancelled = mine?.filter?.(a => a.status === 'Đã hủy');
       const patients = new Set(done?.map?.(a => a.patientId)).size;
       const revenue = done.reduce((s, a) => s + parseFee(a.fee), 0);
       const completionRate = mine.length > 0 ? ((done.length / mine.length) * 100).toFixed(0) : 0;
       return { doc, total: mine.length, done: done.length, cancelled: cancelled.length, patients, revenue, completionRate };
-    }).sort((a, b) => b.revenue - a.revenue);
-  }, [allApts]);
+    }).sort((a, b) => b.revenue - a.revenue) || [];
+  }, [allApts, doctors]);
 
-  const maxRev = Math.max(...docStats?.map?.(d => d.revenue), 1);
+  const maxRev = Math.max(...docStats?.map?.(d => d.revenue) || [1], 1);
+
+  if (loading) {
+    return (
+      <div className="min-h-[320px] flex flex-col items-center justify-center gap-3 text-slate-500 bg-white/60 backdrop-blur-xl border border-white/50 rounded-[18px]">
+        <div className="w-10 h-10 rounded-full border-4 border-slate-200 border-t-indigo-500 animate-spin" />
+        <p className="text-sm font-medium">Đang tải dữ liệu nhân viên…</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -1096,8 +1357,35 @@ function AptStatusTab({ allApts }) {
 // ── Hub wrapper ─────────────────────────────────────────────────────────────
 function AppointmentViewHub() {
   const [sub, setSub] = useState('detail');
-  // Load once — không dùng useMemo để tránh closure cũ
-  const allApts = loadAppointments();
+  const [allApts, setAllApts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        await DoctorModel.getAllDoctors(); // Warm cache
+        const data = await AppointmentModel.getAll();
+        if (active) {
+          setAllApts(data || []);
+        }
+      } catch (e) {
+        console.warn('Failed to load appointments for view hub:', e);
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => { active = false; };
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-[320px] flex flex-col items-center justify-center gap-3 text-slate-500 bg-white/60 backdrop-blur-xl border border-white/50 rounded-[18px]">
+        <div className="w-10 h-10 rounded-full border-4 border-slate-200 border-t-indigo-500 animate-spin" />
+        <p className="text-sm font-medium">Đang tải danh sách lịch hẹn…</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">
@@ -1152,6 +1440,32 @@ const SYSTEM_SUBTABS = [
 
 function SystemReportHub() {
   const [sub, setSub] = useState('service');
+  const [allApts, setAllApts] = useState([]);
+  const [services, setServices] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        await DoctorModel.getAllDoctors(); // Warm doctors cache
+        const [aptData, svcData] = await Promise.all([
+          AppointmentModel.getAll(),
+          ServiceModel.getAll()
+        ]);
+        if (active) {
+          setAllApts(aptData || []);
+          setServices(svcData || []);
+        }
+      } catch (e) {
+        console.warn('Failed to fetch system report data:', e);
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => { active = false; };
+  }, []);
+
   return (
     <div className="space-y-5">
       {/* Inner sub-tab bar */}
@@ -1176,9 +1490,9 @@ function SystemReportHub() {
         <motion.div key={sub}
           initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
           transition={{ duration: 0.15 }}>
-          {sub === 'service'     && <ServiceReportTab />}
-          {sub === 'appointment' && <AppointmentReportTab />}
-          {sub === 'employee'    && <EmployeeReportTab />}
+          {sub === 'service'     && <ServiceReportTab allApts={allApts} services={services} loading={loading} />}
+          {sub === 'appointment' && <AppointmentReportTab allApts={allApts} loading={loading} />}
+          {sub === 'employee'    && <EmployeeReportTab allApts={allApts} loading={loading} />}
         </motion.div>
       </AnimatePresence>
     </div>

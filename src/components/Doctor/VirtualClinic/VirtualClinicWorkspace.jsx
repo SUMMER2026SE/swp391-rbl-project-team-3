@@ -27,6 +27,7 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
   const [clinicalStep, setClinicalStep] = useState(1);
   const [selectedServices, setSelectedServices] = useState([]);
   const [isPressing, setIsPressing] = useState(false);
+  const [isInitialLoadDone, setIsInitialLoadDone] = useState(false);
 
   // Form states
   const [symptoms, setSymptoms] = useState('');
@@ -118,9 +119,31 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
   useEffect(() => {
     if (!appointment?.id) return;
     
-    // Load all data on initial mount
-    loadServiceTickets();
-    loadMedicalRecord();
+    setIsInitialLoadDone(false);
+    const init = async () => {
+      // 1. Fetch default database data
+      await Promise.all([loadServiceTickets(), loadMedicalRecord()]);
+
+      // 2. Load draft from localStorage if exists
+      const savedDraft = localStorage.getItem(`appointment_draft_${appointment.id}`);
+      if (savedDraft && !isReviewMode) {
+        try {
+          const draft = JSON.parse(savedDraft);
+          if (draft.clinicalStep) setClinicalStep(draft.clinicalStep);
+          if (draft.symptoms !== undefined) setSymptoms(draft.symptoms);
+          if (draft.diagnosis !== undefined) setDiagnosis(draft.diagnosis);
+          if (draft.doctorNotes !== undefined) setDoctorNotes(draft.doctorNotes);
+          if (draft.selectedServices !== undefined) setSelectedServices(draft.selectedServices);
+          if (draft.indicationNote !== undefined) setIndicationNote(draft.indicationNote);
+          if (draft.prescriptionData !== undefined) setPrescriptionData(draft.prescriptionData);
+        } catch (err) {
+          console.error('Failed to parse draft from localStorage:', err);
+        }
+      }
+      setIsInitialLoadDone(true);
+    };
+
+    init();
 
     // Subscribe to service tickets changes for this appointment (technician completes task)
     const channel = supabase
@@ -138,6 +161,56 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
       supabase.removeChannel(channel);
     };
   }, [appointment]);
+
+  // Initialize draft immediately on mount to mark as "Đang khám"
+  useEffect(() => {
+    if (!appointment?.id || isReviewMode) return;
+    const key = `appointment_draft_${appointment.id}`;
+    if (!localStorage.getItem(key)) {
+      const initialDraft = {
+        clinicalStep: 1,
+        symptoms: '',
+        diagnosis: '',
+        doctorNotes: '',
+        selectedServices: [],
+        indicationNote: '',
+        prescriptionData: {
+          medications: [],
+          generalInstructions: '',
+          followUpDate: '',
+          followUpNotes: ''
+        }
+      };
+      localStorage.setItem(key, JSON.stringify(initialDraft));
+    }
+  }, [appointment?.id, isReviewMode]);
+
+  // Save draft to localStorage on changes
+  useEffect(() => {
+    if (!appointment?.id || isReviewMode || !isInitialLoadDone) return;
+    
+    const draft = {
+      clinicalStep,
+      symptoms,
+      diagnosis,
+      doctorNotes,
+      selectedServices,
+      indicationNote,
+      prescriptionData
+    };
+    localStorage.setItem(`appointment_draft_${appointment.id}`, JSON.stringify(draft));
+  }, [
+    appointment?.id,
+    isReviewMode,
+    isInitialLoadDone,
+    clinicalStep,
+    symptoms,
+    diagnosis,
+    doctorNotes,
+    selectedServices,
+    indicationNote,
+    prescriptionData
+  ]);
 
   const ticketsStatusHash = (existingTickets || []).map(t => `${t.id}:${t.status}`).join(',');
 
@@ -209,19 +282,19 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
      Interactive Spread & Blur (Part 1).
      -------------------------------------------------------------- */
   const surfaceBlur = useMotionValue(12);
-  const surfaceRadius = useMotionValue(28);
+  const surfaceRadius = useMotionValue(16);
   const surfaceBackdrop = useMotionTemplate`blur(${surfaceBlur}px) saturate(140%)`;
   const surfaceBorderRadius = useMotionTemplate`${surfaceRadius}px`;
 
   const handlePressStart = () => {
     setIsPressing(true);
     animate(surfaceBlur, 24, { type: 'spring', stiffness: 200, damping: 24 });
-    animate(surfaceRadius, 40, { type: 'spring', stiffness: 200, damping: 24 });
+    animate(surfaceRadius, 20, { type: 'spring', stiffness: 200, damping: 24 });
   };
   const handlePressEnd = () => {
     setIsPressing(false);
     animate(surfaceBlur, 12, { type: 'spring', stiffness: 200, damping: 26 });
-    animate(surfaceRadius, 28, { type: 'spring', stiffness: 200, damping: 26 });
+    animate(surfaceRadius, 16, { type: 'spring', stiffness: 200, damping: 26 });
   };
 
   // Graceful step transitions (Part 4): exit up, enter from below, spring.
@@ -241,9 +314,9 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
   if (!appointment) return null;
 
   const steps = [
-    { id: 1, label: 'Khám lâm sàng & Chẩn đoán', icon: FileText },
-    { id: 2, label: 'Chỉ định cận lâm sàng & Dịch vụ', icon: TestTube2 },
-    { id: 3, label: 'Kê đơn & Hoàn tất', icon: Pill },
+    { id: 1, label: 'Khám lâm sàng & Chẩn đoán', shortLabel: 'Lâm sàng', icon: FileText },
+    { id: 2, label: 'Chỉ định cận lâm sàng & Dịch vụ', shortLabel: 'Dịch vụ', icon: TestTube2 },
+    { id: 3, label: 'Kê đơn & Hoàn tất', shortLabel: 'Kê đơn', icon: Pill },
   ];
 
   return (
@@ -287,30 +360,19 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
         <div className="lg:col-span-7 xl:col-span-6 h-full flex flex-col min-h-0">
 
           {/* Clinical Stepper — floating Liquid Glass pills */}
-          <div className="flex justify-center mb-8 shrink-0">
-            <div className="bg-white/30 backdrop-blur-md border border-white/50 shadow-[inset_0_1px_0_rgba(255,255,255,0.6),0_8px_24px_rgba(31,38,135,0.08)] p-2 rounded-full inline-flex items-center gap-1 max-w-full overflow-x-auto scrollbar-none">
-              {steps?.map?.((step) => {
-                const Icon = step.icon;
-                const isActive = clinicalStep === step.id;
-                const isCompleted = clinicalStep > step.id;
+          <div className="w-full mb-8 shrink-0">
+            <div className="bg-emerald-500 text-white border border-emerald-400/80 shadow-[0_8px_24px_rgba(16,185,129,0.15)] py-3 px-6 rounded-2xl flex items-center justify-center w-full">
+              {(() => {
+                const activeStep = steps.find((s) => s.id === clinicalStep);
+                if (!activeStep) return null;
+                const Icon = activeStep.icon;
                 return (
-                  <button
-                    key={step.id}
-                    onClick={() => setClinicalStep(step.id)}
-                    title={step.label}
-                    className={`relative flex items-center gap-2 px-6 py-3 rounded-full transition-all duration-300 whitespace-nowrap cursor-pointer border-none ${
-                      isActive
-                        ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 font-bold scale-105'
-                        : isCompleted
-                          ? 'bg-emerald-50 text-emerald-600 font-bold border border-emerald-200'
-                          : 'text-gray-600 hover:bg-white/40 font-medium bg-transparent'
-                    }`}
-                  >
-                    {isCompleted ? <Check className="w-4 h-4 shrink-0" /> : Icon && <Icon className="w-4 h-4 shrink-0" />}
-                    <span className="text-sm hidden sm:inline">{step.label}</span>
-                  </button>
+                  <div className="flex items-center gap-2.5 font-extrabold text-sm whitespace-nowrap select-none">
+                    {Icon && <Icon className="w-4 h-4 shrink-0" />}
+                    <span>{activeStep.label}</span>
+                  </div>
                 );
-              })}
+              })()}
             </div>
           </div>
 

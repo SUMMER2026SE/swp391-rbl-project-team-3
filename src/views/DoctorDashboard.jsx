@@ -204,6 +204,7 @@ export default function DoctorDashboard() {
 
       // 5. Refresh from the DB (also drives the Realtime-backed queue) & close.
       await loadApts();
+      localStorage.removeItem(`appointment_draft_${appointmentId}`);
       setActiveAppointment(null);
       showToast('Hồ sơ bệnh án đã được lưu và đồng bộ thành công!', 'success');
     } catch (err) {
@@ -248,6 +249,7 @@ export default function DoctorDashboard() {
       }
 
       showToast('Đã gửi chỉ định cho Kỹ thuật viên!', 'success');
+      localStorage.removeItem(`appointment_draft_${appointmentId}`);
       setActiveAppointment(null);
       await loadApts();
     } catch (err) {

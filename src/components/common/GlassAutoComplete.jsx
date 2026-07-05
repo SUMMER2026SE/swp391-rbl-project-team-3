@@ -207,7 +207,7 @@ export default function GlassAutoComplete({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.18, ease: 'easeOut' }}
-            className={`${GLASS_BASE} absolute z-50 left-0 right-0 mt-2 p-1.5 max-h-64 overflow-auto origin-top custom-scrollbar`}
+            className="absolute z-50 left-0 right-0 mt-2 p-1.5 max-h-64 overflow-auto origin-top custom-scrollbar bg-white border border-slate-200/60 shadow-xl rounded-2xl"
           >
             {results.length > 0 ? (
               results.map((item, idx) => (
@@ -218,8 +218,8 @@ export default function GlassAutoComplete({
                   onMouseEnter={() => setActiveIndex(idx)}
                   onMouseDown={(e) => e.preventDefault() /* keep input focus */}
                   onClick={() => pick(item)}
-                  className={`px-3 py-2.5 rounded-2xl cursor-pointer transition-colors ${
-                    idx === activeIndex ? 'bg-white/50' : 'hover:bg-white/40'
+                  className={`px-3 py-2.5 rounded-xl cursor-pointer transition-colors ${
+                    idx === activeIndex ? 'bg-slate-100/80 text-teal-700' : 'hover:bg-slate-50 text-gray-800'
                   }`}
                 >
                   {renderOption ? renderOption(item) : (

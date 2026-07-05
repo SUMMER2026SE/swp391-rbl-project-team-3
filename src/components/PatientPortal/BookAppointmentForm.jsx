@@ -233,13 +233,16 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
       
       // Check if it fits the doctor's shift
       let outsideShift = true;
-      const docShift = adminSchedules.find(s => String(s.doctor_id || s.doctorId) === String(dId) && (s.work_date === dDate || s.date === dDate));
-      if (docShift) {
-         const shiftStart = (docShift.start_time || docShift.startTime || '').slice(0, 5);
-         const shiftEnd = (docShift.end_time || docShift.endTime || '').slice(0, 5);
-         if (dTime >= shiftStart && dTime < shiftEnd) {
-             outsideShift = false;
-         }
+      const docShifts = adminSchedules.filter(s => String(s.doctor_id || s.doctorId) === String(dId) && (s.work_date === dDate || s.date === dDate));
+      if (docShifts.length > 0) {
+        const fitsAnyShift = docShifts.some(shift => {
+          const shiftStart = (shift.start_time || shift.startTime || '').slice(0, 5);
+          const shiftEnd = (shift.end_time || shift.endTime || '').slice(0, 5);
+          return dTime >= shiftStart && dTime < shiftEnd;
+        });
+        if (fitsAnyShift) {
+          outsideShift = false;
+        }
       }
 
       return booked || locked || outsideShift;

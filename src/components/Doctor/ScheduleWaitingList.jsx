@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, PlayCircle, Eye, Users, CheckCircle2, AlarmClock } from 'lucide-react';
+import { Clock, PlayCircle, Eye, Users, CheckCircle2, AlarmClock, Play } from 'lucide-react';
 
 // Minutes a checked-in patient has been waiting past their scheduled slot.
 // Only meaningful for today's queue; negative (not yet due) clamps to 0.
@@ -26,10 +26,10 @@ export default function ScheduleWaitingList({ doctorId, onStartExam, appointment
     }
   ).sort((a, b) => (a?.time || '').localeCompare(b?.time || ''));
 
-  const waitingCount = todayAppointments.filter((a) => a?.status === 'Đang chờ').length;
+  const waitingCount = todayAppointments.filter((a) => a?.status === 'Đang chờ' && localStorage.getItem(`appointment_draft_${a?.id}`) === null).length;
   const examinedCount = todayAppointments.filter((a) => a?.status === 'Đã khám').length;
   const lateCount = todayAppointments.filter(
-    (a) => a?.status === 'Đang chờ' && minutesWaiting(a?.time) >= 15
+    (a) => a?.status === 'Đang chờ' && localStorage.getItem(`appointment_draft_${a?.id}`) === null && minutesWaiting(a?.time) >= 15
   ).length;
 
   // Queue position is assigned across WAITING patients only (in time order).
@@ -91,9 +91,10 @@ export default function ScheduleWaitingList({ doctorId, onStartExam, appointment
                 const isCompleted = apt?.status === 'Đã khám';
                 const isWaiting = apt?.status === 'Đang chờ';
                 const waited = isWaiting ? minutesWaiting(apt?.time) : 0;
-                const isLate = waited >= 15;
-                const isNext = isWaiting && (queuePos === 0); // first still-waiting row
-                const position = isWaiting ? ++queuePos : null;
+                const hasDraft = !isCompleted && localStorage.getItem(`appointment_draft_${apt?.id}`) !== null;
+                const isLate = !hasDraft && waited >= 15;
+                const isNext = isWaiting && !hasDraft && (queuePos === 0); // first still-waiting row
+                const position = isWaiting && !hasDraft ? ++queuePos : null;
 
                 return (
                   <tr
@@ -101,11 +102,13 @@ export default function ScheduleWaitingList({ doctorId, onStartExam, appointment
                     className={`transition-colors relative ${
                       isCompleted
                         ? 'bg-slate-50/30 opacity-70 hover:bg-slate-50/50'
-                        : isLate
-                          ? 'bg-rose-50/40 hover:bg-rose-50/70'
-                          : isNext
-                            ? 'bg-teal-50/40 hover:bg-teal-50/70'
-                            : 'hover:bg-white/60'
+                        : hasDraft
+                          ? 'bg-teal-50/20 hover:bg-teal-50/50 font-semibold'
+                          : isLate
+                            ? 'bg-rose-50/40 hover:bg-rose-50/70'
+                            : isNext
+                              ? 'bg-teal-50/40 hover:bg-teal-50/70'
+                              : 'hover:bg-white/60'
                     }`}
                   >
                     {/* Position cell doubles as a colored urgency accent bar */}
@@ -114,14 +117,16 @@ export default function ScheduleWaitingList({ doctorId, onStartExam, appointment
                         className={`inline-flex items-center justify-center w-7 h-7 rounded-lg text-xs font-extrabold border ${
                           isCompleted
                             ? 'bg-slate-100 text-slate-400 border-slate-200'
-                            : isLate
-                              ? 'bg-rose-500 text-white border-rose-500 shadow-sm shadow-rose-500/30'
-                              : isNext
-                                ? 'bg-teal-500 text-white border-teal-500 shadow-sm shadow-teal-500/30'
-                                : 'bg-white text-slate-600 border-slate-200'
+                            : hasDraft
+                              ? 'bg-teal-500 text-white border-teal-500 shadow-sm shadow-teal-500/30'
+                              : isLate
+                                ? 'bg-rose-500 text-white border-rose-500 shadow-sm shadow-rose-500/30'
+                                : isNext
+                                  ? 'bg-teal-500 text-white border-teal-500 shadow-sm shadow-teal-500/30'
+                                  : 'bg-white text-slate-600 border-slate-200'
                         }`}
                       >
-                        {position ?? '✓'}
+                        {isCompleted ? '✓' : hasDraft ? <Play className="w-3 h-3 fill-white stroke-none ml-0.5" /> : position}
                       </span>
                     </td>
                     <td className="py-4 px-4">
@@ -129,7 +134,7 @@ export default function ScheduleWaitingList({ doctorId, onStartExam, appointment
                         <Clock className="w-4 h-4 text-teal-500" />
                         {apt?.time}
                       </div>
-                      {isWaiting && waited > 0 && (
+                      {isWaiting && !hasDraft && waited > 0 && (
                         <span className={`mt-1 inline-block text-xs font-bold ${isLate ? 'text-rose-600' : 'text-slate-500'}`}>
                           Đã chờ {waited} phút
                         </span>
@@ -144,6 +149,14 @@ export default function ScheduleWaitingList({ doctorId, onStartExam, appointment
                     <td className="py-4 px-4">
                       {isCompleted ? (
                         <span className="bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 font-bold px-3 py-1 rounded-full backdrop-blur-md text-sm">Đã khám</span>
+                      ) : hasDraft ? (
+                        <span className="inline-flex items-center gap-1.5 bg-teal-500/10 text-teal-700 px-3 py-1 rounded-full text-sm font-bold border border-teal-300/50">
+                          <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-teal-500"></span>
+                          </span>
+                          Đang khám
+                        </span>
                       ) : isLate ? (
                         <span className="inline-flex items-center gap-1 bg-rose-500/10 text-rose-600 px-3 py-1 rounded-full text-sm font-bold border border-rose-300/50">
                           <AlarmClock className="w-3 h-3" />
@@ -174,13 +187,13 @@ export default function ScheduleWaitingList({ doctorId, onStartExam, appointment
                         <button
                           onClick={() => handleStartExam(apt)}
                           className={`inline-flex items-center gap-2 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md active:scale-95 transition-all ${
-                            isNext || isLate
+                            isNext || isLate || hasDraft
                               ? 'bg-gradient-to-r from-teal-500 to-emerald-500 shadow-teal-500/30 hover:shadow-lg hover:shadow-teal-500/40 ring-2 ring-teal-300/40'
                               : 'bg-gradient-to-r from-teal-500 to-emerald-500 shadow-teal-500/20 hover:shadow-lg hover:shadow-teal-500/30'
                           }`}
                         >
-                          <PlayCircle className="w-4 h-4" />
-                          Bắt đầu khám
+                          <PlayCircle className={`w-4 h-4 ${hasDraft ? 'animate-pulse' : ''}`} />
+                          {hasDraft ? 'Đang khám' : 'Bắt đầu khám'}
                         </button>
                       )}
                     </td>

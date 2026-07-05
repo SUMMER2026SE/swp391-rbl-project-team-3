@@ -108,7 +108,15 @@ export function AuthProvider({ children }) {
     } catch (e) {
       console.error('Logout error:', e);
     } finally {
-      localStorage.clear();
+      // Clear auth tokens and session data, but preserve doctor EMR drafts
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && !key.startsWith('appointment_draft_')) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
       sessionStorage.clear();
       window.location.replace('/login');
     }

@@ -21,7 +21,7 @@ import React from 'react';
 // drop shadow that anchors the card on the bright, airy background and keeps
 // dark text legible. Legibility comes from the blur + dark text (gray-900/800).
 export const GLASS_BASE =
-  'backdrop-blur-2xl bg-white/40 border border-white/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_8px_32px_0_rgba(31,38,135,0.07)] rounded-3xl';
+  'backdrop-blur-2xl bg-white/40 border border-white/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_8px_32px_0_rgba(31,38,135,0.07)] rounded-2xl';
 
 // Premium lift for interactive / clickable cards (hover stays translucent).
 export const GLASS_HOVER =

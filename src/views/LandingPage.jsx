@@ -575,6 +575,14 @@ function LandingPage({ onLogout }) {
     }
   };
 
+  const handleAIScanClick = () => {
+    if (!isLoggedIn && !user) {
+      navigate('/login');
+    } else {
+      setIsAIScanOpen(true);
+    }
+  };
+
 
   // Close user dropdown on outside click
   useEffect(() => {
@@ -968,13 +976,13 @@ function LandingPage({ onLogout }) {
 
             {/* Secondary — AI Skin Scan (high-tech gradient) */}
             <motion.button
-              onClick={() => setIsAIScanOpen(true)}
+              onClick={handleAIScanClick}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               className="w-full sm:w-auto flex items-center justify-center gap-2.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-lg font-bold shadow-lg hover:shadow-cyan-500/30 px-8 py-4 rounded-2xl transition-[box-shadow] duration-300 cursor-pointer border-none"
             >
               <ScanFace size={20} />
-              Soi da AI miễn phí
+              Thấu hiểu làn da cùng AI
             </motion.button>
 
             {/* Tertiary — View AI Features (glass / outline) */}
@@ -1355,7 +1363,7 @@ function LandingPage({ onLogout }) {
       </motion.footer>
       </div>
       <ChangePasswordModal isOpen={isChangePasswordOpen} onClose={() => setIsChangePasswordOpen(false)} />
-      <FloatingChatbot onBookAppointment={() => setIsBookingOpen(true)} onAIScan={() => setIsAIScanOpen(true)} />
+      <FloatingChatbot onBookAppointment={() => setIsBookingOpen(true)} onAIScan={handleAIScanClick} />
       <FreeSkinScanModal isOpen={isAIScanOpen} onClose={() => setIsAIScanOpen(false)} onBookAppointment={() => setIsBookingOpen(true)} />
       {/* Doctor Profile Modal (Liquid Glass) */}
       <AnimatePresence>
