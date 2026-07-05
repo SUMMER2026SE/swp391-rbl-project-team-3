@@ -12,6 +12,7 @@ import { useFeedbackController } from '../../controllers/useFeedbackController';
 import { useAppointmentController } from '../../controllers/useAppointmentController';
 import { AppointmentModel } from '../../models/AppointmentModel';
 import { useTechnicians } from '../../hooks/useDoctors';
+import { supabase } from '../../supabaseClient';
 import FeedbackFormModal from './FeedbackFormModal';
 import InvoiceDetailModal from './InvoiceDetailModal';
 
@@ -252,6 +253,46 @@ export default function PatientFeedbackTab({ user, feedbackAptId, setFeedbackApt
         }
       }
 
+      let usedServices = [];
+      let servicesTotal = 0;
+      try {
+        const { data: stData } = await supabase
+          .from('service_tickets')
+          .select('id, service_name')
+          .eq('appointment_id', apt.id);
+          
+        if (stData && stData.length > 0) {
+           const { data: svcData } = await supabase.from('services').select('service_name, price');
+           usedServices = stData.map(t => {
+               const svc = (svcData || []).find(s => s.service_name === t.service_name);
+               const priceStr = svc?.price || 0;
+               let priceNum = 0;
+               if (typeof priceStr === 'number') priceNum = priceStr;
+               else if (typeof priceStr === 'string') priceNum = parseInt(priceStr.replace(/[^0-9]/g, ''), 10) || 0;
+               servicesTotal += priceNum;
+               return { id: t.id, name: t.service_name, price: priceNum };
+           });
+        }
+      } catch (e) {
+        console.warn("Failed to fetch used services:", e);
+      }
+
+      const parseFee = (fee, fallback = 0) => {
+        if (fee === null || fee === undefined) return fallback;
+        if (typeof fee === 'number') return Number.isFinite(fee) ? fee : fallback;
+        const digits = String(fee).replace(/[^0-9]/g, '');
+        const n = parseInt(digits, 10);
+        return Number.isFinite(n) ? n : fallback;
+      };
+
+      const baseTotal = parseFee(apt.fee, 0) || 300000;
+      const calcTotal = baseTotal + servicesTotal;
+
+      const followUpFee = payment ? Math.max(0, (payment.final_amount + (payment.discount_amount || 0)) - calcTotal) : 0;
+      const prior = 0;
+      const discount = payment?.discount_amount ?? 0;
+      const netPayable = payment ? payment.final_amount : Math.max(0, calcTotal + followUpFee - discount);
+
       const invoice = {
         aptId: apt.id,
         patientName: apt.patientName || apt.patient_name || 'Bệnh nhân',
@@ -259,10 +300,13 @@ export default function PatientFeedbackTab({ user, feedbackAptId, setFeedbackApt
         serviceName: apt.service || apt.service_name || 'Dịch vụ khám',
         paidAt: payment?.paid_at ? new Date(payment.paid_at) : new Date(apt.date + 'T' + (apt.time || '08:00')),
         method: payment?.payment_method || 'Tiền mặt',
-        total: payment?.total_amount ?? apt.fee ?? 0,
-        prior: 0,
-        discount: payment?.discount_amount ?? 0,
-        netPayable: payment?.final_amount ?? apt.fee ?? 0,
+        baseTotal,
+        usedServices,
+        followUpFee,
+        total: calcTotal + followUpFee,
+        prior,
+        discount,
+        netPayable,
         voucherCode: voucherCode || payment?.voucher_code || null,
         receptionistId: payment?.receptionist_id || 'staff',
         paymentStatus: payment?.payment_status || 'PAID',

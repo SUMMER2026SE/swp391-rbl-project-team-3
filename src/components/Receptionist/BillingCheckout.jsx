@@ -151,6 +151,36 @@ export default function BillingCheckout({
     fetchAllServices();
   }, [all]);
 
+  const [followUpsMap, setFollowUpsMap] = useState({});
+
+  useEffect(() => {
+    const fetchFollowUps = async () => {
+      try {
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        
+        const { data, error } = await supabase
+          .from('appointments')
+          .select('patient_id')
+          .eq('service', 'Tái khám')
+          .gte('created_at', today.toISOString());
+          
+        if (data) {
+          const map = {};
+          data.forEach((apt) => {
+            if (apt.patient_id) {
+              map[apt.patient_id] = true;
+            }
+          });
+          setFollowUpsMap(map);
+        }
+      } catch (err) {
+        console.error('Error fetching today\'s follow-ups:', err);
+      }
+    };
+    fetchFollowUps();
+  }, [appointments]);
+
   const isPaid = (a) => a.status === APT_STATUS.PAID;
 
   const visible = useMemo(() => {
@@ -256,8 +286,9 @@ export default function BillingCheckout({
 
   // ── Money math for the selected invoice ───────────────────────────────────
   const baseTotal = selected ? parseFee(selected.fee, 0) || docFee(selected.doctorId) || 300000 : 0;
-  const total = baseTotal + servicesTotal;
-  const prior = selected ? priorPaidFor(selected.aptId, payments) : 0;
+  const followUpFee = selected && followUpsMap[selected.patientId] ? 50000 : 0;
+  const total = baseTotal + servicesTotal + followUpFee;
+  const prior = 0;
   const discount = appliedVoucher?.discount || 0;
   const netPayable = Math.max(0, total - prior - discount);
 
@@ -347,6 +378,7 @@ export default function BillingCheckout({
         ...selected,
         baseTotal,
         usedServices,
+        followUpFee,
         total,
         prior,
         discount,
@@ -479,6 +511,7 @@ export default function BillingCheckout({
                             {(() => {
                               const aBaseTotal = parseFee(a.fee, 0) || docFee(a.doctorId) || 300000;
                               const aServicesTotal = servicesTotalsMap[a.aptId] || 0;
+                              const aFollowUpFee = followUpsMap[a.patientId] ? 50000 : 0;
                               const pays = (payments || []).filter((p) => String(p.appointment_id ?? p.appointmentId) === String(a.aptId));
                               
                               if (paid) {
@@ -487,11 +520,11 @@ export default function BillingCheckout({
                                   const finalPay = pays[pays.length - 1];
                                   return formatVnd(parseFee(finalPay.final_amount ?? finalPay.amount ?? finalPay.total_amount, 0));
                                 }
-                                return formatVnd(aBaseTotal + aServicesTotal);
+                                return formatVnd(aBaseTotal + aServicesTotal + aFollowUpFee);
                               } else {
-                                // Unpaid: base + services - deposit
-                                const aPrior = pays.reduce((sum, p) => sum + parseFee(p.final_amount ?? p.amount ?? p.total_amount, 0), 0);
-                                return formatVnd(Math.max(0, aBaseTotal + aServicesTotal - aPrior));
+                                // Unpaid: base + services + followUpFee
+                                const aPrior = 0;
+                                return formatVnd(Math.max(0, aBaseTotal + aServicesTotal + aFollowUpFee - aPrior));
                               }
                             })()}
                           </div>
@@ -585,20 +618,21 @@ export default function BillingCheckout({
                           if (invs.length === 1) {
                             checkoutAmount = invs[0].total_amount;
                           } else {
-                            priorAmount = invs.slice(0, invs.length - 1).reduce((sum, i) => sum + i.total_amount, 0);
+                            priorAmount = 0;
                             checkoutAmount = invs[invs.length - 1].total_amount;
                           }
                         } else if (paidRecord) {
                           // Fallback if invoices table was manually cleared
-                          priorAmount = paidRecord.final_amount > 50000 ? 50000 : 0;
-                          checkoutAmount = Math.max(0, paidRecord.final_amount - priorAmount);
+                          priorAmount = 0;
+                          checkoutAmount = paidRecord.final_amount;
                         }
                         setReceipt({
                           ...selected,
                           baseTotal: parseFee(selected.fee, 0) || 300000,
                           usedServices,
+                          followUpFee: selected && followUpsMap[selected.patientId] ? 50000 : 0,
                           total: paidRecord?.total_amount || total,
-                          prior: priorAmount,
+                          prior: 0,
                           discount: paidRecord?.discount_amount || 0,
                           netPayable: checkoutAmount,
                           method: paidRecord?.payment_method || '—',
@@ -684,7 +718,12 @@ export default function BillingCheckout({
                       {usedServices.map(s => (
                         <Row key={s.id} label={`Dịch vụ: ${s.name}`} value={formatVnd(s.price)} />
                       ))}
-                      {prior > 0 && <Row label="Đã thanh toán trước (đặt cọc)" value={`−${formatVnd(prior)}`} tone="teal" />}
+                      <div className="border-t border-slate-200 pt-2 flex items-center justify-between">
+                        <span className="font-semibold text-slate-650">Cộng tiền dịch vụ:</span>
+                        <span className="font-bold text-slate-700">{formatVnd(baseTotal + servicesTotal)}</span>
+                      </div>
+                      {followUpFee > 0 && <Row label="Tiền đặt cọc tái khám" value={`+${formatVnd(followUpFee)}`} />}
+                      {prior > 0 && <Row label="Khấu trừ cọc khám trước" value={`−${formatVnd(prior)}`} tone="teal" />}
                       {discount > 0 && <Row label="Giảm giá (voucher)" value={`−${formatVnd(discount)}`} tone="emerald" />}
                       <div className="border-t border-slate-200 pt-2 flex items-center justify-between">
                         <span className="font-black text-slate-800 text-sm">Thực thu</span>
@@ -837,13 +876,16 @@ function ReceiptModal({ receipt, onClose, receptionistId, showToast }) {
                     <span className="font-mono">{formatVnd(s.price)}</span>
                   </div>
                 ))}
+                {receipt.followUpFee > 0 && (
+                  <div className="flex justify-between">
+                    <span>Đặt lịch tái khám:</span>
+                    <span className="font-mono">{formatVnd(receipt.followUpFee)}</span>
+                  </div>
+                )}
               </div>
               <div className="border-b-2 border-double border-slate-300 my-2" />
               <div className="space-y-1 text-[10px] font-semibold text-slate-600">
                 <p className="flex justify-between"><span>Cộng tiền dịch vụ:</span><span className="font-mono">{formatVnd(receipt.total)}</span></p>
-                {receipt.prior > 0 && (
-                  <p className="flex justify-between text-teal-600"><span>Đã khấu trừ cọc:</span><span className="font-mono">−{formatVnd(receipt.prior)}</span></p>
-                )}
                 {receipt.discount > 0 && (
                   <p className="flex justify-between text-emerald-600">
                     <span>Giảm giá (voucher) {receipt.voucherCode ? `[${receipt.voucherCode}]` : ''}:</span>
@@ -852,7 +894,7 @@ function ReceiptModal({ receipt, onClose, receptionistId, showToast }) {
                 )}
                 <div className="border-t border-slate-200 pt-1.5 flex justify-between items-center text-xs font-black text-slate-900">
                   <span>TỔNG ĐÃ THU:</span>
-                  <span className="text-sm">{formatVnd(receipt.netPayable)}</span>
+                  <span className="text-sm">{formatVnd(receipt.total - receipt.discount)}</span>
                 </div>
               </div>
               <div className="pt-1 text-center">

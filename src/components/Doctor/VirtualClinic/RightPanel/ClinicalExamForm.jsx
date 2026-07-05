@@ -39,7 +39,7 @@ export default function ClinicalExamForm({
         <div>
           <label className="block text-xs font-black text-gray-500 mb-2 uppercase tracking-wider flex items-center gap-1.5">
             <HeartPulse className="w-3.5 h-3.5 text-slate-400" />
-            Đánh giá tình trạng & Lời dặn Bác sĩ
+            Đánh giá tình trạng
           </label>
           <textarea
             value={doctorNotes}
@@ -48,7 +48,7 @@ export default function ClinicalExamForm({
             className={`${GLASS_INPUT} w-full p-4 text-sm font-semibold text-gray-900 resize-none rounded-xl ${
               isReviewMode ? 'bg-slate-100/50 cursor-not-allowed' : ''
             }`}
-            placeholder="Nhập đánh giá tình trạng da và các căn dặn điều trị, sinh hoạt cho bệnh nhân..."
+            placeholder="Nhập đánh giá tình trạng da của bệnh nhân..."
             rows="3"
           />
         </div>

@@ -1039,8 +1039,11 @@ export default function AppointmentsTab({ setActiveTab, setFeedbackAptId }) {
 
       const baseTotal = parseFee(apt.fee, 0) || 300000;
       const calcTotal = baseTotal + servicesTotal;
+
+      const followUpFee = payment ? Math.max(0, (payment.final_amount + (payment.discount_amount || 0)) - calcTotal) : 0;
+      const prior = 0;
       const discount = payment?.discount_amount ?? 0;
-      const netPayable = payment?.final_amount ?? Math.max(0, calcTotal - discount);
+      const netPayable = payment ? payment.final_amount : Math.max(0, calcTotal + followUpFee - discount);
 
       const invoice = {
         aptId: apt.id,
@@ -1051,8 +1054,9 @@ export default function AppointmentsTab({ setActiveTab, setFeedbackAptId }) {
         method: payment?.payment_method || 'Tiền mặt',
         baseTotal,
         usedServices,
-        total: payment?.total_amount ?? calcTotal,
-        prior: 0,
+        followUpFee,
+        total: calcTotal + followUpFee,
+        prior,
         discount,
         netPayable,
         voucherCode: voucherCode || payment?.voucher_code || null,

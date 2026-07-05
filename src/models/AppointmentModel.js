@@ -277,10 +277,12 @@ export const AppointmentModel = {
       const { data, error } = await supabase
         .from('payments')
         .select('*')
-        .eq('appointment_id', appointmentId)
-        .maybeSingle();
+        .eq('appointment_id', appointmentId);
       if (error) throw error;
-      return data;
+      if (data && data.length > 0) {
+        return data[data.length - 1];
+      }
+      return null;
     } catch (e) {
       console.warn('Supabase fetch error (payment by appointment):', e.message);
       return null;

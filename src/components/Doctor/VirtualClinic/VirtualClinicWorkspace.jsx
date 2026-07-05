@@ -59,7 +59,7 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
   const patientName = appointment?.patientName || appointment?.patient_name || 'Bệnh nhân';
   const activeDoctor = doctors.find(d => d.id === doctorId) || doctors[0] || null;
 
-  const isReviewMode = appointment?.status === 'Đã khám';
+  const isReviewMode = appointment?.status === 'Đã khám' || appointment?.status === 'Đã thanh toán';
 
   const loadServiceTickets = async () => {
     if (!appointment?.id) return;
@@ -500,6 +500,7 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
                     appointmentId={appointment?.id} 
                     isReviewMode={isReviewMode} 
                     examRecord={medicalRecord} 
+                    initialDiagnosis={diagnosis}
                     onChange={setPrescriptionData} 
                   />
                   <FollowUpAppointmentForm appointment={appointment} />
