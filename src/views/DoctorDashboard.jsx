@@ -34,7 +34,7 @@ import {
   PanelLeftOpen,
   CheckCircle2,
   MessageSquare,
-
+  History,
 } from 'lucide-react';
 
 // Import Mock Data
@@ -46,6 +46,7 @@ import DashboardOverview from '../components/Doctor/DashboardOverview';
 import ScheduleWaitingList from '../components/Doctor/ScheduleWaitingList';
 import WorkSchedule from '../components/Doctor/WorkSchedule';
 import VirtualClinicWorkspace from '../components/Doctor/VirtualClinic/VirtualClinicWorkspace';
+import MedicalRecordHistory from '../components/Doctor/MedicalRecordHistory';
 import DoctorFeedbackView from '../components/Doctor/DoctorFeedbackView';
 
 import LiquidSidebarMenu from '../components/ui/LiquidSidebarMenu';
@@ -59,6 +60,7 @@ export default function DoctorDashboard() {
   const [currentDoctorId, setCurrentDoctorId] = useState(user?.id || '');
   const doctorId = currentDoctorId;
   const [activeTab, setActiveTab] = useState('overview');
+  const [globalSearch, setGlobalSearch] = useState('');
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [activeAppointment, setActiveAppointment] = useState(null);
   const [notifications, setNotifications] = useState([]);
@@ -123,6 +125,7 @@ export default function DoctorDashboard() {
       overview: 'Tổng quan',
       waiting_list: 'Hàng chờ & Lịch khám',
       schedule: 'Lịch làm việc',
+      history: 'Lịch sử khám',
       feedback: 'Đánh giá',
     };
     return tabNames[activeTab] || 'Tổng quan';
@@ -327,6 +330,7 @@ export default function DoctorDashboard() {
     { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard },
     { id: 'waiting_list', label: 'Hàng chờ & Lịch khám', icon: Users },
     { id: 'schedule', label: 'Lịch làm việc', icon: Calendar },
+    { id: 'history', label: 'Lịch sử khám', icon: History },
     { id: 'feedback', label: 'Đánh giá', icon: Star },
   ];
 
@@ -469,6 +473,15 @@ export default function DoctorDashboard() {
                 className="bg-transparent border-none outline-none text-[15px] font-medium text-gray-800 placeholder-gray-500 w-72 p-0 focus:ring-0"
                 placeholder="Tìm kiếm bệnh nhân, hồ sơ..."
                 type="text"
+                value={globalSearch}
+                onChange={(e) => {
+                  setGlobalSearch(e.target.value);
+                  // Auto-switch to history tab when typing from non-history tabs
+                  if (e.target.value.trim() && activeTab !== 'history' && activeTab !== 'waiting_list') {
+                    setActiveTab('history');
+                    setActiveAppointment(null);
+                  }
+                }}
               />
             </div>
           </div>
@@ -646,9 +659,19 @@ export default function DoctorDashboard() {
                   doctorId={currentDoctorId} 
                   onStartExam={setActiveAppointment} 
                   appointments={appointments}
+                  searchQuery={globalSearch}
                 />
               )}
               {activeTab === 'schedule' && <WorkSchedule doctorId={currentDoctorId} />}
+              {activeTab === 'history' && (
+                <MedicalRecordHistory
+                  doctorId={currentDoctorId}
+                  searchQuery={globalSearch}
+                  onReviewRecord={(apt) => {
+                    setActiveAppointment(apt);
+                  }}
+                />
+              )}
               {activeTab === 'feedback' && <DoctorFeedbackView doctorId={currentDoctorId} />}
             </motion.div>
           )}

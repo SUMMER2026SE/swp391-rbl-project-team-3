@@ -10,7 +10,7 @@ const minutesWaiting = (timeStr) => {
   return Math.max(0, now.getHours() * 60 + now.getMinutes() - (h * 60 + m));
 };
 
-export default function ScheduleWaitingList({ doctorId, onStartExam, appointments = [] }) {
+export default function ScheduleWaitingList({ doctorId, onStartExam, appointments = [], searchQuery = '' }) {
   const today = new Date().toISOString().split('T')[0];
 
   // PHASE 4 — the active waiting room is strictly patients the Receptionist has
@@ -22,7 +22,14 @@ export default function ScheduleWaitingList({ doctorId, onStartExam, appointment
       const isDoctorMatch = String(apt?.doctorId || apt?.doctor_id) === String(doctorId);
       const isWaiting = apt?.status === 'Đang chờ';
       const isExamined = apt?.status === 'Đã khám';
-      return isDoctorMatch && (isWaiting || isExamined);
+      if (!isDoctorMatch || !(isWaiting || isExamined)) return false;
+      // Apply global search filter when present
+      if (searchQuery && searchQuery.trim()) {
+        const q = searchQuery.trim().toLowerCase();
+        const name = (apt?.patientName || '').toLowerCase();
+        if (!name.includes(q)) return false;
+      }
+      return true;
     }
   ).sort((a, b) => (a?.time || '').localeCompare(b?.time || ''));
 
