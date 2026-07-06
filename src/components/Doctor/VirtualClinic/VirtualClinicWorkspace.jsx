@@ -359,20 +359,45 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
         {/* Right Panel: Actions — Clinical Stepper Area */}
         <div className="lg:col-span-7 xl:col-span-6 h-full flex flex-col min-h-0">
 
-          {/* Clinical Stepper — floating Liquid Glass pills */}
-          <div className="w-full mb-8 shrink-0">
-            <div className="bg-emerald-500 text-white border border-emerald-400/80 shadow-[0_8px_24px_rgba(16,185,129,0.15)] py-3 px-6 rounded-2xl flex items-center justify-center w-full">
-              {(() => {
-                const activeStep = steps.find((s) => s.id === clinicalStep);
-                if (!activeStep) return null;
-                const Icon = activeStep.icon;
+          {/* Clinical Stepper — 3-step clickable progress */}
+          <div className="w-full mb-6 shrink-0">
+            <div className={`${GLASS_BASE} p-1.5 flex items-center gap-1`}>
+              {steps.map((step, index) => {
+                const Icon = step.icon;
+                const isActive = clinicalStep === step.id;
+                const isCompleted = clinicalStep > step.id;
                 return (
-                  <div className="flex items-center gap-2.5 font-extrabold text-sm whitespace-nowrap select-none">
-                    {Icon && <Icon className="w-4 h-4 shrink-0" />}
-                    <span>{activeStep.label}</span>
-                  </div>
+                  <React.Fragment key={step.id}>
+                    {index > 0 && (
+                      <div className={`w-5 h-0.5 shrink-0 rounded-full transition-colors duration-300 ${
+                        clinicalStep >= step.id ? 'bg-emerald-400' : 'bg-slate-200'
+                      }`} />
+                    )}
+                    <button
+                      onClick={() => setClinicalStep(step.id)}
+                      className={`flex-1 flex items-center justify-center gap-2 px-3 py-3 rounded-xl font-bold text-sm transition-all duration-300 cursor-pointer border-none select-none ${
+                        isActive
+                          ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
+                          : isCompleted
+                            ? 'bg-emerald-50/80 text-emerald-700 hover:bg-emerald-100/90'
+                            : 'text-slate-400 hover:bg-white/50 hover:text-slate-600'
+                      }`}
+                    >
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-black shrink-0 transition-all duration-300 ${
+                        isActive
+                          ? 'bg-white/25'
+                          : isCompleted
+                            ? 'bg-emerald-500 text-white'
+                            : 'bg-slate-200/80 text-slate-500'
+                      }`}>
+                        {isCompleted ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : step.id}
+                      </div>
+                      <span className="hidden sm:inline truncate">{step.shortLabel}</span>
+                      <Icon className={`w-4 h-4 shrink-0 sm:hidden ${isActive ? '' : 'opacity-60'}`} />
+                    </button>
+                  </React.Fragment>
                 );
-              })()}
+              })}
             </div>
           </div>
 

@@ -250,7 +250,7 @@ export default function ServiceSelectionForm({ onSelectionChange, existingTicket
       </div>
 
       {/* ── Dynamic lab metric configuration ── */}
-      <div className="mb-5 flex-shrink-0 rounded-2xl border border-emerald-200/50 bg-emerald-50/30 p-4">
+      <div className="mb-0 mt-4 flex-shrink-0 order-last rounded-2xl border border-emerald-200/50 bg-emerald-50/30 p-4">
         <div className="flex items-center gap-2 mb-3">
           <FlaskConical className="w-4 h-4 text-emerald-600" />
           <h4 className="text-sm font-extrabold text-slate-800">

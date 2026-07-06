@@ -320,7 +320,7 @@ export const AppointmentModel = {
       newApt = await this.create(dbPayload);
     }
     
-    if (newApt && (bookingData.bookingFee || bookingData.fee) && !bookingData.isHold) {
+    if (newApt && !bookingData.bypassPayment && (bookingData.bookingFee || bookingData.fee) && !bookingData.isHold) {
       const deposit = bookingData.bookingFee
         || (typeof bookingData.fee === 'string' ? parseInt(bookingData.fee.replace(/\D/g, ''), 10) : bookingData.fee)
         || 50000;

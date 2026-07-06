@@ -111,6 +111,21 @@ export default function PrescriptionForm({ appointmentId, isReviewMode = false, 
           </div>
         </div>
 
+        {/* Diagnosis Conclusion */}
+        <div className="mb-6">
+          <label className="block text-sm font-semibold text-gray-700 mb-2 uppercase tracking-wider">
+            Kết luận chẩn đoán bệnh
+          </label>
+          <textarea
+            value={diagnosis}
+            onChange={(e) => setDiagnosis(e.target.value)}
+            placeholder="Nhập kết luận chẩn đoán bệnh..."
+            rows="2"
+            className={`${getInputClass(isReviewMode)} resize-none`}
+            readOnly={isReviewMode}
+          />
+        </div>
+
         {/* Prescription Items */}
         <div className="space-y-6">
           <div className="flex justify-between items-center">
@@ -150,7 +165,7 @@ export default function PrescriptionForm({ appointmentId, isReviewMode = false, 
                   {/* Medicine Name */}
                   <div className="md:col-span-3">
                     <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                      Tên thuốc / Biệt dược
+                      Thuốc #{idx + 1} — Tên thuốc / Biệt dược
                     </label>
                     {isReviewMode ? (
                       <input
@@ -252,20 +267,7 @@ export default function PrescriptionForm({ appointmentId, isReviewMode = false, 
           </div>
         </div>
 
-        {/* Diagnosis Conclusion */}
-        <div className="mt-6 pt-6 border-t border-slate-200/60">
-          <label className="block text-sm font-semibold text-gray-700 mb-2 uppercase tracking-wider">
-            Kết luận chẩn đoán bệnh
-          </label>
-          <textarea
-            value={diagnosis}
-            onChange={(e) => setDiagnosis(e.target.value)}
-            placeholder="Nhập kết luận chẩn đoán bệnh..."
-            rows="2"
-            className={`${getInputClass(isReviewMode)} resize-none`}
-            readOnly={isReviewMode}
-          />
-        </div>
+
 
         {/* General Notes for Patient */}
         <div className="mt-6 pt-6 border-t border-slate-200/60">
