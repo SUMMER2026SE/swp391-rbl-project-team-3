@@ -1,3 +1,5 @@
+[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/r92bbHwx)
+
 # Dermatology Clinic Management System (Hệ thống Quản lý Phòng khám Da liễu)
 
 Dự án phát triển hệ thống quản lý phòng khám da liễu thông minh (SWP391), tích hợp chatbot AI hỗ trợ đặt lịch khám, soi da, tư vấn dịch vụ và kết nối trực tiếp với nhân viên lễ tân.
