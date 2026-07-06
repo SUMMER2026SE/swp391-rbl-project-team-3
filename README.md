@@ -1,88 +1,52 @@
+[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/r92bbHwx)
+
 # Dermatology Clinic Management System (Hệ thống Quản lý Phòng khám Da liễu)
 
 Dự án phát triển hệ thống quản lý phòng khám da liễu thông minh (SWP391), tích hợp chatbot AI hỗ trợ đặt lịch khám, soi da, tư vấn dịch vụ và kết nối trực tiếp với nhân viên lễ tân.
 
 ---
 
-## 🤖 Hướng dẫn Cấu hình Chatbot AI (Supabase Edge Function)
+## 🤖 Hướng dẫn Chạy Dự án & Sử dụng Chatbot AI
 
-Hệ thống chatbot của dự án sử dụng **Google Gemini API** (`gemini-2.5-flash`) thông qua **Supabase Edge Function** (`chat-bot`). Việc gọi API ở phía backend giúp bảo mật API Key tối đa và cho phép các thành viên khác trong nhóm dễ dàng tải dự án từ GitHub về chạy mà không gặp lỗi.
+Hệ thống chatbot của dự án sử dụng **Google Gemini AI** thông qua **Supabase Edge Function** đã được triển khai sẵn trên máy chủ dùng chung. Bạn **không cần** tự đăng ký API Key hay cài đặt môi trường chạy AI phức tạp dưới máy local.
 
-### 1. Cách thiết lập biến môi trường cục bộ (Local Environment)
+### 1. Thiết lập biến môi trường (Chỉ làm lần đầu)
 
-Khi clone dự án về, bạn cần cấu hình các biến môi trường để chạy cả Frontend và Edge Function.
+Khi clone dự án về máy, bạn cần cấu hình thông tin kết nối tới hệ thống dữ liệu dùng chung của nhóm:
 
-#### Bước 1: Cấu hình Frontend
-1. Nhân bản file `.env.example` ở thư mục gốc thành `.env.local` (nếu chưa có):
+1. Nhân bản file `.env.example` ở thư mục gốc và đổi tên thành `.env.local`:
    ```bash
    cp .env.example .env.local
    ```
-2. Điền thông tin kết nối Supabase của bạn:
+2. Mở file `.env.local` vừa tạo và điền thông tin kết nối Supabase dùng chung của nhóm (liên hệ trưởng nhóm để lấy thông tin này):
    ```env
-   VITE_SUPABASE_URL=https://<your-project-id>.supabase.co
-   VITE_SUPABASE_ANON_KEY=<your-anon-key>
+   VITE_SUPABASE_URL=https://nmcnwoqkikfmyjxwnfer.supabase.co
+   VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6...
    ```
 
-#### Bước 2: Cấu hình Backend Edge Function
-1. Tạo một file `.env` nằm trong thư mục `supabase/` (đường dẫn: `supabase/.env`):
-   ```env
-   CHATBOT_API_KEY=AIzaSy... (Điền Google Gemini API Key của bạn vào đây)
-   ```
-   *Lưu ý: Thư mục `supabase/.env` đã được cấu hình trong `.gitignore` để không bị đẩy lên GitHub.*
+### 2. Khởi động ứng dụng
 
-### 2. Cách lấy Google Gemini API Key miễn phí
-1. Truy cập vào [Google AI Studio](https://aistudio.google.com/).
-2. Đăng nhập bằng tài khoản Google của bạn.
-3. Nhấn vào **Get API Key** và tạo một API Key mới.
-4. Copy mã API Key vừa tạo (thường bắt đầu bằng `AIzaSy...`) và paste vào biến `CHATBOT_API_KEY` trong file `supabase/.env`.
+Sau khi đã thiết lập file `.env.local`, bạn có thể chạy dự án bình thường:
 
-### 3. Cách chạy dự án dưới máy Local
-
-#### Chạy Frontend
-Cài đặt các dependencies và chạy server phát triển của Vite:
 ```bash
+# Cài đặt các thư viện cần thiết
 npm install
+
+# Khởi chạy giao diện phát triển
 npm run dev
 ```
 
-#### Chạy Supabase Edge Functions Local (Giả lập)
-Nếu bạn muốn kiểm tra hoặc chỉnh sửa chatbot cục bộ:
-1. Đảm bảo đã cài đặt [Docker](https://www.docker.com/) và Docker đang chạy.
-2. Khởi động Supabase local:
-   ```bash
-   supabase start
-   ```
-3. Chạy trình giả lập Edge Function cục bộ:
-   ```bash
-   supabase functions serve chat-bot --env-file supabase/.env --no-verify-jwt
-   ```
-   *Lúc này, Frontend của bạn khi gọi `supabase.functions.invoke('chat-bot')` sẽ tự động chuyển tiếp cuộc gọi đến Edge Function đang chạy ở cổng local `54321`.*
-
-### 4. Cách đưa Edge Function lên môi trường Production (Supabase Cloud)
-
-Khi deploy dự án thực tế, bạn cần làm 2 việc:
-1. **Đặt Secret Key lên Supabase**:
-   ```bash
-   supabase secrets set CHATBOT_API_KEY=AIzaSy...
-   ```
-2. **Deploy Edge Function**:
-   ```bash
-   supabase functions deploy chat-bot --no-verify-jwt
-   ```
+Mở trình duyệt theo địa chỉ local hiển thị trên terminal (thường là `http://localhost:5173`) để trải nghiệm hệ thống và chat thử với AI chatbot ở góc dưới màn hình.
 
 ---
 
 ## 🔒 Quy tắc đẩy mã nguồn lên GitHub an toàn
 
-Để bảo vệ thông tin cá nhân và tránh lộ API keys:
-1. **Tuyệt đối không commit** các file sau lên GitHub:
-   - `.env`
-   - `.env.local`
-   - `supabase/.env`
-2. Các file này đã được thêm vào `.gitignore`. Khi đẩy code lên, bạn chỉ cần chạy lệnh git thông thường:
+Để bảo vệ thông tin bảo mật của dự án:
+1. **Không commit** file `.env.local` lên GitHub. File này đã được thêm vào `.gitignore` tự động.
+2. Khi chỉnh sửa xong code, bạn tiến hành push code như bình thường:
    ```bash
    git add .
-   git commit -m "feat: migrate chatbot logic to secure supabase edge function"
+   git commit -m "commit message của bạn"
    git push origin main
    ```
-3. Thành viên khác khi tải code về chỉ cần thực hiện theo mục **1. Cách thiết lập biến môi trường cục bộ** phía trên là có thể sử dụng chatbot bình thường.
