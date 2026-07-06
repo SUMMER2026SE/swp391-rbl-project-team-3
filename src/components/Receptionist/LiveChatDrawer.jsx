@@ -14,8 +14,12 @@ import {
   FileText,
   Clock,
   Sparkles,
-  CheckCircle
+  CheckCircle,
+  Shield,
+  MessageSquare
 } from 'lucide-react';
+import { GLASS_INPUT } from '../../components/common/GlassCard';
+import { ChatSessionModel, CHAT_STATUS } from '../../models/ChatModel';
 
 export default function LiveChatDrawer({ patient, isOpen, onClose, messages, onSendMessage }) {
   const [inputValue, setInputValue] = useState('');
@@ -50,13 +54,13 @@ export default function LiveChatDrawer({ patient, isOpen, onClose, messages, onS
   const cannedTemplates = [
     "Dạ em chào anh/chị, em có thể giúp gì cho anh/chị ạ?",
     "Lịch hẹn khám của anh/chị đã được xác nhận thành công ạ.",
-    "Dạ hiện tại bác sĩ đang bận ca phẫu thuật, em xin phép gọi lại sau ít phút ạ.",
-    "Anh/Chị nhớ đến sớm 15 phút trước giờ hẹn để làm thủ tục check-in nhé ạ."
+    "Dạ hiện tại bác sĩ đang bận, em xin phép gọi lại sau ít phút ạ.",
+    "Anh/Chị nhớ đến sớm 15 phút trước giờ hẹn để làm thủ tục check-in nhé ạ.",
+    "Phòng khám mở cửa từ 8h-17h, thứ Hai đến thứ Bảy ạ.",
+    "Anh/Chị có cần đặt lịch tái khám không ạ?",
   ];
 
   // Filter messages related to this patient
-  // Show messages where senderId === patient.id OR receiverId === patient.id
-  // Also fallback: if the database has simple mock messages, we associate them with the active patient if patientId is not specified
   const chatHistory = (messages || [])?.filter?.(msg => 
     msg.patientId === patient?.id || 
     msg.senderId === patient?.id || 
@@ -115,12 +119,29 @@ export default function LiveChatDrawer({ patient, isOpen, onClose, messages, onS
                 </div>
               </div>
 
-              <button
-                onClick={onClose}
-                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center border-none cursor-pointer active:scale-95 transition-all"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={async () => {
+                    try {
+                      await ChatSessionModel.setStatus(patient.id, CHAT_STATUS.RESOLVED);
+                    } catch (err) {
+                      console.error('Failed to resolve:', err);
+                    }
+                  }}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/60 text-emerald-700 text-[10px] font-extrabold transition-all active:scale-95 cursor-pointer"
+                  title="Đánh dấu đã giải quyết xong"
+                >
+                  <Shield className="w-3.5 h-3.5 text-emerald-600" />
+                  Đã xong
+                </button>
+
+                <button
+                  onClick={onClose}
+                  className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center border-none cursor-pointer active:scale-95 transition-all"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             {/* Quick Profile Collapse Panel (Staff-oriented Context Feature) */}
@@ -213,7 +234,13 @@ export default function LiveChatDrawer({ patient, isOpen, onClose, messages, onS
                 const isAI = msg.senderRole === 'BOT';
                 
                 return (
-                  <div key={msg.id} className={`flex flex-col ${isPatient ? 'items-start' : 'items-end'}`}>
+                  <motion.div 
+                    key={msg.id} 
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                    className={`flex flex-col ${isPatient ? 'items-start' : 'items-end'}`}
+                  >
                     {/* Sender Name and Time */}
                     <div className="flex items-center gap-1.5 text-[9px] text-slate-400 font-semibold mb-1 px-1">
                       <span>{isPatient ? patient.fullName : (isAI ? "DermaSmart AI" : "Bạn")}</span>
@@ -229,8 +256,8 @@ export default function LiveChatDrawer({ patient, isOpen, onClose, messages, onS
                         isPatient
                           ? 'bg-white border border-slate-200/80 text-slate-800 rounded-bl-sm shadow-sm'
                           : isAI
-                            ? 'bg-sky-50 border border-sky-100 text-sky-800 rounded-br-sm shadow-sm flex items-center gap-1.5'
-                            : 'bg-gradient-to-r from-teal-600 to-teal-700 text-white rounded-br-sm shadow-md shadow-teal-700/10'
+                            ? 'bg-sky-50 border border-sky-100 text-sky-800 rounded-br-sm shadow-sm flex items-start gap-1.5'
+                            : 'bg-gradient-to-r from-teal-600 to-emerald-600 text-white rounded-br-sm shadow-md shadow-teal-700/10'
                       }`}
                     >
                       {isAI && <Bot className="w-3.5 h-3.5 text-sky-500 shrink-0" />}
@@ -247,7 +274,7 @@ export default function LiveChatDrawer({ patient, isOpen, onClose, messages, onS
                     }`}>
                       {isPatient ? "Bệnh nhân" : (isAI ? "Trợ lý AI" : "Nhân viên")}
                     </span>
-                  </div>
+                  </motion.div>
                 );
               })}
               <div ref={messagesEndRef} />
@@ -260,7 +287,7 @@ export default function LiveChatDrawer({ patient, isOpen, onClose, messages, onS
                   key={index}
                   onClick={() => setInputValue(template)}
                   title={template}
-                  className="bg-slate-50 hover:bg-teal-50 border border-slate-200/80 hover:border-teal-200 hover:text-teal-700 text-slate-500 text-[10px] font-semibold px-2.5 py-1.5 rounded-xl cursor-pointer transition-all whitespace-nowrap shrink-0 max-w-[150px] truncate"
+                  className="bg-slate-50 hover:bg-teal-50 border border-slate-200/80 hover:border-teal-200 hover:text-teal-700 text-slate-500 text-[10px] font-bold px-2.5 py-1.5 rounded-xl cursor-pointer transition-all whitespace-nowrap shrink-0 max-w-[150px] truncate"
                 >
                   {template}
                 </button>
@@ -275,14 +302,14 @@ export default function LiveChatDrawer({ patient, isOpen, onClose, messages, onS
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Nhập tin nhắn hỗ trợ bệnh nhân..."
-                className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs flex-1 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20 transition-all font-medium text-slate-800"
+                className={`${GLASS_INPUT} px-4 py-3 text-xs flex-1 font-medium`}
               />
               <button
                 onClick={handleSend}
                 disabled={!inputValue.trim()}
                 className={`w-10 h-10 rounded-xl flex items-center justify-center border-none cursor-pointer transition-all shrink-0 ${
                   inputValue.trim()
-                    ? 'bg-gradient-to-tr from-teal-600 to-sky-600 text-white shadow-md shadow-teal-600/20 hover:scale-105 active:scale-95'
+                    ? 'bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-lg shadow-teal-600/20 hover:shadow-xl active:scale-95'
                     : 'bg-slate-100 text-slate-300'
                 }`}
               >
