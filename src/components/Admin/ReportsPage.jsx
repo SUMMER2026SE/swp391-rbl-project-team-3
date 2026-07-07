@@ -1069,6 +1069,7 @@ function aptStatusStyle(status) {
     'Đang chờ':     { bg: '#f0fdfa', color: '#0f766e', border: '#99f6e4', dot: '#14b8a6' },
     'Đã khám':      { bg: '#f0f9ff', color: '#0369a1', border: '#bae6fd', dot: '#0ea5e9' },
     'Đã hủy':       { bg: '#fff1f2', color: '#be123c', border: '#fecdd3', dot: '#f43f5e' },
+    'Đã không đến': { bg: '#faf5ff', color: '#6b21a8', border: '#e9d5ff', dot: '#a855f7' },
   };
   return map[status] || { bg: '#f8fafc', color: '#475569', border: '#e2e8f0', dot: '#94a3b8' };
 }
@@ -1112,31 +1113,112 @@ function loadAppointments() {
   return ([]);
 }
 
-// ── Sub: Chi tiết lịch hẹn ──────────────────────────────────────────────────
-function AptDetailTab({ allApts }) {
+// ── Sub: Quản lý & Chi tiết Lịch hẹn (Đã gộp) ────────────────────────────────
+function AppointmentViewHub() {
+  const [allApts, setAllApts] = useState([]);
+  const [loading, setLoading] = useState(true);
   const { doctors } = useDoctors();
-  const [search, setSearch]       = useState('');
-  const [filterDoc, setFilterDoc] = useState('all');
-  const [expandId, setExpandId]   = useState(null);
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterDoc, setFilterDoc]       = useState('all');
+  const [search, setSearch]             = useState('');
+  const [sortBy, setSortBy]             = useState('date-desc');
+  const [expandId, setExpandId]         = useState(null);
 
-  // Safety: ensure allApts is always array
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        await DoctorModel.getAllDoctors(); // Warm cache
+        const data = await AppointmentModel.getAll();
+        if (active) {
+          setAllApts(data || []);
+        }
+      } catch (e) {
+        console.warn('Failed to load appointments for view hub:', e);
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => { active = false; };
+  }, []);
+
+  const ALL_STATUSES = ['Đã xác nhận','Chờ xác nhận','Đang chờ','Đã khám','Đã hủy','Đã không đến'];
   const apts = Array.isArray(allApts) ? allApts : [];
+
+  const stats = useMemo(() => {
+    const m = {};
+    apts.forEach(a => { if (a?.status) m[a.status] = (m[a.status]||0)+1; });
+    return m;
+  }, [apts]);
+
+  const paidCount   = useMemo(() => apts?.filter?.(a => a?.paymentStatus === 'Đã thanh toán').length, [apts]);
+  const unpaidCount = useMemo(() => apts?.filter?.(a => a?.paymentStatus === 'Chưa thanh toán' && a?.status !== 'Đã hủy' && a?.status !== 'Đã không đến').length, [apts]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    return apts?.filter?.(a =>
-      a && (
-        !q
-        || (a.patientName||'').toLowerCase().includes(q)
+    let list = apts?.filter?.(a => {
+      if (!a) return false;
+      const matchQ = !q 
+        || (a.patientName||'').toLowerCase().includes(q) 
         || (a.doctorName||'').toLowerCase().includes(q)
         || (a.service||'').toLowerCase().includes(q)
-        || (a.id||'').toLowerCase().includes(q)
-      )
-      && (filterDoc === 'all' || a.doctorId === filterDoc)).sort((a,b) => (b.date||'').localeCompare(a.date||''));
-  }, [apts, search, filterDoc]);
+        || String(a.id||'').toLowerCase().includes(q);
+      return matchQ && (filterStatus === 'all' || a.status === filterStatus) && (filterDoc === 'all' || a.doctorId === filterDoc);
+    });
+    if (sortBy === 'date-desc') list = [...list].sort((a,b) => (b.date||'').localeCompare(a.date||''));
+    if (sortBy === 'date-asc')  list = [...list].sort((a,b) => (a.date||'').localeCompare(b.date||''));
+    return list;
+  }, [apts, search, filterStatus, filterDoc, sortBy]);
+
+  if (loading) {
+    return (
+      <div className="min-h-[320px] flex flex-col items-center justify-center gap-3 text-slate-500 bg-white/60 backdrop-blur-xl border border-white/50 rounded-[18px]">
+        <div className="w-10 h-10 rounded-full border-4 border-slate-200 border-t-indigo-500 animate-spin" />
+        <p className="text-sm font-medium">Đang tải danh sách lịch hẹn…</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
+      {/* Status summary cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        {ALL_STATUSES?.map?.((status, i) => {
+          const s = aptStatusStyle(status);
+          const isActive = filterStatus === status;
+          return (
+            <motion.div key={status}
+              initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
+              onClick={() => setFilterStatus(filterStatus === status ? 'all' : status)}
+              className={`border rounded-2xl p-3 text-center cursor-pointer hover:shadow-sm transition-all ${isActive ? 'ring-2 ring-offset-1 ring-indigo-400' : ''}`}
+              style={{ background: s.bg, borderColor: s.border }}
+            >
+              <div className="w-2.5 h-2.5 rounded-full mx-auto mb-2" style={{ background: s.dot }} />
+              <p className="text-2xl font-black" style={{ color: s.color }}>{stats[status]||0}</p>
+              <p className="text-[10px] font-semibold text-slate-600 mt-0.5 leading-snug">{status}</p>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      {/* Payment quick stats */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-center gap-3">
+          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+          <div>
+            <p className="text-xl font-black text-emerald-700">{paidCount}</p>
+            <p className="text-xs font-semibold text-slate-600">Đã thanh toán</p>
+          </div>
+        </div>
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center gap-3">
+          <Clock className="w-5 h-5 text-amber-600 shrink-0" />
+          <div>
+            <p className="text-xl font-black text-amber-700">{unpaidCount}</p>
+            <p className="text-xs font-semibold text-slate-600">Chưa thanh toán</p>
+          </div>
+        </div>
+      </div>
+
       {/* Filters */}
       <div className="flex flex-wrap gap-3 items-center bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
         <div className="relative flex-1 min-w-48">
@@ -1145,11 +1227,18 @@ function AptDetailTab({ allApts }) {
             placeholder="Tìm bệnh nhân, bác sĩ, dịch vụ, mã lịch hẹn..."
             className="w-full pl-9 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/20" />
         </div>
+        <GlassSelect value={filterStatus} onChange={setFilterStatus}
+          options={[{ value: 'all', label: 'Tất cả trạng thái' }, ...(ALL_STATUSES || []).map(s => ({ value: s, label: s }))]}
+          buttonClassName="px-3 py-2.5 text-sm" />
         <GlassSelect value={filterDoc} onChange={setFilterDoc}
           options={[{ value: 'all', label: 'Tất cả bác sĩ' }, ...(doctors || []).map(d => ({ value: String(d.id), label: d.name }))]}
           buttonClassName="px-3 py-2.5 text-sm" />
-        <span className="text-xs text-slate-400 font-medium ml-auto">{filtered.length} lịch hẹn</span>
+        <GlassSelect value={sortBy} onChange={setSortBy}
+          options={[{ value: 'date-desc', label: 'Mới nhất trước' }, { value: 'date-asc', label: 'Cũ nhất trước' }]}
+          buttonClassName="px-3 py-2.5 text-sm" />
+        <span className="text-xs text-slate-400 font-medium ml-auto">{filtered.length}/{allApts.length}</span>
       </div>
+
       {/* List */}
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
         {filtered.length > 0 ? (
@@ -1161,7 +1250,7 @@ function AptDetailTab({ allApts }) {
                 <motion.div key={apt.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.02 }}>
                   <div className="flex items-center gap-4 px-5 py-4 hover:bg-slate-50/70 transition-colors cursor-pointer"
                     onClick={() => setExpandId(isExp ? null : apt.id)}>
-                    <div className="w-2 h-2 rounded-full shrink-0" style={{ background: st.dot }} />
+                    <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: st.dot }} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-bold text-slate-800">{apt.patientName}</span>
@@ -1217,208 +1306,10 @@ function AptDetailTab({ allApts }) {
         ) : (
           <div className="text-center py-12">
             <Calendar className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-            <p className="text-sm text-slate-400 font-semibold">Không tìm thấy lịch hẹn nào.</p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── Sub: Trạng thái lịch hẹn ────────────────────────────────────────────────
-function AptStatusTab({ allApts }) {
-  const { doctors } = useDoctors();
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [filterDoc, setFilterDoc]       = useState('all');
-  const [search, setSearch]             = useState('');
-  const [sortBy, setSortBy]             = useState('date-desc');
-
-  const ALL_STATUSES = ['Đã xác nhận','Chờ xác nhận','Đang chờ','Đã khám','Đã hủy'];
-
-  // Safety
-  const apts = Array.isArray(allApts) ? allApts : [];
-
-  const stats = useMemo(() => {
-    const m = {};
-    apts.forEach(a => { if (a?.status) m[a.status] = (m[a.status]||0)+1; });
-    return m;
-  }, [apts]);
-
-  const paidCount   = useMemo(() => apts?.filter?.(a => a?.paymentStatus === 'Đã thanh toán').length, [apts]);
-  const unpaidCount = useMemo(() => apts?.filter?.(a => a?.paymentStatus === 'Chưa thanh toán' && a?.status !== 'Đã hủy').length, [apts]);
-
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    let list = apts?.filter?.(a => {
-      if (!a) return false;
-      const matchQ = !q || (a.patientName||'').toLowerCase().includes(q) || (a.doctorName||'').toLowerCase().includes(q);
-      return matchQ && (filterStatus === 'all' || a.status === filterStatus) && (filterDoc === 'all' || a.doctorId === filterDoc);
-    });
-    if (sortBy === 'date-desc') list = [...list].sort((a,b) => (b.date||'').localeCompare(a.date||''));
-    if (sortBy === 'date-asc')  list = [...list].sort((a,b) => (a.date||'').localeCompare(b.date||''));
-    return list;
-  }, [apts, search, filterStatus, filterDoc, sortBy]);
-
-  return (
-    <div className="space-y-4">
-      {/* Status summary cards — dùng inline style tránh purge */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        {ALL_STATUSES?.map?.((status, i) => {
-          const s = aptStatusStyle(status);
-          const isActive = filterStatus === status;
-          return (
-            <motion.div key={status}
-              initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
-              onClick={() => setFilterStatus(filterStatus === status ? 'all' : status)}
-              className={`border rounded-2xl p-3 text-center cursor-pointer hover:shadow-sm transition-all ${isActive ? 'ring-2 ring-offset-1 ring-indigo-400' : ''}`}
-              style={{ background: s.bg, borderColor: s.border }}
-            >
-              <div className="w-2.5 h-2.5 rounded-full mx-auto mb-2" style={{ background: s.dot }} />
-              <p className="text-2xl font-black" style={{ color: s.color }}>{stats[status]||0}</p>
-              <p className="text-[10px] font-semibold text-slate-600 mt-0.5 leading-snug">{status}</p>
-            </motion.div>
-          );
-        })}
-      </div>
-      {/* Payment quick stats */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-center gap-3">
-          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-          <div>
-            <p className="text-xl font-black text-emerald-700">{paidCount}</p>
-            <p className="text-xs font-semibold text-slate-600">Đã thanh toán</p>
-          </div>
-        </div>
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center gap-3">
-          <Clock className="w-5 h-5 text-amber-600 shrink-0" />
-          <div>
-            <p className="text-xl font-black text-amber-700">{unpaidCount}</p>
-            <p className="text-xs font-semibold text-slate-600">Chưa thanh toán</p>
-          </div>
-        </div>
-      </div>
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3 items-center bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
-        <div className="relative flex-1 min-w-48">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Tìm bệnh nhân, bác sĩ..."
-            className="w-full pl-9 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/20" />
-        </div>
-        <GlassSelect value={filterStatus} onChange={setFilterStatus}
-          options={[{ value: 'all', label: 'Tất cả trạng thái' }, ...(ALL_STATUSES || []).map(s => ({ value: s, label: s }))]}
-          buttonClassName="px-3 py-2.5 text-sm" />
-        <GlassSelect value={filterDoc} onChange={setFilterDoc}
-          options={[{ value: 'all', label: 'Tất cả bác sĩ' }, ...(doctors || []).map(d => ({ value: String(d.id), label: d.name }))]}
-          buttonClassName="px-3 py-2.5 text-sm" />
-        <GlassSelect value={sortBy} onChange={setSortBy}
-          options={[{ value: 'date-desc', label: 'Mới nhất trước' }, { value: 'date-asc', label: 'Cũ nhất trước' }]}
-          buttonClassName="px-3 py-2.5 text-sm" />
-        <span className="text-xs text-slate-400 font-medium ml-auto">{filtered.length}/{allApts.length}</span>
-      </div>
-      {/* List */}
-      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-        {filtered.length > 0 ? (
-          <div className="divide-y divide-slate-100">
-            {filtered?.map?.((apt, i) => {
-              const st = aptStatusStyle(apt.status);
-              return (
-                <motion.div key={apt.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.02 }}
-                  className="flex items-center gap-4 px-5 py-3.5 hover:bg-slate-50/60 transition-colors">
-                  <div className="w-2 h-2 rounded-full shrink-0" style={{ background: st.dot }} />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-bold text-slate-800">{apt.patientName}</span>
-                      <span className="text-xs text-slate-400">•</span>
-                      <span className="text-xs text-slate-600 truncate">{apt.doctorName}</span>
-                    </div>
-                    <p className="text-xs text-slate-400 mt-0.5">{apt.date} {apt.time} • {apt.service}</p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-                    <StatusPill text={apt.status}        styleFn={aptStatusStyle} />
-                    <StatusPill text={apt.paymentStatus} styleFn={aptPaymentStyle} />
-                    <span className="text-xs font-semibold text-slate-700">{apt.fee}</span>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <Calendar className="w-8 h-8 text-slate-300 mx-auto mb-2" />
             <p className="text-sm text-slate-400 font-semibold">Không tìm thấy lịch hẹn.</p>
           </div>
         )}
       </div>
-    </div>
-  );
-}
-
-// ── Hub wrapper ─────────────────────────────────────────────────────────────
-function AppointmentViewHub() {
-  const [sub, setSub] = useState('detail');
-  const [allApts, setAllApts] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      try {
-        await DoctorModel.getAllDoctors(); // Warm cache
-        const data = await AppointmentModel.getAll();
-        if (active) {
-          setAllApts(data || []);
-        }
-      } catch (e) {
-        console.warn('Failed to load appointments for view hub:', e);
-      } finally {
-        if (active) setLoading(false);
-      }
-    })();
-    return () => { active = false; };
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="min-h-[320px] flex flex-col items-center justify-center gap-3 text-slate-500 bg-white/60 backdrop-blur-xl border border-white/50 rounded-[18px]">
-        <div className="w-10 h-10 rounded-full border-4 border-slate-200 border-t-indigo-500 animate-spin" />
-        <p className="text-sm font-medium">Đang tải danh sách lịch hẹn…</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-5">
-      <div className="flex gap-1 bg-white/30 backdrop-blur-md border border-white/40 rounded-2xl p-1.5">
-        {[
-          { id: 'detail', label: 'Chi tiết lịch hẹn',   icon: ChevronDown },
-          { id: 'status', label: 'Trạng thái lịch hẹn',  icon: CheckCircle2 },
-        ]?.map?.(t => {
-          const Icon = t.icon;
-          return (
-            <button key={t.id} onClick={() => setSub(t.id)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all border-none cursor-pointer ${
-                sub === t.id
-                  ? 'bg-white text-indigo-700 shadow-sm font-semibold'
-                  : 'bg-transparent text-slate-500 hover:text-slate-700 hover:bg-white/40'
-              }`}>
-              <Icon className="w-4 h-4" />
-              {t.label}
-            </button>
-          );
-        })}
-        <span className="ml-auto flex items-center text-xs text-slate-400 pr-2 font-medium">
-          {allApts.length} lịch hẹn
-        </span>
-      </div>
-      <AnimatePresence mode="wait">
-        <motion.div key={sub}
-          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 0.15 }}>
-          {sub === 'detail' && <AptDetailTab allApts={allApts} />}
-          {sub === 'status' && <AptStatusTab allApts={allApts} />}
-        </motion.div>
-      </AnimatePresence>
     </div>
   );
 }

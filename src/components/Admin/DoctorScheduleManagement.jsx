@@ -258,8 +258,7 @@ export default function DoctorScheduleManagement() {
     };
 
     const filteredSchedules = schedules?.filter?.((schedule) =>
-        schedule.doctor_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        schedule.room?.toLowerCase().includes(searchTerm.toLowerCase()));
+        schedule.doctor_name?.toLowerCase().includes(searchTerm.toLowerCase()));
 
     const groupedSchedules = React.useMemo(() => {
         const groups = [];
@@ -494,11 +493,11 @@ export default function DoctorScheduleManagement() {
                         <h3 className="font-extrabold text-lg text-slate-800">Danh sách lịch</h3>
                         {isLoading && <RefreshCw className="w-4 h-4 text-indigo-400 animate-spin ml-2" />}
                     </div>
-                    <div className="relative w-full md:w-80"><Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" /><input className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold outline-none" placeholder="Tìm bác sĩ/phòng..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
+                    <div className="relative w-full md:w-80"><Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" /><input className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold outline-none" placeholder="Tìm bác sĩ..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
                 </div>
                 <div className="overflow-x-auto pb-8 min-h-[200px]">
                     <table className="w-full text-left">
-                        <thead className="bg-slate-100/50"><tr><th className="px-8 py-5 text-xs font-bold text-slate-500 uppercase">Bác sĩ</th><th className="px-8 py-5 text-xs font-bold text-slate-500 uppercase">Ngày</th><th className="px-8 py-5 text-xs font-bold text-slate-500 uppercase">Thứ</th><th className="px-8 py-5 text-xs font-bold text-slate-500 uppercase">Giờ</th><th className="px-8 py-5 text-xs font-bold text-slate-500 uppercase">Phòng</th><th className="px-8 py-5 text-xs font-bold text-slate-500 uppercase">Trạng thái</th><th className="px-4 py-5 text-xs font-bold text-slate-500 uppercase text-center">Thao tác</th></tr></thead>
+                        <thead className="bg-slate-100/50"><tr><th className="px-8 py-5 text-xs font-bold text-slate-500 uppercase">Bác sĩ</th><th className="px-8 py-5 text-xs font-bold text-slate-500 uppercase">Ngày</th><th className="px-8 py-5 text-xs font-bold text-slate-500 uppercase">Thứ</th><th className="px-8 py-5 text-xs font-bold text-slate-500 uppercase">Giờ</th><th className="px-8 py-5 text-xs font-bold text-slate-500 uppercase">Trạng thái</th><th className="px-4 py-5 text-xs font-bold text-slate-500 uppercase text-center">Thao tác</th></tr></thead>
                         <tbody className="divide-y divide-slate-100">
                         {groupedSchedules?.map?.((group) => (
                             <tr key={group.id} className="hover:bg-slate-50/80">
@@ -506,7 +505,6 @@ export default function DoctorScheduleManagement() {
                                 <td className="px-8 py-5"><span className="text-sm text-slate-600 font-medium">{group.dateRange}</span></td>
                                 <td className="px-8 py-5"><span className="font-bold text-slate-700 text-xs">{group.daysStr}</span></td>
                                 <td className="px-8 py-5"><div className="grid grid-cols-2 gap-2 min-w-[180px]"><Select value={group.start_time ? group.start_time.slice(0,5) : ''} onChange={(v) => updateGroup(group, 'startTime', v)} options={START_TIME_OPTIONS} /><Select value={group.end_time ? group.end_time.slice(0,5) : ''} onChange={(v) => updateGroup(group, 'endTime', v)} options={END_TIME_OPTIONS} /></div></td>
-                                <td className="px-8 py-5"><Select value={group.room} onChange={(v) => updateGroup(group, 'room', v)} options={['Phòng khám 1', 'Phòng khám 2', 'Phòng khám 3', 'Phòng online'].map(r => ({ label: r, value: r }))} /></td>
                                 <td className="px-8 py-5"><Select value={group.status} onChange={(v) => updateGroup(group, 'status', v)} options={['Đã phân công', 'Đã xác nhận', 'Đã hủy'].map(s => ({ label: s, value: s }))} /></td>
                                 <td className="px-4 py-5 text-center">
                                     <button 

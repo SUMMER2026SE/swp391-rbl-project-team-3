@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  TrendingUp, TrendingDown, Banknote, Monitor, FileText, Package,
+  TrendingUp, TrendingDown, Banknote, Monitor, FileText,
   Download, ChevronDown, Landmark, CreditCard, ListFilter, BarChart2,
   Check
 } from 'lucide-react';
@@ -85,12 +85,10 @@ const FilterDropdown = ({ label, icon: Icon, options, value, onChange, placehold
 
 const generateHistoricalMockData = () => {
   const doctors = ['BS. CKII. Trần Văn A', 'ThS. BS. Nguyễn Thị B', 'BS. Trần Quốc Minh', 'BS. Lê Hoàng Nam'];
-  const methods = ['Tiền mặt', 'Chuyển khoản', 'Thẻ'];
+  const methods = ['Tiền mặt', 'QR Code'];
   const services = [
     { name: 'Khám da liễu tổng quát', type: 'KHÁM BỆNH', minAmount: 150000, maxAmount: 300000 },
-    { name: 'Điều trị mụn chuẩn y khoa', type: 'GÓI LIỆU TRÌNH', minAmount: 800000, maxAmount: 2500000 },
-    { name: 'Xét nghiệm dị ứng da', type: 'XÉT NGHIỆM', minAmount: 500000, maxAmount: 1200000 },
-    { name: 'Liệu trình trẻ hóa da Laser', type: 'GÓI LIỆU TRÌNH', minAmount: 3000000, maxAmount: 8000000 },
+    { name: 'Xét nghiệm dị ứng da', type: 'DỊCH VỤ', minAmount: 500000, maxAmount: 1200000 },
     { name: 'Khám kiểm tra nốt ruồi lạ', type: 'KHÁM BỆNH', minAmount: 200000, maxAmount: 400000 }
   ];
   
@@ -467,25 +465,82 @@ export default function RevenueStatistics() {
           AppointmentModel.getAll(),
         ]);
         const apptById = new Map((appts || []).map(a => [String(a.appointment_id ?? a.id), a]));
-        const mapped = (payments || []).map(p => {
+        const mapped = (payments || []).flatMap(p => {
           const apt = apptById.get(String(p.appointment_id));
           const dt = new Date(p.paid_at || p.created_at || Date.now());
           const dd = String(dt.getDate()).padStart(2, '0');
           const mm = String(dt.getMonth() + 1).padStart(2, '0');
-          const svc = apt?.service || 'Khám da liễu';
-          const type = /liệu trình|gói/i.test(svc) ? 'GÓI LIỆU TRÌNH'
-            : /xét nghiệm|lab/i.test(svc) ? 'XÉT NGHIỆM' : 'KHÁM BỆNH';
-          return {
-            id: p.payment_id,
-            amount: Number(p.final_amount ?? p.total_amount ?? p.amount ?? 0),
-            date: `${dd}/${mm}/${dt.getFullYear()}`,
-            time: `${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`,
-            method: p.payment_method || p.method || 'Tiền mặt',
-            doctor: apt?.doctorName || '—',
-            service: svc,
-            type,
-          };
+          const dateStr = `${dd}/${mm}/${dt.getFullYear()}`;
+          const timeStr = `${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
+          const methodStr = /tiền mặt/i.test(p.payment_method || p.method) ? 'Tiền mặt' : 'QR Code';
+          const doctorStr = apt?.doctorName || '—';
+          
+          const finalAmt = Number(p.final_amount ?? p.total_amount ?? p.amount ?? 0);
+          const svcName = apt?.service || 'Khám da liễu';
+          
+          const results = [];
+          if (finalAmt === 50000) {
+            results.push({
+              id: `${p.payment_id}-deposit`,
+              amount: finalAmt,
+              date: dateStr,
+              time: timeStr,
+              method: methodStr,
+              doctor: doctorStr,
+              service: 'Đặt lịch giữ chỗ',
+              type: 'ĐẶT LỊCH',
+            });
+          } else if (/khám/i.test(svcName)) {
+            const parseFee = (feeVal, defaultVal = 300000) => {
+              if (!feeVal) return defaultVal;
+              if (typeof feeVal === 'number') return feeVal;
+              const parsed = parseInt(String(feeVal).replace(/[^0-9]/g, ''), 10);
+              return isNaN(parsed) ? defaultVal : parsed;
+            };
+            const baseFee = Math.min(finalAmt, parseFee(apt?.fee, 300000));
+            const serviceAmt = finalAmt - baseFee;
+            
+            if (baseFee > 0) {
+              results.push({
+                id: `${p.payment_id}-base`,
+                amount: baseFee,
+                date: dateStr,
+                time: timeStr,
+                method: methodStr,
+                doctor: doctorStr,
+                service: svcName,
+                type: 'KHÁM BỆNH',
+              });
+            }
+            if (serviceAmt > 0) {
+              results.push({
+                id: `${p.payment_id}-service`,
+                amount: serviceAmt,
+                date: dateStr,
+                time: timeStr,
+                method: methodStr,
+                doctor: doctorStr,
+                service: 'Dịch vụ chỉ định',
+                type: 'DỊCH VỤ',
+              });
+            }
+          } else {
+            if (finalAmt > 0) {
+              results.push({
+                id: p.payment_id,
+                amount: finalAmt,
+                date: dateStr,
+                time: timeStr,
+                method: methodStr,
+                doctor: doctorStr,
+                service: svcName,
+                type: 'DỊCH VỤ',
+              });
+            }
+          }
+          return results;
         });
+
         if (active) {
           const historicalMock = generateHistoricalMockData();
           setTransactions([...historicalMock, ...mapped]);
@@ -548,27 +603,62 @@ export default function RevenueStatistics() {
 
   const totalRevenue = filteredData.reduce((sum, t) => sum + t.amount, 0);
   const totalTransactions = filteredData.length;
-  const uniqueDaysCount = new Set(filteredData?.map?.(t => t.date)).size;
-  const avgRevenue = period === 'Ngày' 
-    ? (totalTransactions > 0 ? totalRevenue / totalTransactions : 0)
-    : (uniqueDaysCount > 0 ? totalRevenue / uniqueDaysCount : 0);
+  const avgRevenue = useMemo(() => {
+    if (period === 'Ngày') {
+      return totalTransactions > 0 ? totalRevenue / totalTransactions : 0;
+    }
+    
+    let daysInPeriod = 1;
+    if (period === 'Tuần') {
+      daysInPeriod = 7;
+    } else if (period === 'Tháng') {
+      if (selectedPeriodValue && selectedPeriodValue.includes('/')) {
+        const [mStr, yStr] = selectedPeriodValue.split('/');
+        const m = parseInt(mStr, 10);
+        const y = parseInt(yStr, 10);
+        daysInPeriod = new Date(y, m, 0).getDate();
+      } else {
+        daysInPeriod = 30;
+      }
+    } else if (period === 'Quý') {
+      if (selectedPeriodValue && selectedPeriodValue.includes('/')) {
+        const [qStr, yStr] = selectedPeriodValue.split('/');
+        const q = parseInt(qStr.replace('Q', ''), 10);
+        const y = parseInt(yStr, 10);
+        const mStart = (q - 1) * 3 + 1;
+        daysInPeriod = 
+          new Date(y, mStart, 0).getDate() + 
+          new Date(y, mStart + 1, 0).getDate() + 
+          new Date(y, mStart + 2, 0).getDate();
+      } else {
+        daysInPeriod = 90;
+      }
+    } else if (period === 'Năm') {
+      const y = parseInt(selectedPeriodValue, 10) || new Date().getFullYear();
+      const isLeap = new Date(y, 2, 0).getDate() === 29;
+      daysInPeriod = isLeap ? 366 : 365;
+    }
+    
+    return daysInPeriod > 0 ? totalRevenue / daysInPeriod : 0;
+  }, [period, totalRevenue, totalTransactions, selectedPeriodValue]);
   
-  const treatmentRevenue = filteredData?.filter?.(t => t.type === 'GÓI LIỆU TRÌNH').reduce((sum, t) => sum + t.amount, 0);
   const consultRevenue = filteredData?.filter?.(t => t.type === 'KHÁM BỆNH').reduce((sum, t) => sum + t.amount, 0);
-  const testRevenue = filteredData?.filter?.(t => t.type === 'XÉT NGHIỆM').reduce((sum, t) => sum + t.amount, 0);
+  const serviceRevenue = filteredData?.filter?.(t => t.type === 'DỊCH VỤ').reduce((sum, t) => sum + t.amount, 0);
+  const depositRevenue = filteredData?.filter?.(t => t.type === 'ĐẶT LỊCH').reduce((sum, t) => sum + t.amount, 0);
 
-  const pctTreatment = totalRevenue > 0 ? Math.round((treatmentRevenue / totalRevenue) * 100) : 0;
-  const pctConsult = totalRevenue > 0 ? Math.round((consultRevenue / totalRevenue) * 100) : 0;
-  const pctTest = totalRevenue > 0 ? 100 - pctTreatment - pctConsult : 0;
+  const totalPieRevenue = consultRevenue + serviceRevenue + depositRevenue;
+  const pctConsult = totalPieRevenue > 0 ? Math.round((consultRevenue / totalPieRevenue) * 100) : 0;
+  const pctService = totalPieRevenue > 0 ? Math.round((serviceRevenue / totalPieRevenue) * 100) : 0;
+  const pctDeposit = totalPieRevenue > 0 ? Math.max(0, 100 - pctConsult - pctService) : 0;
 
   const c = 251.2;
-  const treatmentStroke = (pctTreatment / 100) * c;
-  const testStroke = (pctTest / 100) * c;
   const consultStroke = (pctConsult / 100) * c;
+  const serviceStroke = (pctService / 100) * c;
+  const depositStroke = (pctDeposit / 100) * c;
   
-  const treatmentOffset = 0;
-  const consultOffset = -treatmentStroke;
-  const testOffset = consultOffset - consultStroke;
+  const serviceOffset = 0;
+  const consultOffset = -serviceStroke;
+  const depositOffset = -(serviceStroke + consultStroke);
 
   const doctorStats = useMemo(() => {
     const stats = {};
@@ -713,20 +803,19 @@ export default function RevenueStatistics() {
     const maxVal = Math.max(...rawData?.map?.(d => d.value), 1);
     return rawData?.map?.(d => ({
       label: d.label,
-      height: d.value === 0 ? 0 : Math.max((d.value / maxVal) * 100, 12),
+      value: d.value,
+      height: d.value === 0 ? 0 : Math.max((d.value / maxVal) * 130, 8),
       highlight: d.value > 0
     }));
   }, [transactions, doctor, method, type, period, selectedPeriodValue]);
 
   const getMethodIcon = (name) => {
-    if (name.toLowerCase().includes('chuyển khoản')) return Landmark;
-    if (name.toLowerCase().includes('thẻ')) return CreditCard;
+    if (name.toLowerCase().includes('qr')) return CreditCard;
     return Banknote;
   };
 
   const getMethodColor = (name) => {
-    if (name.toLowerCase().includes('chuyển khoản')) return 'bg-emerald-600';
-    if (name.toLowerCase().includes('thẻ')) return 'bg-sky-500';
+    if (name.toLowerCase().includes('qr')) return 'bg-orange-500';
     return 'bg-amber-500';
   };
 
@@ -755,11 +844,11 @@ export default function RevenueStatistics() {
   // Dynamic Trends
   const getTrend = (metric) => {
     const trends = {
-      'Ngày': { revenue: 5.2, tx: 8.1, avg: -1.5, pkg: 4.2 },
-      'Tuần': { revenue: 10.4, tx: 12.0, avg: 3.5, pkg: 8.9 },
-      'Tháng': { revenue: 12.5, tx: -2.1, avg: 15.0, pkg: -5.4 },
-      'Quý': { revenue: -4.2, tx: 5.3, avg: -8.1, pkg: 12.0 },
-      'Năm': { revenue: 22.4, tx: 18.5, avg: 4.2, pkg: 25.1 }
+      'Ngày': { revenue: 5.2, tx: 8.1, avg: -1.5 },
+      'Tuần': { revenue: 10.4, tx: 12.0, avg: 3.5 },
+      'Tháng': { revenue: 12.5, tx: -2.1, avg: 15.0 },
+      'Quý': { revenue: -4.2, tx: 5.3, avg: -8.1 },
+      'Năm': { revenue: 22.4, tx: 18.5, avg: 4.2 }
     };
     const val = trends[period][metric];
     return {
@@ -771,7 +860,21 @@ export default function RevenueStatistics() {
   const revTrend = getTrend('revenue');
   const txTrend = getTrend('tx');
   const avgTrend = getTrend('avg');
-  const pkgTrend = getTrend('pkg');
+
+  const maxChartValue = useMemo(() => {
+    const vals = chartData?.map?.(d => d.value || 0) || [];
+    return Math.max(...vals, 1);
+  }, [chartData]);
+
+  const formatYAxisLabel = (val) => {
+    if (val >= 1000000) {
+      return (val / 1000000).toFixed(1).replace('.0', '') + 'M';
+    }
+    if (val >= 1000) {
+      return (val / 1000).toFixed(0) + 'k';
+    }
+    return String(val);
+  };
 
   if (loading) {
     return (
@@ -873,7 +976,7 @@ export default function RevenueStatistics() {
         </button>
       </div>
       {/* ── KPI Cards ── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mt-1 relative z-30">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-1 relative z-30">
         <div className={`${GLASS_BASE} ${GLASS_HOVER} p-6 flex flex-col min-h-[130px]`}>
           <div className="flex items-start justify-between mb-4">
             <div className="p-2 bg-[#4F46E5] rounded-2xl text-white shadow-md shadow-indigo-500/20">
@@ -927,24 +1030,6 @@ export default function RevenueStatistics() {
             <p className="text-[9px] text-slate-500 font-medium uppercase tracking-wider">{period === 'Ngày' ? 'TB mỗi giao dịch' : 'TB mỗi ngày'}</p>
           </div>
         </div>
-
-        <div className={`${GLASS_BASE} ${GLASS_HOVER} p-6 flex flex-col min-h-[130px]`}>
-          <div className="flex items-start justify-between mb-4">
-            <div className="p-2 bg-[#6366F1] rounded-2xl text-white shadow-md shadow-indigo-500/20">
-              <Package className="w-4 h-4" />
-            </div>
-            {period !== 'Ngày' && (
-              <div className={`flex items-center gap-1 text-[11px] font-black ${pkgTrend.isUp ? 'text-emerald-600' : 'text-rose-600'}`}>
-                {pkgTrend.isUp ? <TrendingUp className="w-3 h-3 stroke-[3]" /> : <TrendingDown className="w-3 h-3 stroke-[3]" />} {pkgTrend.isUp ? '+' : '-'}{pkgTrend.value}%
-              </div>
-            )}
-          </div>
-          <div className="mt-auto">
-            <p className="text-[10px] font-semibold text-slate-500 mb-0.5">Gói liệu trình</p>
-            <p className="text-lg font-black text-slate-900 leading-tight mb-1 tracking-tight">{formatCompactCurrency(treatmentRevenue)}</p>
-            <p className="text-[9px] text-slate-500 font-medium uppercase tracking-wider">Từ các gói điều trị</p>
-          </div>
-        </div>
       </div>
       {/* ── Charts Row ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 relative z-20">
@@ -962,13 +1047,55 @@ export default function RevenueStatistics() {
               </div>
             )}
           </div>
-          <div className="flex-1 flex items-end justify-between gap-2 mt-auto pt-4">
-            {chartData?.map?.((d) => (
-              <div key={d.label} className="flex-1 flex flex-col items-center gap-1.5">
-                <div className={`w-6 md:w-8 ${d.highlight ? 'bg-indigo-600' : 'bg-slate-200'} rounded-t-full transition-all duration-500`} style={{ height: `${d.height}px` }}></div>
-                <span className={`text-[10px] font-bold ${d.highlight ? 'text-indigo-600' : 'text-slate-500'}`}>{d.label}</span>
+
+          <div className="flex-1 flex gap-3 mt-6 min-h-[180px] relative">
+            {/* Y-Axis Labels */}
+            <div className="w-10 flex flex-col justify-between text-right text-[9px] font-bold text-slate-400 select-none pb-5 pr-1.5 h-[150px] mt-auto">
+              <span>{formatYAxisLabel(maxChartValue)}</span>
+              <span>{formatYAxisLabel(maxChartValue * 2 / 3)}</span>
+              <span>{formatYAxisLabel(maxChartValue / 3)}</span>
+              <span>0</span>
+            </div>
+
+            {/* Chart Area */}
+            <div className="flex-1 relative flex flex-col justify-end h-[150px] mt-auto border-b border-slate-200/60 pb-5">
+              {/* Background Grid Lines */}
+              <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pb-5">
+                <div className="w-full border-t border-dashed border-slate-300"></div>
+                <div className="w-full border-t border-dashed border-slate-300"></div>
+                <div className="w-full border-t border-dashed border-slate-300"></div>
+                <div className="w-full"></div>
               </div>
-            ))}
+
+              {/* Foreground Bars */}
+              <div className="absolute inset-x-0 bottom-5 top-0 flex items-end justify-between gap-2 z-10">
+                {chartData?.map?.((d) => (
+                  <div key={d.label} className="flex-1 flex flex-col items-center justify-end h-full group relative">
+                    {/* Bar */}
+                    <div 
+                      className={`w-6 md:w-8 ${d.highlight ? 'bg-indigo-600' : 'bg-slate-200'} transition-all duration-500 relative`} 
+                      style={{ height: `${d.height}px` }}
+                    >
+                      {/* Tooltip on hover */}
+                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1.5 px-2 py-1 bg-slate-800 text-white text-[9px] font-bold rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
+                        {d.value.toLocaleString('vi-VN')} VNĐ
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* X-Axis Labels */}
+          <div className="flex pl-10 pr-0 mt-1">
+            <div className="flex-1 flex justify-between gap-2">
+              {chartData?.map?.((d) => (
+                <div key={d.label} className="flex-1 text-center">
+                  <span className={`text-[10px] font-bold ${d.highlight ? 'text-indigo-600' : 'text-slate-500'}`}>{d.label}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -982,9 +1109,9 @@ export default function RevenueStatistics() {
               <div className="relative w-32 h-32">
                 <svg width="100%" height="100%" viewBox="0 0 100 100" className="transform -rotate-90">
                   <circle cx="50" cy="50" r="40" fill="transparent" stroke="#f1f5f9" strokeWidth="16" />
-                  <circle cx="50" cy="50" r="40" fill="transparent" stroke="#15803d" strokeWidth="16" strokeDasharray={`${treatmentStroke} 251.2`} strokeDashoffset={treatmentOffset} className="transition-all duration-700" />
+                  <circle cx="50" cy="50" r="40" fill="transparent" stroke="#ef4444" strokeWidth="16" strokeDasharray={`${serviceStroke} 251.2`} strokeDashoffset={serviceOffset} className="transition-all duration-700" />
                   <circle cx="50" cy="50" r="40" fill="transparent" stroke="#eab308" strokeWidth="16" strokeDasharray={`${consultStroke} 251.2`} strokeDashoffset={consultOffset} className="transition-all duration-700" />
-                  <circle cx="50" cy="50" r="40" fill="transparent" stroke="#ef4444" strokeWidth="16" strokeDasharray={`${testStroke} 251.2`} strokeDashoffset={testOffset} className="transition-all duration-700" />
+                  <circle cx="50" cy="50" r="40" fill="transparent" stroke="#3b82f6" strokeWidth="16" strokeDasharray={`${depositStroke} 251.2`} strokeDashoffset={depositOffset} className="transition-all duration-700" />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                   <span className="text-[8px] font-bold text-slate-500">TỔNG THU</span>
@@ -995,9 +1122,9 @@ export default function RevenueStatistics() {
             <div className="space-y-2 px-1">
               <div className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2">
-                  <div className="w-2.5 h-2.5 rounded-full bg-green-700"></div><span className="font-semibold text-slate-700">Gói liệu trình</span>
+                  <div className="w-2.5 h-2.5 rounded-full bg-red-500"></div><span className="font-semibold text-slate-700">Dịch vụ</span>
                 </div>
-                <span className="font-bold text-slate-900">{pctTreatment}%</span>
+                <span className="font-bold text-slate-900">{pctService}%</span>
               </div>
               <div className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2">
@@ -1007,9 +1134,9 @@ export default function RevenueStatistics() {
               </div>
               <div className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2">
-                  <div className="w-2.5 h-2.5 rounded-full bg-red-500"></div><span className="font-semibold text-slate-700">Xét nghiệm</span>
+                  <div className="w-2.5 h-2.5 rounded-full bg-blue-500"></div><span className="font-semibold text-slate-700">Đặt lịch giữ chỗ</span>
                 </div>
-                <span className="font-bold text-slate-900">{pctTest}%</span>
+                <span className="font-bold text-slate-900">{pctDeposit}%</span>
               </div>
             </div>
           </div>
@@ -1083,7 +1210,7 @@ export default function RevenueStatistics() {
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/50">
                 <th className="px-4 py-2.5 text-left font-bold text-slate-500 text-[10px] uppercase tracking-wider whitespace-nowrap">Ngày/Giờ</th>
-                <th className="px-4 py-2.5 text-left font-bold text-slate-500 text-[10px] uppercase tracking-wider">Dịch vụ/Xét nghiệm</th>
+                <th className="px-4 py-2.5 text-left font-bold text-slate-500 text-[10px] uppercase tracking-wider">Dịch vụ/Khám bệnh</th>
                 <th className="px-4 py-2.5 text-left font-bold text-slate-500 text-[10px] uppercase tracking-wider whitespace-nowrap">Bác sĩ</th>
                 <th className="px-4 py-2.5 text-left font-bold text-slate-500 text-[10px] uppercase tracking-wider">Loại</th>
                 <th className="px-4 py-2.5 text-left font-bold text-slate-500 text-[10px] uppercase tracking-wider">Phương thức</th>
@@ -1100,8 +1227,8 @@ export default function RevenueStatistics() {
                     <td className="px-4 py-2.5 text-slate-500 font-medium">{tx.doctor}</td>
                     <td className="px-4 py-2.5">
                       <span className={`px-2 py-0.5 text-[9px] font-bold rounded-full whitespace-nowrap tracking-wide ${
-                        tx.type === 'GÓI LIỆU TRÌNH' ? 'bg-green-50 text-green-700' :
-                        tx.type === 'XÉT NGHIỆM' ? 'bg-red-50 text-red-700' :
+                        tx.type === 'DỊCH VỤ' ? 'bg-red-50 text-red-700' :
+                        tx.type === 'ĐẶT LỊCH' ? 'bg-blue-50 text-blue-700' :
                         'bg-yellow-50 text-yellow-700'
                       }`}>
                         {tx.type}

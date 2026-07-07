@@ -51,6 +51,7 @@ const STATUS_STYLES = {
   'Đã hủy': 'bg-rose-50 text-rose-700 border border-rose-200',
   'Reviewed': 'bg-indigo-50 text-indigo-700 border border-indigo-200',
   'Đã thanh toán': 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+  'Đã quá hẹn': 'bg-slate-50 text-slate-500 border border-slate-200',
 };
 
 const PAYMENT_STYLES = {
@@ -70,7 +71,7 @@ function StatusBadge({ text, type = 'status' }) {
 
 // ─── Appointment Card Component ──────────────────────────────────────────────
 
-function AppointmentCard({ apt, index, isUpcoming, onCancel, onReschedule, onViewFeedback, onWriteFeedback, onViewInvoice, existingFeedback }) {
+function AppointmentCard({ apt, index, isUpcoming, isOverdue, onCancel, onReschedule, onViewFeedback, onWriteFeedback, onViewInvoice, existingFeedback }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 15 }}
@@ -87,7 +88,7 @@ function AppointmentCard({ apt, index, isUpcoming, onCancel, onReschedule, onVie
           <Clock className="w-3.5 h-3.5" />
           {apt.time}
         </span>
-        <StatusBadge text={apt.status === 'Đang chờ' ? 'Đang khám' : (isUpcoming ? 'Chưa khám' : apt.status)} type="status" />
+        <StatusBadge text={isOverdue ? 'Đã quá hẹn' : (apt.status === 'Đang chờ' ? 'Đang khám' : (isUpcoming ? 'Chưa khám' : apt.status))} type="status" />
       </div>
 
       <div className="flex items-center gap-2 mb-2">
@@ -1095,6 +1096,7 @@ export default function AppointmentsTab({ setActiveTab, setFeedbackAptId }) {
                 apt={apt}
                 index={idx}
                 isUpcoming
+                isOverdue={false}
                 onCancel={setCancelTarget}
                 onReschedule={setRescheduleTarget}
                 onViewFeedback={handleViewFeedbackRedirect}
@@ -1132,6 +1134,7 @@ export default function AppointmentsTab({ setActiveTab, setFeedbackAptId }) {
                 apt={apt}
                 index={idx}
                 isUpcoming={false}
+                isOverdue={ACTIVE_STATUSES.includes(apt.status) && isDateTimePassed(aptDate(apt), apt.time || apt.start_time)}
                 onCancel={setCancelTarget}
                 onReschedule={setRescheduleTarget}
                 onViewFeedback={handleViewFeedbackRedirect}
