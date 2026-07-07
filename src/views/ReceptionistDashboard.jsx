@@ -665,13 +665,12 @@ export default function ReceptionistDashboard() {
   function formatVND(n) {
     return n.toLocaleString('vi-VN') + ' VNĐ';
   }
-
   function PriceSummary({ originalAmount }) {
     if (!originalAmount) {
       return (
         <div className="bg-white/30 border border-white/40 rounded-2xl p-3.5 space-y-2 text-left">
           <div className="flex justify-between text-xs font-semibold text-slate-600">
-            <span>Giá dịch vụ</span>
+            <span>Phí khám bệnh</span>
             <span className="italic text-slate-400 text-[11px]">(Được xác định theo bác sĩ)</span>
           </div>
         </div>
@@ -681,13 +680,12 @@ export default function ReceptionistDashboard() {
     return (
       <div className="bg-white/30 border border-white/40 rounded-2xl p-3.5 space-y-2 text-left">
         <div className="flex justify-between text-xs font-semibold text-slate-600">
-          <span>Giá dịch vụ</span>
+          <span>Phí khám bệnh</span>
           <span>{formatVND(originalAmount)}</span>
         </div>
       </div>
     );
   }
-
   // ─── Working Doctors for selected date ───
   const workingDocs = useMemo(() => {
     if (!selectedDate) return [];

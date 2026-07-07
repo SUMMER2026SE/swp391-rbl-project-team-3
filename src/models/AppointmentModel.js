@@ -72,6 +72,44 @@ export const AppointmentModel = {
     if (!row) return null;
     const doctors = DoctorModel.getAllDoctorsSync?.() || [];
     const doc = doctors.find(d => String(d.id || d.user_id) === String(row.doctor_id));
+
+    let status = this.normalizeStatus(row.status);
+    if (status === 'Đang giữ chỗ') {
+      const createdAt = new Date(row.created_at || Date.now()).getTime();
+      const isExpiredTime = Date.now() - createdAt > 5 * 60 * 1000;
+      
+      let isPastDate = false;
+      if (row.appointment_date) {
+        const [y, mo, d] = String(row.appointment_date).includes('-')
+          ? String(row.appointment_date).split('-').map(Number)
+          : String(row.appointment_date).split('/').reverse().map(Number);
+        const [h = 0, mi = 0] = String(row.start_time || '00:00').split(':').map(Number);
+        const apptMs = new Date(y, (mo || 1) - 1, d || 1, h, mi).getTime();
+        if (Date.now() > apptMs) {
+          isPastDate = true;
+        }
+      }
+      
+      if (isExpiredTime || isPastDate) {
+        status = 'Đã hủy';
+      }
+    } else if (status === 'Đã xác nhận' || status === 'Chờ xác nhận') {
+      let isPastDate = false;
+      if (row.appointment_date) {
+        const [y, mo, d] = String(row.appointment_date).includes('-')
+          ? String(row.appointment_date).split('-').map(Number)
+          : String(row.appointment_date).split('/').reverse().map(Number);
+        const [h = 0, mi = 0] = String(row.start_time || '00:00').split(':').map(Number);
+        const apptMs = new Date(y, (mo || 1) - 1, d || 1, h, mi).getTime();
+        if (Date.now() > apptMs) {
+          isPastDate = true;
+        }
+      }
+      if (isPastDate) {
+        status = 'Đã không đến';
+      }
+    }
+
     return {
       ...row,
       id: row.appointment_id || row.id,
@@ -81,7 +119,7 @@ export const AppointmentModel = {
       patientPhone: row.patient_phone || row.patientPhone,
       patientEmail: row.patient_email || row.patientEmail,
       reason: row.reason,
-      status: this.normalizeStatus(row.status),
+      status: status,
       createdAt: row.created_at,
       service: row.service || 'Khám da liễu tổng quát',
       fee: row.fee || '300,000 VNĐ',

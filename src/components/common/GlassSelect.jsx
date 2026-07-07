@@ -86,7 +86,7 @@ export default function GlassSelect({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.18, ease: 'easeOut' }}
-            className={`${GLASS_BASE} !bg-white/95 absolute z-[100] left-0 right-0 mt-2 p-1.5 max-h-60 overflow-auto origin-top ${menuClassName}`}
+            className={`${GLASS_BASE} !bg-white/95 absolute z-[100] left-0 min-w-full w-max shadow-lg mt-2 p-1.5 max-h-60 overflow-auto origin-top ${menuClassName}`}
           >
             {items.length === 0 ? (
               <li className="px-4 py-3 text-base text-slate-800">Không có lựa chọn</li>
@@ -99,13 +99,13 @@ export default function GlassSelect({
                     role="option"
                     aria-selected={active}
                     onClick={() => pick(o.value)}
-                    className={`flex items-center justify-between gap-2 px-4 py-3 rounded-2xl text-base font-semibold text-gray-800 hover:bg-teal-50/80 cursor-pointer transition-colors ${
+                    className={`flex items-center justify-between gap-4 px-4 py-3 rounded-2xl text-base font-semibold text-gray-800 hover:bg-teal-50/80 cursor-pointer transition-colors ${
                       active ? 'bg-teal-100/30' : ''
                     }`}
                   >
-                    <span className="flex items-center gap-2 truncate">
+                    <span className="flex items-center gap-2">
                       {o.icon ? <o.icon className="w-4 h-4 shrink-0 text-slate-500" /> : null}
-                      <span className="truncate">{o.label}</span>
+                      <span className="whitespace-nowrap">{o.label}</span>
                     </span>
                     {active && <Check className="w-4 h-4 text-emerald-600 shrink-0" />}
                   </li>
