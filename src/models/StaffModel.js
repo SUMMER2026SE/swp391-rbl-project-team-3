@@ -63,6 +63,19 @@ export const StaffModel = {
   async create({ name, email, phone, specialty, roleVi, password }) {
     const role = ROLE_BY_VI[roleVi] || ROLE_BY_VI['Lễ tân'];
 
+    // 1. Check if email already exists in public.users using the authenticated admin client
+    const { data: existingUser, error: checkError } = await supabase
+      .from('users')
+      .select('user_id')
+      .eq('email', email.toLowerCase().trim())
+      .maybeSingle();
+
+    if (checkError) throw checkError;
+    if (existingUser) {
+      throw new Error('Email này đã được đăng ký trong hệ thống.');
+    }
+
+    // 2. Call auth.signUp on a throwaway client
     const temp = createClient(
       import.meta.env.VITE_SUPABASE_URL,
       import.meta.env.VITE_SUPABASE_ANON_KEY,
@@ -82,11 +95,31 @@ export const StaffModel = {
       throw signUpError;
     }
 
-    const uid = signUp?.user?.id;
-    if (!uid) throw new Error('Không tạo được tài khoản (thiếu user id). Vui lòng thử lại.');
+    // 3. Obtain user_id. If signUp returns null user (due to Confirm Email setting),
+    // query public.users using the authenticated admin client since the trigger
+    // has already auto-created the row in public.users on signup.
+    let uid = signUp?.user?.id;
+    if (!uid) {
+      for (let i = 0; i < 5; i++) {
+        const { data: userRow } = await supabase
+          .from('users')
+          .select('user_id')
+          .eq('email', email.toLowerCase().trim())
+          .maybeSingle();
+        if (userRow?.user_id) {
+          uid = userRow.user_id;
+          break;
+        }
+        await new Promise((r) => setTimeout(r, 200));
+      }
+    }
 
-    // Upsert (not update) so it works whether or not a DB trigger pre-seeded the row.
-    const { error: userError } = await temp
+    if (!uid) {
+      throw new Error('Không tạo được tài khoản (thiếu user id). Vui lòng thử lại.');
+    }
+
+    // 4. Update the user row using the authenticated admin client (supabase) to bypass RLS limits
+    const { error: userError } = await supabase
       .from('users')
       .upsert(
         { user_id: uid, role_id: role.id, email, full_name: name, phone, status: 'ACTIVE' },
@@ -94,9 +127,9 @@ export const StaffModel = {
       );
     if (userError) throw userError;
 
-    // Best-effort specialty for clinical staff — non-fatal if RLS blocks the write.
+    // 5. Update employee profile using the authenticated admin client (supabase)
     if (specialty && (role.en === 'DOCTOR' || role.en === 'TECHNICIAN')) {
-      const { error: empError } = await temp
+      const { error: empError } = await supabase
         .from('employee_profiles')
         .upsert({ employee_id: uid, specialization: specialty }, { onConflict: 'employee_id' });
       if (empError) console.warn('StaffModel.create: specialty skipped:', empError.message);
