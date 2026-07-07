@@ -4,6 +4,8 @@ import GlassCard, { GLASS_INPUT } from '../../../common/GlassCard';
 import { AppointmentModel } from '../../../../models/AppointmentModel';
 import { DoctorScheduleModel, ACTIVE_SHIFT_STATUSES } from '../../../../models/DoctorScheduleModel';
 import { DoctorModel } from '../../../../models/DoctorModel';
+import { supabase } from '../../../../supabaseClient';
+import ClinicEmailService from '../../../../services/EmailService';
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 const toMinutes = (t) => {
@@ -235,6 +237,38 @@ export default function FollowUpAppointmentForm({ appointment }) {
             };
             setCreated(record);
             localStorage.setItem(storageKey, JSON.stringify(record));
+
+            // Trigger email sending
+            let emailToUse = appointment?.patientEmail || appointment?.patient_email;
+            const patientId = appointment?.patientId || appointment?.patient_id;
+            const patientName = appointment?.patientName || appointment?.patient_name || 'Bệnh nhân';
+            
+            const sendEmailNotification = async () => {
+                if (!emailToUse && patientId && patientId !== '18504773-0f51-405a-aa32-70cae403be6e') {
+                    const { data } = await supabase
+                        .from('users')
+                        .select('email')
+                        .eq('user_id', patientId)
+                        .maybeSingle();
+                    if (data?.email) {
+                        emailToUse = data.email;
+                    }
+                }
+                
+                if (emailToUse) {
+                    const doctorName = doctorsList.find(d => String(d.id) === String(selectedDoctorId))?.name || 'Bác sĩ';
+                    await ClinicEmailService.sendReexaminationEmail(emailToUse, patientName, {
+                        doctorName,
+                        date: selectedDate,
+                        time: selectedTime,
+                        reason: reason.trim(),
+                        location: 'Phòng khám Da liễu DermaSmart, 123 Đường Ba Tháng Hai, Quận 10, TP.HCM',
+                        status: 'Đã xác nhận'
+                    });
+                }
+            };
+            sendEmailNotification().catch(err => console.error('Error sending follow-up email:', err));
+
             setBookedTimes((prev) => [...new Set([...prev, selectedTime])]);
             setSelectedTime('');
         } catch (err) {

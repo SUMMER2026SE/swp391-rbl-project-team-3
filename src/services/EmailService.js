@@ -77,6 +77,26 @@ export const ClinicEmailService = {
   sendInvoiceEmail(patientEmail, patientName, invoiceData) {
     return dispatch('invoice', patientEmail, patientName, invoiceData);
   },
+
+  /**
+   * Send a reexamination reminder email.
+   * @param {string} patientEmail Recipient address.
+   * @param {string} patientName  Recipient name (used in the greeting).
+   * @param {object} reexamData   { doctorName, date, time, reason, location, status }
+   */
+  sendReexaminationEmail(patientEmail, patientName, reexamData) {
+    return dispatch('reexamination', patientEmail, patientName, reexamData);
+  },
+
+  /**
+   * Send a medical record and prescription summary email.
+   * @param {string} patientEmail Recipient address.
+   * @param {string} patientName  Recipient name (used in the greeting).
+   * @param {object} recordData   { diagnosis, symptoms, doctorNotes, medications:[{name,dosage,frequency,instructions,quantity}], followUpDate }
+   */
+  sendMedicalRecordEmail(patientEmail, patientName, recordData) {
+    return dispatch('medical_record', patientEmail, patientName, recordData);
+  },
 };
 
 export default ClinicEmailService;

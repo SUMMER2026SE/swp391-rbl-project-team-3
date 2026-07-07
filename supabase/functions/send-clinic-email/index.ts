@@ -197,6 +197,99 @@ function buildInvoiceEmail(name: string, p: Record<string, unknown> = {}) {
 }
 
 // ---------------------------------------------------------------------------
+// Template: REEXAMINATION confirmation
+//   payload: { doctorName, date, time, reason, location, status }
+// ---------------------------------------------------------------------------
+function buildReexaminationEmail(name: string, p: Record<string, unknown> = {}) {
+  const subject = `Thông báo lịch tái khám định kỳ — ${BRAND.name}`;
+  const rows = [
+    p.doctorName ? detailRow("Bác sĩ hẹn khám", esc(p.doctorName)) : "",
+    p.date ? detailRow("Ngày tái khám", esc(p.date)) : "",
+    p.time ? detailRow("Giờ tái khám", esc(p.time)) : "",
+    p.reason ? detailRow("Lý do tái khám", esc(p.reason)) : "",
+    p.location ? detailRow("Địa điểm", esc(p.location)) : "",
+    p.status ? detailRow("Trạng thái", esc(p.status)) : "",
+  ].join("");
+
+  const inner = `
+    ${greeting(name)}
+    <p style="margin:0 0 24px;font-size:15px;line-height:1.7;color:${BRAND.muted};">
+      Theo chỉ định từ bác sĩ phụ trách tại ${BRAND.name}, Quý khách có lịch tái khám định kỳ để theo dõi và đánh giá tiến trình điều trị da. Thông tin lịch hẹn chi tiết như sau:
+    </p>
+    <table role="presentation" width="100%" style="background:${BRAND.primarySoft}1a;border:1px solid ${BRAND.border};border-radius:14px;padding:8px 22px;margin-bottom:24px;">
+      ${rows}
+    </table>
+    <p style="margin:0 0 8px;font-size:14px;line-height:1.7;color:${BRAND.muted};">
+      📌 <strong>Lưu ý:</strong> Vui lòng mang theo đơn thuốc và hồ sơ bệnh án cũ (nếu có). Đến trước giờ hẹn <strong>10–15 phút</strong> để bác sĩ chuẩn bị chu đáo nhất cho buổi tái khám của bạn.
+    </p>
+    <p style="margin:24px 0 0;font-size:15px;">Trân trọng,<br/><strong style="color:${BRAND.primary};">Đội ngũ y tế ${BRAND.name}</strong></p>
+  `;
+  return { subject, html: shell(subject, inner) };
+}
+
+// ---------------------------------------------------------------------------
+// Template: MEDICAL RECORD & PRESCRIPTION
+//   payload: { diagnosis, symptoms, doctorNotes, medications:[{name,dosage,frequency,instructions,quantity}], followUpDate }
+// ---------------------------------------------------------------------------
+function buildMedicalRecordEmail(name: string, p: Record<string, unknown> = {}) {
+  const subject = `Hồ sơ khám bệnh & Đơn thuốc điện tử — ${BRAND.name}`;
+  
+  const meds = Array.isArray(p.medications) ? p.medications : [];
+  const medRows = meds
+    .map((m: Record<string, unknown>, idx: number) => {
+      const q = m.quantity ? ` (SL: ${esc(m.quantity)})` : "";
+      const details = [
+        m.dosage ? `Liều lượng: ${esc(m.dosage)}` : "",
+        m.frequency ? `Tần suất: ${esc(m.frequency)}` : "",
+        m.instructions ? `Cách dùng: ${esc(m.instructions || m.instruction)}` : ""
+      ].filter(Boolean).join(" | ");
+      
+      return `<tr>
+        <td style="padding:12px 0;border-bottom:1px solid ${BRAND.border};font-size:14px;vertical-align:top;">
+          <div style="font-weight:750;color:${BRAND.ink};">${idx + 1}. ${esc(m.name || m.medicineName || m.medicine_name || '')}${q}</div>
+          ${details ? `<div style="font-size:12px;color:${BRAND.muted};margin-top:4px;">${details}</div>` : ""}
+        </td>
+      </tr>`;
+    })
+    .join("");
+
+  const rows = [
+    p.symptoms ? detailRow("Triệu chứng lâm sàng", esc(p.symptoms)) : "",
+    p.diagnosis ? detailRow("Chẩn đoán bệnh lý", esc(p.diagnosis)) : "",
+    p.followUpDate ? detailRow("Ngày tái khám (dự kiến)", esc(p.followUpDate)) : "",
+  ].join("");
+
+  const inner = `
+    ${greeting(name)}
+    <p style="margin:0 0 24px;font-size:15px;line-height:1.7;color:${BRAND.muted};">
+      ${BRAND.name} xin gửi đến Quý khách tóm tắt hồ sơ khám bệnh và đơn thuốc chỉ định từ bác sĩ sau buổi khám da liễu:
+    </p>
+    
+    <h4 style="margin:24px 0 12px;font-size:15px;color:${BRAND.primary};text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid ${BRAND.primary};padding-bottom:6px;">Kết quả khám bệnh</h4>
+    ${rows ? `<table role="presentation" width="100%" style="margin-bottom:20px;">${rows}</table>` : ""}
+    
+    ${p.doctorNotes ? `
+    <div style="margin:0 0 24px;padding:14px 18px;background:#f0fdfa;border-left:3px solid ${BRAND.primary};border-radius:8px;font-size:14px;color:${BRAND.ink};">
+      <strong>📌 Lời dặn từ Bác sĩ:</strong><br/>
+      <span style="display:inline-block;margin-top:6px;line-height:1.6;color:${BRAND.muted};">${esc(p.doctorNotes)}</span>
+    </div>` : ""}
+    
+    ${medRows ? `
+      <h4 style="margin:24px 0 12px;font-size:15px;color:${BRAND.primary};text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid ${BRAND.primary};padding-bottom:6px;">Đơn thuốc chỉ định</h4>
+      <table role="presentation" width="100%" style="margin-bottom:24px;border-collapse:collapse;">
+        ${medRows}
+      </table>
+    ` : ""}
+
+    <p style="margin:24px 0 0;font-size:14px;line-height:1.7;color:${BRAND.muted};">
+      Vui lòng tuân thủ đúng liều lượng và cách dùng thuốc theo chỉ định của bác sĩ. Nếu xuất hiện bất kỳ dấu hiệu bất thường nào khi dùng thuốc, xin vui lòng ngừng thuốc và liên hệ với hotline phòng khám hoặc đến cơ sở y tế gần nhất.
+    </p>
+    <p style="margin:24px 0 0;font-size:15px;">Trân trọng,<br/><strong style="color:${BRAND.primary};">Đội ngũ y tế ${BRAND.name}</strong></p>
+  `;
+  return { subject, html: shell(subject, inner) };
+}
+
+// ---------------------------------------------------------------------------
 // Handler
 // ---------------------------------------------------------------------------
 Deno.serve(async (req) => {
@@ -236,6 +329,12 @@ Deno.serve(async (req) => {
         break;
       case "invoice":
         built = buildInvoiceEmail(patientName, payload ?? {});
+        break;
+      case "reexamination":
+        built = buildReexaminationEmail(patientName, payload ?? {});
+        break;
+      case "medical_record":
+        built = buildMedicalRecordEmail(patientName, payload ?? {});
         break;
       default:
         return json({ error: `Unsupported email type: '${type}'.` }, 400);

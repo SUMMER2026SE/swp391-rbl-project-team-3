@@ -10,6 +10,7 @@ import { MedicalRecordModel } from '../models/MedicalRecordModel';
 import { PrescriptionModel } from '../models/PrescriptionModel';
 import { ServiceTicketModel } from '../models/ServiceTicketModel';
 import { supabase } from '../supabaseClient';
+import ClinicEmailService from '../services/EmailService';
 import {
   motion,
   AnimatePresence,
@@ -242,7 +243,47 @@ export default function DoctorDashboard() {
         });
       }
 
-      // 5. Refresh from the DB (also drives the Realtime-backed queue) & close.
+      // 5. Send Medical Record Summary Email to Patient (if registered)
+      if (patientId && patientId !== '18504773-0f51-405a-aa32-70cae403be6e') {
+        supabase
+          .from('users')
+          .select('email, full_name')
+          .eq('user_id', patientId)
+          .maybeSingle()
+          .then(({ data }) => {
+            if (data?.email) {
+              const pName = data.full_name || patientName;
+              const meds = (clinicalData?.medications || []).filter((m) => (m?.name || '').trim()).map(m => ({
+                name: m.name,
+                dosage: m.dosage,
+                frequency: m.frequency,
+                instructions: m.instructions || m.instruction,
+                quantity: m.quantity
+              }));
+              
+              ClinicEmailService.sendMedicalRecordEmail(data.email, pName, {
+                diagnosis: clinicalData?.diagnosis || '',
+                symptoms: clinicalData?.symptoms || apt.reason || apt.symptoms || '',
+                doctorNotes: clinicalData?.doctorNotes || clinicalData?.generalInstructions || '',
+                medications: meds,
+                followUpDate: clinicalData?.followUpDate || ''
+              }).then(res => {
+                if (res.ok) {
+                  console.info('EMR summary email sent successfully to', data.email);
+                } else {
+                  console.warn('Failed to send EMR summary email:', res.error);
+                }
+              }).catch(err => {
+                console.error('Error sending EMR summary email:', err);
+              });
+            }
+          })
+          .catch(err => {
+            console.error('Error fetching patient email for EMR:', err);
+          });
+      }
+
+      // 6. Refresh from the DB (also drives the Realtime-backed queue) & close.
       await loadApts();
       localStorage.removeItem(`appointment_draft_${appointmentId}`);
       setActiveAppointment(null);

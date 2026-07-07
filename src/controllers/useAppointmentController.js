@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { AppointmentModel } from '../models/AppointmentModel';
 import { DoctorModel } from '../models/DoctorModel';
 import { NotificationModel } from '../models/NotificationModel';
+import ClinicEmailService from '../services/EmailService';
 
 export function useAppointmentController(patientId = null) {
   const [appointments, setAppointments] = useState([]);
@@ -90,11 +91,37 @@ export function useAppointmentController(patientId = null) {
             );
           }
           if (prefs.email) {
-            setTimeout(() => {
-              window.dispatchEvent(new CustomEvent('show-toast', {
-                detail: { message: `Đã gửi email xác nhận đặt lịch tới hòm thư của bạn.`, type: 'info' }
-              }));
-            }, 500);
+            const emailToUse = bookingData.patientEmail || bookingData.patient_email;
+            const nameToUse = bookingData.patientName || bookingData.patient_name || 'Bệnh nhân';
+            if (emailToUse) {
+              const doc = DoctorModel.getAllDoctorsSync?.().find(d => String(d.id || d.user_id) === String(bookingData.doctorId));
+              const doctorName = doc ? doc.name : 'Bác sĩ';
+              ClinicEmailService.sendAppointmentEmail(emailToUse, nameToUse, {
+                service: bookingData.service || 'Khám Da Liễu',
+                doctorName: doctorName,
+                date: bookingData.date,
+                time: bookingData.time,
+                location: 'Phòng khám Da liễu DermaSmart, 123 Đường Ba Tháng Hai, Quận 10, TP.HCM',
+                note: bookingData.notes || bookingData.reason || '',
+                status: 'Đã xác nhận'
+              }).then(res => {
+                if (res.ok) {
+                  window.dispatchEvent(new CustomEvent('show-toast', {
+                    detail: { message: `Đã gửi email xác nhận lịch hẹn tới email ${emailToUse}.`, type: 'success' }
+                  }));
+                } else {
+                  console.warn('Failed to send booking email:', res.error);
+                }
+              }).catch(err => {
+                console.error('Error sending booking email:', err);
+              });
+            } else {
+              setTimeout(() => {
+                window.dispatchEvent(new CustomEvent('show-toast', {
+                  detail: { message: `Đã gửi email xác nhận đặt lịch tới hòm thư của bạn.`, type: 'info' }
+                }));
+              }, 500);
+            }
           }
           if (prefs.sms) {
             setTimeout(() => {
@@ -126,11 +153,37 @@ export function useAppointmentController(patientId = null) {
             );
           }
           if (prefs.email) {
-            setTimeout(() => {
-              window.dispatchEvent(new CustomEvent('show-toast', {
-                detail: { message: `Đã gửi email xác nhận đặt lịch tới hòm thư của bạn.`, type: 'info' }
-              }));
-            }, 500);
+            const emailToUse = bookingData.patientEmail || bookingData.patient_email;
+            const nameToUse = bookingData.patientName || bookingData.patient_name || 'Bệnh nhân';
+            if (emailToUse) {
+              const doc = DoctorModel.getAllDoctorsSync?.().find(d => String(d.id || d.user_id) === String(bookingData.doctorId || bookingData.doctor_id));
+              const doctorName = doc ? doc.name : 'Bác sĩ';
+              ClinicEmailService.sendAppointmentEmail(emailToUse, nameToUse, {
+                service: bookingData.service || bookingData.service_name || 'Khám Da Liễu',
+                doctorName: doctorName,
+                date: bookingData.appointment_date || bookingData.date,
+                time: bookingData.start_time || bookingData.time,
+                location: 'Phòng khám Da liễu DermaSmart, 123 Đường Ba Tháng Hai, Quận 10, TP.HCM',
+                note: bookingData.notes || bookingData.reason || '',
+                status: 'Đã xác nhận'
+              }).then(res => {
+                if (res.ok) {
+                  window.dispatchEvent(new CustomEvent('show-toast', {
+                    detail: { message: `Đã gửi email xác nhận lịch hẹn tới email ${emailToUse}.`, type: 'success' }
+                  }));
+                } else {
+                  console.warn('Failed to send booking email:', res.error);
+                }
+              }).catch(err => {
+                console.error('Error sending booking email:', err);
+              });
+            } else {
+              setTimeout(() => {
+                window.dispatchEvent(new CustomEvent('show-toast', {
+                  detail: { message: `Đã gửi email xác nhận đặt lịch tới hòm thư của bạn.`, type: 'info' }
+                }));
+              }, 500);
+            }
           }
           if (prefs.sms) {
             setTimeout(() => {

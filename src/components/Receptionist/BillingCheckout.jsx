@@ -19,6 +19,7 @@ import {
 import { AppointmentModel } from '../../models/AppointmentModel';
 import GlassCard, { GLASS_BASE, GLASS_INPUT } from '../common/GlassCard';
 import { supabase } from '../../supabaseClient';
+import ClinicEmailService from '../../services/EmailService';
 import {
   normalizeApt,
   parseFee,
@@ -819,8 +820,64 @@ function ReceiptModal({ receipt, onClose, receptionistId, showToast }) {
     if (isSendingEmail) return;
     setIsSendingEmail(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      showToast?.('Đã gửi hóa đơn thành công đến email của bệnh nhân!', 'success');
+      let emailToUse = receipt.patientEmail;
+      
+      // If patient email is not stored on the appointment, attempt to fetch it from the users table.
+      if (!emailToUse && receipt.patientId && receipt.patientId !== '18504773-0f51-405a-aa32-70cae403be6e') {
+        const { data } = await supabase
+          .from('users')
+          .select('email')
+          .eq('user_id', receipt.patientId)
+          .maybeSingle();
+        if (data?.email) {
+          emailToUse = data.email;
+        }
+      }
+
+      if (!emailToUse) {
+        showToast?.('Không tìm thấy địa chỉ email của bệnh nhân này. Vui lòng cập nhật email trong hồ sơ bệnh nhân.', 'error');
+        return;
+      }
+
+      // Map used services and consultation fee into items format for email
+      const items = (receipt.usedServices || []).map(s => ({
+        name: s.name,
+        qty: 1,
+        price: s.price
+      }));
+      
+      items.unshift({
+        name: `Khám bệnh: ${receipt.serviceName}`,
+        qty: 1,
+        price: receipt.baseTotal
+      });
+
+      if (receipt.followUpFee > 0) {
+        items.push({
+          name: 'Đặt cọc tái khám',
+          qty: 1,
+          price: receipt.followUpFee
+        });
+      }
+
+      const invoiceData = {
+        invoiceNo: `HD-${String(receipt.aptId).replace(/\D/g, '').slice(-6) || '100001'}`,
+        date: receipt.paidAt ? new Date(receipt.paidAt).toLocaleDateString('vi-VN') : new Date().toLocaleDateString('vi-VN'),
+        items: items,
+        total: receipt.total - receipt.discount,
+        paymentMethod: receipt.method || 'Tiền mặt',
+        status: 'Đã thanh toán'
+      };
+
+      const res = await ClinicEmailService.sendInvoiceEmail(emailToUse, receipt.patientName, invoiceData);
+      if (res.ok) {
+        showToast?.('Đã gửi hóa đơn thành công đến email của bệnh nhân!', 'success');
+      } else {
+        showToast?.(`Lỗi gửi email: ${res.error || 'Vui lòng thử lại sau.'}`, 'error');
+      }
+    } catch (err) {
+      console.error('[ReceiptModal] Error sending email:', err);
+      showToast?.('Đã xảy ra lỗi khi gửi email hóa đơn.', 'error');
     } finally {
       setIsSendingEmail(false);
     }

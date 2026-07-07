@@ -62,6 +62,7 @@ export function normalizeApt(a = {}, index = 0) {
     time: String(a.start_time ?? a.time ?? '').slice(0, 5),
     fee: a.fee ?? '300,000 VNĐ',
     status: a.status ?? '',
+    patientEmail: a.patient_email ?? a.patientEmail ?? '',
   };
 }
 
