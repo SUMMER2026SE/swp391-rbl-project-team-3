@@ -1,6 +1,6 @@
 // Dermatology Clinic Management System - Client Application Entry
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import LoginPage from './views/LoginPage';
 import LandingPage from './views/LandingPage';
 import DoctorProfilePage from './views/DoctorProfilePage';
@@ -20,10 +20,23 @@ import './index.css';
 
 function AppContent() {
   const { user, loading, logout, getDashboardPath } = useAuth();
+  const location = useLocation();
 
   const handleLogout = async () => {
     await logout();
   };
+
+  React.useEffect(() => {
+    const isDashboard = location.pathname.startsWith('/dashboard') || location.pathname === '/profile';
+    if (isDashboard) {
+      document.body.classList.add('dashboard-theme');
+    } else {
+      document.body.classList.remove('dashboard-theme');
+    }
+    return () => {
+      document.body.classList.remove('dashboard-theme');
+    };
+  }, [location.pathname]);
 
   if (loading) {
     return (
@@ -39,7 +52,7 @@ function AppContent() {
   } : null;
 
   return (
-    <BrowserRouter>
+    <>
       <Routes>
         <Route 
           path="/" 
@@ -125,7 +138,7 @@ function AppContent() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </BrowserRouter>
+    </>
   );
 }
 
@@ -166,13 +179,15 @@ function GlobalToast() {
 function App() {
   return (
     <AuthProvider>
-      <div className="min-h-screen bg-transparent relative">
-        {/* Trigger Tailwind JIT */}
-        {/* App-wide SVG refraction filters for the liquid-glass system */}
-        <LiquidGlassFilter />
-        <AppContent />
-        <GlobalToast />
-      </div>
+      <BrowserRouter>
+        <div className="min-h-screen bg-transparent relative">
+          {/* Trigger Tailwind JIT */}
+          {/* App-wide SVG refraction filters for the liquid-glass system */}
+          <LiquidGlassFilter />
+          <AppContent />
+          <GlobalToast />
+        </div>
+      </BrowserRouter>
     </AuthProvider>
   );
 }
