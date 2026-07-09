@@ -139,6 +139,7 @@ export function AuthProvider({ children }) {
       const role = roleState.role || 'PATIENT';
       activeUser = {
         id: session.user.id,
+        email: session.user.email,
         name: session.user.user_metadata?.full_name || session.user.email,
         role: role,
         avatar: session.user.user_metadata?.avatar_url,
