@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, UploadCloud, Loader2, Sparkles, AlertTriangle, CheckCircle2, Calendar } from 'lucide-react';
+import { GLASS_BASE, GLASS_HOVER } from './common/GlassCard';
 
 const CLASS_MAP = {
     "acne": { name: "Mụn trứng cá", color: "from-rose-500 to-red-600", bg: "bg-rose-50 text-rose-700 border-rose-100" },
@@ -134,9 +135,30 @@ export default function FreeSkinScanModal({ isOpen, onClose, onBookAppointment }
         formData.append('file', file);
 
         try {
-            const response = await fetch('http://127.0.0.1:5000/predict', {
+            // ── Read file as base64 for Roboflow ─────────────────────────────
+            const ROBOFLOW_URL = import.meta.env.VITE_ROBOFLOW_MODEL_URL;
+            const API_KEY = import.meta.env.VITE_ROBOFLOW_API_KEY;
+
+            if (!ROBOFLOW_URL || !API_KEY) {
+                throw new Error("Thiếu cấu hình API Key của Roboflow trong file .env.local");
+            }
+
+            // Convert file → base64 string (strip data-URI prefix)
+            const rawBase64 = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    const result = reader.result.replace(/^data:image\/\w+;base64,/, '');
+                    resolve(result);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+
+            // POST to Roboflow Inference API
+            const response = await fetch(`${ROBOFLOW_URL}?api_key=${API_KEY}`, {
                 method: 'POST',
-                body: formData
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: rawBase64
             });
 
             if (!response.ok) {
@@ -144,18 +166,64 @@ export default function FreeSkinScanModal({ isOpen, onClose, onBookAppointment }
             }
 
             const data = await response.json();
-            
+
             if (data.error) {
                 throw new Error(data.error);
             }
 
-            setAiResults(data);
-            setImage(URL.createObjectURL(file));
+            // ── Map Roboflow predictions → existing aiResults shape ───────────
+            // Roboflow returns { predictions: [{ class, confidence, ... }] }
+            // Pick the highest-confidence prediction as the primary diagnosis.
+            const predictions = data.predictions || [];
 
-            if (data.cropped) {
-                setActiveTab('annotated');
-            } else {
+            const recommendations = {
+                acne: "Khuyến nghị làm sạch sâu bằng sữa rửa mặt chứa Acid Salicylic (BHA) 2%, kết hợp gel chấm mụn chứa Benzoyl Peroxide hoặc Adapalene. Hãy uống đủ nước và hạn chế thức khuya.",
+                blackheads: "Khuyến nghị sử dụng tẩy tế bào chết hóa học chứa BHA 2% từ 2-3 lần/tuần, kết hợp mặt nạ đất sét để hút bã nhờn dư thừa. Dưỡng ẩm nhẹ dịu dạng gel.",
+                dark_spots: "Khuyến nghị bổ sung Serum Vitamin C, Niacinamide hoặc Arbutin vào chu trình dưỡng da buổi sáng. Bắt buộc sử dụng kem chống nắng quang phổ rộng SPF 50+ hàng ngày.",
+                pores: "Khuyến nghị tập trung làm sạch sâu, sử dụng serum chứa Niacinamide (Vitamin B3) 10% giúp điều tiết dầu và thu nhỏ lỗ chân lông. Tránh bít tắc.",
+                wrinkles: "Khuyến nghị bắt đầu sử dụng Retinol 0.5% hoặc Peptide vào ban đêm để kích thích sản sinh collagen. Chú trọng dưỡng ẩm sâu với Hyaluronic Acid.",
+                normal_skin: "Làn da của bạn rất khỏe mạnh và có độ ẩm tốt. Hãy duy trì chu trình chăm sóc cơ bản gồm: Làm sạch - Dưỡng ẩm nhẹ nhàng - Chống nắng đầy đủ hàng ngày."
+            };
+
+            const objectUrl = URL.createObjectURL(file);
+
+            if (predictions.length === 0) {
+                // No detections → healthy skin
+                setImage(objectUrl);
+                setAiResults({
+                    predicted_class: 'normal_skin',
+                    confidence: 0.95,
+                    recommendation: recommendations.normal_skin,
+                    cropped: false,
+                    annotated_url: objectUrl,
+                    cropped_url: objectUrl,
+                    isDemo: false
+                });
                 setActiveTab('original');
+            } else {
+                // Use the highest-confidence prediction as the primary result
+                const topPred = predictions.reduce((best, p) =>
+                    p.confidence > best.confidence ? p : best
+                , predictions[0]);
+
+                // Normalize Roboflow class name to our CLASS_MAP keys
+                // e.g. "Acne" → "acne", "Dark Spot" → "dark_spots"
+                const classKey = topPred.class
+                    .toLowerCase()
+                    .replace(/\s+/g, '_');
+
+                setImage(objectUrl);
+                setAiResults({
+                    predicted_class: classKey,
+                    confidence: topPred.confidence,
+                    recommendation: recommendations[classKey] || "Vui lòng tham khảo ý kiến bác sĩ da liễu để được tư vấn chi tiết.",
+                    cropped: true,
+                    annotated_url: objectUrl,
+                    cropped_url: objectUrl,
+                    predictions: predictions, // keep full array for potential future use
+                    isDemo: false
+                });
+                setActiveTab('annotated');
             }
         } catch (err) {
             console.warn("Lỗi kết nối đến máy chủ AI thực tế, kích hoạt chế độ mô phỏng:", err);
@@ -234,44 +302,69 @@ export default function FreeSkinScanModal({ isOpen, onClose, onBookAppointment }
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     onClick={onClose}
-                    className="absolute inset-0 bg-slate-900/60 backdrop-blur-md"
+                    className="absolute inset-0 bg-slate-900/50 backdrop-blur-xl"
                 />
 
-                {/* Modal Container */}
+                {/* ═══ Modal Container — Liquid Glass ═══ */}
                 <motion.div
-                    initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                    initial={{ scale: 0.95, opacity: 0, y: 24 }}
                     animate={{ scale: 1, opacity: 1, y: 0 }}
-                    exit={{ scale: 0.95, opacity: 0, y: 20 }}
-                    className="bg-white border border-slate-100 w-full max-w-4xl h-[85vh] rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden relative z-10 font-sans"
+                    exit={{ scale: 0.95, opacity: 0, y: 24 }}
+                    transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                    className={`
+                        ${GLASS_BASE}
+                        w-full max-w-4xl h-[85vh]
+                        !bg-white/75 !backdrop-blur-3xl
+                        !border-white/60
+                        !rounded-[2rem] shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_24px_64px_-16px_rgba(0,0,0,0.15)]
+                        flex flex-col overflow-hidden relative z-10
+                    `}
                 >
-                    {/* Header */}
-                    <div className="px-8 py-5 border-b border-slate-100 flex items-center justify-between shrink-0 bg-gradient-to-r from-emerald-50 to-sky-50">
+                    {/* ── Header — Frosted Glass ─────────────────────────────── */}
+                    <div className="
+                        px-6 sm:px-8 py-4.5
+                        border-b border-white/40
+                        flex items-center justify-between shrink-0
+                        bg-white/20 backdrop-blur-md
+                    ">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center text-white shadow-md shadow-emerald-500/20">
+                            <div className="w-11 h-11 bg-gradient-to-br from-teal-500 to-emerald-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-teal-500/25">
                                 <Sparkles className="w-5 h-5" />
                             </div>
                             <div>
-                                <h3 className="text-lg font-extrabold text-slate-800 tracking-tight flex items-center gap-1.5">
+                                <h3 className="text-lg font-extrabold text-slate-900 tracking-tight">
                                     Soi Da AI Miễn Phí
                                 </h3>
-                                <span className="text-[10px] text-emerald-600 font-bold bg-emerald-100 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                <span className="text-[10px] text-teal-700 font-bold bg-teal-100/70 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                                     DermaSmart AI Technology
                                 </span>
                             </div>
                         </div>
                         <button 
                             onClick={onClose}
-                            className="w-10 h-10 bg-white hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-full border border-slate-200/60 shadow-sm flex items-center justify-center transition-all cursor-pointer"
+                            className="
+                                w-10 h-10 rounded-full
+                                bg-white/50 hover:bg-red-50 backdrop-blur-sm
+                                border border-white/60 hover:border-red-200/60
+                                text-slate-500 hover:text-red-500
+                                flex items-center justify-center
+                                transition-all duration-200
+                                shadow-sm cursor-pointer
+                            "
                         >
                             <X className="w-5 h-5" />
                         </button>
                     </div>
 
-                    {/* Scrollable Body */}
-                    <div className="flex-1 overflow-y-auto p-6 md:p-8 flex flex-col md:flex-row gap-6">
+                    {/* ── Scrollable Body ────────────────────────────────────── */}
+                    <div className="flex-1 overflow-y-auto p-5 sm:p-7 flex flex-col md:flex-row gap-5">
                         
-                        {/* Left Side: Upload Area or Image Preview */}
-                        <div className="flex-1 flex flex-col border border-slate-100 rounded-2xl bg-slate-50/50 p-4 relative overflow-hidden min-h-[300px]">
+                        {/* ═══ Left Panel: Upload / Image Preview ═══ */}
+                        <div className={`
+                            flex-1 flex flex-col
+                            ${GLASS_BASE} p-5 relative overflow-hidden min-h-[300px]
+                            shadow-sm
+                        `}>
                             <input 
                                 type="file" 
                                 accept="image/*" 
@@ -283,68 +376,149 @@ export default function FreeSkinScanModal({ isOpen, onClose, onBookAppointment }
                             {!image ? (
                                 <div 
                                     onClick={handleUploadClick}
-                                    className={`flex-1 flex flex-col items-center justify-center border-2 border-dashed border-slate-300 bg-white hover:border-emerald-400 hover:bg-emerald-50/20 rounded-2xl cursor-pointer transition-all duration-300 p-8 text-center h-full ${isLoading ? 'opacity-50 pointer-events-none' : ''}`}
+                                    className={`
+                                        flex-1 flex flex-col items-center justify-center
+                                        border-2 border-dashed rounded-2xl p-8
+                                        text-center h-full cursor-pointer
+                                        transition-all duration-300
+                                        ${isLoading 
+                                            ? 'border-teal-300/50 bg-teal-50/10 opacity-70 pointer-events-none' 
+                                            : 'border-slate-300/60 bg-white/20 hover:border-teal-500/50 hover:bg-teal-50/15 hover:shadow-lg'
+                                        }
+                                        hover:-translate-y-0.5
+                                    `}
                                 >
                                     {isLoading ? (
-                                        <div className="flex flex-col items-center">
-                                            <Loader2 className="w-12 h-12 text-emerald-500 animate-spin mb-4" />
-                                            <h4 className="text-md font-semibold text-slate-700 mb-1">Đang phân tích cấu trúc da...</h4>
-                                            <p className="text-xs text-slate-400 max-w-xs leading-relaxed">AI đang định vị khuôn mặt, trích xuất vùng da má và phân tích bệnh lý bằng mạng nơ-ron.</p>
-                                        </div>
+                                        <motion.div 
+                                            className="flex flex-col items-center"
+                                            initial={{ opacity: 0, scale: 0.9 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                        >
+                                            <div className="w-16 h-16 rounded-2xl bg-teal-100/60 flex items-center justify-center mb-4">
+                                                <Loader2 className="w-8 h-8 text-teal-600 animate-spin" />
+                                            </div>
+                                            <h4 className="text-sm font-bold text-slate-800 mb-1.5">Đang phân tích cấu trúc da...</h4>
+                                            <p className="text-xs text-slate-600 max-w-xs leading-relaxed">
+                                                AI đang định vị khuôn mặt, trích xuất vùng da và phân tích bệnh lý bằng mạng nơ-ron.
+                                            </p>
+                                        </motion.div>
                                     ) : (
                                         <>
-                                            <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mb-4">
-                                                <UploadCloud className="w-8 h-8 text-emerald-500" />
+                                            <div className="w-16 h-16 bg-teal-100/60 backdrop-blur-sm rounded-2xl flex items-center justify-center mb-4 group-hover:bg-teal-200/60 transition-colors">
+                                                <UploadCloud className="w-8 h-8 text-teal-600" />
                                             </div>
-                                            <h4 className="text-md font-semibold text-slate-700 mb-1">Chụp ảnh khuôn mặt hoặc tải ảnh có sẵn</h4>
-                                            <p className="text-xs text-slate-400 mb-6">Chụp rõ khuôn mặt trực diện để AI phân tích tốt nhất vùng má</p>
-                                            <button className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-sky-500 text-white font-bold text-xs rounded-xl shadow-md border-none cursor-pointer">
+                                            <h4 className="text-sm font-bold text-slate-800 mb-1.5">Chụp ảnh khuôn mặt hoặc tải ảnh có sẵn</h4>
+                                            <p className="text-xs text-slate-600 mb-5">Chụp rõ khuôn mặt trực diện để AI phân tích tốt nhất</p>
+                                            <span className="
+                                                inline-flex items-center gap-1.5
+                                                px-5 py-2.5
+                                                bg-gradient-to-r from-teal-600 to-emerald-600
+                                                text-white font-bold text-xs rounded-xl
+                                                shadow-md shadow-teal-600/10
+                                                hover:from-teal-700 hover:to-emerald-700
+                                                hover:shadow-lg
+                                                transition-all duration-200
+                                            ">
+                                                <UploadCloud className="w-3.5 h-3.5" />
                                                 Chọn ảnh ngay
-                                            </button>
+                                            </span>
                                         </>
                                     )}
                                 </div>
                             ) : (
-                                <div className="flex-1 flex flex-col h-full gap-4">
-                                    {/* Tabs */}
+                                <div className="flex-1 flex flex-col h-full gap-3">
+                                    {/* Glass Tabs */}
                                     {aiResults?.cropped && (
-                                        <div className="flex bg-slate-200/60 p-1 rounded-xl gap-1 text-xs self-start font-medium shrink-0">
+                                        <div className="
+                                            flex bg-slate-950/5 border border-slate-200/50 backdrop-blur-md
+                                            p-1 rounded-xl gap-1 text-xs self-start font-semibold shrink-0
+                                            shadow-inner
+                                        ">
                                             <button 
                                                 onClick={() => setActiveTab('original')}
-                                                className={`px-3 py-1.5 rounded-lg transition-all ${activeTab === 'original' ? 'bg-white text-slate-800 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900'}`}
+                                                className={`px-3.5 py-1.5 rounded-lg transition-all duration-200 cursor-pointer border-none ${
+                                                    activeTab === 'original' 
+                                                        ? 'bg-white text-slate-900 shadow-sm font-bold' 
+                                                        : 'text-slate-600 hover:text-slate-900 hover:bg-white/30'
+                                                }`}
                                             >
                                                 Ảnh gốc
                                             </button>
                                             <button 
                                                 onClick={() => setActiveTab('annotated')}
-                                                className={`px-3 py-1.5 rounded-lg transition-all ${activeTab === 'annotated' ? 'bg-white text-emerald-600 shadow-sm font-bold' : 'text-slate-600 hover:text-emerald-700'}`}
+                                                className={`px-3.5 py-1.5 rounded-lg transition-all duration-200 cursor-pointer border-none ${
+                                                    activeTab === 'annotated' 
+                                                        ? 'bg-teal-600 text-white shadow-sm font-bold' 
+                                                        : 'text-slate-600 hover:text-teal-600 hover:bg-teal-50/30'
+                                                }`}
                                             >
                                                 AI Nhận diện mặt
                                             </button>
                                             <button 
                                                 onClick={() => setActiveTab('cropped')}
-                                                className={`px-3 py-1.5 rounded-lg transition-all ${activeTab === 'cropped' ? 'bg-white text-emerald-600 shadow-sm font-bold' : 'text-slate-600 hover:text-emerald-700'}`}
+                                                className={`px-3.5 py-1.5 rounded-lg transition-all duration-200 cursor-pointer border-none ${
+                                                    activeTab === 'cropped' 
+                                                        ? 'bg-teal-600 text-white shadow-sm font-bold' 
+                                                        : 'text-slate-600 hover:text-teal-600 hover:bg-teal-50/30'
+                                                }`}
                                             >
-                                                Vùng má phân tích (Crop)
+                                                Vùng má phân tích
                                             </button>
                                         </div>
                                     )}
 
-                                    {/* Image Display */}
-                                    <div className="flex-1 relative bg-black rounded-xl overflow-hidden flex items-center justify-center min-h-[220px]">
-                                        {activeTab === 'original' && (
-                                            <img src={image} alt="Original Patient Skin" className="w-full h-full object-contain" />
-                                        )}
-                                        {activeTab === 'annotated' && aiResults?.annotated_url && (
-                                            <img src={aiResults.annotated_url} alt="Face Detection AI" className="w-full h-full object-contain" />
-                                        )}
-                                        {activeTab === 'cropped' && aiResults?.cropped_url && (
-                                            <img src={aiResults.cropped_url} alt="Skin Patch Crop AI" className="w-full h-full object-contain" />
-                                        )}
+                                    {/* Image Display — Dark Glass Container */}
+                                    <div className="flex-1 relative bg-slate-900/90 backdrop-blur-sm rounded-2xl overflow-hidden flex items-center justify-center min-h-[220px] border border-white/10">
+                                        <AnimatePresence mode="wait">
+                                            {activeTab === 'original' && (
+                                                <motion.img 
+                                                    key="original"
+                                                    initial={{ opacity: 0 }}
+                                                    animate={{ opacity: 1 }}
+                                                    exit={{ opacity: 0 }}
+                                                    src={image} 
+                                                    alt="Original Patient Skin" 
+                                                    className="w-full h-full object-contain" 
+                                                />
+                                            )}
+                                            {activeTab === 'annotated' && aiResults?.annotated_url && (
+                                                <motion.img 
+                                                    key="annotated"
+                                                    initial={{ opacity: 0 }}
+                                                    animate={{ opacity: 1 }}
+                                                    exit={{ opacity: 0 }}
+                                                    src={aiResults.annotated_url} 
+                                                    alt="Face Detection AI" 
+                                                    className="w-full h-full object-contain" 
+                                                />
+                                            )}
+                                            {activeTab === 'cropped' && aiResults?.cropped_url && (
+                                                <motion.img 
+                                                    key="cropped"
+                                                    initial={{ opacity: 0 }}
+                                                    animate={{ opacity: 1 }}
+                                                    exit={{ opacity: 0 }}
+                                                    src={aiResults.cropped_url} 
+                                                    alt="Skin Patch Crop AI" 
+                                                    className="w-full h-full object-contain" 
+                                                />
+                                            )}
+                                        </AnimatePresence>
                                         
+                                        {/* Reset button — Frosted */}
                                         <button 
                                             onClick={handleReset}
-                                            className="absolute top-2 right-2 w-8 h-8 bg-black/60 hover:bg-red-500 text-white rounded-full flex items-center justify-center transition-colors shadow-md border border-white/20"
+                                            className="
+                                                absolute top-3 right-3
+                                                w-8 h-8 rounded-full
+                                                bg-black/40 backdrop-blur-md
+                                                hover:bg-red-500/80
+                                                border border-white/20 hover:border-red-400/40
+                                                text-white
+                                                flex items-center justify-center
+                                                transition-all duration-200
+                                                shadow-lg
+                                            "
                                         >
                                             <X className="w-4 h-4" />
                                         </button>
@@ -353,84 +527,131 @@ export default function FreeSkinScanModal({ isOpen, onClose, onBookAppointment }
                             )}
                         </div>
 
-                        {/* Right Side: Analysis Results & Disclaimer */}
-                        <div className="w-full md:w-[350px] flex flex-col gap-5">
+                        {/* ═══ Right Panel: Analysis Results ═══ */}
+                        <div className="w-full md:w-[350px] flex flex-col gap-4">
                             
                             {aiResults ? (
-                                <div className="flex-1 flex flex-col gap-4">
-                                    <div>
-                                        <span className="text-xs text-slate-500">Kết quả phân tích da của bạn:</span>
-                                        <div className={`mt-1.5 flex items-center justify-between p-4 rounded-xl border ${currentClassInfo.bg} font-bold text-md`}>
-                                            <span>{currentClassInfo.name}</span>
-                                            <span className="px-2.5 py-1 bg-white/90 rounded-lg text-xs font-extrabold shadow-sm">
+                                <motion.div 
+                                    className="flex-1 flex flex-col gap-4"
+                                    initial={{ opacity: 0, x: 12 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ duration: 0.3, delay: 0.1 }}
+                                >
+                                    {/* Diagnosis & Confidence Card — Glass */}
+                                    <div className={`${GLASS_BASE} ${GLASS_HOVER} p-5 flex flex-col gap-4 shadow-sm`}>
+                                        <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">
+                                            Kết quả phân tích da
+                                        </span>
+                                        <div className={`
+                                            flex items-center justify-between
+                                            p-4 rounded-xl border
+                                            ${currentClassInfo.bg}
+                                            font-extrabold text-sm
+                                            backdrop-blur-sm shadow-sm
+                                        `}>
+                                            <span className="text-sm font-extrabold">{currentClassInfo.name}</span>
+                                            <span className="px-2.5 py-1 bg-white/90 backdrop-blur-sm rounded-lg text-xs font-extrabold shadow-sm text-slate-800">
                                                 {(aiResults.confidence * 100).toFixed(1)}%
                                             </span>
                                         </div>
-                                    </div>
 
-                                    {aiResults.isDemo && (
-                                        <div className="bg-amber-50/70 border border-amber-200/60 rounded-xl p-3 text-[11px] leading-normal text-amber-800 flex items-start gap-2 shadow-sm">
-                                            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                                            <div>
-                                                <strong>Chế độ Mô phỏng:</strong> Máy chủ phân tích da (AI server) đang ngoại tuyến. Hệ thống tự động tạo kết quả để hiển thị thử nghiệm.
+                                        <div className="mt-1">
+                                            <div className="flex justify-between text-xs font-semibold text-slate-600 mb-2">
+                                                <span>Độ tin cậy của AI:</span>
+                                                <span className="font-bold text-slate-900">{(aiResults.confidence * 100).toFixed(0)}%</span>
+                                            </div>
+                                            <div className="w-full bg-slate-200/50 h-2 rounded-full overflow-hidden backdrop-blur-sm">
+                                                <motion.div 
+                                                    className={`h-full bg-gradient-to-r ${currentClassInfo.color} rounded-full`}
+                                                    initial={{ width: 0 }}
+                                                    animate={{ width: `${aiResults.confidence * 100}%` }}
+                                                    transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+                                                />
                                             </div>
                                         </div>
-                                    )}
-
-                                    {/* Confidence bar */}
-                                    <div>
-                                        <div className="flex justify-between text-xs font-medium text-slate-500 mb-1">
-                                            <span>Độ tin cậy của AI:</span>
-                                            <span>{(aiResults.confidence * 100).toFixed(0)}%</span>
-                                        </div>
-                                        <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                                            <div 
-                                                className={`h-full bg-gradient-to-r ${currentClassInfo.color}`} 
-                                                style={{ width: `${aiResults.confidence * 100}%` }}
-                                            ></div>
-                                        </div>
                                     </div>
 
-                                    {/* AI Spa Recommendation */}
-                                    <div className="bg-emerald-50/40 border border-emerald-100 p-4 rounded-2xl">
-                                        <h4 className="text-xs font-bold text-emerald-800 flex items-center gap-1.5 mb-1.5">
-                                            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                                            Liệu trình đề xuất cho bạn:
+                                    {/* Simulation Warning — Glass */}
+                                    {aiResults.isDemo && (
+                                        <motion.div 
+                                            initial={{ opacity: 0, y: 8 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            className={`
+                                                ${GLASS_BASE} !bg-amber-500/5 border border-amber-500/15
+                                                rounded-xl p-3
+                                                text-[11px] leading-normal text-amber-800
+                                                flex items-start gap-2
+                                            `}
+                                        >
+                                            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                                            <div className="font-medium">
+                                                <strong className="font-extrabold text-amber-900">Chế độ Mô phỏng:</strong> Máy chủ AI đang ngoại tuyến. Hệ thống tự động tạo kết quả thử nghiệm.
+                                            </div>
+                                        </motion.div>
+                                    )}
+
+                                    {/* AI Recommendation — Emerald Glass */}
+                                    <div className={`
+                                        ${GLASS_BASE} !bg-teal-500/5 border border-teal-500/15
+                                        p-5 rounded-2xl shadow-sm flex flex-col gap-2.5
+                                    `}>
+                                        <h4 className="text-sm font-bold text-teal-850 flex items-center gap-2">
+                                            <CheckCircle2 className="w-4 h-4 text-teal-600 shrink-0" />
+                                            Phác đồ điều trị đề xuất:
                                         </h4>
-                                        <p className="text-xs text-slate-600 leading-relaxed italic">
-                                            "{aiResults.recommendation}"
+                                        <p className="text-sm text-slate-800 font-medium leading-relaxed">
+                                            {aiResults.recommendation}
                                         </p>
                                     </div>
 
-                                    {/* Action button */}
+                                    {/* CTA Button — Emerald Glass */}
                                     <button 
                                         onClick={() => {
                                             onClose();
                                             if (onBookAppointment) onBookAppointment();
                                         }}
-                                        className="w-full py-3 bg-gradient-to-r from-teal-500 to-sky-500 hover:from-teal-600 hover:to-sky-600 text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 border-none cursor-pointer"
+                                        className="
+                                            w-full py-3.5 rounded-xl
+                                            bg-gradient-to-r from-teal-600 to-emerald-600
+                                            hover:from-teal-700 hover:to-emerald-700
+                                            text-white font-bold text-sm
+                                            shadow-lg shadow-teal-600/15
+                                            flex items-center justify-center gap-2
+                                            transition-all duration-300 ease-out hover:-translate-y-0.5 active:scale-[0.98]
+                                            cursor-pointer border-none
+                                        "
                                     >
-                                        <Calendar className="w-4 h-4" />
+                                        <Calendar className="w-4.5 h-4.5" />
                                         Đặt lịch khám với Bác sĩ ngay
                                     </button>
-                                </div>
+                                </motion.div>
                             ) : (
-                                <div className="flex-1 flex flex-col justify-center text-center p-6 border border-slate-100 bg-slate-50/30 rounded-2xl">
-                                    <Sparkles className="w-8 h-8 text-emerald-400 mx-auto mb-3" />
-                                    <h4 className="text-sm font-semibold text-slate-700">Công nghệ AI tiên tiến</h4>
-                                    <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                                        Mạng nơ-ron tích chập (CNN) được huấn luyện trên hàng ngàn ca bệnh lâm sàng giúp nhận biết 6 tình trạng da mặt phổ biến một cách nhanh chóng.
+                                /* Empty State — Glass Placeholder */
+                                <div className={`
+                                    flex-1 flex flex-col justify-center text-center p-6
+                                    ${GLASS_BASE} bg-white/20
+                                    shadow-sm gap-2
+                                `}>
+                                    <div className="w-14 h-14 mx-auto mb-2 rounded-2xl bg-teal-100/60 backdrop-blur-sm flex items-center justify-center animate-pulse">
+                                        <Sparkles className="w-7 h-7 text-teal-600" />
+                                    </div>
+                                    <h4 className="text-sm font-bold text-slate-800">Trí tuệ nhân tạo (AI) chẩn đoán</h4>
+                                    <p className="text-xs text-slate-600 leading-relaxed max-w-[260px] mx-auto">
+                                        Hệ thống CNN nhận dạng khuôn mặt trực tiếp và đưa ra kết quả phân tích 6 bệnh lý da liễu phổ biến chỉ trong 2 giây.
                                     </p>
                                 </div>
                             )}
 
-                            {/* Medical Disclaimer - Mandatory for medical AI apps */}
-                            <div className="bg-amber-50/50 border border-amber-100 p-4 rounded-2xl flex gap-3 shrink-0">
+                            {/* Medical Disclaimer — Glass */}
+                            <div className={`
+                                ${GLASS_BASE} !bg-amber-500/5 border border-amber-500/15
+                                p-4 rounded-2xl flex gap-3 shrink-0
+                            `}>
                                 <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                                 <div>
-                                    <span className="text-xs font-bold text-amber-800 block mb-0.5">Khuyến cáo y khoa:</span>
-                                    <p className="text-[10px] text-slate-500 leading-normal">
-                                        Kết quả chẩn đoán tự động của AI chỉ mang tính chất tham khảo sơ bộ và hỗ trợ tư vấn liệu trình. Kết quả này không thay thế cho kết luận chuyên khoa và phác đồ điều trị chính thức của Bác sĩ da liễu.
+                                    <span className="text-xs font-extrabold text-amber-800 block mb-0.5">Khuyến cáo y khoa:</span>
+                                    <p className="text-[10.5px] text-slate-700 font-medium leading-normal">
+                                        Kết quả chẩn đoán tự động của AI chỉ mang tính chất tham khảo sơ bộ. Kết quả này không thay thế cho chẩn đoán chuyên khoa và phác đồ điều trị chính thức của Bác sĩ da liễu.
                                     </p>
                                 </div>
                             </div>
