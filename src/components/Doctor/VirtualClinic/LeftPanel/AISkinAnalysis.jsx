@@ -1,146 +1,168 @@
 import React, { useState, useEffect } from 'react';
-import { Brain, ScanFace } from 'lucide-react';
+import { Brain, ScanFace, ImageOff } from 'lucide-react';
 import { supabase } from '../../../../supabaseClient';
 import { GLASS_BASE } from '../../../common/GlassCard';
 
 export default function AISkinAnalysis({ patientId, ticketsStatusHash }) {
-  const [latestScanUrl, setLatestScanUrl] = useState(null);
+  const [scanData, setScanData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!patientId) return;
+    if (!patientId) {
+      setLoading(false);
+      return;
+    }
     const fetchLatestScan = async () => {
+      setLoading(true);
       try {
         const { data, error } = await supabase
           .from('service_tickets')
           .select(`
             result_image_url,
+            result_images,
+            result_notes,
+            result_metrics,
+            service_name,
+            updated_at,
             appointment:appointments!inner (
               patient_id
             )
           `)
           .eq('appointment.patient_id', patientId)
-          .eq('service_name', 'Soi da cắt lớp AI')
           .eq('status', 'TECH_COMPLETED')
           .order('updated_at', { ascending: false })
           .limit(1);
 
         if (error) throw error;
-        if (data && data[0]?.result_image_url) {
-          setLatestScanUrl(data[0].result_image_url);
+
+        if (data && data.length > 0 && data[0]?.result_image_url) {
+          setScanData(data[0]);
+        } else {
+          setScanData(null);
         }
       } catch (err) {
         console.error('[AISkinAnalysis] Error fetching scan:', err);
+        setScanData(null);
+      } finally {
+        setLoading(false);
       }
     };
     fetchLatestScan();
   }, [patientId, ticketsStatusHash]);
 
-  const fallbackResult = {
-    patientId: patientId || "fallback",
-    overallScore: 85,
-    imageUrl: latestScanUrl || "https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&q=80&w=800",
-    metrics: {
-      acne: { score: 30, severity: "Moderate", description: "Vài nốt mụn viêm ở vùng má." },
-      pigmentation: { score: 90, severity: "Low", description: "Màu da đồng đều, ít sạm nám." },
-      hydration: { score: 55, severity: "Moderate", description: "Da hơi khô ở vùng trán." },
-      wrinkles: { score: 85, severity: "Low", description: "Độ đàn hồi tốt, ít nếp nhăn." }
-    },
-    highlights: [
-      { x: '35%', y: '45%', radius: 30, type: "acne", color: "rgba(239, 68, 68, 0.5)" }, // Red
-      { x: '65%', y: '40%', radius: 25, type: "pigmentation", color: "rgba(245, 158, 11, 0.5)" }, // Amber
-      { x: '50%', y: '25%', radius: 40, type: "hydration", color: "rgba(14, 165, 233, 0.5)" } // Sky blue
-    ]
-  };
-
-  const aiResult = fallbackResult;
-
-  if (!aiResult) {
+  // While loading, show a skeleton
+  if (loading) {
     return (
-      <div className={`${GLASS_BASE} water-refract rounded-2xl p-8 text-center text-slate-500 font-medium mb-6`}>
-        <Brain className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-        <p className="text-sm font-semibold">Chưa có dữ liệu xét nghiệm/AI cho bệnh nhân này.</p>
+      <div className={`${GLASS_BASE} water-refract rounded-2xl p-6`}>
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-5 h-5 rounded bg-slate-200 animate-pulse" />
+          <div className="h-5 w-40 rounded bg-slate-200 animate-pulse" />
+        </div>
+        <div className="aspect-video rounded-xl bg-slate-100 animate-pulse" />
       </div>
     );
   }
+
+  // If patient hasn't used the AI/scan feature at all, hide the section entirely
+  if (!scanData) {
+    return null;
+  }
+
+  // Parse real data from the scan result
+  const imageUrl = scanData.result_image_url;
+  const resultImages = Array.isArray(scanData.result_images) ? scanData.result_images : [];
+  const resultNotes = scanData.result_notes || '';
+  const resultMetrics = scanData.result_metrics && typeof scanData.result_metrics === 'object'
+    ? scanData.result_metrics
+    : {};
+  const serviceName = scanData.service_name || 'Kết quả cận lâm sàng';
+  const updatedAt = scanData.updated_at
+    ? new Date(scanData.updated_at).toLocaleString('vi-VN', {
+        hour: '2-digit', minute: '2-digit',
+        day: '2-digit', month: '2-digit', year: 'numeric'
+      })
+    : null;
+
+  // Collect all real images (primary + extras)
+  const allImages = [];
+  if (imageUrl) allImages.push({ url: imageUrl, name: 'Ảnh chính' });
+  resultImages.forEach((img, idx) => {
+    if (img?.url && img.url !== imageUrl) {
+      allImages.push({ url: img.url, name: img.name || `Ảnh ${idx + 1}` });
+    }
+  });
+
+  const metricEntries = Object.entries(resultMetrics).filter(([k]) => k !== 'fallbackResult');
 
   return (
     <div className={`${GLASS_BASE} water-refract rounded-2xl p-6 text-left`}>
       <div className="flex justify-between items-center mb-6 pb-4 border-b border-slate-200/40">
         <h3 className="font-bold text-lg text-slate-900 flex items-center gap-2">
           <Brain className="w-5 h-5 text-teal-600" />
-          Phân tích da AI
+          {serviceName}
         </h3>
-        <span className="text-xs font-bold text-teal-700 bg-teal-50 px-3 py-1 rounded-full border border-teal-200/50">
-          Điểm tổng thể: {aiResult?.overallScore}/100
-        </span>
+        {updatedAt && (
+          <span className="text-[11px] font-semibold text-slate-500 bg-slate-100/80 px-2.5 py-1 rounded-full">
+            {updatedAt}
+          </span>
+        )}
       </div>
-      <div className="flex flex-col gap-6">
-        {/* Image Viewer with Overlay */}
-        <div className="relative rounded-2xl overflow-hidden bg-slate-900 aspect-square sm:aspect-video flex items-center justify-center border border-slate-200/40 shadow-inner">
-          {aiResult?.imageUrl ? (
-            <img
-              src={aiResult.imageUrl}
-              alt="AI Skin Analysis Scan"
-              className="absolute inset-0 w-full h-full object-cover opacity-90"
-            />
-          ) : (
-            <div className="text-slate-500 flex flex-col items-center">
-              <ScanFace className="w-12 h-12 mb-2 opacity-50" />
-              <p className="text-sm font-semibold">Chưa có hình ảnh scan</p>
-            </div>
-          )}
-          
-          {/* AI Highlights Overlay */}
-          {!latestScanUrl && aiResult?.highlights?.map((highlight, index) => (
-            <div
-              key={index}
-              className="absolute rounded-full border-[3px] shadow-[0_0_15px_rgba(0,0,0,0.3)] animate-pulse"
-              style={{
-                top: highlight.y,
-                left: highlight.x,
-                width: highlight.radius * 2,
-                height: highlight.radius * 2,
-                borderColor: highlight.color,
-                backgroundColor: highlight.color.replace('0.5', '0.1')
-              }}
-              title={highlight.type}
-            ></div>
-          ))}
-        </div>
 
-        {/* Metrics */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {Object.entries(aiResult?.metrics || {})?.map?.(([key, data]) => {
-            let colorClass = "bg-teal-500";
-            let textClass = "text-teal-700";
-            let bgClass = "bg-teal-50";
-            
-            if (data.score < 50) {
-              colorClass = "bg-rose-500";
-              textClass = "text-rose-700";
-              bgClass = "bg-rose-50";
-            } else if (data.score < 70) {
-              colorClass = "bg-amber-500";
-              textClass = "text-amber-700";
-              bgClass = "bg-amber-50";
-            }
+      <div className="flex flex-col gap-5">
+        {/* Real scan images */}
+        {allImages.length > 0 ? (
+          <div className={`grid gap-3 ${allImages.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+            {allImages.map((img, idx) => (
+              <div key={idx} className="relative rounded-2xl overflow-hidden bg-slate-900 border border-slate-200/40 shadow-inner group">
+                <img
+                  src={img.url}
+                  alt={img.name}
+                  className="w-full h-auto max-h-80 object-contain bg-slate-50"
+                  loading="lazy"
+                />
+                {img.name && (
+                  <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent px-3 py-2">
+                    <span className="text-[11px] font-semibold text-white/90">{img.name}</span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-10 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+            <ImageOff className="w-10 h-10 text-slate-300 mb-2" />
+            <p className="text-sm font-semibold text-slate-400">Không có hình ảnh kết quả</p>
+          </div>
+        )}
 
-            return (
-              <div key={key} className="bg-white/50 p-3 rounded-xl border border-slate-200/60 shadow-sm">
-                <div className="flex justify-between mb-2">
-                  <span className="text-xs font-bold text-slate-700 capitalize">{key}</span>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg border ${textClass} ${bgClass} border-current/20`}>
-                    {data.severity}
+        {/* Real metrics from technician */}
+        {metricEntries.length > 0 && (
+          <div className="space-y-3">
+            <h4 className="text-xs font-black text-slate-500 uppercase tracking-wider">Chỉ số xét nghiệm</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {metricEntries.map(([key, value]) => (
+                <div key={key} className="bg-white/60 p-3 rounded-xl border border-slate-200/60 shadow-sm">
+                  <span className="text-xs font-bold text-slate-700 capitalize block mb-1">{key}</span>
+                  <span className="text-sm font-semibold text-slate-900">
+                    {typeof value === 'object' ? JSON.stringify(value) : String(value)}
                   </span>
                 </div>
-                <div className="w-full bg-slate-200/50 rounded-full h-1.5 mb-2">
-                  <div className={`${colorClass} h-1.5 rounded-full`} style={{ width: `${data.score}%` }}></div>
-                </div>
-                <p className="text-[11px] text-slate-500 font-medium line-clamp-2 leading-relaxed">{data.description}</p>
-              </div>
-            );
-          })}
-        </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Technician notes */}
+        {resultNotes && (
+          <div className="bg-amber-50/60 border border-amber-200/50 rounded-xl p-4">
+            <h4 className="text-xs font-black text-amber-700 uppercase tracking-wider mb-2">
+              Ghi chú Kỹ thuật viên
+            </h4>
+            <p className="text-sm text-slate-700 font-medium leading-relaxed whitespace-pre-wrap">
+              {resultNotes}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

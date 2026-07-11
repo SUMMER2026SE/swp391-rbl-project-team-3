@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Pill, Plus, Trash2, Calendar } from 'lucide-react';
+import { Pill, Plus, Trash2, GripVertical, FileText, Stethoscope } from 'lucide-react';
 import { GLASS_INPUT } from '../../../common/GlassCard';
 import GlassAutoComplete from '../../../common/GlassAutoComplete';
 import { PrescriptionModel } from '../../../../models/PrescriptionModel';
@@ -70,9 +70,9 @@ export default function PrescriptionForm({ appointmentId, isReviewMode = false, 
     setMedications(updated);
   };
 
-  const premiumInputClass = `${GLASS_INPUT} w-full p-3 text-sm font-semibold text-gray-900 rounded-xl`;
+  const baseInputClass = `${GLASS_INPUT} w-full text-sm font-semibold text-gray-900 rounded-xl`;
 
-  const getInputClass = (readOnly) => `${premiumInputClass} ${
+  const getInputClass = (readOnly) => `${baseInputClass} ${
     readOnly 
       ? 'bg-slate-100/50 text-slate-900 font-medium cursor-not-allowed border-slate-200/60 focus:ring-0 focus:border-slate-200/80' 
       : ''
@@ -81,99 +81,89 @@ export default function PrescriptionForm({ appointmentId, isReviewMode = false, 
   return (
     <div className="space-y-6">
       {/* Premium Prescription Pad */}
-      <div className="backdrop-blur-xl bg-white/80 border border-slate-200/60 shadow-[0_12px_40px_rgba(0,0,0,0.06)] rounded-2xl p-8 relative overflow-hidden">
+      <div className="backdrop-blur-xl bg-white/80 border border-slate-200/60 shadow-[0_12px_40px_rgba(0,0,0,0.06)] rounded-2xl relative overflow-hidden">
         
-        {/* Decorative elements representing a physical doctor pad */}
-        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500" />
-        <div className="absolute top-2 right-12 w-24 h-24 bg-teal-500/5 rounded-full blur-3xl" />
+        {/* Decorative top bar */}
+        <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500" />
         
         {/* Clinic branding / Header */}
-        <div className="flex justify-between items-start mb-6 border-b border-slate-200/60 pb-6">
-          <div>
-            <h4 className="font-extrabold text-xs uppercase tracking-widest text-emerald-600">
-              Hệ thống Phòng khám Da liễu
-            </h4>
-            <h2 className="font-black text-xl text-slate-900 mt-0.5 tracking-tight">
-              DERMASMART CLINIC
-            </h2>
-            <p className="text-[10px] text-slate-400 font-medium mt-1 leading-relaxed">
-              Địa chỉ: 128 Đường Ba Tháng Hai, Quận 10, TP. Hồ Chí Minh<br />
-              Hotline: 1900 6000 • Website: dermasmart.vn
-            </p>
-          </div>
-          <div className="text-right">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 font-extrabold text-xs">
-              <Pill className="w-3.5 h-3.5 text-emerald-600" /> ĐƠN THUỐC
-            </span>
-            <p className="text-[10px] text-slate-400 font-bold mt-2">
-              Mã HS: RX-{appointmentId || '0023'}
-            </p>
+        <div className="px-8 pt-8 pb-6">
+          <div className="flex justify-between items-start border-b border-slate-200/60 pb-6">
+            <div>
+              <h4 className="font-extrabold text-xs uppercase tracking-widest text-emerald-600">
+                Hệ thống Phòng khám Da liễu
+              </h4>
+              <h2 className="font-black text-xl text-slate-900 mt-0.5 tracking-tight">
+                DERMASMART CLINIC
+              </h2>
+              <p className="text-[10px] text-slate-400 font-medium mt-1 leading-relaxed">
+                Địa chỉ: 128 Đường Ba Tháng Hai, Quận 10, TP. Hồ Chí Minh<br />
+                Hotline: 1900 6000 • Website: dermasmart.vn
+              </p>
+            </div>
+            <div className="text-right">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 font-extrabold text-xs">
+                <Pill className="w-3.5 h-3.5 text-emerald-600" /> ĐƠN THUỐC
+              </span>
+              <p className="text-[10px] text-slate-400 font-bold mt-2">
+                Mã HS: RX-{appointmentId || '0023'}
+              </p>
+            </div>
           </div>
         </div>
 
         {/* Diagnosis Conclusion */}
-        <div className="mb-6">
-          <label className="block text-sm font-semibold text-gray-700 mb-2 uppercase tracking-wider">
-            Kết luận chẩn đoán bệnh
-          </label>
+        <div className="px-8 pb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <Stethoscope className="w-4 h-4 text-teal-600" />
+            <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">
+              Kết luận chẩn đoán bệnh
+            </label>
+          </div>
           <textarea
             value={diagnosis}
             onChange={(e) => setDiagnosis(e.target.value)}
             placeholder="Nhập kết luận chẩn đoán bệnh..."
             rows="2"
-            className={`${getInputClass(isReviewMode)} resize-none`}
+            className={`${getInputClass(isReviewMode)} p-3.5 resize-none`}
             readOnly={isReviewMode}
           />
         </div>
 
-        {/* Prescription Items */}
-        <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <span className="text-xs font-black text-slate-400 tracking-wider uppercase">
-              Chỉ định Thuốc & Liều dùng
-            </span>
+        {/* Prescription Items Section */}
+        <div className="px-8 pb-8">
+          <div className="flex justify-between items-center mb-5">
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4 text-emerald-600" />
+              <span className="text-sm font-bold text-slate-700 uppercase tracking-wider">
+                Chỉ định Thuốc & Liều dùng
+              </span>
+            </div>
             {!isReviewMode && (
               <button
                 onClick={handleAddMedication}
                 type="button"
-                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all active:scale-95"
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl shadow-md shadow-emerald-500/15 hover:shadow-lg hover:shadow-emerald-500/25 transition-all active:scale-95 cursor-pointer border-none"
               >
                 <Plus className="w-3.5 h-3.5 stroke-[3]" /> Thêm thuốc
               </button>
             )}
           </div>
 
-          <div className="space-y-5">
+          <div className="space-y-4">
             {medications?.map?.((med, idx) => (
               <div 
                 key={idx} 
-                className="group relative p-5 bg-slate-50/50 hover:bg-slate-50 border border-slate-200/50 hover:border-slate-300/80 rounded-2xl transition-all duration-200"
+                className="group relative bg-gradient-to-br from-white/80 to-slate-50/80 hover:from-white hover:to-slate-50 border border-slate-200/60 hover:border-emerald-200/80 rounded-2xl transition-all duration-200 shadow-sm hover:shadow-md overflow-hidden"
               >
-                {/* Delete button */}
-                {!isReviewMode && (
-                  <button
-                    onClick={() => handleRemoveMedication(idx)}
-                    type="button"
-                    className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
-                    title="Xóa thuốc này"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* Medicine Name */}
-                  <div className="md:col-span-3">
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                      Thuốc #{idx + 1} — Tên thuốc / Biệt dược
-                    </label>
+                {/* Medication Number Badge & Header */}
+                <div className="flex items-center gap-3 px-5 pt-4 pb-3 border-b border-slate-100/80">
+                  <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 text-white text-xs font-black shadow-sm flex-shrink-0">
+                    {idx + 1}
+                  </span>
+                  <div className="flex-1 min-w-0">
                     {isReviewMode ? (
-                      <input
-                        type="text"
-                        value={med.name}
-                        readOnly
-                        className={getInputClass(true)}
-                      />
+                      <p className="text-sm font-bold text-slate-800 truncate">{med.name || 'Chưa đặt tên thuốc'}</p>
                     ) : (
                       <GlassAutoComplete
                         value={med.name}
@@ -199,48 +189,62 @@ export default function PrescriptionForm({ appointmentId, isReviewMode = false, 
                       />
                     )}
                   </div>
+                  {/* Delete button */}
+                  {!isReviewMode && (
+                    <button
+                      onClick={() => handleRemoveMedication(idx)}
+                      type="button"
+                      className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 cursor-pointer border-none bg-transparent flex-shrink-0"
+                      title="Xóa thuốc này"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
 
+                {/* Dosage & Frequency Row */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 px-5 py-4">
                   {/* Dosage */}
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                      Liều lượng
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1.5">
+                      💊 Liều lượng
                     </label>
                     <input
                       type="text"
                       value={med.dosage}
                       onChange={(e) => handleMedicationChange(idx, 'dosage', e.target.value)}
                       placeholder="ví dụ: 1 viên"
-                      className={getInputClass(isReviewMode)}
+                      className={`${getInputClass(isReviewMode)} p-3`}
                       readOnly={isReviewMode}
                     />
                   </div>
 
                   {/* Frequency */}
-                  <div className="md:col-span-2">
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                      Tần suất uống / bôi
+                  <div className="sm:col-span-2">
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1.5">
+                      🕐 Tần suất uống / bôi
                     </label>
                     <input
                       type="text"
                       value={med.frequency}
                       onChange={(e) => handleMedicationChange(idx, 'frequency', e.target.value)}
-                      placeholder="ví dụ: 1 lần/ngày (sau ăn)"
-                      className={getInputClass(isReviewMode)}
+                      placeholder="ví dụ: 2 lần/ngày (Sáng, Tối)"
+                      className={`${getInputClass(isReviewMode)} p-3`}
                       readOnly={isReviewMode}
                     />
                   </div>
 
                   {/* Instructions */}
-                  <div className="md:col-span-3">
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                      Hướng dẫn chi tiết sử dụng
+                  <div className="sm:col-span-3">
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1.5">
+                      📋 Hướng dẫn chi tiết sử dụng
                     </label>
                     <textarea
                       value={med.instructions}
                       onChange={(e) => handleMedicationChange(idx, 'instructions', e.target.value)}
                       placeholder="ví dụ: Thoa một lớp mỏng lên nốt mụn viêm buổi tối trước khi đi ngủ."
                       rows="2"
-                      className={`${getInputClass(isReviewMode)} resize-none`}
+                      className={`${getInputClass(isReviewMode)} p-3 resize-none`}
                       readOnly={isReviewMode}
                     />
                   </div>
@@ -249,15 +253,19 @@ export default function PrescriptionForm({ appointmentId, isReviewMode = false, 
             ))}
 
             {medications.length === 0 && (
-              <div className="text-center py-8 bg-slate-50/30 border-2 border-dashed border-slate-200 rounded-2xl">
-                <p className="text-sm font-semibold text-slate-400">
+              <div className="text-center py-12 bg-slate-50/30 border-2 border-dashed border-slate-200 rounded-2xl">
+                <Pill className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                <p className="text-sm font-semibold text-slate-400 mb-1">
                   Chưa có thuốc nào được thêm vào đơn.
+                </p>
+                <p className="text-xs text-slate-300 mb-4">
+                  Nhấn nút bên dưới để bắt đầu kê đơn thuốc cho bệnh nhân.
                 </p>
                 {!isReviewMode && (
                   <button
                     onClick={handleAddMedication}
                     type="button"
-                    className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md shadow-emerald-500/10 active:scale-95 transition-all"
+                    className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs font-bold rounded-xl shadow-md shadow-emerald-500/15 active:scale-95 transition-all cursor-pointer border-none"
                   >
                     <Plus className="w-4 h-4" /> Kê thuốc đầu tiên
                   </button>
@@ -267,21 +275,27 @@ export default function PrescriptionForm({ appointmentId, isReviewMode = false, 
           </div>
         </div>
 
-
-
         {/* General Notes for Patient */}
-        <div className="mt-6 pt-6 border-t border-slate-200/60">
-          <label className="block text-sm font-semibold text-gray-700 mb-2 uppercase tracking-wider">
-            Lời dặn chung của Bác sĩ (Sinh hoạt, Ăn uống, Chăm sóc)
-          </label>
-          <textarea
-            value={generalInstructions}
-            onChange={(e) => setGeneralInstructions(e.target.value)}
-            placeholder="Nhập hướng dẫn chế độ ăn uống, chống nắng, dưỡng ẩm thêm..."
-            rows="2"
-            className={`${getInputClass(isReviewMode)} resize-none`}
-            readOnly={isReviewMode}
-          />
+        <div className="px-8 pb-8">
+          <div className="pt-6 border-t border-slate-200/60">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-base">📝</span>
+              <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">
+                Lời dặn chung của Bác sĩ
+              </label>
+            </div>
+            <p className="text-[11px] text-slate-400 font-medium mb-2">
+              Hướng dẫn chế độ ăn uống, chống nắng, dưỡng ẩm, sinh hoạt, chăm sóc da
+            </p>
+            <textarea
+              value={generalInstructions}
+              onChange={(e) => setGeneralInstructions(e.target.value)}
+              placeholder="Nhập hướng dẫn chế độ ăn uống, chống nắng, dưỡng ẩm thêm..."
+              rows="3"
+              className={`${getInputClass(isReviewMode)} p-3.5 resize-none`}
+              readOnly={isReviewMode}
+            />
+          </div>
         </div>
       </div>
     </div>

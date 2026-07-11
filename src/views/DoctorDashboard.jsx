@@ -570,21 +570,44 @@ export default function DoctorDashboard() {
           <div className="flex items-center gap-5">
             <div className="text-right hidden md:block">
               {!user?.isSupabase ? (
-                <div className="flex flex-col items-end">
-                  <GlassSelect
-                    value={String(currentDoctorId ?? '')}
-                    onChange={(v) => setCurrentDoctorId(v)}
-                    options={(Array.isArray(doctorsList) ? doctorsList : []).map(d => ({ value: String(d.id), label: d.name }))}
-                    buttonClassName="px-3 py-1.5 text-sm font-bold"
-                    className="min-w-[190px]"
-                  />
-                  <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mt-0.5">Doctor Portal (Demo)</span>
+                <div className="flex items-center gap-3">
+                  {/* Doctor avatar */}
+                  <div className="w-9 h-9 rounded-xl overflow-hidden border-2 border-emerald-200/60 shadow-sm flex-shrink-0 bg-gradient-to-br from-emerald-50 to-teal-50">
+                    {activeDoctor?.image ? (
+                      <img src={activeDoctor.image} alt={activeDoctor?.name} className="w-full h-full object-cover object-top" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-emerald-600">
+                        <User className="w-4 h-4" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-col items-end gap-0.5">
+                    <GlassSelect
+                      value={String(currentDoctorId ?? '')}
+                      onChange={(v) => setCurrentDoctorId(v)}
+                      options={(Array.isArray(doctorsList) ? doctorsList : []).map(d => ({ value: String(d.id), label: d.name }))}
+                      buttonClassName="px-3 py-1.5 text-sm font-bold"
+                      className="min-w-[200px]"
+                    />
+                    <span className="text-[9px] text-emerald-600/70 font-bold uppercase tracking-widest">Doctor Portal — Demo</span>
+                  </div>
                 </div>
               ) : (
-                <>
-                  <p className="font-bold text-sm text-gray-900 leading-none">{user?.name || 'BS. CKII. Trần Văn A'}</p>
-                  <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Doctor Portal</span>
-                </>
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl overflow-hidden border-2 border-emerald-200/60 shadow-sm flex-shrink-0 bg-gradient-to-br from-emerald-50 to-teal-50">
+                    {activeDoctor?.image ? (
+                      <img src={activeDoctor.image} alt={user?.name} className="w-full h-full object-cover object-top" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-emerald-600">
+                        <User className="w-4 h-4" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-col items-end">
+                    <p className="font-bold text-sm text-gray-900 leading-none">{user?.name || 'BS. CKII. Trần Văn A'}</p>
+                    <span className="text-[9px] text-emerald-600/70 font-bold uppercase tracking-widest mt-0.5">Doctor Portal</span>
+                  </div>
+                </div>
               )}
 
             </div>

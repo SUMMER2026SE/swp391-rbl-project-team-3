@@ -520,7 +520,7 @@ export const AppointmentModel = {
       
       let existingFinal = 0;
       if (appointmentId) {
-        const { data: existing } = await supabase.from('payments').select('final_amount').eq('appointment_id', appointmentId).single();
+        const { data: existing } = await supabase.from('payments').select('final_amount').eq('appointment_id', appointmentId).maybeSingle();
         if (existing) existingFinal = existing.final_amount || 0;
       }
 
@@ -544,10 +544,70 @@ export const AppointmentModel = {
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       const isValidUuid = (str) => typeof str === 'string' && uuidRegex.test(str);
 
+      // Verify patient_id exists in patient_profiles (FK constraint)
+      let finalPatientId = proxyGuestId;
+      if (isValidUuid(pId)) {
+        const { data: pat } = await supabase
+          .from('patient_profiles')
+          .select('patient_id')
+          .eq('patient_id', pId)
+          .maybeSingle();
+        if (pat) {
+          finalPatientId = pId;
+        } else {
+          // If not in patient_profiles, check if they exist in users
+          const { data: usr } = await supabase
+            .from('users')
+            .select('user_id')
+            .eq('user_id', pId)
+            .maybeSingle();
+          if (usr) {
+            try {
+              await supabase.from('patient_profiles').insert([{ patient_id: pId }]);
+              finalPatientId = pId;
+            } catch (err) {
+              console.warn('Failed to auto-create patient profile:', err.message);
+            }
+          }
+        }
+      }
+
+      // Verify receptionist_id exists in employee_profiles (FK constraint)
+      let finalReceptionistId = null;
+      if (isValidUuid(rId)) {
+        const { data: emp } = await supabase
+          .from('employee_profiles')
+          .select('employee_id')
+          .eq('employee_id', rId)
+          .maybeSingle();
+        if (emp) {
+          finalReceptionistId = rId;
+        } else {
+          // If not in employee_profiles, check if they exist in users
+          const { data: usr } = await supabase
+            .from('users')
+            .select('user_id')
+            .eq('user_id', rId)
+            .maybeSingle();
+          if (usr) {
+            try {
+              await supabase.from('employee_profiles').insert([{
+                employee_id: rId,
+                specialization: 'Lễ tân',
+                department: 'Sảnh Lễ Tân'
+              }]);
+              finalReceptionistId = rId;
+            } catch (err) {
+              console.warn('Failed to auto-create employee profile:', err.message);
+            }
+          }
+        }
+      }
+
       const row = {
         appointment_id: appointmentId,
-        patient_id: isValidUuid(pId) ? pId : proxyGuestId,
-        receptionist_id: isValidUuid(rId) ? rId : null,
+        patient_id: finalPatientId,
+        receptionist_id: finalReceptionistId,
         voucher_id: voucherId,
         total_amount: totalAmount,
         discount_amount: discountAmount,
@@ -562,6 +622,9 @@ export const AppointmentModel = {
       const { data, error } = await supabase.from('payments').upsert([row], { onConflict: 'appointment_id' }).select();
       if (error) throw error;
 
+      // Safe fallback if select() returns empty because of RLS read-filtering policy
+      const returnedRow = (data && data.length > 0) ? data[0] : { ...row, payment_id: Date.now() };
+
       // Also track in the invoices table
       try {
         await supabase.from('invoices').insert([{
@@ -570,7 +633,7 @@ export const AppointmentModel = {
           total_amount: currentFinalAmount,
           status: 'PAID',
           payment_method: method,
-          transaction_id: `TXN-${data[0].id || Date.now()}`
+          transaction_id: `TXN-${returnedRow.payment_id || returnedRow.id || Date.now()}`
         }]);
       } catch (err) {
         console.warn('Failed to insert into invoices:', err.message);
@@ -579,7 +642,7 @@ export const AppointmentModel = {
       if (appointmentId && markAppointmentPaid) {
         await this.updateStatus(appointmentId, 'Đã thanh toán');
       }
-      return data[0];
+      return returnedRow;
     } catch (e) {
       console.warn('Supabase create error (payments):', e.message);
       return { error: e };
