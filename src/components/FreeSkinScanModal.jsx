@@ -9,7 +9,46 @@ const CLASS_MAP = {
     "dark_spots": { name: "Thâm, nám & Sắc tố", color: "from-amber-600 to-yellow-700", bg: "bg-amber-50 text-amber-700 border-amber-100" },
     "pores": { name: "Lỗ chân lông to", color: "from-sky-500 to-blue-600", bg: "bg-sky-50 text-sky-700 border-sky-100" },
     "wrinkles": { name: "Nếp nhăn & Lão hóa", color: "from-purple-500 to-indigo-600", bg: "bg-purple-50 text-purple-700 border-purple-100" },
-    "normal_skin": { name: "Da thường (Khỏe mạnh)", color: "from-emerald-500 to-teal-600", bg: "bg-emerald-50 text-emerald-700 border-emerald-100" }
+    "normal_skin": { name: "Da thường (Khỏe mạnh)", color: "from-emerald-500 to-teal-600", bg: "bg-emerald-50 text-emerald-700 border-emerald-100" },
+    "pustules": { name: "Mụn mủ", color: "from-rose-500 to-red-600", bg: "bg-rose-50 text-rose-700 border-rose-100" },
+    "pustule": { name: "Mụn mủ", color: "from-rose-500 to-red-600", bg: "bg-rose-50 text-rose-700 border-rose-100" },
+    "papules": { name: "Mụn sẩn", color: "from-rose-500 to-red-600", bg: "bg-rose-50 text-rose-700 border-rose-100" },
+    "papule": { name: "Mụn sẩn", color: "from-rose-500 to-red-600", bg: "bg-rose-50 text-rose-700 border-rose-100" },
+    "nodules": { name: "Mụn bọc", color: "from-rose-500 to-red-600", bg: "bg-rose-50 text-rose-700 border-rose-100" },
+    "nodule": { name: "Mụn bọc", color: "from-rose-500 to-red-600", bg: "bg-rose-50 text-rose-700 border-rose-100" },
+    "cysts": { name: "Mụn nang", color: "from-rose-500 to-red-600", bg: "bg-rose-50 text-rose-700 border-rose-100" },
+    "cyst": { name: "Mụn nang", color: "from-rose-500 to-red-600", bg: "bg-rose-50 text-rose-700 border-rose-100" },
+    "whiteheads": { name: "Mụn đầu trắng", color: "from-orange-500 to-amber-600", bg: "bg-orange-50 text-orange-700 border-orange-100" },
+    "whitehead": { name: "Mụn đầu trắng", color: "from-orange-500 to-amber-600", bg: "bg-orange-50 text-orange-700 border-orange-100" },
+    "dark_spot": { name: "Thâm, nám & Sắc tố", color: "from-amber-600 to-yellow-700", bg: "bg-amber-50 text-amber-700 border-amber-100" },
+    "scar": { name: "Sẹo mụn", color: "from-amber-600 to-yellow-700", bg: "bg-amber-50 text-amber-700 border-amber-100" },
+    "scars": { name: "Sẹo mụn", color: "from-amber-600 to-yellow-700", bg: "bg-amber-50 text-amber-700 border-amber-100" },
+    "pore": { name: "Lỗ chân lông to", color: "from-sky-500 to-blue-600", bg: "bg-sky-50 text-sky-700 border-sky-100" },
+    "wrinkle": { name: "Nếp nhăn & Lão hóa", color: "from-purple-500 to-indigo-600", bg: "bg-purple-50 text-purple-700 border-purple-100" }
+};
+
+const SKIN_RECOMMENDATIONS = {
+    acne: "Khuyến nghị làm sạch sâu bằng sữa rửa mặt chứa Acid Salicylic (BHA) 2%, kết hợp gel chấm mụn chứa Benzoyl Peroxide hoặc Adapalene. Hãy uống đủ nước và hạn chế thức khuya.",
+    blackheads: "Khuyến nghị sử dụng tẩy tế bào chết hóa học chứa BHA 2% từ 2-3 lần/tuần, kết hợp mặt nạ đất sét để hút bã nhờn dư thừa. Dưỡng ẩm nhẹ dịu dạng gel.",
+    dark_spots: "Khuyến nghị bổ sung Serum Vitamin C, Niacinamide hoặc Arbutin vào chu trình dưỡng da buổi sáng. Bắt buộc sử dụng kem chống nắng quang phổ rộng SPF 50+ hàng ngày.",
+    pores: "Khuyến nghị tập trung làm sạch sâu, sử dụng serum chứa Niacinamide (Vitamin B3) 10% giúp điều tiết dầu và thu nhỏ lỗ chân lông. Tránh bít tắc.",
+    wrinkles: "Khuyến nghị bắt đầu sử dụng Retinol 0.5% hoặc Peptide vào ban đêm để kích thích sản sinh collagen. Chú trọng dưỡng ẩm sâu với Hyaluronic Acid.",
+    normal_skin: "Làn da của bạn rất khỏe mạnh và có độ ẩm tốt. Hãy duy trì chu trình chăm sóc cơ bản gồm: Làm sạch - Dưỡng ẩm nhẹ nhàng - Chống nắng đầy đủ hàng ngày.",
+    pustules: "Khuyến nghị vệ sinh da sạch sẽ, tránh tự ý nặn mụn gây thâm và lan rộng ổ viêm. Có thể sử dụng các sản phẩm chứa Benzoyl Peroxide hoặc Acid Salicylic để chấm mụn.",
+    pustule: "Khuyến nghị vệ sinh da sạch sẽ, tránh tự ý nặn mụn gây thâm và lan rộng ổ viêm. Có thể sử dụng các sản phẩm chứa Benzoyl Peroxide hoặc Acid Salicylic để chấm mụn.",
+    papules: "Khuyến nghị sử dụng các chất giảm viêm dịu nhẹ như Niacinamide, BHA hoặc Benzoyl Peroxide nồng độ thấp để giảm viêm sưng. Hạn chế sờ tay lên mặt.",
+    papule: "Khuyến nghị sử dụng các chất giảm viêm dịu nhẹ như Niacinamide, BHA hoặc Benzoyl Peroxide nồng độ thấp để giảm viêm sưng. Hạn chế sờ tay lên mặt.",
+    nodules: "Khuyến nghị không nặn hoặc tự ý tác động mạnh lên nốt mụn. Bạn nên đến gặp bác sĩ da liễu sớm để được điều trị bằng các phương pháp chuyên khoa.",
+    nodule: "Khuyến nghị không nặn hoặc tự ý tác động mạnh lên nốt mụn. Bạn nên đến gặp bác sĩ da liễu sớm để được điều trị bằng các phương pháp chuyên khoa.",
+    cysts: "Mụn nang là tổn thương sâu dễ để lại sẹo lõm nghiêm trọng. Khuyến nghị thăm khám bác sĩ da liễu sớm để được kê toa và hướng dẫn điều trị y khoa phù hợp.",
+    cyst: "Mụn nang là tổn thương sâu dễ để lại sẹo lõm nghiêm trọng. Khuyến nghị thăm khám bác sĩ da liễu sớm để được kê toa và hướng dẫn điều trị y khoa phù hợp.",
+    whiteheads: "Khuyến nghị làm sạch da đều đặn, tẩy tế bào chết hóa học AHA/BHA nhẹ nhàng để giải phóng lỗ chân lông bị bít tắc.",
+    whitehead: "Khuyến nghị làm sạch da đều đặn, tẩy tế bào chết hóa học AHA/BHA nhẹ nhàng để giải phóng lỗ chân lông bị bít tắc.",
+    dark_spot: "Khuyến nghị bổ sung Serum Vitamin C, Niacinamide hoặc Arbutin vào chu trình dưỡng da buổi sáng. Bắt buộc sử dụng kem chống nắng quang phổ rộng SPF 50+ hàng ngày.",
+    scar: "Khuyến nghị sử dụng các hoạt chất phục hồi da như Vitamin B5, Niacinamide hoặc các liệu trình công nghệ cao như laser, phi kim tại phòng khám da liễu.",
+    scars: "Khuyến nghị sử dụng các hoạt chất phục hồi da như Vitamin B5, Niacinamide hoặc các liệu trình công nghệ cao như laser, phi kim tại phòng khám da liễu.",
+    pore: "Khuyến nghị tập trung làm sạch sâu, sử dụng serum chứa Niacinamide (Vitamin B3) 10% giúp điều tiết dầu và thu nhỏ lỗ chân lông. Tránh bít tắc.",
+    wrinkle: "Khuyến nghị bắt đầu sử dụng Retinol 0.5% hoặc Peptide vào ban đêm để kích thích sản sinh collagen. Chú trọng dưỡng ẩm sâu với Hyaluronic Acid."
 };
 
 const analyzeSkinImage = (img) => {
@@ -176,15 +215,6 @@ export default function FreeSkinScanModal({ isOpen, onClose, onBookAppointment }
             // Pick the highest-confidence prediction as the primary diagnosis.
             const predictions = data.predictions || [];
 
-            const recommendations = {
-                acne: "Khuyến nghị làm sạch sâu bằng sữa rửa mặt chứa Acid Salicylic (BHA) 2%, kết hợp gel chấm mụn chứa Benzoyl Peroxide hoặc Adapalene. Hãy uống đủ nước và hạn chế thức khuya.",
-                blackheads: "Khuyến nghị sử dụng tẩy tế bào chết hóa học chứa BHA 2% từ 2-3 lần/tuần, kết hợp mặt nạ đất sét để hút bã nhờn dư thừa. Dưỡng ẩm nhẹ dịu dạng gel.",
-                dark_spots: "Khuyến nghị bổ sung Serum Vitamin C, Niacinamide hoặc Arbutin vào chu trình dưỡng da buổi sáng. Bắt buộc sử dụng kem chống nắng quang phổ rộng SPF 50+ hàng ngày.",
-                pores: "Khuyến nghị tập trung làm sạch sâu, sử dụng serum chứa Niacinamide (Vitamin B3) 10% giúp điều tiết dầu và thu nhỏ lỗ chân lông. Tránh bít tắc.",
-                wrinkles: "Khuyến nghị bắt đầu sử dụng Retinol 0.5% hoặc Peptide vào ban đêm để kích thích sản sinh collagen. Chú trọng dưỡng ẩm sâu với Hyaluronic Acid.",
-                normal_skin: "Làn da của bạn rất khỏe mạnh và có độ ẩm tốt. Hãy duy trì chu trình chăm sóc cơ bản gồm: Làm sạch - Dưỡng ẩm nhẹ nhàng - Chống nắng đầy đủ hàng ngày."
-            };
-
             const objectUrl = URL.createObjectURL(file);
 
             if (predictions.length === 0) {
@@ -193,7 +223,7 @@ export default function FreeSkinScanModal({ isOpen, onClose, onBookAppointment }
                 setAiResults({
                     predicted_class: 'normal_skin',
                     confidence: 0.95,
-                    recommendation: recommendations.normal_skin,
+                    recommendation: SKIN_RECOMMENDATIONS.normal_skin,
                     cropped: false,
                     annotated_url: objectUrl,
                     cropped_url: objectUrl,
@@ -216,7 +246,7 @@ export default function FreeSkinScanModal({ isOpen, onClose, onBookAppointment }
                 setAiResults({
                     predicted_class: classKey,
                     confidence: topPred.confidence,
-                    recommendation: recommendations[classKey] || "Vui lòng tham khảo ý kiến bác sĩ da liễu để được tư vấn chi tiết.",
+                    recommendation: SKIN_RECOMMENDATIONS[classKey] || "Vui lòng tham khảo ý kiến bác sĩ da liễu để được tư vấn chi tiết.",
                     cropped: true,
                     annotated_url: objectUrl,
                     cropped_url: objectUrl,
@@ -253,20 +283,11 @@ export default function FreeSkinScanModal({ isOpen, onClose, onBookAppointment }
                 prediction = getDeterministicFallback(file);
             }
             
-            const recommendations = {
-                acne: "Khuyến nghị làm sạch sâu bằng sữa rửa mặt chứa Acid Salicylic (BHA) 2%, kết hợp gel chấm mụn chứa Benzoyl Peroxide hoặc Adapalene. Hãy uống đủ nước và hạn chế thức khuya.",
-                blackheads: "Khuyến nghị sử dụng tẩy tế bào chết hóa học chứa BHA 2% từ 2-3 lần/tuần, kết hợp mặt nạ đất sét để hút bã nhờn dư thừa. Dưỡng ẩm nhẹ dịu dạng gel.",
-                dark_spots: "Khuyến nghị bổ sung Serum Vitamin C, Niacinamide hoặc Arbutin vào chu trình dưỡng da buổi sáng. Bắt buộc sử dụng kem chống nắng quang phổ rộng SPF 50+ hàng ngày.",
-                pores: "Khuyến nghị tập trung làm sạch sâu, sử dụng serum chứa Niacinamide (Vitamin B3) 10% giúp điều tiết dầu và thu nhỏ lỗ chân lông. Tránh bít tắc.",
-                wrinkles: "Khuyến nghị bắt đầu sử dụng Retinol 0.5% hoặc Peptide vào ban đêm để kích thích sản sinh collagen. Chú trọng dưỡng ẩm sâu với Hyaluronic Acid.",
-                normal_skin: "Làn da của bạn rất khỏe mạnh và có độ ẩm tốt. Hãy duy trì chu trình chăm sóc cơ bản gồm: Làm sạch - Dưỡng ẩm nhẹ nhàng - Chống nắng đầy đủ hàng ngày."
-            };
-
             setImage(objectUrl);
             setAiResults({
                 predicted_class: prediction.predicted_class,
                 confidence: prediction.confidence,
-                recommendation: recommendations[prediction.predicted_class] || "Làn da khỏe mạnh.",
+                recommendation: SKIN_RECOMMENDATIONS[prediction.predicted_class] || "Làn da khỏe mạnh.",
                 cropped: true,
                 annotated_url: objectUrl,
                 cropped_url: objectUrl,
@@ -590,19 +611,7 @@ export default function FreeSkinScanModal({ isOpen, onClose, onBookAppointment }
                                         </motion.div>
                                     )}
 
-                                    {/* AI Recommendation — Emerald Glass */}
-                                    <div className={`
-                                        ${GLASS_BASE} !bg-teal-500/5 border border-teal-500/15
-                                        p-5 rounded-2xl shadow-sm flex flex-col gap-2.5
-                                    `}>
-                                        <h4 className="text-sm font-bold text-teal-850 flex items-center gap-2">
-                                            <CheckCircle2 className="w-4 h-4 text-teal-600 shrink-0" />
-                                            Phác đồ điều trị đề xuất:
-                                        </h4>
-                                        <p className="text-sm text-slate-800 font-medium leading-relaxed">
-                                            {aiResults.recommendation}
-                                        </p>
-                                    </div>
+
 
                                     {/* CTA Button — Emerald Glass */}
                                     <button 

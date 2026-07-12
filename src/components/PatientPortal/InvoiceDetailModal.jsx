@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Printer, Receipt, CreditCard, CheckCircle2 } from 'lucide-react';
 
@@ -10,7 +11,7 @@ const formatVnd = (amount) => {
 export default function InvoiceDetailModal({ invoice, onClose }) {
   if (!invoice) return null;
 
-  return (
+  return createPortal(
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }}
@@ -204,6 +205,7 @@ export default function InvoiceDetailModal({ invoice, onClose }) {
           </div>
         </motion.div>
       </motion.div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

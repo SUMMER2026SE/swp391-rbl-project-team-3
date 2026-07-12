@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Star, Send, Eye, EyeOff, Image, Stethoscope,
@@ -155,7 +156,7 @@ export default function FeedbackFormModal({ apt, onClose, onSubmitted }) {
     }
   };
 
-  return (
+  return createPortal(
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }}
@@ -530,6 +531,7 @@ export default function FeedbackFormModal({ apt, onClose, onSubmitted }) {
           )}
         </motion.div>
       </motion.div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }
