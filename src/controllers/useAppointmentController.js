@@ -8,6 +8,10 @@ import { supabase } from '../supabaseClient';
 export function useAppointmentController(patientId = null) {
   const [appointments, setAppointments] = useState([]);
   const [allAppointments, setAllAppointments] = useState([]);
+  // Slot availability from the non-PII `booked_slots` view. Under RLS,
+  // `appointments` only returns rows the caller may see (patients: own rows),
+  // so occupancy checks can no longer rely on allAppointments.
+  const [bookedSlots, setBookedSlots] = useState([]);
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -15,9 +19,13 @@ export function useAppointmentController(patientId = null) {
     try {
       setLoading(true);
       await DoctorModel.getAllDoctors(); // Ensure doctors are cached for mapping
-      
-      const allApts = await AppointmentModel.getAllAppointments();
+
+      const [allApts, slotRows] = await Promise.all([
+        AppointmentModel.getAllAppointments(),
+        AppointmentModel.getBookedSlots(),
+      ]);
       setAllAppointments(allApts || []);
+      setBookedSlots(slotRows || []);
       
       if (patientId) {
         setAppointments((allApts || []).filter(a => String(a.patient_id || a.patientId) === String(patientId)));
@@ -306,10 +314,14 @@ export function useAppointmentController(patientId = null) {
     return completedApt;
   }, [refreshState]);
 
-  // Check if a slot is booked
+  // Check if a slot is booked — sourced from booked_slots (visible to every
+  // role, no PII) with a fallback to allAppointments for resilience if the
+  // view fetch failed (staff still see everything there).
   const isSlotBooked = useCallback((docId, date, time) => {
-    if (!Array.isArray(allAppointments)) return false;
-    const isBooked = allAppointments.some(
+    const occupancy = (Array.isArray(bookedSlots) && bookedSlots.length > 0)
+      ? bookedSlots
+      : (Array.isArray(allAppointments) ? allAppointments : []);
+    const isBooked = occupancy.some(
       a => {
         if (String(a.doctor_id || a.doctorId) !== String(docId)) return false;
         if (a.date !== date && a.appointment_date !== date) return false;
@@ -330,7 +342,7 @@ export function useAppointmentController(patientId = null) {
     try { lockedList = JSON.parse(lockedListStr); } catch (e) {}
     const activeLocks = lockedList?.filter?.(l => l.lockedUntil > Date.now());
     return activeLocks.some(l => String(l.doctorId) === String(docId) && l.date === date && l.time === time);
-  }, [allAppointments]);
+  }, [bookedSlots, allAppointments]);
 
   // Get doctor schedules and filter out booked slots for UI display
   const getAvailableSlots = useCallback((docId, date, providedSchedules = []) => {

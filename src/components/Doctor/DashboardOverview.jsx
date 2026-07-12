@@ -4,9 +4,13 @@ import { AppointmentModel } from '../../models/AppointmentModel';
 import { GLASS_BASE, GLASS_HOVER } from '../common/GlassCard';
 
 export default function DashboardOverview({ doctorId }) {
-  // Mock today's date based on mock data
-  const today = "2026-06-05";
-  
+  // Today's date in the LOCAL timezone as YYYY-MM-DD. `en-CA` locale formats as
+  // YYYY-MM-DD, and toLocaleDateString reads local time — so it stays correct in
+  // UTC+7 (Vietnam) where toISOString().split('T')[0] would report yesterday in
+  // the morning. Appointment `date` values are stored as local YYYY-MM-DD, so
+  // this matches them directly.
+  const today = new Date().toLocaleDateString('en-CA');
+
   const [todayAppointments, setTodayAppointments] = useState([]);
 
   useEffect(() => {
@@ -32,8 +36,9 @@ export default function DashboardOverview({ doctorId }) {
 
   const completedPatients = todayAppointments?.filter?.(apt => apt?.status === 'Đã khám').length;
 
-  // Mock pending AI results
-  const pendingAIResults = 2;
+  // TODO: Connect to actual AI analysis queue API (ai_skin_analyses pending count).
+  // Show 0 rather than fake data until the real queue is wired up.
+  const pendingAIResults = 0;
 
   return (
     <div className="space-y-6">

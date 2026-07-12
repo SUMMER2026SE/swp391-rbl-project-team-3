@@ -231,6 +231,45 @@ export const AppointmentModel = {
       // the row itself, so guests stay distinguishable (see GUEST_ANCHOR_ID note).
       const actualPatientId = appointmentData.patient_id || GUEST_ANCHOR_ID;
 
+      // Guest path: the anon role has NO direct access to appointments anymore
+      // (the guest_anchor_read/update policies were dropped). All guest writes go
+      // through the atomic SECURITY DEFINER RPC, which also converts a booking
+      // race into a clean { success:false, error_code:'SLOT_TAKEN' } instead of
+      // a raw 23505.
+      if (actualPatientId === GUEST_ANCHOR_ID) {
+        const { data, error } = await supabase.rpc('book_guest_appointment', {
+          p_anchor_id: actualPatientId,
+          p_doctor_id: appointmentData.doctor_id,
+          p_appointment_date: appointmentData.appointment_date,
+          p_start_time: appointmentData.start_time,
+          p_end_time: appointmentData.end_time,
+          p_guest_name: appointmentData.patient_name || null,
+          p_guest_phone: appointmentData.patient_phone || null,
+          p_notes: appointmentData.reason || null,
+          p_service: appointmentData.service || null,
+          p_fee: appointmentData.fee || null,
+          p_status: appointmentData.status || 'Chờ xác nhận',
+          // Optional deposit — recorded atomically inside the RPC. Holds pass 0;
+          // a one-shot guest booking may carry a real deposit here.
+          p_deposit_amount: Number(appointmentData.deposit_amount) || 0,
+          p_payment_method: appointmentData.payment_method || 'CHUYEN_KHOAN',
+        });
+        if (error) throw error;
+        if (data && data.success === false) {
+          console.warn('Booking Conflict:', data.message);
+          return null;
+        }
+        // Preserve create()'s return contract: callers read appointment_id / id
+        // off the returned row (e.g. holdSlot → holdAptId).
+        return {
+          ...appointmentData,
+          patient_id: actualPatientId,
+          appointment_id: data.appointment_id,
+          id: data.appointment_id,
+        };
+      }
+
+      // Authenticated path (logged-in patient / staff) — unchanged.
       // Ensure patient exists in patient_profiles to satisfy foreign key constraints.
       // We do a silent insert and ignore errors (e.g. if it already exists or RLS blocks it).
       await supabase.from('patient_profiles').upsert([{ patient_id: actualPatientId }], { onConflict: 'patient_id' });
@@ -249,6 +288,37 @@ export const AppointmentModel = {
       return data[0];
     } catch (e) {
       console.warn('Supabase create error (appointments):', e.message);
+      return null;
+    }
+  },
+
+  // Guest hold → confirm via the SECURITY DEFINER RPC (anon has no direct
+  // UPDATE/SELECT on appointments). Returns a row-like object matching the
+  // update() contract, or null on conflict/failure so book() can fall back.
+  async confirmGuestHold(holdAptId, dbPayload = {}, depositAmount = 0, paymentMethod = 'QR Code') {
+    try {
+      const { data, error } = await supabase.rpc('confirm_guest_appointment', {
+        p_appointment_id: Number(holdAptId),
+        p_guest_name: dbPayload.patient_name || null,
+        p_guest_phone: dbPayload.patient_phone || null,
+        p_status: dbPayload.status || 'Đã xác nhận',
+        // Guest deposit is recorded atomically here (anon can't INSERT payments).
+        p_deposit_amount: Number(depositAmount) || 0,
+        p_payment_method: paymentMethod || 'QR Code',
+      });
+      if (error) throw error;
+      if (data && data.success === false) {
+        console.warn('Guest confirm conflict:', data.message);
+        return null;
+      }
+      return {
+        ...dbPayload,
+        appointment_id: data.appointment_id,
+        id: data.appointment_id,
+        status: dbPayload.status || 'Đã xác nhận',
+      };
+    } catch (e) {
+      console.warn('Supabase RPC error (confirm_guest_appointment):', e.message);
       return null;
     }
   },
@@ -289,6 +359,31 @@ export const AppointmentModel = {
 
   async getAllAppointments() {
     return this.getAll();
+  },
+
+  // Slot availability via the non-PII `booked_slots` view. Under RLS a patient
+  // (or anon guest) can only read their OWN rows in `appointments`, so all
+  // availability/conflict checks must go through this view instead. Exposes the
+  // same field aliases the slot-logic predicates already match on.
+  async getBookedSlots() {
+    try {
+      const { data, error } = await supabase.from('booked_slots').select('*');
+      if (error) throw error;
+      return (data || []).map(r => ({
+        appointment_id: r.appointment_id,
+        id: r.appointment_id,
+        doctor_id: r.doctor_id,
+        appointment_date: r.appointment_date,
+        date: r.appointment_date,
+        start_time: (r.start_time || '').substring(0, 5),
+        time: (r.start_time || '').substring(0, 5),
+        status: this.normalizeStatus(r.status),
+        created_at: r.created_at,
+      }));
+    } catch (e) {
+      console.warn('Supabase fetch error (booked_slots):', e.message);
+      return [];
+    }
   },
 
   async getAllPayments() {
@@ -344,33 +439,54 @@ export const AppointmentModel = {
     };
     
     let newApt;
+    const isGuest = !dbPayload.patient_id || dbPayload.patient_id === GUEST_ANCHOR_ID;
+
+    // Deposit amount (shared by the guest RPC path and the authenticated path).
+    const shouldRecordDeposit =
+      !bookingData.bypassPayment && (bookingData.bookingFee || bookingData.fee) && !bookingData.isHold;
+    const depositAmount = bookingData.bookingFee
+      || (typeof bookingData.fee === 'string' ? parseInt(bookingData.fee.replace(/\D/g, ''), 10) : bookingData.fee)
+      || 50000;
+
     if (bookingData.holdAptId) {
       // Confirm the held row AND stamp the guest's identity onto it. The hold was
       // created before contact details were finalized, so without this a confirmed
       // guest booking would carry no name/phone and look like the FK anchor row.
-      newApt = await this.update(bookingData.holdAptId, {
-        status: bookingData.status || 'Đã xác nhận',
-        patient_name: dbPayload.patient_name,
-        patient_phone: dbPayload.patient_phone,
-      });
+      if (isGuest) {
+        // Anon has no direct UPDATE on appointments (or INSERT on payments) — the
+        // hold→confirm transition AND the deposit both run atomically inside the
+        // SECURITY DEFINER RPC (anchor rows only, hold states only; a racing
+        // confirm returns SLOT_TAKEN, not a raw 23505).
+        newApt = await this.confirmGuestHold(
+          bookingData.holdAptId,
+          dbPayload,
+          shouldRecordDeposit ? depositAmount : 0,
+          'QR Code'
+        );
+      } else {
+        newApt = await this.update(bookingData.holdAptId, {
+          status: bookingData.status || 'Đã xác nhận',
+          patient_name: dbPayload.patient_name,
+          patient_phone: dbPayload.patient_phone,
+        });
+      }
       if (!newApt) newApt = await this.create(dbPayload);
     } else {
       newApt = await this.create(dbPayload);
     }
-    
-    if (newApt && !bookingData.bypassPayment && (bookingData.bookingFee || bookingData.fee) && !bookingData.isHold) {
-      const deposit = bookingData.bookingFee
-        || (typeof bookingData.fee === 'string' ? parseInt(bookingData.fee.replace(/\D/g, ''), 10) : bookingData.fee)
-        || 50000;
+
+    // Client-side deposit recording — AUTHENTICATED users only. For guests this
+    // is handled inside the RPC above (anon has no INSERT privilege on payments).
+    if (newApt && !isGuest && shouldRecordDeposit) {
       // Record the booking deposit. Raw row exposes `appointment_id` (not `id`),
       // and the deposit is partial — it must NOT flip the appointment to paid.
       await this.addPayment({
         appointment_id: newApt.appointment_id || newApt.id,
         patient_id: dbPayload.patient_id,
         voucher_id: bookingData.voucherId ?? null,
-        total_amount: deposit,
+        total_amount: depositAmount,
         discount_amount: bookingData.discount || 0,
-        final_amount: deposit,
+        final_amount: depositAmount,
         payment_method: 'QR Code',
       }, { markAppointmentPaid: false });
     }
@@ -707,9 +823,11 @@ export const AppointmentModel = {
       }
     }
 
-    // Rule 3: No double booking for doctor
-    const allAppointments = await this.getAll();
-    const isActuallyBooked = allAppointments.some(
+    // Rule 3: No double booking for doctor. Availability MUST come from the
+    // non-PII booked_slots view — under RLS, patients/guests only see their
+    // own rows in `appointments`, so getAll() would under-report conflicts.
+    const slotRows = await this.getBookedSlots();
+    const isActuallyBooked = slotRows.some(
       a => {
         if (String(a.doctor_id || a.doctorId) !== String(doctorId)) return false;
         if (a.date !== date && a.appointment_date !== date) return false;
@@ -727,7 +845,11 @@ export const AppointmentModel = {
       return { valid: false, error: 'Khung giờ này đã được đặt trước cho bác sĩ này. Vui lòng chọn khung giờ khác.' };
     }
 
-    // Rule 6: No double booking for patient on the same day
+    // Rule 6: No double booking for patient on the same day. getAll() is
+    // RLS-scoped now: a logged-in patient still sees their own rows (enough
+    // for the patient_id match); anon guests see none, so the phone/email
+    // matching degrades — any slot conflict is backstopped by the DB index.
+    const allAppointments = await this.getAll();
     const isPatientBusySameDay = allAppointments.some(
       a => {
         if (this.isCancelled(a.status)) return false;
@@ -808,6 +930,48 @@ export const AppointmentModel = {
   },
 
   async reschedule(appointmentId, newDate, newTime, newDoctorId = null) {
+    // Guest branch: an anonymous session can neither SELECT appointments (RLS)
+    // nor INSERT payments, so getAll()/update()/addPayment() below all fail for
+    // guests. Route the whole reschedule (time move + within-24h surcharge)
+    // through the SECURITY DEFINER RPC. Authenticated users (staff/patients act
+    // on their own rows) fall through to the existing flow unchanged.
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) {
+      // Surcharge applies when the CURRENT appointment is within 24h. Anon reads
+      // scheduling data (no PII) from the booked_slots view to decide.
+      const slots = await this.getBookedSlots();
+      const cur = slots.find(s => String(s.appointment_id) === String(appointmentId));
+      const isCloseToTime = cur
+        ? this.isWithin24h(cur.appointment_date || cur.date, cur.start_time || cur.time)
+        : false;
+      const { data, error } = await supabase.rpc('reschedule_guest_appointment', {
+        p_appointment_id: Number(appointmentId),
+        p_anchor_id: GUEST_ANCHOR_ID,
+        p_new_date: newDate,
+        p_new_start_time: newTime,
+        p_new_end_time: this.addMinutesToTime(newTime, 30),
+        p_new_doctor_id: newDoctorId || null,
+        p_surcharge_amount: isCloseToTime ? 50000 : 0,
+        p_payment_method: 'QR Code',
+      });
+      if (error) throw error;
+      if (data && data.success === false) {
+        const msgs = {
+          SLOT_TAKEN: 'Khung giờ này đã được đặt trước cho bác sĩ này. Vui lòng chọn khung giờ khác.',
+          MAX_RESCHEDULE: 'Bạn đã đổi lịch tối đa 2 lần cho cuộc hẹn này. Vui lòng liên hệ Lễ tân.',
+          NOT_FOUND: 'Không tìm thấy lịch hẹn hợp lệ để dời.',
+        };
+        throw new Error(msgs[data.error_code] || data.message || 'Không thể dời lịch hẹn.');
+      }
+      return {
+        id: appointmentId,
+        appointment_id: appointmentId,
+        appointment_date: newDate,
+        start_time: newTime,
+        status: 'Đã xác nhận',
+      };
+    }
+
     const appointments = await this.getAll();
     const apt = appointments.find(a => String(a.id || a.appointment_id) === String(appointmentId));
     if (!apt) throw new Error('Không tìm thấy lịch hẹn.');
