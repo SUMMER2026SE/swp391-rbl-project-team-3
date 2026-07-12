@@ -29,84 +29,33 @@ export const ProfileModel = {
          throw new Error('Hồ sơ của bạn chưa được khởi tạo trong hệ thống. Vui lòng đăng ký lại tài khoản mới hoặc liên hệ Quản trị viên.');
       }
 
-      // Check if there is an existing patient row in public `users` with the same email
-      const { data: existingUser, error: findError } = await supabase
+      // Legacy account merge — handled entirely server-side by the atomic
+      // SECURITY DEFINER RPC `merge_legacy_account`. Under RLS the client can
+      // neither DETECT the old row (a patient can't SELECT another patient by
+      // email) nor cascade cross-user UPDATE/DELETE, so the whole flow moved to
+      // the DB: the RPC self-discovers the legacy account by the caller's
+      // VERIFIED auth email, repoints every child table, and cleans up — all in
+      // one transaction. Pass null: the destination is always auth.uid(), never
+      // a client-supplied id (anti-spoof).
+      const { data: mergeRes, error: mergeErr } = await supabase.rpc('merge_legacy_account', {
+        p_old_user_id: null,
+      });
+      if (mergeErr) {
+        console.error('Merge RPC error:', mergeErr.message);
+      } else if (mergeRes && mergeRes.success === false) {
+        console.warn('Merge Failed:', mergeRes.message);
+      }
+
+      // When the RPC merges, it provisions the destination `users` row — re-fetch it.
+      const { data: mergedUser } = await supabase
         .from('users')
-        .select('*')
-        .eq('role_id', 5)
-        .eq('email', authUser.email)
+        .select('user_id, full_name, email, phone, gender, date_of_birth, avatar_url, status, created_at')
+        .eq('user_id', userId)
         .maybeSingle();
+      user = mergedUser;
 
-      if (findError) console.error("Error finding existing user by email:", findError);
-
-      if (existingUser && existingUser.user_id !== userId) {
-        // Merge old user_id to new userId
-        console.warn(`Merging old user_id ${existingUser.user_id} into new userId ${userId}`);
-        const oldUserId = existingUser.user_id;
-
-        // A. Update the old user's email to avoid unique constraint conflict
-        const tempEmail = `${existingUser.email}_linked_${userId}`;
-        await supabase
-          .from('users')
-          .update({ email: tempEmail })
-          .eq('user_id', oldUserId);
-
-        // B. Insert the new user row
-        const { error: insertError } = await supabase.from('users').insert({
-          user_id: userId,
-          role_id: 5,
-          email: authUser.email,
-          full_name: authUser.user_metadata?.full_name || existingUser.full_name || 'Bệnh nhân',
-          phone: authUser.user_metadata?.phone || existingUser.phone || '',
-          gender: existingUser.gender || 'Khác',
-          date_of_birth: existingUser.date_of_birth,
-          status: 'ACTIVE'
-        });
-
-        if (!insertError) {
-          // C. Upsert patient profile
-          const { data: oldProfile } = await supabase
-            .from('patient_profiles')
-            .select('*')
-            .eq('patient_id', oldUserId)
-            .maybeSingle();
-
-          if (oldProfile) {
-            await supabase.from('patient_profiles').upsert({
-              patient_id: userId,
-              address: oldProfile.address,
-              allergy_note: oldProfile.allergy_note,
-              medical_history: oldProfile.medical_history,
-              emergency_contact: oldProfile.emergency_contact,
-              blood_type: oldProfile.blood_type,
-              height: oldProfile.height,
-              weight: oldProfile.weight
-            });
-          }
-
-          // D. Cascade updates to foreign tables
-          await supabase.from('appointments').update({ patient_id: userId }).eq('patient_id', oldUserId);
-          await supabase.from('medical_records').update({ patient_id: userId }).eq('patient_id', oldUserId);
-          await supabase.from('feedbacks').update({ patient_id: userId }).eq('patient_id', oldUserId);
-          await supabase.from('invoices').update({ patient_id: userId }).eq('patient_id', oldUserId);
-          await supabase.from('service_tickets').update({ patient_id: userId }).eq('patient_id', oldUserId);
-
-          // E. Cleanup old profile & user
-          await supabase.from('patient_profiles').delete().eq('patient_id', oldUserId);
-          await supabase.from('users').delete().eq('user_id', oldUserId);
-
-          // Re-fetch the newly merged user
-          const { data: healedUser } = await supabase
-            .from('users')
-            .select('user_id, full_name, email, phone, gender, date_of_birth, avatar_url, status, created_at')
-            .eq('user_id', userId)
-            .maybeSingle();
-          user = healedUser;
-        } else {
-          console.error("Merge insert failed:", insertError);
-          throw new Error('Không thể tự động chuyển dữ liệu cũ sang tài khoản mới.');
-        }
-      } else {
+      // No legacy account to merge (NO_LEGACY) → fall through to a normal JIT create.
+      if (!user) {
         // Proceed with regular JIT create
         const { error: insertError } = await supabase.from('users').upsert({
             user_id: userId,
