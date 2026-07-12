@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GLASS_BASE } from '../common/GlassCard';
 import {
@@ -68,6 +69,7 @@ const FOLLOWUP_BADGE = {
   'Hoàn thành': 'bg-emerald-50 text-emerald-700 border-emerald-200',
   'Sắp tới': 'bg-sky-50 text-sky-700 border-sky-200',
   'Đã hủy': 'bg-rose-50 text-rose-700 border-rose-200',
+  'Quá hạn': 'bg-rose-50 text-rose-700 border-rose-200',
 };
 
 // ─── Section Wrapper ──────────────────────────────────────────────────────────
@@ -168,28 +170,7 @@ function OverviewTab({ record }) {
           <p className="text-sm text-slate-700 leading-relaxed">{record.symptoms || '—'}</p>
         </div>
       </Section>
-      {/* Sinh hiệu */}
-      {record.vitalSigns && (
-        <Section icon={<Activity className="w-4 h-4" />} title="Sinh hiệu" accent="rose">
-          <div className="bg-white/40 backdrop-blur-md border border-white/60 rounded-2xl p-4">
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {[
-                { label: 'Cân nặng', value: record.vitalSigns.weight },
-                { label: 'Chiều cao', value: record.vitalSigns.height },
-                { label: 'Huyết áp', value: record.vitalSigns.bloodPressure },
-                { label: 'Nhịp tim', value: record.vitalSigns.pulse },
-                { label: 'Nhiệt độ', value: record.vitalSigns.temperature },
-                { label: 'SpO2', value: record.vitalSigns.spo2 },
-              ]?.map?.((v) => (
-                <div key={v.label} className="bg-slate-50 rounded-xl p-3 text-center border border-slate-100">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{v.label}</p>
-                  <p className="text-sm font-bold text-slate-800 mt-1">{v.value || '—'}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </Section>
-      )}
+
       {/* Chẩn đoán */}
       <Section icon={<ClipboardList className="w-4 h-4" />} title="Chẩn đoán" accent="violet">
         <div className="bg-white/30 backdrop-blur-md border border-white/50 rounded-2xl p-4">
@@ -681,7 +662,20 @@ function FollowUpTab({ record }) {
         {/* Vertical line */}
         <div className="absolute left-5 top-6 bottom-6 w-0.5 bg-slate-200" />
 
-        {followUps?.map?.((fu, i) => (
+        {followUps?.map?.((fu, i) => {
+          let displayStatus = fu.status;
+          if (displayStatus === 'Sắp tới' && fu.date) {
+            const [d, m, y] = fu.date.split('/');
+            if (d && m && y) {
+              const dateObj = new Date(y, m - 1, d);
+              dateObj.setHours(23, 59, 59, 999);
+              if (new Date() > dateObj) {
+                displayStatus = 'Quá hạn';
+              }
+            }
+          }
+
+          return (
           <motion.div
             key={fu.id}
             initial={{ opacity: 0, x: -15 }}
@@ -690,10 +684,10 @@ function FollowUpTab({ record }) {
             className="relative flex gap-4 mb-4 last:mb-0"
           >
             {/* Node */}
-            <div className={`w-10 h-10 rounded-full border-2 flex items-center justify-center shrink-0 z-10 ${fu.status === 'Hoàn thành' ? 'bg-emerald-50 border-emerald-400' : fu.status === 'Sắp tới' ? 'bg-sky-50 border-sky-400' : 'bg-rose-50 border-rose-400'}`}>
-              {fu.status === 'Hoàn thành' ? (
+            <div className={`w-10 h-10 rounded-full border-2 flex items-center justify-center shrink-0 z-10 ${displayStatus === 'Hoàn thành' ? 'bg-emerald-50 border-emerald-400' : displayStatus === 'Sắp tới' ? 'bg-sky-50 border-sky-400' : 'bg-rose-50 border-rose-400'}`}>
+              {displayStatus === 'Hoàn thành' ? (
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              ) : fu.status === 'Sắp tới' ? (
+              ) : displayStatus === 'Sắp tới' ? (
                 <Clock className="w-4 h-4 text-sky-600" />
               ) : (
                 <X className="w-4 h-4 text-rose-600" />
@@ -709,8 +703,8 @@ function FollowUpTab({ record }) {
                     <Calendar className="w-3 h-3 inline mr-1" />{fu.date} • {fu.doctor}
                   </p>
                 </div>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${FOLLOWUP_BADGE[fu.status] || 'bg-slate-50 text-slate-600 border-slate-200'}`}>
-                  {fu.status}
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${FOLLOWUP_BADGE[displayStatus] || 'bg-slate-50 text-slate-600 border-slate-200'}`}>
+                  {displayStatus}
                 </span>
               </div>
 
@@ -739,7 +733,8 @@ function FollowUpTab({ record }) {
               )}
             </div>
           </motion.div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -761,7 +756,7 @@ export default function MedicalRecordDetailModal({ record, onClose }) {
     followup: <FollowUpTab record={record} />,
   };
 
-  return (
+  return createPortal(
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }}
@@ -843,6 +838,7 @@ export default function MedicalRecordDetailModal({ record, onClose }) {
           </div>
         </motion.div>
       </motion.div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

@@ -19,6 +19,70 @@ const LABEL_STYLES = {
   _default:   { stroke: 'rgba(99, 102, 241, 0.8)', fill: 'rgba(99, 102, 241, 0.12)', text: 'rgba(99, 102, 241, 1)' },
 };
 
+const translateLabel = (label) => {
+  if (!label) return '';
+  const cleanLabel = label.trim().toLowerCase();
+  
+  const translationMap = {
+    'acne': 'Mụn trứng cá',
+    'pustule': 'Mụn mủ',
+    'pustules': 'Mụn mủ',
+    'papule': 'Mụn sẩn',
+    'papules': 'Mụn sẩn',
+    'nodule': 'Mụn bọc',
+    'nodules': 'Mụn bọc',
+    'cyst': 'Mụn nang',
+    'cysts': 'Mụn nang',
+    'blackhead': 'Mụn đầu đen',
+    'blackheads': 'Mụn đầu đen',
+    'whitehead': 'Mụn đầu trắng',
+    'whiteheads': 'Mụn đầu trắng',
+    'dark spot': 'Thâm & Nám',
+    'dark spots': 'Thâm & Nám',
+    'dark_spots': 'Thâm & Nám',
+    'darkspot': 'Thâm & Nám',
+    'darkspots': 'Thâm & Nám',
+    'pore': 'Lỗ chân lông',
+    'pores': 'Lỗ chân lông',
+    'wrinkle': 'Nếp nhăn',
+    'wrinkles': 'Nếp nhăn',
+    'scar': 'Sẹo mụn',
+    'scars': 'Sẹo mụn',
+    'normal_skin': 'Da thường',
+    'normal skin': 'Da thường',
+    'normal': 'Da thường'
+  };
+
+  return translationMap[cleanLabel] || label;
+};
+
+const getLabelStyle = (label) => {
+  if (!label) return LABEL_STYLES._default;
+  const cleanLabel = label.trim().toLowerCase();
+
+  if (['acne', 'pustule', 'pustules', 'papule', 'papules', 'nodule', 'nodules', 'cyst', 'cysts'].includes(cleanLabel)) {
+    return { stroke: 'rgba(239, 68, 68, 0.8)',  fill: 'rgba(239, 68, 68, 0.12)', text: 'rgba(239, 68, 68, 1)' };
+  }
+  if (['dark spot', 'dark spots', 'dark_spots', 'darkspot', 'darkspots', 'scar', 'scars'].includes(cleanLabel)) {
+    return { stroke: 'rgba(245, 158, 11, 0.8)', fill: 'rgba(245, 158, 11, 0.12)', text: 'rgba(245, 158, 11, 1)' };
+  }
+  if (['blackhead', 'blackheads', 'whitehead', 'whiteheads'].includes(cleanLabel)) {
+    return { stroke: 'rgba(249, 115, 22, 0.8)', fill: 'rgba(249, 115, 22, 0.12)', text: 'rgba(249, 115, 22, 1)' };
+  }
+  if (['pore', 'pores'].includes(cleanLabel)) {
+    return { stroke: 'rgba(14, 165, 233, 0.8)', fill: 'rgba(14, 165, 233, 0.12)', text: 'rgba(14, 165, 233, 1)' };
+  }
+  if (['wrinkle', 'wrinkles'].includes(cleanLabel)) {
+    return { stroke: 'rgba(168, 85, 247, 0.8)', fill: 'rgba(168, 85, 247, 0.12)', text: 'rgba(168, 85, 247, 1)' };
+  }
+  if (['normal', 'normal_skin', 'normal skin'].includes(cleanLabel)) {
+    return { stroke: 'rgba(16, 185, 129, 0.8)', fill: 'rgba(16, 185, 129, 0.12)', text: 'rgba(16, 185, 129, 1)' };
+  }
+
+  return LABEL_STYLES._default;
+};
+
+
 // ─── MediaPipe Config ──────────────────────────────────────────────────────────
 const WASM_CDN  = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm';
 const MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
@@ -379,7 +443,7 @@ export default function SkinAnalyzer() {
 
     // ── Then overlay bounding boxes ──────────────────────────────────────────
     analysisResults.forEach((box) => {
-      const style = LABEL_STYLES[box.label] || LABEL_STYLES._default;
+      const style = getLabelStyle(box.label);
 
       const bx = box.x * scaleX;
       const by = box.y * scaleY;
@@ -394,7 +458,7 @@ export default function SkinAnalyzer() {
       ctx.setLineDash([]);
       ctx.strokeRect(bx, by, bw, bh);
 
-      const labelText = `${box.label}  ${(box.confidence * 100).toFixed(0)}%`;
+      const labelText = `${translateLabel(box.label)}  ${(box.confidence * 100).toFixed(0)}%`;
       ctx.font = 'bold 11px "Plus Jakarta Sans", system-ui, sans-serif';
       const metrics = ctx.measureText(labelText);
       const padX = 6;
@@ -716,7 +780,7 @@ export default function SkinAnalyzer() {
                         return acc;
                       }, {})
                     ).map(([label, count]) => {
-                      const style = LABEL_STYLES[label] || LABEL_STYLES._default;
+                      const style = getLabelStyle(label);
                       return (
                         <span
                           key={label}
@@ -724,7 +788,7 @@ export default function SkinAnalyzer() {
                           style={{ backgroundColor: style.fill, color: style.text, border: `1px solid ${style.stroke}` }}
                         >
                           <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: style.stroke }} />
-                          {label} × {count}
+                          {translateLabel(label)} × {count}
                         </span>
                       );
                     })}
