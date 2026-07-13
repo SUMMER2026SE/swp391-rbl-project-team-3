@@ -24,6 +24,12 @@ const wantsHuman = (text) => {
 // 'pat-guest-%', and the random uuid keeps each visitor's conversation private
 // (and out of every other guest's widget, unlike the old shared 'pat-guest').
 const GUEST_ID_KEY = 'dermasmart_guest_chat_id';
+
+// Set once the visitor has opened the chat at least once. From then on (and on
+// every later page load) the realtime subscriptions stay alive even while the
+// widget is closed, so a receptionist reply still reaches the closed widget
+// and surfaces as an unread badge on the floating button.
+const ENGAGED_KEY = 'dermasmart_chat_engaged';
 const getGuestChatId = () => {
   try {
     let id = localStorage.getItem(GUEST_ID_KEY);
@@ -175,10 +181,30 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
   const [mode, setMode] = useState('AI'); // 'AI' | 'Live'
   const [isTyping, setIsTyping] = useState(false);
   const [session, setSession] = useState(null); // handoff state (status + agentTyping)
+  const [unread, setUnread] = useState(0);
+  // Engaged = has opened the chat at least once (this or a prior visit).
+  const [hasEngaged, setHasEngaged] = useState(() => {
+    try { return localStorage.getItem(ENGAGED_KEY) === '1'; } catch { return false; }
+  });
 
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
   const patientTypingTimer = useRef(null);
+  const seedInFlight = useRef(false);
+
+  // Readable inside long-lived realtime callbacks without re-subscribing.
+  const isOpenRef = useRef(false);
+  useEffect(() => {
+    isOpenRef.current = isOpen;
+    if (isOpen) setUnread(0);
+  }, [isOpen]);
+
+  const openChat = useCallback(() => {
+    setIsOpen(true);
+    setUnread(0);
+    setHasEngaged(true);
+    try { localStorage.setItem(ENGAGED_KEY, '1'); } catch { /* ignore */ }
+  }, []);
 
   // Merge an incoming message into state, de-duping by id (realtime INSERT can
   // race the optimistic local append / the safety poll).
@@ -318,19 +344,26 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
     return () => clearTimeout(timer);
   }, [isOpen]);
 
-  // ── Live data while the widget is open ──
+  // ── Live data once the visitor has engaged ──
   // Primary transport is Supabase Realtime (INSERT/UPDATE on messages +
   // chat_sessions). A slow safety poll covers the localStorage-fallback path
-  // and any dropped realtime frames. Both channels are torn down on close.
+  // and any dropped realtime frames — but only while the widget is open.
+  // Channels deliberately survive widget close (they die on unmount) so a
+  // receptionist reply lands as an unread badge instead of into the void.
+  const seedAndLoadRef = useRef(null);
   useEffect(() => {
-    if (!isOpen) return;
+    if (!hasEngaged) return;
     let active = true;
 
     const seedAndLoad = async () => {
+      if (seedInFlight.current) return;
+      seedInFlight.current = true;
       try {
         let msgs = await ReceptionistChatModel.getMessagesForPatient(patientId);
         if (!active) return;
-        if (!msgs || msgs.length === 0) {
+        // Seed the greeting only while the widget is actually open — never
+        // write rows just because an engaged visitor loaded the page.
+        if ((!msgs || msgs.length === 0) && isOpenRef.current) {
           await ReceptionistChatModel.addMessage({
             senderId: 'bot',
             senderName: 'DermaSmart AI',
@@ -344,8 +377,11 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
         if (active) setMessages(msgs || []);
       } catch (err) {
         console.error('Error fetching messages in chatbot:', err);
+      } finally {
+        seedInFlight.current = false;
       }
     };
+    seedAndLoadRef.current = seedAndLoad;
 
     const loadSession = async () => {
       try {
@@ -359,13 +395,20 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
     seedAndLoad();
     loadSession();
 
-    // Realtime: append new messages (de-duped) and patch updates.
+    // Realtime: append new messages (de-duped) and patch updates. Staff/bot
+    // messages arriving while the widget is closed feed the unread badge.
     const msgChannel = subscribeToMessages({
       patientId,
       onEvent: (type, msg) => {
         if (!active) return;
-        if (type === 'INSERT') mergeMessage(msg);
-        else setMessages((prev) => prev.map((m) => (m.id === msg.id ? msg : m)));
+        if (type === 'INSERT') {
+          mergeMessage(msg);
+          if (!isOpenRef.current && msg.senderRole !== 'PATIENT') {
+            setUnread((c) => c + 1);
+          }
+        } else {
+          setMessages((prev) => prev.map((m) => (m.id === msg.id ? msg : m)));
+        }
       },
     });
 
@@ -381,17 +424,25 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
     });
 
     // Safety net (localStorage fallback / missed frames) — slow, non-authoritative.
-    const interval = setInterval(seedAndLoad, 5000);
+    const interval = setInterval(() => {
+      if (isOpenRef.current) seedAndLoad();
+    }, 5000);
 
     return () => {
       active = false;
+      seedAndLoadRef.current = null;
       clearInterval(interval);
       clearTimeout(patientTypingTimer.current);
       unsubscribe(msgChannel);
       unsubscribe(sesChannel);
       stopLocal();
     };
-  }, [isOpen, patientId, mergeMessage]);
+  }, [hasEngaged, patientId, mergeMessage]);
+
+  // Instant refresh on reopen (poll alone would lag up to 5s).
+  useEffect(() => {
+    if (isOpen) seedAndLoadRef.current?.();
+  }, [isOpen]);
 
   // Escalate the conversation to a human receptionist. Posts a system note,
   // flips the session to WAITING_FOR_AGENT, switches the widget to Live mode,
@@ -549,10 +600,18 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
             whileTap={{ scale: 0.85 }}
             // Elastic, liquid press — mirrors SkinAI's cubic-bezier(0.5, 2.5, 0.5, 1)
             transition={{ type: 'spring', stiffness: 520, damping: 13, mass: 0.7 }}
-            onClick={() => setIsOpen(true)}
+            onClick={openChat}
             aria-label="Mở trợ lý DermaSmart AI"
             className="lg-fab fixed bottom-6 right-6 z-[9998] w-16 h-16 flex items-center justify-center cursor-pointer border-none bg-transparent p-0"
           >
+            {unread > 0 && (
+              <span
+                aria-label={`${unread} tin nhắn chưa đọc`}
+                className="absolute -top-0.5 -right-0.5 z-10 min-w-[22px] h-[22px] px-1.5 rounded-full bg-rose-500 text-white text-[11px] font-bold flex items-center justify-center border-2 border-white shadow-lg shadow-rose-500/40"
+              >
+                {unread > 9 ? '9+' : unread}
+              </span>
+            )}
             <span className="lg-fab-glow" aria-hidden="true" />
             <span className="lg-fab-float">
               <span className="lg-fab-drop">
