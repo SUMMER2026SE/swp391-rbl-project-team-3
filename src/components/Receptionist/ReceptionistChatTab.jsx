@@ -13,7 +13,8 @@ import {
   Check, 
   Sparkles, 
   CornerDownLeft,
-  UserCheck
+  UserCheck,
+  ArrowLeft
 } from 'lucide-react';
 import {
   ReceptionistChatModel,
@@ -41,6 +42,8 @@ export default function ReceptionistChatTab() {
   const [inputValue, setInputValue] = useState('');
   const [patientsList, setPatientsList] = useState([]);
   const [showCanned, setShowCanned] = useState(true);
+  // Mobile: show chat panel vs list panel
+  const [showMobileChat, setShowMobileChat] = useState(false);
   
   const messagesEndRef = useRef(null);
   const agentTypingTimer = useRef(null);
@@ -63,6 +66,7 @@ export default function ReceptionistChatTab() {
     const handleEscape = (e) => {
       if (e.key === 'Escape') {
         setSelectedPatientId(null);
+        setShowMobileChat(false);
       }
     };
     window.addEventListener('keydown', handleEscape);
@@ -188,6 +192,16 @@ export default function ReceptionistChatTab() {
     }, 150);
   }, [selectedPatientId, loadConversation, loadPatientsAndChats]);
 
+  const handleSelectPatient = (patientId) => {
+    setSelectedPatientId(patientId);
+    setShowMobileChat(true);
+  };
+
+  const handleBackToList = () => {
+    setShowMobileChat(false);
+    // Optionally keep the selection or clear it
+  };
+
   const handleSend = async (e) => {
     if (e) e.preventDefault();
     if (!inputValue.trim() || !selectedPatientId) return;
@@ -265,18 +279,30 @@ export default function ReceptionistChatTab() {
   const totalWaiting = patientsList.filter((p) => p.waiting).length;
 
   return (
-    <div className={`w-full h-[calc(100vh-160px)] ${GLASS_BASE} overflow-hidden flex flex-col md:flex-row transition-all duration-300`}>
-      {/* Left Pane: Patients Sidebar */}
-      <div className="w-full md:w-[340px] shrink-0 border-r border-slate-200/50 flex flex-col h-full bg-slate-50/20 backdrop-blur-md">
-        {/* Search */}
-        <div className="p-5 border-b border-slate-200/50 bg-white/10 shrink-0 space-y-3">
+    <div
+      className={`w-full ${GLASS_BASE} flex flex-col md:flex-row transition-all duration-300`}
+      style={{ height: 'calc(100vh - 140px)', minHeight: '480px', maxHeight: 'calc(100vh - 100px)' }}
+    >
+      {/* ═══════════════════════════════════════════════════════════════════
+          Left Pane: Patients Sidebar 
+          On mobile: hidden when showMobileChat is true
+       ═══════════════════════════════════════════════════════════════════ */}
+      <div className={`
+        w-full md:w-[340px] md:min-w-[300px] md:max-w-[380px]
+        shrink-0 border-r border-slate-200/50
+        flex flex-col bg-slate-50/20 backdrop-blur-md
+        ${showMobileChat ? 'hidden md:flex' : 'flex'}
+        overflow-hidden
+      `}>
+        {/* Search Header */}
+        <div className="p-4 sm:p-5 border-b border-slate-200/50 bg-white/10 shrink-0 space-y-3">
           <div className="flex justify-between items-center">
-            <h3 className="font-extrabold text-slate-800 text-base flex items-center gap-2">
-              <MessageSquare className="w-5 h-5 text-teal-600" />
-              Chăm sóc khách hàng
+            <h3 className="font-extrabold text-slate-800 text-sm sm:text-base flex items-center gap-2">
+              <MessageSquare className="w-5 h-5 text-teal-600 shrink-0" />
+              <span className="truncate">Chăm sóc khách hàng</span>
             </h3>
             {totalWaiting > 0 && (
-              <span className="flex h-3 w-3 relative">
+              <span className="flex h-3 w-3 relative shrink-0">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
               </span>
@@ -287,7 +313,7 @@ export default function ReceptionistChatTab() {
             <motion.div 
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
-              className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-amber-50 border border-amber-200 text-amber-700 text-xs font-bold shadow-sm"
+              className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-amber-50 border border-amber-200 text-amber-700 text-xs font-bold shadow-sm"
             >
               <BellRing className="w-4 h-4 animate-bounce text-amber-600 shrink-0" />
               <span>{totalWaiting} bệnh nhân cần lễ tân hỗ trợ</span>
@@ -302,12 +328,12 @@ export default function ReceptionistChatTab() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           </div>
         </div>
 
-        {/* Patients List */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-2.5 custom-scrollbar">
+        {/* Patients List — scrollable */}
+        <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar min-h-0">
           <AnimatePresence initial={false}>
             {filteredPatients.length === 0 ? (
               <div className="text-center py-12 text-slate-400 text-xs font-semibold">
@@ -326,8 +352,8 @@ export default function ReceptionistChatTab() {
                     initial={{ opacity: 0, x: -12 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.2, delay: i * 0.03 }}
-                    onClick={() => setSelectedPatientId(pat.id)}
-                    className={`flex items-center gap-3.5 p-3.5 rounded-2xl border transition-all cursor-pointer shadow-sm group relative ${
+                    onClick={() => handleSelectPatient(pat.id)}
+                    className={`flex items-center gap-3 p-3 rounded-2xl border transition-all cursor-pointer shadow-sm group relative ${
                       isActive
                         ? 'bg-gradient-to-r from-teal-500/10 to-emerald-500/10 border-teal-500/40 ring-1 ring-teal-500/20'
                         : pat.waiting
@@ -344,7 +370,7 @@ export default function ReceptionistChatTab() {
                       <img
                         src={pat.avatar}
                         alt={pat.fullName}
-                        className="w-11 h-11 rounded-2xl object-cover border border-white shadow-md"
+                        className="w-10 h-10 rounded-2xl object-cover border border-white shadow-md"
                       />
                       {/* Live green ring badge */}
                       {pat.status === CHAT_STATUS.WITH_AGENT ? (
@@ -382,7 +408,7 @@ export default function ReceptionistChatTab() {
                         )}
                       </div>
 
-                      <div className="flex items-center justify-between gap-1.5 mt-1.5">
+                      <div className="flex items-center justify-between gap-1.5 mt-1">
                         <p className={`text-[10px] truncate flex-1 ${
                           isActive 
                             ? 'text-teal-700 font-semibold' 
@@ -420,32 +446,46 @@ export default function ReceptionistChatTab() {
         </div>
       </div>
 
-      {/* Right Pane: Active Chat Conversation */}
-      <div className="flex-grow flex flex-col h-full bg-slate-50/10 backdrop-blur-sm relative">
+      {/* ═══════════════════════════════════════════════════════════════════
+          Right Pane: Active Chat Conversation
+          On mobile: hidden when showMobileChat is false AND there's a patient selected
+       ═══════════════════════════════════════════════════════════════════ */}
+      <div className={`
+        flex-1 flex flex-col bg-slate-50/10 backdrop-blur-sm relative min-w-0 min-h-0
+        ${!showMobileChat ? 'hidden md:flex' : 'flex'}
+        overflow-hidden
+      `}>
         {selectedPatientId && selectedPatient ? (
           <>
-            {/* Active Header */}
-            <div className="px-6 py-4 border-b border-slate-200/50 bg-white/40 backdrop-blur-md flex justify-between items-center shrink-0 shadow-sm z-10">
-              <div className="flex items-center gap-3">
+            {/* ── Active Header ── */}
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200/50 bg-white/40 backdrop-blur-md flex justify-between items-center shrink-0 shadow-sm z-10 gap-2">
+              <div className="flex items-center gap-3 min-w-0">
+                {/* Mobile back button */}
+                <button
+                  onClick={handleBackToList}
+                  className="md:hidden p-2 -ml-1 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors cursor-pointer shrink-0"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
                 <img
                   src={selectedPatient.avatar}
                   alt={selectedPatient.fullName}
-                  className="w-11 h-11 rounded-2xl object-cover border border-white shadow-md"
+                  className="w-10 h-10 rounded-2xl object-cover border border-white shadow-md shrink-0"
                 />
-                <div>
-                  <h3 className="font-extrabold text-sm text-slate-800 flex items-center gap-2 leading-none">
+                <div className="min-w-0">
+                  <h3 className="font-extrabold text-sm text-slate-800 flex items-center gap-2 leading-none truncate">
                     {selectedPatient.fullName}
                   </h3>
-                  <div className="flex items-center gap-3 text-[10px] text-slate-500 font-semibold mt-1.5">
-                    <span className="flex items-center gap-1"><Phone size={10} className="text-slate-400" /> {selectedPatient.phone}</span>
-                    <span className="text-slate-300">•</span>
-                    <span className="flex items-center gap-1"><Mail size={10} className="text-slate-400" /> {selectedPatient.email}</span>
+                  <div className="flex items-center gap-2 sm:gap-3 text-[10px] text-slate-500 font-semibold mt-1 flex-wrap">
+                    <span className="flex items-center gap-1 truncate"><Phone size={10} className="text-slate-400 shrink-0" /> {selectedPatient.phone}</span>
+                    <span className="text-slate-300 hidden sm:inline">•</span>
+                    <span className="flex items-center gap-1 truncate hidden sm:flex"><Mail size={10} className="text-slate-400 shrink-0" /> {selectedPatient.email}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <span className={`text-[10px] font-bold border rounded-full px-2.5 py-1 flex items-center gap-1 ${getStatusConfig(selectedPatient.status).color}`}>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className={`text-[10px] font-bold border rounded-full px-2 py-1 items-center gap-1 ${getStatusConfig(selectedPatient.status).color} hidden sm:flex`}>
                   {React.createElement(getStatusConfig(selectedPatient.status).icon, { className: "w-3 h-3" })}
                   {getStatusConfig(selectedPatient.status).label}
                 </span>
@@ -453,18 +493,19 @@ export default function ReceptionistChatTab() {
                 {selectedPatient.status !== CHAT_STATUS.RESOLVED && (
                   <button
                     onClick={handleResolve}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500 text-white hover:bg-emerald-600 text-[10px] font-extrabold border-none shadow-sm shadow-emerald-500/25 transition-all active:scale-95 cursor-pointer"
+                    className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl bg-emerald-500 text-white hover:bg-emerald-600 text-[10px] font-extrabold border-none shadow-sm shadow-emerald-500/25 transition-all active:scale-95 cursor-pointer whitespace-nowrap"
                   >
                     <Check className="w-3 h-3" />
-                    Hoàn thành hỗ trợ
+                    <span className="hidden sm:inline">Hoàn thành hỗ trợ</span>
+                    <span className="sm:hidden">Xong</span>
                   </button>
                 )}
               </div>
             </div>
 
-            {/* Messages Scroll Area */}
+            {/* ── Messages Scroll Area ── */}
             <div 
-              className="flex-grow overflow-y-auto px-6 py-5 space-y-4 bg-slate-50/10 custom-scrollbar"
+              className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-5 space-y-3 sm:space-y-4 bg-slate-50/10 custom-scrollbar min-h-0"
               style={{ scrollbarWidth: 'thin' }}
             >
               <AnimatePresence initial={false}>
@@ -495,7 +536,7 @@ export default function ReceptionistChatTab() {
                         </span>
                         
                         <div
-                          className={`max-w-[70%] px-4 py-3 rounded-2xl text-xs leading-relaxed shadow-sm ${
+                          className={`max-w-[85%] sm:max-w-[70%] px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-2xl text-xs leading-relaxed shadow-sm ${
                             isPatient
                               ? 'bg-white border border-slate-200/80 text-slate-800 rounded-bl-md'
                               : isAI
@@ -504,7 +545,7 @@ export default function ReceptionistChatTab() {
                           }`}
                         >
                           {isAI && <Bot className="w-3.5 h-3.5 text-sky-500 shrink-0" />}
-                          <span>{msg.text}</span>
+                          <span className="break-words">{msg.text}</span>
                         </div>
                       </motion.div>
                     );
@@ -514,24 +555,24 @@ export default function ReceptionistChatTab() {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Typing status bar */}
+            {/* ── Typing status bar ── */}
             {selectedPatient.patientTyping && (
               <motion.div 
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="px-6 py-2 bg-slate-50/50 flex items-center gap-2 border-t border-slate-100 shrink-0"
+                className="px-4 sm:px-6 py-2 bg-slate-50/50 flex items-center gap-2 border-t border-slate-100 shrink-0"
               >
                 <div className="flex items-center gap-1">
                   <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                   <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
                   <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                 </div>
-                <span className="text-[10px] text-emerald-600 font-extrabold">{selectedPatient.fullName} đang nhập...</span>
+                <span className="text-[10px] text-emerald-600 font-extrabold truncate">{selectedPatient.fullName} đang nhập...</span>
               </motion.div>
             )}
 
-            {/* Bottom Panel */}
-            <div className="border-t border-slate-200/50 bg-white/80 backdrop-blur-md p-4 shrink-0 space-y-3 z-10 shadow-lg shadow-black/5">
+            {/* ── Bottom Panel: Canned Responses + Input ── */}
+            <div className="border-t border-slate-200/50 bg-white/80 backdrop-blur-md p-3 sm:p-4 shrink-0 space-y-2 sm:space-y-3 z-10 shadow-lg shadow-black/5">
               {/* Quick Canned Responses Strip */}
               {showCanned && (
                 <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
@@ -549,11 +590,11 @@ export default function ReceptionistChatTab() {
               )}
 
               {/* Input Box */}
-              <form onSubmit={handleSend} className="flex items-center gap-3">
+              <form onSubmit={handleSend} className="flex items-center gap-2 sm:gap-3">
                 <button
                   type="button"
                   onClick={() => setShowCanned(!showCanned)}
-                  className={`p-2.5 rounded-xl border flex items-center justify-center cursor-pointer transition-all active:scale-95 shrink-0 ${
+                  className={`p-2 sm:p-2.5 rounded-xl border flex items-center justify-center cursor-pointer transition-all active:scale-95 shrink-0 ${
                     showCanned 
                       ? 'bg-teal-50 border-teal-200 text-teal-600' 
                       : 'bg-slate-50 border-slate-200 text-slate-400 hover:bg-slate-100'
@@ -569,16 +610,16 @@ export default function ReceptionistChatTab() {
                   value={inputValue}
                   onChange={handleInputChange}
                   onKeyDown={handleKeyDown}
-                  placeholder={`Nhập câu trả lời hỗ trợ bệnh nhân...`}
-                  className={`${GLASS_INPUT} px-4 py-3.5 text-xs flex-1 font-semibold`}
+                  placeholder="Nhập câu trả lời hỗ trợ bệnh nhân..."
+                  className={`${GLASS_INPUT} px-3 sm:px-4 py-3 text-xs flex-1 font-semibold min-w-0`}
                 />
 
                 <button
                   type="submit"
                   disabled={!inputValue.trim()}
-                  className={`w-11 h-11 rounded-xl flex items-center justify-center border-none cursor-pointer transition-all shrink-0 ${
+                  className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center border-none cursor-pointer transition-all shrink-0 ${
                     inputValue.trim()
-                      ? 'bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-md shadow-teal-600/25 shadow-lg active:scale-95'
+                      ? 'bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-md shadow-teal-600/25 active:scale-95'
                       : 'bg-slate-100 text-slate-300 cursor-not-allowed'
                   }`}
                 >
@@ -590,13 +631,14 @@ export default function ReceptionistChatTab() {
                 <span className="text-[9px] text-slate-400 font-semibold flex items-center gap-1">
                   <CornerDownLeft size={10} /> Nhấn <strong>Enter</strong> để gửi tin nhắn
                 </span>
-                <span className="text-[9px] text-slate-400 font-semibold">
+                <span className="text-[9px] text-slate-400 font-semibold hidden sm:inline">
                   Mã bệnh nhân: <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-600 text-[8px]">{selectedPatient.id}</code>
                 </span>
               </div>
             </div>
           </>
         ) : (
+          /* ── Empty state: no patient selected ── */
           <div className="flex-1 flex flex-col items-center justify-center text-center p-8 text-slate-400">
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
