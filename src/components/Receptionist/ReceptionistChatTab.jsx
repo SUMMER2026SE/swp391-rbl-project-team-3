@@ -280,7 +280,7 @@ export default function ReceptionistChatTab() {
 
   return (
     <div
-      className={`w-full ${GLASS_BASE} flex flex-col md:flex-row transition-all duration-300`}
+      className={`w-full ${GLASS_BASE} overflow-hidden flex flex-col md:flex-row transition-all duration-300`}
       style={{ height: 'calc(100vh - 140px)', minHeight: '480px', maxHeight: 'calc(100vh - 100px)' }}
     >
       {/* ═══════════════════════════════════════════════════════════════════
@@ -504,97 +504,149 @@ export default function ReceptionistChatTab() {
             </div>
 
             {/* ── Messages Scroll Area ── */}
-            <div 
-              className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-5 space-y-3 sm:space-y-4 bg-slate-50/10 custom-scrollbar min-h-0"
+            <div
+              className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-5 custom-scrollbar min-h-0"
               style={{ scrollbarWidth: 'thin' }}
             >
-              <AnimatePresence initial={false}>
-                {conversation.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-center text-slate-400 py-12">
-                    <MessageSquare className="w-12 h-12 text-slate-300 mb-3" />
-                    <p className="text-sm font-bold text-slate-700">Chưa có tin nhắn hỗ trợ</p>
-                    <p className="text-xs mt-1 text-slate-400 font-semibold">Nhập tin nhắn bên dưới để hỗ trợ bệnh nhân.</p>
+              {conversation.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-center text-slate-400 py-12">
+                  <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-teal-500/10 to-emerald-500/10 border border-teal-500/20 flex items-center justify-center mb-4 shadow-inner">
+                    <MessageSquare className="w-8 h-8 text-teal-500/70" />
                   </div>
-                ) : (
-                  conversation.map((msg, i) => {
+                  <p className="text-sm font-bold text-slate-700">Chưa có tin nhắn hỗ trợ</p>
+                  <p className="text-xs mt-1 text-slate-400 font-semibold">Nhập tin nhắn bên dưới để hỗ trợ bệnh nhân.</p>
+                </div>
+              ) : (
+                <AnimatePresence initial={false}>
+                  {conversation.map((msg, i) => {
                     const isPatient = msg.senderRole === 'PATIENT';
                     const isAI = msg.senderRole === 'BOT';
+                    // Messenger-style grouping of consecutive same-sender messages.
+                    const prev = conversation[i - 1];
+                    const next = conversation[i + 1];
+                    const samePrev = prev && prev.senderRole === msg.senderRole;
+                    const sameNext = next && next.senderRole === msg.senderRole;
+                    const isFirst = !samePrev;   // top of a group  → show name + time
+                    const isLast = !sameNext;    // bottom of group → show avatar
+                    // Per-corner radii: the sender-facing side "welds" together within a
+                    // group (small radius on the connecting corners), the outer side stays round.
+                    const R = 18, r = 5;
+                    const radii = isPatient
+                      ? { borderTopLeftRadius: samePrev ? r : R, borderBottomLeftRadius: sameNext ? r : R, borderTopRightRadius: R, borderBottomRightRadius: R }
+                      : { borderTopRightRadius: samePrev ? r : R, borderBottomRightRadius: sameNext ? r : R, borderTopLeftRadius: R, borderBottomLeftRadius: R };
                     return (
-                      <motion.div 
-                        key={msg.id || i} 
-                        initial={{ opacity: 0, y: 8, scale: 0.98 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                        className={`flex flex-col ${isPatient ? 'items-start' : 'items-end'}`}
+                      <motion.div
+                        key={msg.id || i}
+                        layout="position"
+                        initial={{ opacity: 0, x: isPatient ? -14 : 14, y: 6, scale: 0.96 }}
+                        animate={{ opacity: 1, x: 0, y: 0, scale: 1 }}
+                        transition={{ type: 'spring', damping: 24, stiffness: 280, mass: 0.7 }}
+                        className={`flex items-end gap-2 ${samePrev ? 'mt-0.5' : 'mt-4 first:mt-0'} ${isPatient ? 'flex-row' : 'flex-row-reverse'} justify-start`}
                       >
-                        <span className="text-[9px] text-slate-400 font-semibold mb-1 px-1 flex items-center gap-1">
-                          {isPatient ? msg.senderName : (isAI ? 'Trợ lý AI' : 'Lễ tân')}
-                          <span>•</span>
-                          <span>
-                            {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </span>
-                        
-                        <div
-                          className={`max-w-[85%] sm:max-w-[70%] px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-2xl text-xs leading-relaxed shadow-sm ${
-                            isPatient
-                              ? 'bg-white border border-slate-200/80 text-slate-800 rounded-bl-md'
-                              : isAI
-                              ? 'bg-sky-50 border border-sky-100 text-sky-800 rounded-bl-md flex items-center gap-2 font-medium'
-                              : 'bg-gradient-to-r from-teal-600 to-emerald-600 text-white rounded-br-md shadow-md shadow-teal-600/10'
-                          }`}
-                        >
-                          {isAI && <Bot className="w-3.5 h-3.5 text-sky-500 shrink-0" />}
-                          <span className="break-words">{msg.text}</span>
+                        {/* Avatar rail — fixed-width spacer; avatar shown on the group's last bubble. */}
+                        <div className="w-7 shrink-0 self-end">
+                          {isLast && isPatient && (
+                            <img src={selectedPatient.avatar} alt="" className="w-7 h-7 rounded-full object-cover border border-white shadow-sm" />
+                          )}
+                          {isLast && isAI && (
+                            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-sky-400 to-indigo-500 flex items-center justify-center shadow-sm shadow-sky-500/30">
+                              <Bot className="w-3.5 h-3.5 text-white" />
+                            </div>
+                          )}
+                          {isLast && !isPatient && !isAI && (
+                            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center shadow-sm shadow-teal-600/30">
+                              <UserCheck className="w-3.5 h-3.5 text-white" />
+                            </div>
+                          )}
+                        </div>
+
+                        <div className={`flex flex-col max-w-[80%] sm:max-w-[68%] ${isPatient ? 'items-start' : 'items-end'}`}>
+                          {isFirst && (
+                            <span className="text-[9px] text-slate-400 font-bold mb-1 px-1 flex items-center gap-1">
+                              {isPatient ? msg.senderName : (isAI ? 'Trợ lý AI' : 'Lễ tân')}
+                              <span className="text-slate-300">•</span>
+                              <span>{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            </span>
+                          )}
+
+                          <div
+                            style={radii}
+                            className={`px-4 py-2.5 text-xs leading-relaxed break-words transition-shadow ${
+                              isPatient
+                                ? 'bg-white/80 backdrop-blur-sm border border-white/90 text-slate-800 shadow-sm shadow-slate-900/5'
+                                : isAI
+                                ? 'bg-gradient-to-br from-sky-50 to-indigo-50/70 border border-sky-100 text-slate-700 font-medium shadow-sm'
+                                : 'bg-gradient-to-br from-teal-500 to-emerald-600 text-white shadow-md shadow-teal-600/25'
+                            }`}
+                          >
+                            {msg.text}
+                          </div>
                         </div>
                       </motion.div>
                     );
-                  })
-                )}
-              </AnimatePresence>
+                  })}
+                </AnimatePresence>
+              )}
               <div ref={messagesEndRef} />
             </div>
 
-            {/* ── Typing status bar ── */}
-            {selectedPatient.patientTyping && (
-              <motion.div 
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="px-4 sm:px-6 py-2 bg-slate-50/50 flex items-center gap-2 border-t border-slate-100 shrink-0"
-              >
-                <div className="flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                </div>
-                <span className="text-[10px] text-emerald-600 font-extrabold truncate">{selectedPatient.fullName} đang nhập...</span>
-              </motion.div>
-            )}
+            {/* ── Typing indicator — mirrors an incoming patient bubble ── */}
+            <AnimatePresence>
+              {selectedPatient.patientTyping && (
+                <motion.div
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 6 }}
+                  transition={{ duration: 0.2 }}
+                  className="px-4 sm:px-6 pb-1 flex items-end gap-2 shrink-0"
+                >
+                  <img src={selectedPatient.avatar} alt="" className="w-7 h-7 rounded-full object-cover border border-white shadow-sm shrink-0" />
+                  <div style={{ borderRadius: 18, borderTopLeftRadius: 6 }} className="bg-white/80 backdrop-blur-sm border border-white/90 px-4 py-3 shadow-sm flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* ── Bottom Panel: Canned Responses + Input ── */}
             <div className="border-t border-slate-200/50 bg-white/80 backdrop-blur-md p-3 sm:p-4 shrink-0 space-y-2 sm:space-y-3 z-10 shadow-lg shadow-black/5">
               {/* Quick Canned Responses Strip */}
-              {showCanned && (
-                <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-                  {CANNED_RESPONSES.map((temp, index) => (
-                    <button
-                      key={index}
-                      type="button"
-                      onClick={() => setInputValue(temp)}
-                      className="bg-slate-50 hover:bg-teal-50 border border-slate-200 hover:border-teal-200 hover:text-teal-700 text-slate-500 text-[10px] font-bold px-3 py-1.5 rounded-xl cursor-pointer transition-all whitespace-nowrap shrink-0"
-                    >
-                      {temp}
-                    </button>
-                  ))}
-                </div>
-              )}
+              <AnimatePresence initial={false}>
+                {showCanned && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.22, ease: 'easeOut' }}
+                    className="overflow-hidden"
+                  >
+                    <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+                      {CANNED_RESPONSES.map((temp, index) => (
+                        <motion.button
+                          key={index}
+                          type="button"
+                          initial={{ opacity: 0, y: 6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.03 }}
+                          onClick={() => setInputValue(temp)}
+                          className="bg-white/50 hover:bg-teal-50 border border-white/70 hover:border-teal-200 hover:text-teal-700 text-slate-500 text-[10px] font-bold px-3 py-1.5 rounded-full cursor-pointer transition-all whitespace-nowrap shrink-0 shadow-sm active:scale-95"
+                        >
+                          {temp}
+                        </motion.button>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* Input Box */}
               <form onSubmit={handleSend} className="flex items-center gap-2 sm:gap-3">
                 <button
                   type="button"
                   onClick={() => setShowCanned(!showCanned)}
-                  className={`p-2 sm:p-2.5 rounded-xl border flex items-center justify-center cursor-pointer transition-all active:scale-95 shrink-0 ${
+                  className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full border flex items-center justify-center cursor-pointer transition-all active:scale-95 shrink-0 ${
                     showCanned 
                       ? 'bg-teal-50 border-teal-200 text-teal-600' 
                       : 'bg-slate-50 border-slate-200 text-slate-400 hover:bg-slate-100'
@@ -611,20 +663,22 @@ export default function ReceptionistChatTab() {
                   onChange={handleInputChange}
                   onKeyDown={handleKeyDown}
                   placeholder="Nhập câu trả lời hỗ trợ bệnh nhân..."
-                  className={`${GLASS_INPUT} px-3 sm:px-4 py-3 text-xs flex-1 font-semibold min-w-0`}
+                  className={`${GLASS_INPUT} !rounded-full px-5 py-3 text-xs flex-1 font-semibold min-w-0`}
                 />
 
-                <button
+                <motion.button
                   type="submit"
                   disabled={!inputValue.trim()}
-                  className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center border-none cursor-pointer transition-all shrink-0 ${
+                  whileTap={inputValue.trim() ? { scale: 0.9 } : {}}
+                  animate={inputValue.trim() ? { scale: 1 } : { scale: 0.96 }}
+                  className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center border-none cursor-pointer transition-all shrink-0 ${
                     inputValue.trim()
-                      ? 'bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-md shadow-teal-600/25 active:scale-95'
+                      ? 'bg-gradient-to-br from-teal-500 to-emerald-600 text-white shadow-lg shadow-teal-600/30 ring-2 ring-teal-500/20'
                       : 'bg-slate-100 text-slate-300 cursor-not-allowed'
                   }`}
                 >
-                  <Send size={16} />
-                </button>
+                  <Send size={16} className={inputValue.trim() ? 'translate-x-px' : ''} />
+                </motion.button>
               </form>
               
               <div className="flex justify-between items-center px-1">

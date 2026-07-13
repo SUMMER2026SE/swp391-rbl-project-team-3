@@ -316,7 +316,9 @@ export default function FreeSkinScanModal({ isOpen, onClose, onBookAppointment }
 
     return (
         <AnimatePresence>
-            <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+            {/* z-9999 + rendered after FloatingChatbot — must not open behind the
+                chat overlay (z-9999) or its FAB (z-9998). */}
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
                 {/* Backdrop overlay */}
                 <motion.div 
                     initial={{ opacity: 0 }}

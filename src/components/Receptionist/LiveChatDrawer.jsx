@@ -234,65 +234,91 @@ export default function LiveChatDrawer({ patient, isOpen, onClose, messages, onS
                 </div>
               )}
 
-              {(chatHistory || [])?.map?.((msg) => {
-                const isPatient = msg.senderRole === 'PATIENT';
-                const isAI = msg.senderRole === 'BOT';
-                
-                return (
-                  <motion.div 
-                    key={msg.id} 
-                    initial={{ opacity: 0, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                    className={`flex flex-col ${isPatient ? 'items-start' : 'items-end'}`}
-                  >
-                    {/* Sender Name and Time */}
-                    <div className="flex items-center gap-1.5 text-[9px] text-slate-400 font-semibold mb-1 px-1">
-                      <span>{isPatient ? patient.fullName : (isAI ? "DermaSmart AI" : "Bạn")}</span>
-                      <span>•</span>
-                      <span>
-                        {msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
-                      </span>
-                    </div>
+              <AnimatePresence initial={false}>
+                {(chatHistory || [])?.map?.((msg, i) => {
+                  const isPatient = msg.senderRole === 'PATIENT';
+                  const isAI = msg.senderRole === 'BOT';
+                  // Messenger-style grouping of consecutive same-sender messages.
+                  const prev = chatHistory[i - 1];
+                  const next = chatHistory[i + 1];
+                  const samePrev = prev && prev.senderRole === msg.senderRole;
+                  const sameNext = next && next.senderRole === msg.senderRole;
+                  const isFirst = !samePrev;   // top of a group  → show name + time
+                  const isLast = !sameNext;    // bottom of group → show avatar
+                  const R = 18, r = 5;
+                  const radii = isPatient
+                    ? { borderTopLeftRadius: samePrev ? r : R, borderBottomLeftRadius: sameNext ? r : R, borderTopRightRadius: R, borderBottomRightRadius: R }
+                    : { borderTopRightRadius: samePrev ? r : R, borderBottomRightRadius: sameNext ? r : R, borderTopLeftRadius: R, borderBottomLeftRadius: R };
 
-                    {/* Message Bubble */}
-                    <div
-                      className={`max-w-[85%] px-3.5 py-2.5 rounded-xl text-xs leading-relaxed ${
-                        isPatient
-                          ? 'bg-white border border-slate-200/80 text-slate-800 rounded-bl-sm shadow-sm'
-                          : isAI
-                            ? 'bg-sky-50 border border-sky-100 text-sky-800 rounded-br-sm shadow-sm flex items-start gap-1.5'
-                            : 'bg-gradient-to-r from-teal-600 to-emerald-600 text-white rounded-br-sm shadow-md shadow-teal-700/10'
-                      }`}
+                  return (
+                    <motion.div
+                      key={msg.id}
+                      layout="position"
+                      initial={{ opacity: 0, x: isPatient ? -14 : 14, y: 6, scale: 0.96 }}
+                      animate={{ opacity: 1, x: 0, y: 0, scale: 1 }}
+                      transition={{ type: 'spring', damping: 24, stiffness: 280, mass: 0.7 }}
+                      className={`flex items-end gap-2 ${samePrev ? 'mt-0.5' : 'mt-4 first:mt-0'} ${isPatient ? 'flex-row' : 'flex-row-reverse'} justify-start`}
                     >
-                      {isAI && <Bot className="w-3.5 h-3.5 text-sky-500 shrink-0" />}
-                      <span className="break-words">{msg.text}</span>
-                    </div>
+                      {/* Avatar rail — fixed-width spacer; avatar shown on the group's last bubble. */}
+                      <div className="w-7 shrink-0 self-end">
+                        {isLast && isPatient && (
+                          patient.avatar ? (
+                            <img src={patient.avatar} alt="" className="w-7 h-7 rounded-full object-cover border border-white shadow-sm" />
+                          ) : (
+                            <div className="w-7 h-7 rounded-full bg-teal-50 border border-white flex items-center justify-center shadow-sm">
+                              <User className="w-3.5 h-3.5 text-teal-600" />
+                            </div>
+                          )
+                        )}
+                        {isLast && isAI && (
+                          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-sky-400 to-indigo-500 flex items-center justify-center shadow-sm shadow-sky-500/30">
+                            <Bot className="w-3.5 h-3.5 text-white" />
+                          </div>
+                        )}
+                        {isLast && !isPatient && !isAI && (
+                          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center shadow-sm shadow-teal-600/30">
+                            <User className="w-3.5 h-3.5 text-white" />
+                          </div>
+                        )}
+                      </div>
 
-                    {/* Badge Roles (Bệnh nhân / Lễ tân / AI) */}
-                    <span className={`text-[8px] font-bold uppercase tracking-wider mt-1 px-1.5 ${
-                      isPatient 
-                        ? 'text-slate-400' 
-                        : isAI 
-                          ? 'text-sky-600 bg-sky-50 border border-sky-200/30 rounded-md px-1 py-0.5' 
-                          : 'text-teal-600 bg-teal-50 border border-teal-200/30 rounded-md px-1 py-0.5'
-                    }`}>
-                      {isPatient ? "Bệnh nhân" : (isAI ? "Trợ lý AI" : "Nhân viên")}
-                    </span>
-                  </motion.div>
-                );
-              })}
+                      <div className={`flex flex-col max-w-[80%] ${isPatient ? 'items-start' : 'items-end'}`}>
+                        {isFirst && (
+                          <span className="flex items-center gap-1.5 text-[9px] text-slate-400 font-bold mb-1 px-1">
+                            <span>{isPatient ? patient.fullName : (isAI ? "DermaSmart AI" : "Bạn")}</span>
+                            <span className="text-slate-300">•</span>
+                            <span>{msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}</span>
+                          </span>
+                        )}
+
+                        <div
+                          style={radii}
+                          className={`px-4 py-2.5 text-xs leading-relaxed break-words ${
+                            isPatient
+                              ? 'bg-white/80 backdrop-blur-sm border border-white/90 text-slate-800 shadow-sm shadow-slate-900/5'
+                              : isAI
+                                ? 'bg-gradient-to-br from-sky-50 to-indigo-50/70 border border-sky-100 text-slate-700 font-medium shadow-sm'
+                                : 'bg-gradient-to-br from-teal-500 to-emerald-600 text-white shadow-md shadow-teal-600/25'
+                          }`}
+                        >
+                          {msg.text}
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
               <div ref={messagesEndRef} />
             </div>
 
             {/* Quick Canned Responses Drawer Row */}
-            <div className="px-3 sm:px-4 py-2 border-t border-slate-100 bg-white shrink-0 flex items-center gap-1.5 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+            <div className="px-3 sm:px-4 py-2 border-t border-slate-100 bg-white/60 backdrop-blur-md shrink-0 flex items-center gap-1.5 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
               {cannedTemplates?.map?.((template, index) => (
                 <button
                   key={index}
                   onClick={() => setInputValue(template)}
                   title={template}
-                  className="bg-slate-50 hover:bg-teal-50 border border-slate-200/80 hover:border-teal-200 hover:text-teal-700 text-slate-500 text-[10px] font-bold px-2.5 py-1.5 rounded-xl cursor-pointer transition-all whitespace-nowrap shrink-0 max-w-[150px] truncate"
+                  className="bg-white/50 hover:bg-teal-50 border border-white/70 hover:border-teal-200 hover:text-teal-700 text-slate-500 text-[10px] font-bold px-2.5 py-1.5 rounded-full cursor-pointer transition-all whitespace-nowrap shrink-0 max-w-[150px] truncate shadow-sm active:scale-95"
                 >
                   {template}
                 </button>
@@ -300,7 +326,7 @@ export default function LiveChatDrawer({ patient, isOpen, onClose, messages, onS
             </div>
 
             {/* Footer Input Area */}
-            <div className="p-3 sm:p-4 border-t border-slate-100 bg-white flex items-center gap-2 shrink-0">
+            <div className="p-3 sm:p-4 border-t border-slate-100 bg-white/80 backdrop-blur-md flex items-center gap-2 shrink-0">
               <input
                 ref={inputRef}
                 type="text"
@@ -308,19 +334,21 @@ export default function LiveChatDrawer({ patient, isOpen, onClose, messages, onS
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Nhập tin nhắn hỗ trợ bệnh nhân..."
-                className={`${GLASS_INPUT} px-3 sm:px-4 py-3 text-xs flex-1 font-medium min-w-0`}
+                className={`${GLASS_INPUT} !rounded-full px-4 py-3 text-xs flex-1 font-medium min-w-0`}
               />
-              <button
+              <motion.button
                 onClick={handleSend}
                 disabled={!inputValue.trim()}
-                className={`w-10 h-10 rounded-xl flex items-center justify-center border-none cursor-pointer transition-all shrink-0 ${
+                whileTap={inputValue.trim() ? { scale: 0.9 } : {}}
+                animate={inputValue.trim() ? { scale: 1 } : { scale: 0.96 }}
+                className={`w-10 h-10 rounded-full flex items-center justify-center border-none cursor-pointer transition-all shrink-0 ${
                   inputValue.trim()
-                    ? 'bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-lg shadow-teal-600/20 hover:shadow-xl active:scale-95'
+                    ? 'bg-gradient-to-br from-teal-500 to-emerald-600 text-white shadow-lg shadow-teal-600/30 ring-2 ring-teal-500/20'
                     : 'bg-slate-100 text-slate-300'
                 }`}
               >
-                <Send className="w-4 h-4" />
-              </button>
+                <Send className={`w-4 h-4 ${inputValue.trim() ? 'translate-x-px' : ''}`} />
+              </motion.button>
             </div>
           </motion.aside>
         </>

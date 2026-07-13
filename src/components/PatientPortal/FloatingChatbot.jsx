@@ -20,7 +20,35 @@ const wantsHuman = (text) => {
   return HANDOFF_KEYWORDS.some((k) => t.includes(k));
 };
 
+// Per-browser guest thread id. RLS only grants anon access to threads matching
+// 'pat-guest-%', and the random uuid keeps each visitor's conversation private
+// (and out of every other guest's widget, unlike the old shared 'pat-guest').
+const GUEST_ID_KEY = 'dermasmart_guest_chat_id';
+const getGuestChatId = () => {
+  try {
+    let id = localStorage.getItem(GUEST_ID_KEY);
+    if (!id || !id.startsWith('pat-guest-')) {
+      id = `pat-guest-${crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`}`;
+      localStorage.setItem(GUEST_ID_KEY, id);
+    }
+    return id;
+  } catch {
+    return 'pat-guest';
+  }
+};
+
 /* ───────────────────────── Sub-components ───────────────────────── */
+
+// Markdown-lite for bot replies: Gemini answers with **bold** runs and real
+// newlines. Bold becomes <strong>; newlines survive via whitespace-pre-wrap
+// on the bubble. Everything else stays plain text (no HTML injection).
+function renderBotText(text) {
+  return String(text).split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+    part.startsWith('**') && part.endsWith('**') && part.length >= 5
+      ? <strong key={i} className="font-semibold text-white">{part.slice(2, -2)}</strong>
+      : part
+  );
+}
 
 function ModeToggle({ mode, setMode }) {
   const tabs = [
@@ -87,7 +115,7 @@ function TypewriterMessage({ text, isLatest, onTextUpdate }) {
 
   return (
     <>
-      {displayedText}
+      {renderBotText(displayedText)}
       {isStreaming && <span className="animate-pulse ml-1">▋</span>}
     </>
   );
@@ -110,8 +138,8 @@ function MessageBubble({ msg, isLatest, onTextUpdate }) {
         data-wave
         className={
           isPatient
-            ? 'max-w-[78%] px-4 py-2.5 rounded-2xl rounded-br-md text-sm leading-relaxed text-white shadow-lg shadow-sky-900/30 bg-gradient-to-br from-cyan-400 via-sky-500 to-violet-500'
-            : 'lg-bubble-in max-w-[78%] px-4 py-2.5 rounded-2xl rounded-bl-md text-sm leading-relaxed text-white/90 shadow-lg shadow-black/20'
+            ? 'max-w-[78%] px-4 py-2.5 rounded-2xl rounded-br-md text-sm leading-relaxed whitespace-pre-wrap break-words text-white shadow-lg shadow-sky-900/30 bg-gradient-to-br from-cyan-400 via-sky-500 to-violet-500'
+            : 'lg-bubble-in max-w-[78%] px-4 py-2.5 rounded-2xl rounded-bl-md text-sm leading-relaxed whitespace-pre-wrap break-words text-white/90 shadow-lg shadow-black/20'
         }
       >
         {isBot
@@ -138,7 +166,7 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
   const { user } = useAuth();
   const patientId = user?.id
     ? (String(user.id).startsWith('pat-') ? String(user.id) : `pat-${user.id}`)
-    : 'pat-guest';
+    : getGuestChatId();
   const patientName = user?.name || 'Khách';
 
   const [isOpen, setIsOpen] = useState(false);
@@ -481,11 +509,24 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
     }
   };
 
+  // Booking & AI-scan live on the landing page at a LOWER z-index than this
+  // fullscreen overlay (z-100 vs z-9999) — the chat must close first or the
+  // modal opens invisibly behind the frosted glass.
+  const openOnPage = (cb) => {
+    setIsOpen(false);
+    cb?.();
+  };
+
+  const prefill = (text) => {
+    setInputValue(text);
+    inputRef.current?.focus();
+  };
+
   const quickActions = [
-    { label: 'Đặt lịch khám', Icon: Calendar, action: () => onBookAppointment?.() },
-    { label: 'Soi da AI', Icon: ScanLine, action: () => onAIScan?.() },
-    { label: 'Bảng giá', Icon: BadgeDollarSign, action: () => setInputValue('Cho tôi xem bảng giá dịch vụ') },
-    { label: 'Liệu trình', Icon: Pill, action: () => setInputValue('Tư vấn liệu trình điều trị cho tôi') },
+    { label: 'Đặt lịch khám', Icon: Calendar, action: () => openOnPage(onBookAppointment) },
+    { label: 'Soi da AI', Icon: ScanLine, action: () => openOnPage(onAIScan) },
+    { label: 'Bảng giá', Icon: BadgeDollarSign, action: () => prefill('Cho tôi xem bảng giá dịch vụ') },
+    { label: 'Liệu trình', Icon: Pill, action: () => prefill('Tư vấn liệu trình điều trị cho tôi') },
     // Explicit Bot→Human handoff. Hidden once already talking to a receptionist.
     ...(escalated ? [] : [{ label: 'Gặp Lễ tân', Icon: Headphones, action: () => escalateToHuman() }]),
   ];
