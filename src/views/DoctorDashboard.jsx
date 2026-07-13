@@ -418,6 +418,7 @@ export default function DoctorDashboard() {
         portalName="Doctor Portal"
         navItems={navItems}
         activeTab={activeAppointment ? '' : activeTab}
+        customKey={activeAppointment ? `exam-${activeAppointment.id}` : `tab-${activeTab}`}
         onTabChange={(id) => { setActiveTab(id); setActiveAppointment(null); }}
         pageTitle={getPageTitle()}
         searchPlaceholder="Tìm kiếm bệnh nhân, hồ sơ..."

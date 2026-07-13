@@ -42,6 +42,10 @@ export default function DashboardShell({
   searchPlaceholder = 'Tìm kiếm...',
   onSearch,
   headerExtras = null,
+  // Optional composite key for the content animation container. Portals can pass
+  // e.g. `${activeTab}:${activeDetailId}` so deep-diving into a sub-detail (a
+  // patient exam / task) re-triggers the enter animation, not just tab swaps.
+  customKey,
   children,
 }) {
   const { user, logout } = useAuth();
@@ -307,7 +311,7 @@ export default function DashboardShell({
               AnimatePresence mode="wait" exit-stall that can block tab swaps). */}
           <main className="relative z-10 px-4 md:px-8 py-8 max-w-[1600px] mx-auto">
             <motion.div
-              key={`tab-${activeTab}`}
+              key={customKey || `tab-${activeTab}`}
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, ease: 'easeOut' }}

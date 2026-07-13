@@ -1,15 +1,6 @@
 // Dermatology Clinic Management System - Client Application Entry
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import LoginPage from './views/LoginPage';
-import LandingPage from './views/LandingPage';
-import DoctorProfilePage from './views/DoctorProfilePage';
-import ResetPasswordPage from './views/ResetPasswordPage';
-import AdminDashboard from './views/AdminDashboard';
-import DoctorDashboard from './views/DoctorDashboard';
-import ReceptionistDashboard from './views/ReceptionistDashboard';
-import TechnicianDashboard from './views/TechnicianDashboard';
-import ProfilePage from './views/ProfilePage';
 import ProtectedRoute from './components/ProtectedRoute';
 import LiquidGlassFilter from './components/common/LiquidGlassFilter';
 import MedicalLoader from './components/common/MedicalLoader';
@@ -17,6 +8,19 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './index.css';
+
+// H4: route-level views are code-split so each portal's JS downloads only when
+// that route is visited (was one ~1.6MB synchronous chunk). Guards, the loader,
+// and the glass filter stay eager since they're tiny and needed immediately.
+const LoginPage = lazy(() => import('./views/LoginPage'));
+const LandingPage = lazy(() => import('./views/LandingPage'));
+const DoctorProfilePage = lazy(() => import('./views/DoctorProfilePage'));
+const ResetPasswordPage = lazy(() => import('./views/ResetPasswordPage'));
+const AdminDashboard = lazy(() => import('./views/AdminDashboard'));
+const DoctorDashboard = lazy(() => import('./views/DoctorDashboard'));
+const ReceptionistDashboard = lazy(() => import('./views/ReceptionistDashboard'));
+const TechnicianDashboard = lazy(() => import('./views/TechnicianDashboard'));
+const ProfilePage = lazy(() => import('./views/ProfilePage'));
 
 function AppContent() {
   const { user, loading, logout, getDashboardPath } = useAuth();
@@ -52,7 +56,13 @@ function AppContent() {
   } : null;
 
   return (
-    <>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-[#9ea5b0]">
+          <MedicalLoader />
+        </div>
+      }
+    >
       <Routes>
         <Route 
           path="/" 
@@ -138,7 +148,7 @@ function AppContent() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </>
+    </Suspense>
   );
 }
 

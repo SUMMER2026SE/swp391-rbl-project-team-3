@@ -276,6 +276,7 @@ export default function TechnicianDashboard() {
         portalName="Technician Portal"
         navItems={navItems}
         activeTab={activeTask ? '' : activeTab}
+        customKey={activeTask ? `task-${activeTask.id}` : `tab-${activeTab}`}
         onTabChange={(id) => { setActiveTab(id); setActiveTask(null); }}
         pageTitle={getPageTitle()}
         searchPlaceholder="Tìm kiếm chỉ định, bệnh nhân..."

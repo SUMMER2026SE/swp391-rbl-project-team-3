@@ -3,48 +3,9 @@
 // chat. Clinical surfaces (medical records, vitals, diagnoses, prescriptions)
 // have been pruned — receptionists do not practice medicine.
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { GLASS_INPUT } from '../components/common/GlassCard';
-import GlassSelect from '../components/common/GlassSelect';
-import {
-  motion,
-  AnimatePresence,
-  useScroll,
-  useTransform,
-  useSpring,
-  useMotionTemplate,
-} from 'framer-motion';
-import {
-  LayoutDashboard,
-  ClipboardList,
-  CreditCard,
-  MessageSquare,
-  Star,
-  HelpCircle,
-  LogOut,
-  Bell,
-  Settings,
-  Plus,
-  Users,
-  Wallet,
-  CalendarClock,
-  CheckSquare,
-  Inbox,
-  Clock,
-  UserCheck,
-  X,
-  User,
-  Sparkles,
-  AlertCircle,
-  ArrowRight,
-  PanelLeftClose,
-  PanelLeftOpen,
-  Calendar,
-  AlertTriangle,
-  Sun,
-} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { LayoutDashboard, ClipboardList, CreditCard, MessageSquare, Star, Bell, Plus, CheckSquare, Sparkles, AlertCircle } from 'lucide-react';
 import { useAppointmentController } from '../controllers/useAppointmentController';
 import { useMedicalRecordController } from '../controllers/useMedicalRecordController';
 import { useVoucherController } from '../controllers/useVoucherController';
@@ -54,18 +15,17 @@ import { NotificationModel } from '../models/NotificationModel';
 import { DoctorScheduleModel } from '../models/DoctorScheduleModel';
 import { supabase } from '../supabaseClient';
 import { ReceptionistChatModel, subscribeToMessages, unsubscribe } from '../models/ChatModel';
-import LiquidSidebarMenu from '../components/ui/LiquidSidebarMenu';
 import LiveChatDrawer from '../components/Receptionist/LiveChatDrawer';
 import ReceptionistChatTab from '../components/Receptionist/ReceptionistChatTab';
 import ReceptionistFeedbackView from '../components/Receptionist/ReceptionistFeedbackView';
 import TodayQueueBoard from '../components/Receptionist/TodayQueueBoard';
 import BillingCheckout from '../components/Receptionist/BillingCheckout';
 import CheckInPatientModal from '../components/Receptionist/CheckInPatientModal';
-import GlassDatePicker from '../components/common/GlassDatePicker';
 import { normalizeApt, APT_STATUS, TODAY_STR } from '../components/Receptionist/receptionistData';
+import DashboardShell from '../components/ui/DashboardShell';
 import OverviewTab from '../components/Receptionist/Tabs/OverviewTab';
 import WalkInBookingModal from '../components/Receptionist/Tabs/WalkInBookingModal';
-import logo from '../assets/logo.png';
+import { useWalkInBooking } from '../hooks/useWalkInBooking';
 
 const navItems = [
   { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard },
@@ -83,20 +43,12 @@ const PAGE_TITLES = {
   feedback: 'Đánh giá bệnh nhân',
 };
 
-const fadeInUp = {
-  hidden: { opacity: 0, y: 24 },
-  visible: { opacity: 1, y: 0, transition: { type: 'spring', damping: 25, stiffness: 110 } },
-};
-const stagger = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.08 } } };
 
 export default function ReceptionistDashboard() {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
   const { doctors } = useDoctors();
 
   const [activeTab, setActiveTab] = useState('overview');
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [toast, setToast] = useState(null);
   const [selectedCheckInApt, setSelectedCheckInApt] = useState(null);
 
@@ -303,484 +255,17 @@ export default function ReceptionistDashboard() {
     setActiveTab('billing');
   };
 
-  // ─── Manual walk-in appointment ───────────────────────────────────────────
-  const [isAddOpen, setIsAddOpen] = useState(false);
-  const [servicesList, setServicesList] = useState([]);
-  const [newApt, setNewApt] = useState({
-    patientName: '',
-    phone: '',
-    email: '',
-    dob: '1990-01-01',
-    gender: 'Nam',
-    district: '',
-    province: '',
-    existingPatientId: null,
-    service: 'Khám Da Liễu Tổng Quát',
-    notes: '',
+  // ─── Manual walk-in booking — full state machine lives in useWalkInBooking ─
+  const walkInBooking = useWalkInBooking({
+    doctors,
+    currentAnchorId: '18504773-0f51-405a-aa32-70cae403be6e',
+    getAvailableSlots,
+    isSlotBooked,
+    validateBooking,
+    bookAppointment,
+    addPatient,
+    showToast,
   });
-  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
-  const [isExistingPatient, setIsExistingPatient] = useState(false);
-
-  // States mirroring BookAppointmentForm.jsx for walk-in flow
-  const minDate = useMemo(() => {
-    const todayDate = new Date();
-    return `${todayDate.getFullYear()}-${(todayDate.getMonth() + 1).toString().padStart(2, '0')}-${todayDate.getDate().toString().padStart(2, '0')}`;
-  }, []);
-  const [selectedDate, setSelectedDate] = useState('');
-  const [selectedDoctor, setSelectedDoctor] = useState('');
-  const [selectedTime, setSelectedTime] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
-  const [step, setStep] = useState('form'); // 'form', 'payment', 'success'
-  const isSubmittingRef = useRef(false);
-  const [paymentPayload, setPaymentPayload] = useState(null);
-  const [adminSchedules, setAdminSchedules] = useState([]);
-
-  useEffect(() => {
-    if (isAddOpen) {
-      setSelectedDate('');
-      setSelectedDoctor('');
-      setSelectedTime('');
-      setErrorMessage('');
-      setStep('form');
-      setPaymentPayload(null);
-      
-      const saved = localStorage.getItem('admin-services');
-      let parsed = [];
-      if (saved) {
-        try {
-          const raw = JSON.parse(saved);
-          parsed = (Array.isArray(raw) ? raw : [])
-            .filter((s) => s.status === 'Hoạt động')
-            .map((s) => ({ id: s.id, name: s.name }));
-        } catch { parsed = []; }
-      }
-      setServicesList(parsed);
-
-      setNewApt({
-        patientName: '',
-        phone: '',
-        email: '',
-        dob: '1990-01-01',
-        gender: 'Nam',
-        district: '',
-        province: '',
-        existingPatientId: null,
-        service: parsed[0]?.name || 'Khám Da Liễu Tổng Quát',
-        notes: '',
-      });
-      setIsExistingPatient(false);
-      setIsCheckingEmail(false);
-
-      // Fetch doctor shift schedules
-      DoctorScheduleModel.getAllShifts().then(data => setAdminSchedules(data || []));
-    }
-  }, [isAddOpen]);
-
-  const handleEmailBlur = async () => {
-    const emailVal = newApt.email.trim().toLowerCase();
-    if (!emailVal || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
-      return;
-    }
-    setIsCheckingEmail(true);
-    try {
-      const { data, error } = await supabase
-        .from('users')
-        .select(`
-          user_id,
-          full_name,
-          phone,
-          email,
-          date_of_birth,
-          gender,
-          patient_profiles (
-            address
-          )
-        `)
-        .eq('role_id', 5)
-        .eq('email', emailVal)
-        .maybeSingle();
-
-      if (error) throw error;
-      
-      if (data) {
-        setIsExistingPatient(true);
-        const fullAddress = data.patient_profiles?.address || '';
-        const parts = fullAddress.split(',').map((p) => p.trim());
-        let district = '';
-        let province = '';
-        if (parts.length >= 2) {
-          province = parts[parts.length - 1];
-          district = parts.slice(0, parts.length - 1).join(', ');
-        } else {
-          province = fullAddress;
-        }
-
-        setNewApt(prev => ({
-          ...prev,
-          patientName: data.full_name || prev.patientName,
-          phone: data.phone || prev.phone,
-          dob: data.date_of_birth || prev.dob,
-          gender: data.gender || prev.gender,
-          district: district || prev.district,
-          province: province || prev.province,
-          existingPatientId: data.user_id
-        }));
-        showToast('Tìm thấy tài khoản đã đăng ký! Thông tin hồ sơ được tự động điền.', 'info');
-      } else {
-        setIsExistingPatient(false);
-        setNewApt(prev => ({ ...prev, existingPatientId: null }));
-      }
-    } catch (err) {
-      console.error("Error checking email:", err);
-    } finally {
-      setIsCheckingEmail(false);
-    }
-  };
-
-  const handleSubmitBooking = async (e) => {
-    if (e) e.preventDefault();
-    console.log('--- SUBMIT TRIGGERED ---', {
-      selectedDate,
-      selectedDoctor,
-      selectedTime,
-      errorMessage,
-      isExistingPatient,
-      isCheckingEmail,
-      newApt
-    });
-    
-    const nameTrim = newApt.patientName.trim();
-    const phoneClean = newApt.phone.replace(/[\s.-]/g, '');
-    const emailTrim = newApt.email.trim().toLowerCase();
-
-    if (!selectedDate) {
-      alert('Lỗi: Chưa chọn ngày khám!');
-      setErrorMessage('Vui lòng chọn ngày khám.');
-      return;
-    }
-
-    if (!selectedTime) {
-      alert('Lỗi: Chưa chọn khung giờ khám!');
-      setErrorMessage('Vui lòng chọn khung giờ khám.');
-      return;
-    }
-
-    if (!emailTrim || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrim)) {
-      alert('Lỗi: Email không hợp lệ! ' + (emailTrim || '(trống)'));
-      setErrorMessage('Vui lòng nhập Email (Gmail) hợp lệ.');
-      return;
-    }
-
-    if (!isExistingPatient) {
-      if (nameTrim.length < 4) {
-        alert('Lỗi: Họ và tên ngắn hơn 4 ký tự! ' + nameTrim);
-        setErrorMessage('Họ và tên phải từ 4 ký tự trở lên.');
-        return;
-      }
-      const nameRegex = /^[a-zA-Z\sàáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ]+$/;
-      if (!nameRegex.test(nameTrim)) {
-        alert('Lỗi: Họ và tên chứa ký tự không hợp lệ! ' + nameTrim);
-        setErrorMessage('Họ và tên chỉ được chứa chữ cái tiếng Việt và khoảng trắng.');
-        return;
-      }
-      if (nameTrim.split(/\s+/).length < 2) {
-        alert('Lỗi: Họ và tên phải có ít nhất 2 từ! ' + nameTrim);
-        setErrorMessage('Họ và tên phải bao gồm ít nhất Họ và Tên (2 từ).');
-        return;
-      }
-
-      const phoneRegex = /^(03|05|07|08|09)\d{8}$/;
-      if (!phoneRegex.test(phoneClean)) {
-        alert('Lỗi: Số điện thoại không hợp lệ! ' + phoneClean);
-        setErrorMessage('Số điện thoại không hợp lệ (gồm 10 chữ số, bắt đầu bằng 03, 05, 07, 08, 09).');
-        return;
-      }
-
-      if (!newApt.dob) {
-        alert('Lỗi: Chưa chọn ngày sinh!');
-        setErrorMessage('Vui lòng chọn ngày sinh.');
-        return;
-      }
-      const birthDate = new Date(newApt.dob);
-      if (birthDate > new Date()) {
-        alert('Lỗi: Ngày sinh ở tương lai! ' + newApt.dob);
-        setErrorMessage('Ngày sinh không thể ở tương lai.');
-        return;
-      }
-
-      if (!newApt.district.trim() || !newApt.province.trim()) {
-        alert('Lỗi: Chưa nhập Quận/Huyện hoặc Tỉnh/Thành phố!');
-        setErrorMessage('Vui lòng nhập Quận/Huyện và Tỉnh/Thành phố.');
-        return;
-      }
-    }
-
-    // Determine final doctor ID
-    const finalDocId = selectedDoctor || (workingDocs.find(doc => !isSlotBooked(doc.user_id || doc.id, selectedDate, selectedTime))?.user_id) || (workingDocs.find(doc => !isSlotBooked(doc.user_id || doc.id, selectedDate, selectedTime))?.id);
-    if (!finalDocId) {
-      alert('Lỗi: Không tìm thấy bác sĩ khả dụng cho ngày và giờ đã chọn!');
-      setErrorMessage('Không tìm thấy bác sĩ khả dụng cho ngày và giờ đã chọn.');
-      return;
-    }
-
-    const finalDocData = finalDocId ? doctors.find(d => String(d.user_id || d.id) === String(finalDocId)) : null;
-    const finalFeeVal = finalDocData?.consultationFee || '300,000 VNĐ';
-
-    if (isSubmittingRef.current) return;
-    isSubmittingRef.current = true;
-    setErrorMessage('');
-
-    if (!isExistingPatient) {
-      // Check if phone already registered in public users
-      const { data: phoneUser, error: phoneCheckErr } = await supabase
-        .from('users')
-        .select('user_id, full_name, email')
-        .eq('role_id', 5)
-        .eq('phone', phoneClean)
-        .maybeSingle();
-
-      if (phoneCheckErr) {
-        console.error("Phone check error:", phoneCheckErr);
-      }
-      
-      if (phoneUser) {
-        alert('Lỗi: Số điện thoại đã được đăng ký cho bệnh nhân: ' + phoneUser.full_name);
-        setErrorMessage(`Số điện thoại này đã được đăng ký cho bệnh nhân: ${phoneUser.full_name} (${phoneUser.email}).`);
-        isSubmittingRef.current = false;
-        return;
-      }
-    }
-
-    let patientId = newApt.existingPatientId;
-
-    if (!isExistingPatient) {
-      try {
-        // Create new user profile (JIT record generation)
-        const newUserId = window.crypto?.randomUUID ? window.crypto.randomUUID() : 'pat-' + Math.random().toString(36).substring(2, 15);
-        
-        // 1. Insert into users
-        const { error: userErr } = await supabase
-          .from('users')
-          .insert({
-            user_id: newUserId,
-            role_id: 5,
-            full_name: nameTrim,
-            phone: phoneClean,
-            email: emailTrim,
-            gender: newApt.gender,
-            date_of_birth: newApt.dob,
-            status: 'ACTIVE',
-          });
-
-        if (userErr) throw userErr;
-
-        // 2. Insert into patient_profiles
-        const fullAddress = `${newApt.district.trim()}, ${newApt.province.trim()}`;
-        const { error: profileErr } = await supabase
-          .from('patient_profiles')
-          .insert({
-            patient_id: newUserId,
-            address: fullAddress,
-          });
-
-        if (profileErr) throw profileErr;
-
-        // Also add patient locally for legacy compatibility
-        try {
-          addPatient({
-            id: newUserId,
-            fullName: nameTrim,
-            phone: newApt.phone,
-            dob: newApt.dob,
-            email: emailTrim,
-            gender: newApt.gender,
-            address: fullAddress,
-            medicalHistory: [],
-          });
-        } catch (e) {
-          console.warn("Legacy local addPatient warning:", e);
-        }
-
-        patientId = newUserId;
-      } catch (err) {
-        alert('Lỗi tạo hồ sơ bệnh nhân mới: ' + err.message);
-        setErrorMessage(err.message || 'Lỗi khi tạo hồ sơ bệnh nhân mới.');
-        isSubmittingRef.current = false;
-        return;
-      }
-    }
-
-    const bookingPayload = {
-      doctorId: finalDocId,
-      patientId: patientId,
-      patientName: nameTrim,
-      patientPhone: phoneClean,
-      patientEmail: emailTrim,
-      date: selectedDate,
-      time: selectedTime,
-      service: newApt.service || 'Khám Da Liễu Tổng Quát',
-      fee: finalFeeVal,
-      originalFee: finalFeeVal,
-      notes: newApt.notes || 'Khám trực tiếp tại quầy',
-      bookingFee: 50000,
-      paymentStatus: 'Đã thanh toán',
-      status: 'Đã xác nhận'
-    };
-
-    // Validate booking
-    const validation = await validateBooking(bookingPayload);
-    if (!validation.valid) {
-      alert('Lỗi validateBooking từ controller: ' + validation.error);
-      setErrorMessage(validation.error);
-      isSubmittingRef.current = false;
-      return;
-    }
-
-    try {
-      const result = await bookAppointment(bookingPayload);
-      if (result.success) {
-        showToast('Đặt lịch và tạo hồ sơ bệnh án thành công!', 'success');
-        setTimeout(() => {
-          isSubmittingRef.current = false;
-          setIsAddOpen(false);
-        }, 1500);
-      } else {
-        alert('Lỗi bookAppointment từ controller: ' + result.error);
-        isSubmittingRef.current = false;
-        setErrorMessage(result.error || 'Có lỗi xảy ra khi xác nhận đặt lịch.');
-      }
-    } catch (err) {
-      alert('Lỗi catch bookAppointment: ' + err.message);
-      console.error("Booking submit error:", err);
-      setErrorMessage(err.message || 'Có lỗi xảy ra khi đặt lịch.');
-      isSubmittingRef.current = false;
-    }
-  };
-
-  // Helper functions for online-synced pricing layout
-  function parsePriceToNumber(priceStr) {
-    if (!priceStr) return 0;
-    if (typeof priceStr === 'number') return priceStr;
-    return parseInt(priceStr.replace(/[^0-9]/g, ''), 10) || 0;
-  }
-
-  function formatVND(n) {
-    return n.toLocaleString('vi-VN') + ' VNĐ';
-  }
-  function PriceSummary({ originalAmount }) {
-    if (!originalAmount) {
-      return (
-        <div className="bg-white/30 border border-white/40 rounded-2xl p-3.5 space-y-2 text-left">
-          <div className="flex justify-between text-xs font-semibold text-slate-600">
-            <span>Phí khám bệnh</span>
-            <span className="italic text-slate-400 text-[11px]">(Được xác định theo bác sĩ)</span>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="bg-white/30 border border-white/40 rounded-2xl p-3.5 space-y-2 text-left">
-        <div className="flex justify-between text-xs font-semibold text-slate-600">
-          <span>Phí khám bệnh</span>
-          <span>{formatVND(originalAmount)}</span>
-        </div>
-      </div>
-    );
-  }
-  // ─── Working Doctors for selected date ───
-  const workingDocs = useMemo(() => {
-    if (!selectedDate) return [];
-    return (doctors || []).filter(doc => {
-      return (adminSchedules || []).some(s => 
-        String(s.doctor_id || s.doctorId) === String(doc.user_id || doc.id) && 
-        (s.work_date === selectedDate || s.date === selectedDate) && 
-        (s.status === 'Đã xác nhận' || s.status === 'Đã phân công')
-      );
-    });
-  }, [selectedDate, doctors, adminSchedules]);
-
-  // ─── Filtered Slots ───
-  const filteredSlots = (() => {
-    const todayDate = new Date();
-    const minDate = `${todayDate.getFullYear()}-${(todayDate.getMonth() + 1).toString().padStart(2, '0')}-${todayDate.getDate().toString().padStart(2, '0')}`;
-
-    const lockedListStr = localStorage.getItem('dermasmart_locked_slots') || '[]';
-    let lockedList = [];
-    try { lockedList = JSON.parse(lockedListStr); } catch (e) {}
-    const activeLocks = lockedList.filter(l => l.lockedUntil > Date.now());
-
-    const isSlotActuallyBooked = (dId, dDate, dTime) => {
-      // Past check
-      if (dDate < minDate) return true;
-      if (dDate === minDate) {
-        const now = new Date();
-        const currentMins = now.getHours() * 60 + now.getMinutes();
-        const [h, m] = dTime.split(':').map(Number);
-        if ((h * 60 + m) <= currentMins) return true;
-      }
-
-      // Check bookings
-      const booked = isSlotBooked(dId, dDate, dTime);
-      // Check locks
-      const locked = activeLocks.some(l => String(l.doctorId) === String(dId) && l.date === dDate && l.time === dTime);
-      
-      // Check if it fits the doctor's shift
-      let outsideShift = true;
-      const docShifts = (adminSchedules || []).filter(s => String(s.doctor_id || s.doctorId) === String(dId) && (s.work_date === dDate || s.date === dDate));
-      if (docShifts.length > 0) {
-        const fitsAnyShift = docShifts.some(shift => {
-          const shiftStart = (shift.start_time || shift.startTime || '').slice(0, 5);
-          const shiftEnd = (shift.end_time || shift.endTime || '').slice(0, 5);
-          return dTime >= shiftStart && dTime < shiftEnd;
-        });
-        if (fitsAnyShift) {
-          outsideShift = false;
-        }
-      }
-
-      return booked || locked || outsideShift;
-    };
-
-    let slotsToDisplay = [];
-    if (selectedDoctor) {
-      const slots = getAvailableSlots(selectedDoctor, selectedDate, adminSchedules);
-      slotsToDisplay = (slots || []).map(s => ({
-        ...s,
-        isBooked: isSlotActuallyBooked(selectedDoctor, selectedDate, s.time)
-      }));
-    } else {
-      const allSlotsMap = new Map();
-      workingDocs.forEach(doc => {
-         const docId = doc.user_id || doc.id;
-         const docSlots = getAvailableSlots(docId, selectedDate, adminSchedules);
-         (docSlots || []).forEach(s => {
-             if (!allSlotsMap.has(s.time)) {
-                 allSlotsMap.set(s.time, { time: s.time, isBooked: true });
-             }
-             if (!isSlotActuallyBooked(docId, selectedDate, s.time)) {
-                 allSlotsMap.get(s.time).isBooked = false;
-             }
-         });
-      });
-      slotsToDisplay = Array.from(allSlotsMap.values());
-      slotsToDisplay.sort((a, b) => a.time.localeCompare(b.time));
-    }
-    
-    return slotsToDisplay.filter(slot => {
-      const t = slot.time.trim();
-      return t !== '11:00' && t !== '11:30' && t !== '11:00 AM' && t !== '11:30 AM';
-    });
-  })();
-
-  const finalDoctorId = selectedDoctor || (workingDocs.find(doc => !isSlotBooked(doc.user_id || doc.id, selectedDate, selectedTime))?.user_id) || (workingDocs.find(doc => !isSlotBooked(doc.user_id || doc.id, selectedDate, selectedTime))?.id);
-  const finalDoctorData = finalDoctorId ? doctors.find(d => String(d.user_id || d.id) === String(finalDoctorId)) : null;
-
-  const originalAmount = finalDoctorData ? parsePriceToNumber(finalDoctorData.consultationFee) : 0;
-  const finalFee = finalDoctorData?.consultationFee || '300,000 VNĐ';
-
-  const isContactInfoComplete = newApt.patientName.trim() && newApt.phone.trim() && newApt.email.trim();
-  const isFormComplete = selectedDate && selectedTime && isContactInfoComplete && finalDoctorId;
 
   // ─── Derived KPI counts ───────────────────────────────────────────────────
   const todays = useMemo(
@@ -799,287 +284,145 @@ export default function ReceptionistDashboard() {
     [todays, appointments]
   );
 
-  // ─── Morphing pill topbar (shared baseline) ───────────────────────────────
-  const scrollRef = useRef(null);
-  const { scrollY } = useScroll({ container: scrollRef });
-  const cfg = { stiffness: 220, damping: 32, mass: 0.9 };
-  const widthMV = useSpring(useTransform(scrollY, [0, 120], [100, 90]), cfg);
-  const maxWMV = useSpring(useTransform(scrollY, [0, 120], [1600, 1140]), cfg);
-  const radiusMV = useSpring(useTransform(scrollY, [0, 120], [0, 32]), cfg);
-  const topMV = useSpring(useTransform(scrollY, [0, 120], [0, 16]), cfg);
-  const pxMV = useSpring(useTransform(scrollY, [0, 120], [32, 30]), cfg);
-  const bgMV = useSpring(useTransform(scrollY, [0, 120], [0, 0.72]), cfg);
-  const shadowMV = useSpring(useTransform(scrollY, [0, 120], [0, 0.12]), cfg);
-  const ringMV = useSpring(useTransform(scrollY, [0, 120], [0, 0.7]), cfg);
-  const navWidth = useMotionTemplate`${widthMV}%`;
-  const navMaxWidth = useMotionTemplate`${maxWMV}px`;
-  const navBorderRadius = useMotionTemplate`${radiusMV}px`;
-  const navTop = useMotionTemplate`${topMV}px`;
-  const navPaddingX = useMotionTemplate`${pxMV}px`;
-  const navBg = useMotionTemplate`rgba(255, 255, 255, ${bgMV})`;
-  const navShadow = useMotionTemplate`0 14px 40px rgba(2, 32, 29, ${shadowMV}), inset 0 1px 2px rgba(255,255,255,0.9), inset 0 0 0 1px rgba(255,255,255,${ringMV})`;
+  const headerExtras = (
+    <>
+      <span className="hidden sm:inline-block font-semibold text-xs text-teal-700 py-1 px-3 bg-teal-50 border border-teal-200/40 rounded-full">
+        Cổng lễ tân
+      </span>
+
+      {/* Walk-in quick action — was a sidebar button; the shared shell sidebar
+          only hosts nav, so it lives in the header now (still 1-click). */}
+      <motion.button
+        whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.95 }}
+        onClick={() => walkInBooking.setIsAddOpen(true)}
+        title="Đặt lịch hẹn trực tiếp"
+        className="w-10 h-10 rounded-2xl bg-gradient-to-r from-teal-600 to-sky-600 text-white flex items-center justify-center shadow-md shadow-teal-600/10 hover:shadow-lg transition-all"
+      >
+        <Plus size={18} />
+      </motion.button>
+
+      {/* Live chat shortcut */}
+      <motion.button
+        whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.95 }}
+        onClick={() => setActiveTab('chat')}
+        className="relative w-10 h-10 rounded-2xl bg-white/50 border border-white/60 backdrop-blur-md flex items-center justify-center text-slate-500 hover:text-emerald-600 shadow-sm transition-colors"
+        title="Chăm sóc khách hàng"
+      >
+        <MessageSquare size={18} />
+        {hasUnreadChat && <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-rose-500 border-2 border-white animate-pulse" />}
+      </motion.button>
+
+      {/* Notifications */}
+      <div className="relative">
+        <motion.button
+          whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.95 }}
+          onClick={() => setShowNotifications((v) => !v)}
+          className="relative w-10 h-10 rounded-2xl bg-white/50 border border-white/60 backdrop-blur-md flex items-center justify-center text-slate-500 hover:text-emerald-600 shadow-sm transition-colors"
+        >
+          <Bell size={18} />
+          {unreadCount > 0 && <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-rose-500 border-2 border-white" />}
+        </motion.button>
+        <AnimatePresence>
+          {showNotifications && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)} />
+              <motion.div
+                initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                className="absolute right-0 mt-2 w-80 bg-white/95 backdrop-blur-md border border-slate-200 shadow-2xl rounded-2xl p-4 z-50 max-h-[350px] overflow-y-auto"
+              >
+                <div className="flex justify-between items-center pb-2 border-b border-slate-100 mb-2">
+                  <span className="text-sm font-extrabold text-slate-800">Thông báo</span>
+                  {unreadCount > 0 && (
+                    <button onClick={() => NotificationModel.markAllAsRead('RECEPTIONIST', receptionistId)} className="text-[10px] text-emerald-600 hover:text-emerald-700 font-bold border-none bg-transparent cursor-pointer">
+                      Đọc tất cả
+                    </button>
+                  )}
+                </div>
+                <div className="space-y-2.5">
+                  {myNotifications.length === 0 ? (
+                    <p className="text-xs text-slate-400 italic text-center py-4">Chưa có thông báo nào.</p>
+                  ) : (
+                    myNotifications.map((notif, i) => (
+                      <div
+                        key={notif.id ?? ('notif-' + i)}
+                        onClick={() => NotificationModel.markAsRead(notif.id)}
+                        className={'p-2.5 rounded-xl transition-all border cursor-pointer text-left ' + (notif.isRead ? 'bg-transparent border-slate-100 hover:bg-slate-50' : 'bg-emerald-50/50 border-emerald-100/50 hover:bg-emerald-50')}
+                      >
+                        <p className="text-xs font-bold text-slate-800">{notif.title}</p>
+                        <p className="text-[10px] text-slate-500 mt-0.5 leading-snug">{notif.content}</p>
+                        <span className="text-[8px] text-slate-400 block mt-1.5">{notif.timestamp ? new Date(notif.timestamp).toLocaleString('vi-VN') : ''}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+      </div>
+    </>
+  );
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-teal-50 via-emerald-100 to-cyan-50 overflow-hidden font-sans text-slate-800">
-      {/* Animated mesh blobs */}
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute -top-32 -left-32 w-[520px] h-[520px] rounded-full bg-emerald-400/30 blur-3xl" style={{ animation: 'float 18s ease-in-out infinite' }} />
-        <div className="absolute -bottom-40 -right-40 w-[480px] h-[480px] rounded-full bg-cyan-400/30 blur-3xl" style={{ animation: 'float-reverse 20s ease-in-out infinite' }} />
-      </div>
-      <style>{`
-        @keyframes float { 0%,100%{transform:translate(0,0) scale(1);} 33%{transform:translate(30px,-40px) scale(1.05);} 66%{transform:translate(-20px,20px) scale(0.97);} }
-        @keyframes float-reverse { 0%,100%{transform:translate(0,0) scale(1);} 33%{transform:translate(-30px,30px) scale(0.95);} 66%{transform:translate(25px,-25px) scale(1.04);} }
-      `}</style>
-
-      {/* Sidebar */}
-      <motion.aside
-        animate={{ width: isSidebarExpanded ? 256 : 80 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        className="hidden md:flex backdrop-blur-2xl bg-teal-900/10 border-r border-teal-900/10 fixed h-full z-40 flex-col py-8 px-3 justify-between shadow-[4px_0_24px_rgba(0,0,0,0.03),inset_-1px_0_2px_rgba(255,255,255,0.7)] overflow-hidden"
+    <>
+      <DashboardShell
+        portalName="Reception Portal"
+        navItems={navItems}
+        activeTab={activeTab}
+        customKey={activeTab + (billingFocusPatientId ? ':pt-' + billingFocusPatientId : '')}
+        onTabChange={setActiveTab}
+        pageTitle={PAGE_TITLES[activeTab] || 'Tổng quan'}
+        headerExtras={headerExtras}
       >
-        <div className="flex flex-col gap-6">
-          <div className={`flex items-center ${isSidebarExpanded ? 'justify-between px-1' : 'justify-center'} min-h-[64px]`}>
-            {isSidebarExpanded ? (
-              <>
-                <div className="flex flex-col items-start gap-1">
-                  <img src={logo} alt="DermaSmart Logo" className="h-14 w-auto object-contain" />
-                  <span className="text-[10px] text-gray-500 whitespace-nowrap">Reception Portal</span>
-                </div>
-                <button onClick={() => setIsSidebarExpanded(false)} className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-emerald-600 transition-colors cursor-pointer" title="Thu gọn">
-                  <PanelLeftClose className="w-5 h-5" />
-                </button>
-              </>
-            ) : (
-              <button onClick={() => setIsSidebarExpanded(true)} className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-emerald-600 transition-colors cursor-pointer" title="Mở rộng">
-                <PanelLeftOpen className="w-5 h-5" />
-              </button>
-            )}
-          </div>
+        {activeTab === 'overview' && (
+          <OverviewTab
+            user={user}
+            kpi={kpi}
+            todays={todays}
+            requests={(appointments || []).map((a, i) => normalizeApt(a, i)).filter((a) => a.status === APT_STATUS.REQUEST)}
+            onGoTab={setActiveTab}
+            onApprove={handleApproveRequest}
+            onArrive={(apt) => setSelectedCheckInApt(apt)}
+            onOpenChat={handleOpenChat}
+            onAdd={() => walkInBooking.setIsAddOpen(true)}
+            showToast={showToast}
+          />
+        )}
 
-          {/* Walk-in appointment */}
-          <div className="relative group">
-            <button
-              onClick={() => setIsAddOpen(true)}
-              className={`w-full bg-gradient-to-r from-teal-600 to-sky-600 text-white rounded-xl font-semibold shadow-md shadow-teal-600/10 hover:shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 text-sm border-none cursor-pointer ${isSidebarExpanded ? 'py-3 px-4' : 'py-3 px-0'}`}
-            >
-              <Plus className="w-4 h-4 flex-shrink-0" />
-              {isSidebarExpanded && <span className="whitespace-nowrap">Đặt lịch hẹn</span>}
-            </button>
-            {!isSidebarExpanded && (
-              <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
-                Đặt lịch hẹn
-              </div>
-            )}
-          </div>
+        {activeTab === 'queue' && (
+          <TodayQueueBoard
+            appointments={appointments}
+            doctors={doctors}
+            onChangeStatus={handleQueueStatusChange}
+            onApprove={handleApproveRequest}
+            onDecline={handleDeclineRequest}
+            onOpenChat={handleOpenChat}
+            onGoBilling={goBilling}
+            onArrive={(apt) => setSelectedCheckInApt(apt)}
+            showToast={showToast}
+          />
+        )}
 
-          <LiquidSidebarMenu items={navItems} activeId={activeTab} onChange={setActiveTab} isSidebarExpanded={isSidebarExpanded} />
-        </div>
+        {activeTab === 'billing' && (
+          <BillingCheckout
+            appointments={appointments}
+            payments={payments}
+            doctors={doctors}
+            vouchers={vouchers}
+            getAutoApplicable={getAutoApplicable}
+            incrementUsage={incrementUsage}
+            receptionistId={receptionistId}
+            onRefresh={refreshState}
+            showToast={showToast}
+            focusPatientId={billingFocusPatientId}
+            onConsumeFocus={() => setBillingFocusPatientId(null)}
+          />
+        )}
 
-        <div className="border-t border-slate-100/40 pt-4 space-y-1">
-          <div className="relative group">
-            <a href="#" className={`flex items-center gap-3 rounded-xl font-medium text-slate-600 hover:text-emerald-600 hover:bg-emerald-50/40 transition-all ${isSidebarExpanded ? 'px-4 py-3' : 'px-0 py-3 justify-center'}`}>
-              <HelpCircle className="w-5 h-5 text-slate-400 flex-shrink-0" />
-              {isSidebarExpanded && <span className="text-sm whitespace-nowrap">Hỗ trợ kỹ thuật</span>}
-            </a>
-          </div>
-          <div className="relative group">
-            <button
-              onClick={async () => { await logout(); navigate('/login'); }}
-              className={`w-full flex items-center gap-3 rounded-xl font-medium text-slate-600 hover:text-rose-600 hover:bg-rose-50/40 transition-all border-none cursor-pointer bg-transparent text-left ${isSidebarExpanded ? 'px-4 py-3' : 'px-0 py-3 justify-center'}`}
-            >
-              <LogOut className="w-5 h-5 text-slate-400 flex-shrink-0" />
-              {isSidebarExpanded && <span className="text-sm whitespace-nowrap">Đăng xuất</span>}
-            </button>
-            {!isSidebarExpanded && (
-              <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
-                Đăng xuất
-              </div>
-            )}
-          </div>
-        </div>
-      </motion.aside>
+        {activeTab === 'chat' && <ReceptionistChatTab />}
 
-      {/* Main */}
-      <div className={`transition-all duration-300 ${isSidebarExpanded ? 'md:ml-64' : 'md:ml-20'}`}>
-        <div ref={scrollRef} className="h-screen overflow-y-auto relative">
-          {/* Morphing topbar */}
-          <motion.header
-            style={{
-              width: navWidth, maxWidth: navMaxWidth, borderRadius: navBorderRadius,
-              top: navTop, paddingLeft: navPaddingX, paddingRight: navPaddingX,
-              backgroundColor: navBg, boxShadow: navShadow,
-            }}
-            className="sticky mx-auto z-30 py-4 backdrop-blur-2xl"
-          >
-            <div className="relative flex items-center justify-between gap-4 w-full">
-              <div className="flex items-center gap-4 flex-1">
-                <span className="font-black text-2xl text-emerald-600 md:hidden tracking-tight">DermaSmart</span>
-              </div>
-              <h1 className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-xl md:text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-teal-800 to-emerald-700 tracking-tight whitespace-nowrap pointer-events-none">
-                {PAGE_TITLES[activeTab] || 'Tổng quan'}
-              </h1>
-
-              <div className="flex items-center gap-3">
-                <span className="hidden sm:inline-block font-semibold text-xs text-teal-700 py-1 px-3 bg-teal-50 border border-teal-200/40 rounded-full">
-                  Cổng lễ tân
-                </span>
-
-                {/* Live chat shortcut */}
-                <motion.button
-                  whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.95 }}
-                  onClick={() => setActiveTab('chat')}
-                  className="relative w-10 h-10 rounded-2xl bg-white/50 border border-white/60 backdrop-blur-md flex items-center justify-center text-slate-500 hover:text-emerald-600 shadow-sm transition-colors"
-                  title="Chăm sóc khách hàng"
-                >
-                  <MessageSquare size={18} />
-                  {hasUnreadChat && <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-rose-500 border-2 border-white animate-pulse" />}
-                </motion.button>
-
-                {/* Notifications */}
-                <div className="relative">
-                  <motion.button
-                    whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.95 }}
-                    onClick={() => setShowNotifications((s) => !s)}
-                    className="relative w-10 h-10 rounded-2xl bg-white/50 border border-white/60 backdrop-blur-md flex items-center justify-center text-slate-500 hover:text-emerald-600 shadow-sm transition-colors"
-                  >
-                    <Bell size={18} />
-                    {unreadCount > 0 && <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-rose-500 border-2 border-white" />}
-                  </motion.button>
-                  <AnimatePresence>
-                    {showNotifications && (
-                      <>
-                        <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)} />
-                        <motion.div
-                          initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                          className="absolute right-0 mt-2 w-80 bg-white/95 backdrop-blur-md border border-slate-200 shadow-2xl rounded-2xl p-4 z-50 max-h-[350px] overflow-y-auto"
-                        >
-                          <div className="flex justify-between items-center pb-2 border-b border-slate-100 mb-2">
-                            <span className="text-sm font-extrabold text-slate-800">Thông báo</span>
-                            {unreadCount > 0 && (
-                              <button onClick={() => NotificationModel.markAllAsRead('RECEPTIONIST', receptionistId)} className="text-[10px] text-emerald-600 hover:text-emerald-700 font-bold border-none bg-transparent cursor-pointer">
-                                Đọc tất cả
-                              </button>
-                            )}
-                          </div>
-                          <div className="space-y-2.5">
-                            {myNotifications.length === 0 ? (
-                              <p className="text-xs text-slate-400 italic text-center py-4">Chưa có thông báo nào.</p>
-                            ) : (
-                              myNotifications.map((notif, i) => (
-                                <div
-                                  key={notif.id ?? `notif-${i}`}
-                                  onClick={() => NotificationModel.markAsRead(notif.id)}
-                                  className={`p-2.5 rounded-xl transition-all border cursor-pointer text-left ${notif.isRead ? 'bg-transparent border-slate-100 hover:bg-slate-50' : 'bg-emerald-50/50 border-emerald-100/50 hover:bg-emerald-50'}`}
-                                >
-                                  <p className="text-xs font-bold text-slate-800">{notif.title}</p>
-                                  <p className="text-[10px] text-slate-500 mt-0.5 leading-snug">{notif.content}</p>
-                                  <span className="text-[8px] text-slate-400 block mt-1.5">{notif.timestamp ? new Date(notif.timestamp).toLocaleString('vi-VN') : ''}</span>
-                                </div>
-                              ))
-                            )}
-                          </div>
-                        </motion.div>
-                      </>
-                    )}
-                  </AnimatePresence>
-                </div>
-
-                <motion.button whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.95 }} className="w-10 h-10 rounded-2xl bg-white/50 border border-white/60 backdrop-blur-md flex items-center justify-center text-slate-500 hover:text-emerald-600 shadow-sm transition-colors">
-                  <Settings size={18} />
-                </motion.button>
-
-                {/* Profile */}
-                <div className="relative">
-                  <motion.button
-                    whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.95 }}
-                    onClick={() => setShowProfileMenu((s) => !s)}
-                    className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-500/20 cursor-pointer ring-2 ring-transparent hover:ring-emerald-500/50 overflow-hidden"
-                  >
-                    {user?.avatar ? <img src={user.avatar} alt={user?.name || 'avatar'} className="w-full h-full object-cover" /> : <User size={18} className="text-white" />}
-                  </motion.button>
-                  <AnimatePresence>
-                    {showProfileMenu && (
-                      <>
-                        <div className="fixed inset-0 z-40" onClick={() => setShowProfileMenu(false)} />
-                        <motion.div
-                          initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                          className="absolute right-0 mt-2 w-56 bg-white/90 backdrop-blur-xl border border-slate-200 shadow-2xl rounded-2xl p-2 z-50 origin-top-right text-left"
-                        >
-                          <div className="px-3 py-2.5 border-b border-slate-100 mb-1">
-                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Tài khoản</p>
-                            <p className="text-sm font-bold text-slate-800 truncate mt-0.5">{user?.name || 'Lễ tân'}</p>
-                            <p className="text-[11px] text-emerald-600 font-medium truncate">{user?.email || ''}</p>
-                          </div>
-                          <button onClick={() => { setShowProfileMenu(false); navigate('/profile'); }} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:text-emerald-600 hover:bg-emerald-50/50 transition-colors border-none bg-transparent cursor-pointer text-left">
-                            <User className="w-4 h-4 text-slate-400" /> Xem hồ sơ cá nhân
-                          </button>
-                          <button onClick={async () => { setShowProfileMenu(false); await logout(); navigate('/login'); }} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-rose-600 hover:bg-rose-50/50 transition-colors border-none bg-transparent cursor-pointer text-left">
-                            <LogOut className="w-4 h-4 text-rose-400" /> Đăng xuất
-                          </button>
-                        </motion.div>
-                      </>
-                    )}
-                  </AnimatePresence>
-                </div>
-              </div>
-            </div>
-          </motion.header>
-
-          {/* Page content — keyed remount per tab */}
-          <main className="relative z-10 px-4 md:px-8 py-8 max-w-[1600px] mx-auto">
-            <motion.div key={`tab-${activeTab}`} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: 'easeOut' }}>
-              {activeTab === 'overview' && (
-                <OverviewTab
-                  user={user}
-                  kpi={kpi}
-                  todays={todays}
-                  requests={(appointments || []).map((a, i) => normalizeApt(a, i)).filter((a) => a.status === APT_STATUS.REQUEST)}
-                  onGoTab={setActiveTab}
-                  onApprove={handleApproveRequest}
-                  onArrive={(apt) => setSelectedCheckInApt(apt)}
-                  onOpenChat={handleOpenChat}
-                  onAdd={() => setIsAddOpen(true)}
-                  showToast={showToast}
-                />
-              )}
-
-              {activeTab === 'queue' && (
-                <TodayQueueBoard
-                  appointments={appointments}
-                  doctors={doctors}
-                  onChangeStatus={handleQueueStatusChange}
-                  onApprove={handleApproveRequest}
-                  onDecline={handleDeclineRequest}
-                  onOpenChat={handleOpenChat}
-                  onGoBilling={goBilling}
-                  onArrive={(apt) => setSelectedCheckInApt(apt)}
-                  showToast={showToast}
-                />
-              )}
-
-              {activeTab === 'billing' && (
-                <BillingCheckout
-                  appointments={appointments}
-                  payments={payments}
-                  doctors={doctors}
-                  vouchers={vouchers}
-                  getAutoApplicable={getAutoApplicable}
-                  incrementUsage={incrementUsage}
-                  receptionistId={receptionistId}
-                  onRefresh={refreshState}
-                  showToast={showToast}
-                  focusPatientId={billingFocusPatientId}
-                  onConsumeFocus={() => setBillingFocusPatientId(null)}
-                />
-              )}
-
-              {activeTab === 'chat' && <ReceptionistChatTab />}
-
-              {activeTab === 'feedback' && <ReceptionistFeedbackView />}
-            </motion.div>
-          </main>
-        </div>
-      </div>
+        {activeTab === 'feedback' && <ReceptionistFeedbackView />}
+      </DashboardShell>
 
       {/* Live chat drawer (quick per-patient chat from queue/overview) */}
       <LiveChatDrawer
@@ -1100,36 +443,14 @@ export default function ReceptionistDashboard() {
       />
 
       {/* Walk-in booking + patient record modal (extracted — M1 Phase 1) */}
-      <WalkInBookingModal
-        isAddOpen={isAddOpen}
-        setIsAddOpen={setIsAddOpen}
-        handleSubmitBooking={handleSubmitBooking}
-        errorMessage={errorMessage}
-        selectedDate={selectedDate}
-        setSelectedDate={setSelectedDate}
-        setSelectedTime={setSelectedTime}
-        minDate={minDate}
-        selectedDoctor={selectedDoctor}
-        setSelectedDoctor={setSelectedDoctor}
-        selectedTime={selectedTime}
-        doctors={doctors}
-        newApt={newApt}
-        setNewApt={setNewApt}
-        handleEmailBlur={handleEmailBlur}
-        isExistingPatient={isExistingPatient}
-        isCheckingEmail={isCheckingEmail}
-        filteredSlots={filteredSlots}
-        isSubmittingRef={isSubmittingRef}
-      />
+      <WalkInBookingModal {...walkInBooking} />
 
       {/* Toast */}
       <AnimatePresence>
         {toast && (
           <motion.div
             initial={{ opacity: 0, y: 50, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 20, scale: 0.9 }}
-            className={`fixed bottom-6 left-1/2 z-[110] p-4 rounded-2xl shadow-xl backdrop-blur-xl flex items-center gap-3 border ${
-              toast.type === 'success' ? 'bg-emerald-600/90 border-emerald-500 text-white' : toast.type === 'info' ? 'bg-sky-600/90 border-sky-500 text-white' : 'bg-rose-600/90 border-rose-500 text-white'
-            }`}
+            className={'fixed bottom-6 left-1/2 z-[110] p-4 rounded-2xl shadow-xl backdrop-blur-xl flex items-center gap-3 border ' + (toast.type === 'success' ? 'bg-emerald-600/90 border-emerald-500 text-white' : toast.type === 'info' ? 'bg-sky-600/90 border-sky-500 text-white' : 'bg-rose-600/90 border-rose-500 text-white')}
             style={{ transform: 'translateX(-50%)' }}
           >
             <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center shrink-0">
@@ -1139,6 +460,6 @@ export default function ReceptionistDashboard() {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </>
   );
 }
