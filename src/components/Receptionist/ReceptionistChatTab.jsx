@@ -23,7 +23,9 @@ import {
   subscribeToMessages,
   subscribeToSessions,
   unsubscribe,
+  imageUrlFromMessage,
 } from '../../models/ChatModel';
+import { useAuth } from '../../context/AuthContext';
 import { GLASS_BASE, GLASS_INPUT } from '../../components/common/GlassCard';
 
 const CANNED_RESPONSES = [
@@ -36,6 +38,12 @@ const CANNED_RESPONSES = [
 ];
 
 export default function ReceptionistChatTab() {
+  // Real agent identity — every receptionist used to sign as 'staff-01' /
+  // 'Lễ tân Hoàng Anh', making concurrent agents indistinguishable.
+  const { user } = useAuth();
+  const agentId = user?.id || 'staff-01';
+  const agentName = user?.name || 'Lễ tân DermaSmart';
+
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPatientId, setSelectedPatientId] = useState(null);
   const [conversation, setConversation] = useState([]);
@@ -180,11 +188,14 @@ export default function ReceptionistChatTab() {
     };
   }, [loadPatientsAndChats, loadConversation]);
 
-  // On selecting a patient: load history, claim the thread (WITH_AGENT) and clear unread.
+  // On selecting a patient: load history and clear unread. Deliberately NOT
+  // claiming here — merely peeking at a thread used to flip it to WITH_AGENT,
+  // showing the patient "Lễ tân đang hỗ trợ bạn" before anyone replied. The
+  // claim now happens on the first actual reply (handleSend).
   useEffect(() => {
     if (!selectedPatientId) { setConversation([]); return; }
     loadConversation(selectedPatientId);
-    ChatSessionModel.claim(selectedPatientId, 'staff-01');
+    ChatSessionModel.markRead(selectedPatientId);
     loadPatientsAndChats();
     // Auto-focus input
     setTimeout(() => {
@@ -213,8 +224,8 @@ export default function ReceptionistChatTab() {
 
     try {
       const newMsg = await ReceptionistChatModel.addMessage({
-        senderId: 'staff-01',
-        senderName: 'Lễ tân Hoàng Anh',
+        senderId: agentId,
+        senderName: agentName,
         senderRole: 'RECEPTIONIST',
         text: currentText,
         mode: 'Live',
@@ -222,7 +233,7 @@ export default function ReceptionistChatTab() {
       });
       if (newMsg) setConversation((prev) => [...prev, newMsg]);
       // Replying claims the conversation + marks it read.
-      await ChatSessionModel.claim(selectedPatientId, 'staff-01');
+      await ChatSessionModel.claim(selectedPatientId, agentId);
       await loadPatientsAndChats();
     } catch (err) {
       console.error('Failed to send message:', err);
@@ -250,6 +261,17 @@ export default function ReceptionistChatTab() {
     if (!selectedPatientId) return;
     try {
       await ChatSessionModel.setStatus(selectedPatientId, CHAT_STATUS.RESOLVED);
+      // Tell the patient the session ended — their banner used to just vanish
+      // with no explanation. Lands in their widget (or its unread badge).
+      const note = await ReceptionistChatModel.addMessage({
+        senderId: 'system',
+        senderName: 'DermaSmart',
+        senderRole: 'BOT',
+        text: 'Lễ tân đã kết thúc phiên hỗ trợ. Nếu cần thêm trợ giúp, bạn có thể hỏi DermaSmart AI hoặc bấm "Gặp Lễ tân" bất cứ lúc nào ạ. Cảm ơn bạn!',
+        mode: 'Live',
+        patientId: selectedPatientId,
+      });
+      if (note) setConversation((prev) => (prev.some((m) => m.id === note.id) ? prev : [...prev, note]));
       await loadPatientsAndChats();
     } catch (err) {
       console.error('Failed to resolve:', err);
@@ -569,18 +591,30 @@ export default function ReceptionistChatTab() {
                             </span>
                           )}
 
-                          <div
-                            style={radii}
-                            className={`px-4 py-2.5 text-xs leading-relaxed break-words transition-shadow ${
-                              isPatient
-                                ? 'bg-white/80 backdrop-blur-sm border border-white/90 text-slate-800 shadow-sm shadow-slate-900/5'
-                                : isAI
-                                ? 'bg-gradient-to-br from-sky-50 to-indigo-50/70 border border-sky-100 text-slate-700 font-medium shadow-sm'
-                                : 'bg-gradient-to-br from-teal-500 to-emerald-600 text-white shadow-md shadow-teal-600/25'
-                            }`}
-                          >
-                            {msg.text}
-                          </div>
+                          {(() => {
+                            const imageUrl = imageUrlFromMessage(msg.text);
+                            if (imageUrl) {
+                              return (
+                                <a href={imageUrl} target="_blank" rel="noopener noreferrer" style={radii} className="block p-1 bg-white/80 border border-white/90 shadow-sm overflow-hidden">
+                                  <img src={imageUrl} alt="Ảnh bệnh nhân gửi" loading="lazy" className="rounded-xl max-h-56 max-w-full object-cover" />
+                                </a>
+                              );
+                            }
+                            return (
+                              <div
+                                style={radii}
+                                className={`px-4 py-2.5 text-xs leading-relaxed break-words transition-shadow ${
+                                  isPatient
+                                    ? 'bg-white/80 backdrop-blur-sm border border-white/90 text-slate-800 shadow-sm shadow-slate-900/5'
+                                    : isAI
+                                    ? 'bg-gradient-to-br from-sky-50 to-indigo-50/70 border border-sky-100 text-slate-700 font-medium shadow-sm'
+                                    : 'bg-gradient-to-br from-teal-500 to-emerald-600 text-white shadow-md shadow-teal-600/25'
+                                }`}
+                              >
+                                {msg.text}
+                              </div>
+                            );
+                          })()}
                         </div>
                       </motion.div>
                     );

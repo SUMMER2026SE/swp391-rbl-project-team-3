@@ -19,7 +19,7 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { GLASS_INPUT } from '../../components/common/GlassCard';
-import { ChatSessionModel, CHAT_STATUS } from '../../models/ChatModel';
+import { ChatSessionModel, CHAT_STATUS, imageUrlFromMessage } from '../../models/ChatModel';
 
 export default function LiveChatDrawer({ patient, isOpen, onClose, messages, onSendMessage }) {
   const [inputValue, setInputValue] = useState('');
@@ -291,18 +291,30 @@ export default function LiveChatDrawer({ patient, isOpen, onClose, messages, onS
                           </span>
                         )}
 
-                        <div
-                          style={radii}
-                          className={`px-4 py-2.5 text-xs leading-relaxed break-words ${
-                            isPatient
-                              ? 'bg-white/80 backdrop-blur-sm border border-white/90 text-slate-800 shadow-sm shadow-slate-900/5'
-                              : isAI
-                                ? 'bg-gradient-to-br from-sky-50 to-indigo-50/70 border border-sky-100 text-slate-700 font-medium shadow-sm'
-                                : 'bg-gradient-to-br from-teal-500 to-emerald-600 text-white shadow-md shadow-teal-600/25'
-                          }`}
-                        >
-                          {msg.text}
-                        </div>
+                        {(() => {
+                          const imageUrl = imageUrlFromMessage(msg.text);
+                          if (imageUrl) {
+                            return (
+                              <a href={imageUrl} target="_blank" rel="noopener noreferrer" style={radii} className="block p-1 bg-white/80 border border-white/90 shadow-sm overflow-hidden">
+                                <img src={imageUrl} alt="Ảnh bệnh nhân gửi" loading="lazy" className="rounded-xl max-h-56 max-w-full object-cover" />
+                              </a>
+                            );
+                          }
+                          return (
+                            <div
+                              style={radii}
+                              className={`px-4 py-2.5 text-xs leading-relaxed break-words ${
+                                isPatient
+                                  ? 'bg-white/80 backdrop-blur-sm border border-white/90 text-slate-800 shadow-sm shadow-slate-900/5'
+                                  : isAI
+                                    ? 'bg-gradient-to-br from-sky-50 to-indigo-50/70 border border-sky-100 text-slate-700 font-medium shadow-sm'
+                                    : 'bg-gradient-to-br from-teal-500 to-emerald-600 text-white shadow-md shadow-teal-600/25'
+                              }`}
+                            >
+                              {msg.text}
+                            </div>
+                          );
+                        })()}
                       </div>
                     </motion.div>
                   );

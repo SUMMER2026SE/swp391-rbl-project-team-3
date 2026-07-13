@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, Bot, Headphones, Calendar, ScanLine, BadgeDollarSign, Pill, MessageSquare } from 'lucide-react';
+import { X, Send, Bot, Headphones, Calendar, ScanLine, BadgeDollarSign, Pill, MessageSquare, ImagePlus, Star } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
   ReceptionistChatModel,
@@ -9,6 +9,10 @@ import {
   subscribeToMessages,
   subscribeToSessions,
   unsubscribe,
+  IMG_PREFIX,
+  isImageMessage,
+  imageUrlFromMessage,
+  uploadChatImage,
 } from '../../models/ChatModel';
 import { generateBotReply, isHandoffReply } from '../../services/GeminiService';
 import './FloatingChatbot.css';
@@ -130,6 +134,7 @@ function TypewriterMessage({ text, isLatest, onTextUpdate }) {
 function MessageBubble({ msg, isLatest, onTextUpdate }) {
   const isPatient = msg.senderRole === 'PATIENT';
   const isBot = msg.senderRole === 'BOT';
+  const imageUrl = imageUrlFromMessage(msg.text);
   return (
     <motion.div
       initial={{ opacity: 0, y: 14, scale: 0.96 }}
@@ -143,14 +148,27 @@ function MessageBubble({ msg, isLatest, onTextUpdate }) {
       <div
         data-wave
         className={
-          isPatient
-            ? 'max-w-[78%] px-4 py-2.5 rounded-2xl rounded-br-md text-sm leading-relaxed whitespace-pre-wrap break-words text-white shadow-lg shadow-sky-900/30 bg-gradient-to-br from-cyan-400 via-sky-500 to-violet-500'
-            : 'lg-bubble-in max-w-[78%] px-4 py-2.5 rounded-2xl rounded-bl-md text-sm leading-relaxed whitespace-pre-wrap break-words text-white/90 shadow-lg shadow-black/20'
+          imageUrl
+            ? `max-w-[78%] p-1.5 rounded-2xl ${isPatient ? 'rounded-br-md bg-gradient-to-br from-cyan-400 via-sky-500 to-violet-500' : 'rounded-bl-md lg-bubble-in'} shadow-lg shadow-black/20`
+            : isPatient
+              ? 'max-w-[78%] px-4 py-2.5 rounded-2xl rounded-br-md text-sm leading-relaxed whitespace-pre-wrap break-words text-white shadow-lg shadow-sky-900/30 bg-gradient-to-br from-cyan-400 via-sky-500 to-violet-500'
+              : 'lg-bubble-in max-w-[78%] px-4 py-2.5 rounded-2xl rounded-bl-md text-sm leading-relaxed whitespace-pre-wrap break-words text-white/90 shadow-lg shadow-black/20'
         }
       >
-        {isBot
-          ? <TypewriterMessage text={msg.text} isLatest={isLatest} onTextUpdate={onTextUpdate} />
-          : msg.text}
+        {imageUrl ? (
+          <img
+            src={imageUrl}
+            alt="Ảnh đính kèm"
+            loading="lazy"
+            onClick={() => window.open(imageUrl, '_blank', 'noopener')}
+            onLoad={onTextUpdate}
+            className="rounded-xl max-h-64 max-w-full object-cover cursor-zoom-in"
+          />
+        ) : isBot ? (
+          <TypewriterMessage text={msg.text} isLatest={isLatest} onTextUpdate={onTextUpdate} />
+        ) : (
+          msg.text
+        )}
       </div>
     </motion.div>
   );
@@ -187,8 +205,13 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
     try { return localStorage.getItem(ENGAGED_KEY) === '1'; } catch { return false; }
   });
 
+  const [isUploading, setIsUploading] = useState(false);
+  const [ratingDismissed, setRatingDismissed] = useState(false);
+  const [ratingHover, setRatingHover] = useState(0);
+
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
+  const fileInputRef = useRef(null);
   const patientTypingTimer = useRef(null);
   const seedInFlight = useRef(false);
 
@@ -444,6 +467,62 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
     if (isOpen) seedAndLoadRef.current?.();
   }, [isOpen]);
 
+  // ── Guest → account history merge ──
+  // A guest who chatted and then logs in used to lose the whole conversation
+  // (thread id flips from 'pat-guest-<uuid>' to 'pat-<uid>', the old thread is
+  // orphaned in the receptionist dashboard). On login we copy the guest turns
+  // into the account thread (original timestamps, via importMessage), retire
+  // the old guest session, and drop the guest id marker. RLS notes: guests'
+  // threads stay readable to everyone; the account thread only accepts
+  // sender_id ∈ {own patient_id, 'bot', 'system'} — so receptionist turns are
+  // imported with senderId 'system' (senderRole/senderName keep the truth).
+  const mergeInFlight = useRef(false);
+  useEffect(() => {
+    if (!user?.id) return;
+    let guestId = null;
+    try { guestId = localStorage.getItem(GUEST_ID_KEY); } catch { return; }
+    if (!guestId || !guestId.startsWith('pat-guest-') || guestId === patientId) return;
+    if (mergeInFlight.current) return;
+    mergeInFlight.current = true;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const [guestMsgs, ownMsgs] = await Promise.all([
+          ReceptionistChatModel.getMessagesForPatient(guestId),
+          ReceptionistChatModel.getMessagesForPatient(patientId),
+        ]);
+        // Only worth merging if the guest actually said something.
+        if ((guestMsgs || []).some((m) => m.senderRole === 'PATIENT')) {
+          const seen = new Set((ownMsgs || []).map((m) => `${m.timestamp}|${m.text}`));
+          for (const m of guestMsgs) {
+            if (cancelled) return;
+            if (seen.has(`${m.timestamp}|${m.text}`)) continue;
+            await ReceptionistChatModel.importMessage({
+              ...m,
+              id: undefined,
+              patientId,
+              senderId: m.senderRole === 'PATIENT'
+                ? patientId
+                : (m.senderId === 'bot' ? 'bot' : 'system'),
+              senderName: m.senderRole === 'PATIENT' ? patientName : m.senderName,
+            });
+          }
+        }
+        // Retire the guest thread so it stops surfacing in the agent queue.
+        ChatSessionModel.setStatus(guestId, CHAT_STATUS.RESOLVED);
+        try { localStorage.removeItem(GUEST_ID_KEY); } catch { /* ignore */ }
+        if (!cancelled) seedAndLoadRef.current?.();
+      } catch (err) {
+        console.warn('Guest chat merge failed (will retry next load):', err?.message);
+      } finally {
+        mergeInFlight.current = false;
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [user?.id, patientId, patientName]);
+
   // Escalate the conversation to a human receptionist. Posts a system note,
   // flips the session to WAITING_FOR_AGENT, switches the widget to Live mode,
   // and (because the bot only ever replies in AI mode + when not escalated)
@@ -557,6 +636,72 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
+    }
+  };
+
+  // Photo message: downscale → upload to storage → send '[IMG]<url>'. The AI
+  // Edge Function is text-only, so in AI mode a deterministic bot hint points
+  // the patient to "Soi da AI" (real vision) or the receptionist.
+  const handleImageSelected = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-selecting the same file next time
+    if (!file || isUploading) return;
+    setIsUploading(true);
+    try {
+      const url = await uploadChatImage(file, patientId);
+      const msg = await ReceptionistChatModel.addMessage({
+        senderId: patientId,
+        senderName: patientName,
+        senderRole: 'PATIENT',
+        text: `${IMG_PREFIX}${url}`,
+        mode,
+        patientId,
+      });
+      if (msg) mergeMessage(msg);
+
+      if (mode === 'AI') {
+        const hint = await ReceptionistChatModel.addMessage({
+          senderId: 'bot',
+          senderName: 'DermaSmart AI',
+          senderRole: 'BOT',
+          text: 'Mình đã nhận được ảnh của bạn. Trợ lý AI chưa xem được ảnh trong khung chat — bạn hãy dùng "Soi da AI" để phân tích da tự động, hoặc bấm "Gặp Lễ tân" để nhân viên xem ảnh và tư vấn trực tiếp nhé!',
+          mode: 'AI',
+          patientId,
+        });
+        if (hint) mergeMessage(hint);
+      } else if (session?.status !== CHAT_STATUS.WITH_AGENT) {
+        // An image in Live mode is a support request like any text message.
+        ChatSessionModel.requestAgent(patientId, patientName);
+      }
+    } catch (err) {
+      console.error('Image upload failed:', err);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // ── Post-support rating ──
+  // Stored as a plain PATIENT message ("Đánh giá hỗ trợ: ★★★★★ (5/5)") so it
+  // needs no schema change, survives RLS, and the receptionist sees it inline.
+  const hasRated = messages.some(
+    (m) => m.mode === 'Live' && m.senderRole === 'PATIENT' && (m.text || '').startsWith('Đánh giá hỗ trợ:')
+  );
+  const showRating =
+    mode === 'Live' && session?.status === CHAT_STATUS.RESOLVED && !hasRated && !ratingDismissed;
+
+  const submitRating = async (n) => {
+    try {
+      const msg = await ReceptionistChatModel.addMessage({
+        senderId: patientId,
+        senderName: patientName,
+        senderRole: 'PATIENT',
+        text: `Đánh giá hỗ trợ: ${'★'.repeat(n)}${'☆'.repeat(5 - n)} (${n}/5)`,
+        mode: 'Live',
+        patientId,
+      });
+      if (msg) mergeMessage(msg);
+    } catch (err) {
+      console.error('Failed to send rating:', err);
     }
   };
 
@@ -865,6 +1010,42 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
                     <TypingIndicator />
                   </div>
                 )}
+
+                {/* Post-support rating — appears once the receptionist resolves */}
+                {showRating && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="lg-bubble-in rounded-2xl px-5 py-4 flex flex-col items-center gap-2.5 text-center mx-auto max-w-sm"
+                  >
+                    <p className="text-xs text-white/80 font-semibold">
+                      Phiên hỗ trợ đã kết thúc. Bạn thấy lễ tân hỗ trợ thế nào?
+                    </p>
+                    <div className="flex gap-1.5" onMouseLeave={() => setRatingHover(0)}>
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <button
+                          key={n}
+                          onClick={() => submitRating(n)}
+                          onMouseEnter={() => setRatingHover(n)}
+                          aria-label={`${n} sao`}
+                          className="p-1 bg-transparent border-none cursor-pointer transition-transform hover:scale-125"
+                        >
+                          <Star
+                            className={`w-6 h-6 ${
+                              n <= ratingHover ? 'text-amber-300 fill-amber-300' : 'text-white/40'
+                            }`}
+                          />
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => setRatingDismissed(true)}
+                      className="text-[10px] text-white/40 hover:text-white/70 bg-transparent border-none cursor-pointer font-semibold"
+                    >
+                      Bỏ qua
+                    </button>
+                  </motion.div>
+                )}
               </div>
 
               {/* Suggestion chips — anchored bottom */}
@@ -894,6 +1075,26 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
                     placeholder={mode === 'AI' ? 'Hỏi DermaSmart AI bất cứ điều gì…' : 'Nhắn tin cho lễ tân…'}
                     className="flex-1 bg-transparent border-none outline-none text-sm text-white placeholder:text-white/40"
                   />
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleImageSelected}
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                    aria-label="Gửi ảnh"
+                    title="Gửi ảnh da của bạn"
+                    className={`w-10 h-10 rounded-full flex items-center justify-center border border-white/15 shrink-0 transition-all ${
+                      isUploading
+                        ? 'text-white/40 bg-white/10 cursor-wait'
+                        : 'text-white/80 bg-white/10 hover:bg-white/20 hover:text-white cursor-pointer'
+                    }`}
+                  >
+                    <ImagePlus className={`w-4 h-4 ${isUploading ? 'animate-pulse' : ''}`} />
+                  </button>
                   <button
                     onClick={handleSend}
                     disabled={!inputValue.trim()}

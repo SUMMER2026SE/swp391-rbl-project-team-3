@@ -2,7 +2,7 @@
 // Scope is strictly front-desk: dispatch queue, cashier desk, and patient live
 // chat. Clinical surfaces (medical records, vitals, diagnoses, prescriptions)
 // have been pruned — receptionists do not practice medicine.
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LayoutDashboard, ClipboardList, CreditCard, MessageSquare, Star, Bell, Plus, CheckSquare, Sparkles, AlertCircle } from 'lucide-react';
@@ -140,6 +140,34 @@ export default function ReceptionistDashboard() {
     }
   }, [activeTab, isChatOpen]);
 
+  // Soft "ting" for incoming patient messages while the receptionist is on
+  // another tab — pure Web Audio (no asset), throttled so a burst of messages
+  // doesn't machine-gun. Fails silently if the browser blocks audio before
+  // the first user gesture.
+  const beepCtxRef = useRef(null);
+  const lastBeepRef = useRef(0);
+  const playChatBeep = useCallback(() => {
+    const now = Date.now();
+    if (now - lastBeepRef.current < 3000) return;
+    lastBeepRef.current = now;
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      const ctx = beepCtxRef.current || (beepCtxRef.current = new Ctx());
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.12);
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.1, ctx.currentTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.4);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.45);
+    } catch { /* autoplay policy — stay silent */ }
+  }, []);
+
   useEffect(() => {
     let active = true;
     const fetchMsgs = async () => {
@@ -161,6 +189,7 @@ export default function ReceptionistDashboard() {
           setChatMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
           if (msg.senderRole === 'PATIENT' && activeTab !== 'chat' && !isChatOpen) {
             setHasUnreadChat(true);
+            playChatBeep();
           }
         } else {
           setChatMessages((prev) => prev.map((m) => (m.id === msg.id ? msg : m)));

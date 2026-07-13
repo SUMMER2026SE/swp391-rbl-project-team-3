@@ -38,6 +38,59 @@ const addLocalMessage = (msgData) => {
   return newMsg;
 };
 
+// --- Helper: Image messages ---
+// A photo message is a normal messages row whose text is '[IMG]<public-url>'.
+// No schema change needed; every chat surface detects the prefix and renders
+// an <img> instead of text. Files live in the public `clinic-assets` bucket
+// (anon upload verified allowed) under chat/<patientId>/.
+export const IMG_PREFIX = '[IMG]';
+export const isImageMessage = (text) => typeof text === 'string' && text.startsWith(IMG_PREFIX);
+export const imageUrlFromMessage = (text) =>
+  isImageMessage(text) ? text.slice(IMG_PREFIX.length).trim() : null;
+
+const CHAT_IMG_BUCKET = 'clinic-assets';
+const CHAT_IMG_MAX_DIM = 1024;
+
+// Downscale in-browser so a 12MP phone photo doesn't land as a 6MB upload.
+const downscaleImage = (file) =>
+  new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, CHAT_IMG_MAX_DIM / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(
+        (blob) => (blob ? resolve(blob) : reject(new Error('Không xử lý được ảnh.'))),
+        'image/jpeg',
+        0.78
+      );
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('File không phải là ảnh hợp lệ.'));
+    };
+    img.src = url;
+  });
+
+/** Upload a chat photo; resolves to its public URL. Throws on failure. */
+export async function uploadChatImage(file, patientId) {
+  if (!file?.type?.startsWith('image/')) throw new Error('Vui lòng chọn file ảnh.');
+  if (file.size > 10 * 1024 * 1024) throw new Error('Ảnh quá lớn (tối đa 10MB).');
+  const blob = await downscaleImage(file);
+  const path = `chat/${patientId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
+  const { error } = await supabase.storage
+    .from(CHAT_IMG_BUCKET)
+    .upload(path, blob, { contentType: 'image/jpeg', upsert: false });
+  if (error) throw error;
+  const { data } = supabase.storage.from(CHAT_IMG_BUCKET).getPublicUrl(path);
+  if (!data?.publicUrl) throw new Error('Không lấy được đường dẫn ảnh.');
+  return data.publicUrl;
+}
+
 // --- Helper: Schema Mapping ---
 const mapToDB = (msg) => ({
   id: msg.id,
@@ -195,6 +248,23 @@ export const ReceptionistChatModel = {
     } catch (e) {
       console.warn('Supabase create error (receptionist messages):', e.message);
       return addLocalMessage(msgData);
+    }
+  },
+
+  // Like addMessage but PRESERVES the original timestamp — used only by the
+  // guest→account history merge, where losing message order would garble the
+  // conversation. No localStorage fallback: a failed import is skipped, the
+  // merge is best-effort.
+  async importMessage(msgData) {
+    try {
+      const dbRow = mapToDB(msgData);
+      delete dbRow.id;
+      const { data, error } = await supabase.from('messages').insert([dbRow]).select();
+      if (error) throw error;
+      return mapFromDB(data[0]);
+    } catch (e) {
+      console.warn('Supabase import error (messages):', e.message);
+      return null;
     }
   }
 };
