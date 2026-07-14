@@ -6,6 +6,7 @@ import { motion, AnimatePresence, useMotionValue, useMotionTemplate, animate } f
 import PatientVitals from './LeftPanel/PatientVitals';
 import AISkinAnalysis from './LeftPanel/AISkinAnalysis';
 import ClinicalHistory from './LeftPanel/ClinicalHistory';
+import AmbientScribePanel from './AmbientScribePanel';
 
 // Right Panel Components
 import DiagnosisForm from './RightPanel/DiagnosisForm';
@@ -214,6 +215,31 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
 
   const ticketsStatusHash = (existingTickets || []).map(t => `${t.id}:${t.status}`).join(',');
 
+  // AI Ambient Scribe → merge the confirmed draft into the EMR form fields.
+  // Existing text the doctor already typed is preserved (draft is appended).
+  const mergeText = (prev, next) => {
+    const p = (prev || '').trim();
+    const n = (next || '').trim();
+    if (!n) return prev;
+    if (!p) return n;
+    if (p.includes(n)) return prev; // avoid duplicating an identical apply
+    return `${p}\n${n}`;
+  };
+
+  const handleApplyScribeDraft = ({ symptoms: dSymptoms, medicalHistory, assessment, treatmentDirection, followUp, diagnosis: dDiagnosis }) => {
+    const symptomsBlock = [dSymptoms, medicalHistory ? `Tiền sử: ${medicalHistory}` : ''].filter(Boolean).join('\n');
+    if (symptomsBlock) setSymptoms(prev => mergeText(prev, symptomsBlock));
+
+    const notesBlock = [
+      assessment,
+      treatmentDirection ? `Hướng điều trị: ${treatmentDirection}` : '',
+      followUp ? `Tái khám/Dặn dò: ${followUp}` : '',
+    ].filter(Boolean).join('\n');
+    if (notesBlock) setDoctorNotes(prev => mergeText(prev, notesBlock));
+
+    if (dDiagnosis) setDiagnosis(dDiagnosis);
+  };
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -351,6 +377,9 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
 
         {/* Left Panel: Information */}
         <div className="lg:col-span-5 xl:col-span-6 h-full overflow-y-auto pr-2 lg:pr-8 lg:border-r lg:border-white/50 custom-scrollbar pb-12 space-y-6">
+          {!isReviewMode && (
+            <AmbientScribePanel patientName={patientName} onApply={handleApplyScribeDraft} />
+          )}
           <PatientVitals patientId={patientId} />
           <AISkinAnalysis patientId={patientId} ticketsStatusHash={ticketsStatusHash} />
           <ClinicalHistory patientId={patientId} ticketsStatusHash={ticketsStatusHash} />

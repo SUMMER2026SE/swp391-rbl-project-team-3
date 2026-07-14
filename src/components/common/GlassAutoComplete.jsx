@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Loader2, SearchX } from 'lucide-react';
-import { GLASS_BASE, GLASS_INPUT } from './GlassCard';
+import { Search, Loader2, SearchX, CheckCircle2 } from 'lucide-react';
+import { GLASS_BASE, GLASS_INPUT, GLASS_INPUT_FILLED } from './GlassCard';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GlassAutoComplete — a Liquid Glass, database-backed type-ahead.
@@ -81,6 +81,16 @@ export default function GlassAutoComplete({
       skipNextFetch.current = false;
       return;
     }
+    // Only user KEYSTROKES may query and open the popover. Programmatic value
+    // changes (seeded defaults, DB hydration, AI scribe apply, parent resets)
+    // must never pop a dropdown on their own — that made every prefilled
+    // medicine row open its suggestions uninvited.
+    if (!typedRef.current) {
+      setResults([]);
+      setOpen(false);
+      setLoading(false);
+      return;
+    }
     const query = (value || '').trim();
     if (query.length < minChars || typeof fetchSuggestions !== 'function') {
       setResults([]);
@@ -126,8 +136,11 @@ export default function GlassAutoComplete({
   // the cost of erasing fast, valid input. Option clicks keep input focus
   // (onMouseDown preventDefault) so they never trigger this.
   const handleBlur = () => {
-    if (allowCustomInput || !typedRef.current) return;
+    const wasTyped = typedRef.current;
+    // Leaving the field ends the "typing" episode in every mode, so a later
+    // programmatic value change is treated as external (no auto-popover).
     typedRef.current = false;
+    if (allowCustomInput || !wasTyped) return;
     const v = (value || '').trim();
 
     // An intentional clear is always honoured.
@@ -168,6 +181,9 @@ export default function GlassAutoComplete({
   };
 
   const showPopover = open && !readOnly && (value || '').trim().length >= minChars;
+  // "Done" state: field holds content and no suggestion flow is in progress —
+  // tint it brand-teal with a check so filled fields read at a glance.
+  const isFilled = !readOnly && (value || '').trim().length > 0 && !showPopover && !loading;
 
   return (
     <div ref={wrapperRef} className={`relative ${className}`}>
@@ -185,7 +201,7 @@ export default function GlassAutoComplete({
           readOnly={readOnly}
           autoComplete="off"
           placeholder={placeholder}
-          className={`${GLASS_INPUT} w-full py-3 pl-4 pr-10 text-sm font-semibold rounded-xl ${
+          className={`${isFilled ? GLASS_INPUT_FILLED : GLASS_INPUT} w-full py-3 pl-4 pr-10 text-sm font-semibold rounded-xl ${
             readOnly ? 'bg-slate-100/50 cursor-not-allowed' : ''
           } ${inputClassName}`}
         />
@@ -193,6 +209,8 @@ export default function GlassAutoComplete({
           <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
             {loading ? (
               <Loader2 className="w-4 h-4 animate-spin text-emerald-500" />
+            ) : isFilled ? (
+              <CheckCircle2 className="w-4 h-4 text-teal-600" />
             ) : (
               <Search className="w-4 h-4" />
             )}

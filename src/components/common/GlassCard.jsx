@@ -43,6 +43,14 @@ export const GLASS_TITLE = 'text-lg font-bold text-gray-900 tracking-tight';
 export const GLASS_INPUT =
   'bg-white/20 backdrop-blur-md border border-white/40 text-gray-900 placeholder-gray-500 rounded-xl focus:bg-white/40 focus:border-white focus:ring-2 focus:ring-teal-500/50 focus:outline-none focus-within:ring-2 focus-within:ring-teal-500/50 transition-all';
 
+// Filled-state variant of GLASS_INPUT — a brand-teal tint signalling "this
+// field already has content / a confirmed selection", so the doctor can scan
+// which parts of the record are done. Full replacement token (never combine
+// with GLASS_INPUT: conflicting bg/border utilities resolve unpredictably).
+// Focus ring stays the brand teal per the rule above.
+export const GLASS_INPUT_FILLED =
+  'bg-teal-500/[0.08] backdrop-blur-md border border-teal-500/40 text-gray-900 placeholder-gray-500 rounded-xl focus:bg-teal-500/10 focus:border-teal-400 focus:ring-2 focus:ring-teal-500/50 focus:outline-none focus-within:ring-2 focus-within:ring-teal-500/50 transition-all';
+
 // Deeply recessed read-only / inner surface — a darker "pressed into the glass"
 // well with an inner shadow, for locked result fields, summary rows and
 // read-only textareas (content displayed, not edited). Single source of truth
