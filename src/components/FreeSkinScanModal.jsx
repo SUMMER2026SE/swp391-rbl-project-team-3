@@ -2,6 +2,8 @@ import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, UploadCloud, Loader2, Sparkles, AlertTriangle, CheckCircle2, Calendar } from 'lucide-react';
 import { GLASS_BASE, GLASS_HOVER } from './common/GlassCard';
+import { useAuth } from '../context/AuthContext';
+import { supabase } from '../supabaseClient';
 
 const CLASS_MAP = {
     "acne": { name: "Mụn trứng cá", color: "from-rose-500 to-red-600", bg: "bg-rose-50 text-rose-700 border-rose-100" },
@@ -147,7 +149,147 @@ const getDeterministicFallback = (file) => {
     return { predicted_class, confidence };
 };
 
+// ─── Image Compression Helper (Max 640x480, JPEG 0.7) ─────────────────────────
+const compressImage = (base64Str, maxWidth = 640, maxHeight = 480) => {
+  return new Promise((resolve) => {
+    if (!base64Str || typeof base64Str !== 'string' || !base64Str.startsWith('data:')) {
+      resolve(base64Str);
+      return;
+    }
+    const img = new Image();
+    img.onload = () => {
+      setTimeout(() => {
+        try {
+          let width = img.width || 640;
+          let height = img.height || 480;
+
+          if (width > height) {
+            if (width > maxWidth) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+          resolve(compressedBase64);
+        } catch (err) {
+          console.warn('Error during image canvas compression:', err);
+          resolve(base64Str);
+        }
+      }, 0);
+    };
+    img.onerror = () => {
+      resolve(base64Str);
+    };
+    img.src = base64Str;
+  });
+};
+
+const getImageDimensions = (base64Str) => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      resolve({ width: img.width || 640, height: img.height || 480 });
+    };
+    img.onerror = () => resolve({ width: 640, height: 480 });
+    img.src = base64Str;
+  });
+};
+
+const saveScanToHistory = async (userId, base64Image, results) => {
+  // 1. Try to save to Supabase Database
+  if (userId) {
+    try {
+      const topPred = results && results.length > 0
+        ? results.reduce((best, p) => p.confidence > best.confidence ? p : best, results[0])
+        : null;
+
+      const detectedCondition = topPred ? topPred.label : 'normal_skin';
+      const confidenceScore = topPred ? topPred.confidence : 0.95;
+      const recText = topPred 
+        ? (SKIN_RECOMMENDATIONS[detectedCondition.toLowerCase().replace(/\s+/g, '_')] || "Vui lòng tham khảo ý kiến bác sĩ da liễu để được khám chuyên sâu.")
+        : "Làn da khỏe mạnh.";
+
+      // Ensure patient profile exists (auto-heal JIT)
+      await supabase
+        .from('patient_profiles')
+        .upsert({ patient_id: userId }, { onConflict: 'patient_id' });
+
+      // Insert image first
+      const { data: imgData, error: imgErr } = await supabase
+        .from('skin_images')
+        .insert({
+          patient_id: userId,
+          uploaded_by: userId,
+          image_url: base64Image,
+          image_type: 'FACE_SCAN'
+        })
+        .select('image_id')
+        .single();
+
+      if (imgErr) throw imgErr;
+
+      // Insert analysis record next
+      const { error: analysisErr } = await supabase
+        .from('ai_skin_analyses')
+        .insert({
+          patient_id: userId,
+          image_id: imgData.image_id,
+          detected_condition: detectedCondition,
+          confidence_score: confidenceScore,
+          recommendation: recText,
+          result_summary: JSON.stringify(results)
+        });
+
+      if (analysisErr) throw analysisErr;
+      console.log('[FreeSkinScanModal] Saved scan to Supabase database.');
+    } catch (dbErr) {
+      console.warn('[FreeSkinScanModal] Database error, fallback to local:', dbErr);
+    }
+  }
+
+  // 2. Save to localStorage (always, as a fallback / local copy)
+  const key = `dermasmart_ai_scans_${userId || 'guest'}`;
+  let scans = [];
+  try {
+    const stored = localStorage.getItem(key);
+    if (stored) scans = JSON.parse(stored);
+  } catch (e) {
+    console.warn('Failed to parse stored AI scans:', e);
+  }
+
+  const newScan = {
+    id: Date.now(),
+    date: new Date().toLocaleString('vi-VN'),
+    image: base64Image,
+    results
+  };
+
+  scans.unshift(newScan);
+  if (scans.length > 5) {
+    scans = scans.slice(0, 5); // Keep max 5
+  }
+
+  try {
+    localStorage.setItem(key, JSON.stringify(scans));
+  } catch (e) {
+    console.error('Failed to write scans to localStorage:', e);
+  }
+};
+
 export default function FreeSkinScanModal({ isOpen, onClose, onBookAppointment }) {
+    const { user } = useAuth();
     const [image, setImage] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -182,16 +324,18 @@ export default function FreeSkinScanModal({ isOpen, onClose, onBookAppointment }
                 throw new Error("Thiếu cấu hình API Key của Roboflow trong file .env.local");
             }
 
-            // Convert file → base64 string (strip data-URI prefix)
-            const rawBase64 = await new Promise((resolve, reject) => {
+            // Convert file → base64 string
+            const fullDataUri = await new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onloadend = () => {
-                    const result = reader.result.replace(/^data:image\/\w+;base64,/, '');
-                    resolve(result);
+                    resolve(reader.result);
                 };
                 reader.onerror = reject;
                 reader.readAsDataURL(file);
             });
+
+            // Strip prefix only for Roboflow API payload
+            const rawBase64 = fullDataUri.replace(/^data:image\/\w+;base64,/, '');
 
             // POST to Roboflow Inference API
             const response = await fetch(`${ROBOFLOW_URL}?api_key=${API_KEY}`, {
@@ -255,6 +399,26 @@ export default function FreeSkinScanModal({ isOpen, onClose, onBookAppointment }
                 });
                 setActiveTab('annotated');
             }
+
+            // Save to history (real api result)
+            try {
+                const dims = await getImageDimensions(fullDataUri);
+                const naturalWidth = dims.width || 1;
+                const naturalHeight = dims.height || 1;
+                const realResults = predictions.map((pred) => ({
+                    label: pred.class,
+                    x: (pred.x - pred.width / 2) / naturalWidth,
+                    y: (pred.y - pred.height / 2) / naturalHeight,
+                    width: pred.width / naturalWidth,
+                    height: pred.height / naturalHeight,
+                    confidence: pred.confidence,
+                }));
+
+                saveScanToHistory(user?.id, fullDataUri, realResults);
+                window.dispatchEvent(new CustomEvent('ai-scans-updated'));
+            } catch (historyErr) {
+                console.warn('Failed to save skin scan to history:', historyErr);
+            }
         } catch (err) {
             console.warn("Lỗi kết nối đến máy chủ AI thực tế, kích hoạt chế độ mô phỏng:", err);
             
@@ -294,6 +458,22 @@ export default function FreeSkinScanModal({ isOpen, onClose, onBookAppointment }
                 isDemo: true
             });
             setActiveTab('annotated');
+
+            // Save to history (simulated fallback result)
+            try {
+                const realResults = prediction.predicted_class === 'normal_skin' ? [] : [{
+                    label: prediction.predicted_class,
+                    x: 0.25,
+                    y: 0.25,
+                    width: 0.5,
+                    height: 0.5,
+                    confidence: prediction.confidence
+                }];
+                saveScanToHistory(user?.id, fullDataUri, realResults);
+                window.dispatchEvent(new CustomEvent('ai-scans-updated'));
+            } catch (historyErr) {
+                console.warn('Failed to save simulated skin scan to history:', historyErr);
+            }
         } finally {
             setIsLoading(false);
             e.target.value = null;

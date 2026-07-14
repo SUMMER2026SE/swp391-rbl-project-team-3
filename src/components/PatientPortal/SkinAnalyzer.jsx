@@ -11,6 +11,8 @@ import {
   FilesetResolver,
   DrawingUtils,
 } from '@mediapipe/tasks-vision';
+import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../supabaseClient';
 
 // ─── Color Map for Detection Labels ────────────────────────────────────────────
 const LABEL_STYLES = {
@@ -126,8 +128,163 @@ const VIDEO_CONSTRAINTS = {
   facingMode: 'user',
 };
 
-// ─── Component ─────────────────────────────────────────────────────────────────
+// ─── Image Compression Helper (Max 640x480, JPEG 0.7) ─────────────────────────
+const compressImage = (base64Str, maxWidth = 640, maxHeight = 480) => {
+  return new Promise((resolve) => {
+    if (!base64Str || typeof base64Str !== 'string' || !base64Str.startsWith('data:')) {
+      resolve(base64Str);
+      return;
+    }
+    const img = new Image();
+    img.onload = () => {
+      setTimeout(() => {
+        try {
+          let width = img.width || 640;
+          let height = img.height || 480;
+
+          if (width > height) {
+            if (width > maxWidth) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+          resolve(compressedBase64);
+        } catch (err) {
+          console.warn('Error during image canvas compression:', err);
+          resolve(base64Str);
+        }
+      }, 0);
+    };
+    img.onerror = () => {
+      resolve(base64Str);
+    };
+    img.src = base64Str;
+  });
+};
+
+// ─── Save Scan Result to History (Max 5 items) ────────────────────────────────
+const saveScanToHistory = async (userId, base64Image, results) => {
+  // 1. Try to save to Supabase Database
+  if (userId) {
+    try {
+      const topPred = results && results.length > 0
+        ? results.reduce((best, p) => p.confidence > best.confidence ? p : best, results[0])
+        : null;
+
+      const detectedCondition = topPred ? topPred.label : 'normal_skin';
+      const confidenceScore = topPred ? topPred.confidence : 0.95;
+      
+      const localRecommendations = {
+        acne: "Khuyến nghị làm sạch sâu bằng sữa rửa mặt chứa Acid Salicylic (BHA) 2%, kết hợp gel chấm mụn chứa Benzoyl Peroxide hoặc Adapalene. Hãy uống đủ nước và hạn chế thức khuya.",
+        blackheads: "Khuyến nghị sử dụng tẩy tế bào chết hóa học chứa BHA 2% từ 2-3 lần/tuần, kết hợp mặt nạ đất sét để hút bã nhờn dư thừa. Dưỡng ẩm nhẹ dịu dạng gel.",
+        dark_spots: "Khuyến nghị bổ sung Serum Vitamin C, Niacinamide hoặc Arbutin vào chu trình dưỡng da buổi sáng. Bắt buộc sử dụng kem chống nắng quang phổ rộng SPF 50+ hàng ngày.",
+        pores: "Khuyến nghị tập trung làm sạch sâu, sử dụng serum chứa Niacinamide (Vitamin B3) 10% giúp điều tiết dầu và thu nhỏ lỗ chân lông. Tránh bít tắc.",
+        wrinkles: "Khuyến nghị bắt đầu sử dụng Retinol 0.5% hoặc Peptide vào ban đêm để kích thích sản sinh collagen. Chú trọng dưỡng ẩm sâu với Hyaluronic Acid.",
+        normal_skin: "Làn da của bạn rất khỏe mạnh và có độ ẩm tốt. Hãy duy trì chu trình chăm sóc cơ bản gồm: Làm sạch - Dưỡng ẩm nhẹ nhàng - Chống nắng đầy đủ hàng ngày.",
+        pustules: "Khuyến nghị vệ sinh da sạch sẽ, tránh tự ý nặn mụn gây thâm và lan rộng ổ viêm. Có thể sử dụng các sản phẩm chứa Benzoyl Peroxide hoặc Acid Salicylic để chấm mụn.",
+        pustule: "Khuyến nghị vệ sinh da sạch sẽ, tránh tự ý nặn mụn gây thâm và lan rộng ổ viêm. Có thể sử dụng các sản phẩm chứa Benzoyl Peroxide hoặc Acid Salicylic để chấm mụn.",
+        papules: "Khuyến nghị sử dụng các chất giảm viêm dịu nhẹ như Niacinamide, BHA hoặc Benzoyl Peroxide nồng độ thấp để giảm viêm sưng. Hạn chế sờ tay lên mặt.",
+        papule: "Khuyến nghị sử dụng các chất giảm viêm dịu nhẹ như Niacinamide, BHA hoặc Benzoyl Peroxide nồng độ thấp để giảm viêm sưng. Hạn chế sờ tay lên mặt.",
+        nodules: "Khuyến nghị không nặn hoặc tự ý tác động mạnh lên nốt mụn. Bạn nên đến gặp bác sĩ da liễu sớm để được điều trị bằng các phương pháp chuyên khoa.",
+        nodule: "Khuyến nghị không nặn hoặc tự ý tác động mạnh lên nốt mụn. Bạn nên đến gặp bác sĩ da liễu sớm để được điều trị bằng các phương pháp chuyên khoa.",
+        cysts: "Mụn nang là tổn thương sâu dễ để lại sẹo lõm nghiêm trọng. Khuyến nghị thăm khám bác sĩ da liễu sớm để được kê toa và hướng dẫn điều trị y khoa phù hợp.",
+        cyst: "Mụn nang là tổn thương sâu dễ để lại sẹo lõm nghiêm trọng. Khuyến nghị thăm khám bác sĩ da liễu sớm để được kê toa và hướng dẫn điều trị y khoa phù hợp.",
+        whiteheads: "Khuyến nghị làm sạch da đều đặn, tẩy tế bào chết hóa học AHA/BHA nhẹ nhàng để giải phóng lỗ chân lông bị bít tắc.",
+        whitehead: "Khuyến nghị làm sạch da đều đặn, tẩy tế bào chết hóa học AHA/BHA nhẹ nhàng để giải phóng lỗ chân lông bị bít tắc.",
+        dark_spot: "Khuyến nghị bổ sung Serum Vitamin C, Niacinamide hoặc Arbutin vào chu trình dưỡng da buổi sáng. Bắt buộc sử dụng kem chống nắng quang phổ rộng SPF 50+ hàng ngày.",
+        scar: "Khuyến nghị sử dụng các hoạt chất phục hồi da như Vitamin B5, Niacinamide hoặc các liệu trình công nghệ cao như laser, phi kim tại phòng khám da liễu.",
+        scars: "Khuyến nghị sử dụng các hoạt chất phục hồi da như Vitamin B5, Niacinamide hoặc các liệu trình công nghệ cao như laser, phi kim tại phòng khám da liễu.",
+        pore: "Khuyến nghị tập trung làm sạch sâu, sử dụng serum chứa Niacinamide (Vitamin B3) 10% giúp điều tiết dầu và thu nhỏ lỗ chân lông. Tránh bít tắc.",
+        wrinkle: "Khuyến nghị bắt đầu sử dụng Retinol 0.5% hoặc Peptide vào ban đêm để kích thích sản sinh collagen. Chú trọng dưỡng ẩm sâu với Hyaluronic Acid."
+      };
+
+      const recText = topPred 
+        ? (localRecommendations[detectedCondition.toLowerCase().replace(/\s+/g, '_')] || "Vui lòng tham khảo ý kiến bác sĩ da liễu để được khám chuyên sâu.")
+        : "Làn da khỏe mạnh.";
+
+      // Ensure patient profile exists (auto-heal JIT)
+      await supabase
+        .from('patient_profiles')
+        .upsert({ patient_id: userId }, { onConflict: 'patient_id' });
+
+      // Insert image first
+      const { data: imgData, error: imgErr } = await supabase
+        .from('skin_images')
+        .insert({
+          patient_id: userId,
+          uploaded_by: userId,
+          image_url: base64Image,
+          image_type: 'FACE_SCAN'
+        })
+        .select('image_id')
+        .single();
+
+      if (imgErr) throw imgErr;
+
+      // Insert analysis record next
+      const { error: analysisErr } = await supabase
+        .from('ai_skin_analyses')
+        .insert({
+          patient_id: userId,
+          image_id: imgData.image_id,
+          detected_condition: detectedCondition,
+          confidence_score: confidenceScore,
+          recommendation: recText,
+          result_summary: JSON.stringify(results)
+        });
+
+      if (analysisErr) throw analysisErr;
+      console.log('[SkinAnalyzer] Saved scan to Supabase database.');
+    } catch (dbErr) {
+      console.warn('[SkinAnalyzer] Database error, fallback to local:', dbErr);
+    }
+  }
+
+  // 2. Save to localStorage (always, as a fallback / local copy)
+  const key = `dermasmart_ai_scans_${userId || 'guest'}`;
+  let scans = [];
+  try {
+    const stored = localStorage.getItem(key);
+    if (stored) scans = JSON.parse(stored);
+  } catch (e) {
+    console.warn('Failed to parse stored AI scans:', e);
+  }
+
+  const newScan = {
+    id: Date.now(),
+    date: new Date().toLocaleString('vi-VN'),
+    image: base64Image,
+    results
+  };
+
+  scans.unshift(newScan);
+  if (scans.length > 5) {
+    scans = scans.slice(0, 5); // Keep max 5
+  }
+
+  try {
+    localStorage.setItem(key, JSON.stringify(scans));
+  } catch (e) {
+    console.error('Failed to write scans to localStorage:', e);
+  }
+};
+
+// ─── Component ────────────────=================================================
 export default function SkinAnalyzer() {
+  const { user } = useAuth();
   // Core UI state
   const [imageSrc, setImageSrc] = useState(null);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
@@ -385,16 +542,25 @@ export default function SkinAnalyzer() {
         return;
       }
 
+      const naturalWidth = imageRef.current?.naturalWidth || 1;
+      const naturalHeight = imageRef.current?.naturalHeight || 1;
+
       const realResults = predictions.map((pred) => ({
         label: pred.class,
-        x: pred.x - pred.width / 2,   // center → top-left X
-        y: pred.y - pred.height / 2,   // center → top-left Y
-        width: pred.width,
-        height: pred.height,
+        x: (pred.x - pred.width / 2) / naturalWidth,
+        y: (pred.y - pred.height / 2) / naturalHeight,
+        width: pred.width / naturalWidth,
+        height: pred.height / naturalHeight,
         confidence: pred.confidence,
       }));
 
       setAnalysisResults(realResults);
+
+        saveScanToHistory(user?.id, imageSrc, realResults);
+        window.dispatchEvent(new CustomEvent('ai-scans-updated'));
+      } catch (historyErr) {
+        console.warn('Failed to save skin analysis to history:', historyErr);
+      }
     } catch (err) {
       console.error('[SkinAnalyzer] Analysis failed:', err);
       setAnalysisError(
@@ -403,7 +569,7 @@ export default function SkinAnalyzer() {
     } finally {
       setIsAnalyzing(false);
     }
-  }, [imageSrc, isAnalyzing]);
+  }, [imageSrc, isAnalyzing, user]);
 
   // ── Canvas: Draw bounding boxes OVER mesh when analysis results arrive ─────
   useEffect(() => {
@@ -445,10 +611,10 @@ export default function SkinAnalyzer() {
     analysisResults.forEach((box) => {
       const style = getLabelStyle(box.label);
 
-      const bx = box.x * scaleX;
-      const by = box.y * scaleY;
-      const bw = box.width * scaleX;
-      const bh = box.height * scaleY;
+      const bx = box.x * displayW;
+      const by = box.y * displayH;
+      const bw = box.width * displayW;
+      const bh = box.height * displayH;
 
       ctx.fillStyle = style.fill;
       ctx.fillRect(bx, by, bw, bh);
