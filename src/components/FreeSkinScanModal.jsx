@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, UploadCloud, Loader2, Sparkles, AlertTriangle, CheckCircle2, Calendar } from 'lucide-react';
 import { GLASS_BASE, GLASS_HOVER } from './common/GlassCard';
 import { supabase } from '../supabaseClient';
+import { useAuth } from '../context/AuthContext';
 import { SkinAnalysisModel } from '../models/SkinAnalysisModel';
 
 const CLASS_MAP = {
