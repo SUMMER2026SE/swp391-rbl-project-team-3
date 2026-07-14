@@ -98,14 +98,14 @@ export default function TodayQueueBoard({
     return () => clearInterval(timer);
   }, []);
 
-  // Check-in is allowed starting 15 minutes before appointment time
+  // Check-in is allowed starting 30 minutes before appointment time
   const canCheckIn = (aptTime) => {
     if (!aptTime) return false;
     const [h, m] = aptTime.split(':').map(Number);
     const aptDate = new Date();
     aptDate.setHours(h, m, 0, 0);
     const diffMin = (aptDate - currentTime) / 60000; // minutes until appointment
-    return diffMin <= 15; // allow check-in up to 15 min early (and anytime after)
+    return diffMin <= 30; // allow check-in up to 30 min early (and anytime after)
   };
 
   const getCheckInMessage = (aptTime) => {
@@ -113,7 +113,7 @@ export default function TodayQueueBoard({
     const [h, m] = aptTime.split(':').map(Number);
     const aptDate = new Date();
     aptDate.setHours(h, m, 0, 0);
-    const earlyDate = new Date(aptDate.getTime() - 15 * 60000);
+    const earlyDate = new Date(aptDate.getTime() - 30 * 60000);
     const hh = String(earlyDate.getHours()).padStart(2, '0');
     const mm = String(earlyDate.getMinutes()).padStart(2, '0');
     return `Có thể check-in từ ${hh}:${mm}`;

@@ -90,7 +90,7 @@ function AppointmentCard({ apt, index, isUpcoming, isOverdue, onCancel, onResche
           <Clock className="w-3.5 h-3.5" />
           {apt.time}
         </span>
-        <StatusBadge text={isOverdue ? 'Đã quá hẹn' : (apt.status === 'Đang chờ' ? 'Đang khám' : (isUpcoming ? 'Chưa khám' : apt.status))} type="status" />
+        <StatusBadge text={isOverdue ? 'Đã quá hẹn' : (apt.status === 'Đang chờ' ? 'Đang khám' : (apt.status === 'Đặt lịch thành công' && isUpcoming ? 'Chưa khám' : apt.status))} type="status" />
       </div>
 
       <div className="flex items-center gap-2 mb-2">
@@ -935,13 +935,12 @@ export default function AppointmentsTab({ setActiveTab, setFeedbackAptId }) {
     'Đặt lịch thành công',
     'Đang chờ khám',
     'Đang khám',
-    'Đã thanh toán',
     'Đã xác nhận',
     'Chờ xác nhận',
     'Đang chờ',
     'Pending'
   ];
-  const TERMINAL_STATUSES = ['Đã khám', 'Đã hủy', 'Reviewed', 'Đã không đến'];
+  const TERMINAL_STATUSES = ['Đã khám', 'Đã thanh toán', 'Đã hủy', 'Reviewed', 'Đã không đến'];
   const aptDate = (a) => a.date || a.appointment_date || '';
 
   const isDateTimePassed = (dateStr, timeStr) => {

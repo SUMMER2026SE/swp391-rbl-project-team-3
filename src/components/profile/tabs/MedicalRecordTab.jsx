@@ -19,7 +19,6 @@ import {
 } from 'lucide-react';
 import ProgressiveList from '../ProgressiveList';
 import MedicalRecordDetailModal from '../../PatientPortal/MedicalRecordDetailModal';
-import AIScanHistory from '../../shared/AIScanHistory';
 import { useAuth } from '../../../context/AuthContext';
 import { GLASS_BASE } from '../../common/GlassCard';
 
@@ -150,8 +149,7 @@ export default function MedicalRecordTab({ profile }) {
         )}
       </Section>
 
-      {/* ── AI scan history — the patient's own landing-page skin scans ── */}
-      <AIScanHistory patientId={user?.id} variant="patient" />
+
 
       {/* Prescription / record detail modal */}
       <AnimatePresence>

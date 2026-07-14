@@ -1175,33 +1175,73 @@ export default function RevenueStatistics() {
         </div>
 
         <div className={`${GLASS_BASE} p-6 flex flex-col justify-between`}>
-          <div className="flex items-center justify-between mb-4">
+          <div>
             <h3 className={GLASS_TITLE}>Phương thức thanh toán</h3>
+            <p className="text-[11px] text-slate-500 mt-0.5 mb-4">Tỷ lệ theo phương thức thanh toán</p>
           </div>
-          <div className="space-y-3">
-            {methodStats.length > 0 ? methodStats?.map?.(ms => {
-              const Icon = getMethodIcon(ms.name);
-              const color = getMethodColor(ms.name);
-              return (
-                <div key={ms.name} className="flex items-center gap-2.5">
-                  <div className="p-2 bg-slate-50 rounded-2xl text-slate-600 shrink-0 border border-slate-100">
-                    <Icon className="w-4 h-4" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-1.5 text-xs">
-                      <span className="font-bold text-slate-800">{ms.name}</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-slate-500 font-medium">{formatCurrency(ms.amount)} VNĐ</span>
-                        <span className="font-semibold text-slate-900 w-6 text-right">{Math.round(ms.pct)}%</span>
-                      </div>
-                    </div>
-                    <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                      <div className={`h-full ${color} rounded-full transition-all duration-700`} style={{ width: `${ms.pct}%` }}></div>
-                    </div>
-                  </div>
+          <div className="flex-1 flex flex-col justify-center">
+            <div className="flex justify-center mb-4">
+              <div className="relative w-32 h-32">
+                <svg width="100%" height="100%" viewBox="0 0 100 100" className="transform -rotate-90">
+                  <circle cx="50" cy="50" r="40" fill="transparent" stroke="#f1f5f9" strokeWidth="16" />
+                  {(() => {
+                    let offset = 0;
+                    return methodStats?.map?.((ms, i) => {
+                      let strokeColor = '#3b82f6'; // default blue
+                      if (ms.name.toLowerCase().includes('tiền mặt')) strokeColor = '#10b981'; // emerald-500
+                      else if (ms.name.toLowerCase().includes('qr')) strokeColor = '#8b5cf6'; // violet-500
+                      else if (i === 0) strokeColor = '#10b981';
+                      else if (i === 1) strokeColor = '#8b5cf6';
+                      
+                      const strokeDash = ms.pct * 2.512; // r=40 -> C=251.2 -> pct/100 * 251.2
+                      const currentOffset = offset;
+                      offset -= strokeDash;
+                      
+                      if (ms.pct === 0) return null;
+                      return (
+                        <circle
+                          key={ms.name}
+                          cx="50" cy="50" r="40"
+                          fill="transparent"
+                          stroke={strokeColor}
+                          strokeWidth="16"
+                          strokeDasharray={`${strokeDash} 251.2`}
+                          strokeDashoffset={currentOffset}
+                          className="transition-all duration-700"
+                        />
+                      );
+                    });
+                  })()}
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-[8px] font-bold text-slate-500">TỔNG GIAO DỊCH</span>
+                  <span className="text-lg font-black text-slate-900 leading-none mt-0.5">{totalTransactions}</span>
                 </div>
-              );
-            }) : <p className="text-xs text-slate-500 text-center py-2">Không có dữ liệu phương thức</p>}
+              </div>
+            </div>
+            
+            <div className="space-y-2 px-1 mt-2">
+              {methodStats.length > 0 ? methodStats?.map?.((ms, i) => {
+                let dotColor = 'bg-blue-500';
+                if (ms.name.toLowerCase().includes('tiền mặt')) dotColor = 'bg-emerald-500';
+                else if (ms.name.toLowerCase().includes('qr')) dotColor = 'bg-violet-500';
+                else if (i === 0) dotColor = 'bg-emerald-500';
+                else if (i === 1) dotColor = 'bg-violet-500';
+
+                return (
+                  <div key={ms.name} className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2.5 h-2.5 rounded-full ${dotColor}`}></div>
+                      <span className="font-semibold text-slate-700">{ms.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-500 font-medium">{formatCurrency(ms.amount)} VNĐ</span>
+                      <span className="font-bold text-slate-900 w-8 text-right">{Math.round(ms.pct)}%</span>
+                    </div>
+                  </div>
+                );
+              }) : <p className="text-xs text-slate-500 text-center py-2">Không có dữ liệu phương thức</p>}
+            </div>
           </div>
         </div>
       </div>

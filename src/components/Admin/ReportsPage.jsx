@@ -828,6 +828,40 @@ function SystemActivityTab() {
   const [filterSev, setFilterSev]     = useState('all');
   const [filterRole, setFilterRole]   = useState('all');
   const [filterCat, setFilterCat]     = useState('all'); // patient category filter
+  const [dynamicLogs, setDynamicLogs] = useState(mockUserActivityLogs || []);
+
+  useEffect(() => {
+    async function loadRealDoctors() {
+      try {
+        const docs = await DoctorModel.getAllDoctors();
+        if (docs && docs.length >= 2) {
+          const d1 = docs[0].name || 'Trần Văn A';
+          const d2 = docs[1].name || 'Nguyễn Thị B';
+          
+          const newLogs = (mockUserActivityLogs || []).map(l => {
+            let det = l.details;
+            let un = l.userName;
+
+            // Replace in details (Longer titles first to prevent partial matches)
+            det = det.replace(/ThS\. BS\. Nguyễn Thị B/g, d2);
+            det = det.replace(/BS\. Nguyễn Thị B/g, d2);
+            det = det.replace(/BS\. CKII\. Trần Văn A/g, d1);
+            det = det.replace(/BS\. Trần Văn A/g, d1);
+
+            // Replace in userName for doctor actions
+            if (l.userId === 'doc-01') un = d1;
+            if (l.userId === 'doc-02') un = d2;
+
+            return { ...l, details: det, userName: un };
+          });
+          setDynamicLogs(newLogs);
+        }
+      } catch (err) {
+        console.error("Failed to load doctors for logs", err);
+      }
+    }
+    loadRealDoctors();
+  }, []);
 
   const sysFiltered = useMemo(() => (mockSystemLogs || [])?.filter?.(l => {
     const q = search.toLowerCase();
@@ -835,7 +869,7 @@ function SystemActivityTab() {
         && (filterSev === 'all' || l.severity === filterSev);
   }), [search, filterSev]);
 
-  const actFiltered = useMemo(() => (mockUserActivityLogs || [])?.filter?.(l => {
+  const actFiltered = useMemo(() => dynamicLogs?.filter?.(l => {
     const q = search.toLowerCase();
     const matchQ    = !q || l.userName.toLowerCase().includes(q) || l.details.toLowerCase().includes(q) || l.action.toLowerCase().includes(q);
     const matchRole = filterRole === 'all' || l.role === filterRole;
@@ -844,7 +878,7 @@ function SystemActivityTab() {
       || l.category === filterCat
       || (filterCat === 'cancel' && l.category === 'reschedule'); // group cancel+reschedule
     return matchQ && matchRole && matchCat;
-  }), [search, filterRole, filterCat]);
+  }), [search, filterRole, filterCat, dynamicLogs]);
 
   // Stats for patient actions
   const patientStats = useMemo(() => {
