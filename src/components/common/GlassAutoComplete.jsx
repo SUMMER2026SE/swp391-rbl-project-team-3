@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Search, Loader2, SearchX, CheckCircle2 } from 'lucide-react';
 import { GLASS_BASE, GLASS_INPUT, GLASS_INPUT_FILLED } from './GlassCard';
 
@@ -22,7 +22,8 @@ import { GLASS_BASE, GLASS_INPUT, GLASS_INPUT_FILLED } from './GlassCard';
 //   • onSelect(item)          — optional hook fired with the raw picked item.
 //
 // Input uses the GLASS_INPUT token; the popover uses GLASS_BASE (heavy blur,
-// white/60 rim, blue-tinted shadow) and animates with <AnimatePresence>.
+// white/60 rim, blue-tinted shadow) and animates its entrance (no exit
+// animation — see the note above the popover render).
 // ─────────────────────────────────────────────────────────────────────────────
 export default function GlassAutoComplete({
   value = '',
@@ -218,12 +219,14 @@ export default function GlassAutoComplete({
         )}
       </div>
 
-      <AnimatePresence>
-        {showPopover && (
+      {/* No AnimatePresence here: with framer v12 + StrictMode the exiting
+          popover can get stuck in the DOM at opacity 0 and silently swallow
+          clicks on the fields underneath. Enter still animates; close is
+          instant unmount. */}
+      {showPopover && (
           <motion.div
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.18, ease: 'easeOut' }}
             className="absolute z-50 left-0 right-0 mt-2 p-1.5 max-h-64 overflow-auto origin-top custom-scrollbar bg-white border border-slate-200/60 shadow-xl rounded-2xl"
           >
@@ -254,8 +257,7 @@ export default function GlassAutoComplete({
               )
             )}
           </motion.div>
-        )}
-      </AnimatePresence>
+      )}
     </div>
   );
 }

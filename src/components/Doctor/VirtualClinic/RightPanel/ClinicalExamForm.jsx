@@ -1,6 +1,6 @@
 import React from 'react';
 import { Clipboard, HeartPulse } from 'lucide-react';
-import GlassCard, { GLASS_INPUT } from '../../../common/GlassCard';
+import GlassCard, { GLASS_INPUT, GLASS_INPUT_FILLED } from '../../../common/GlassCard';
 
 export default function ClinicalExamForm({
   symptoms = '',

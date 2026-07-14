@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Pill, Plus, Trash2, GripVertical, FileText, Stethoscope } from 'lucide-react';
-import { GLASS_INPUT } from '../../../common/GlassCard';
+import { Pill, Plus, Trash2, GripVertical, FileText, Stethoscope, CheckCircle2 } from 'lucide-react';
+import { GLASS_INPUT, GLASS_INPUT_FILLED } from '../../../common/GlassCard';
 import GlassAutoComplete from '../../../common/GlassAutoComplete';
 import { PrescriptionModel } from '../../../../models/PrescriptionModel';
 
@@ -70,22 +70,25 @@ export default function PrescriptionForm({ appointmentId, isReviewMode = false, 
     setMedications(updated);
   };
 
-  const baseInputClass = `${GLASS_INPUT} w-full text-sm font-semibold text-gray-900 rounded-xl`;
-
-  const getInputClass = (readOnly) => `${baseInputClass} ${
-    readOnly 
-      ? 'bg-slate-100/50 text-slate-900 font-medium cursor-not-allowed border-slate-200/60 focus:ring-0 focus:border-slate-200/80' 
-      : ''
-  }`;
+  // `filled` switches to the teal "already has content" token so completed
+  // fields stand out from the ones still waiting for input.
+  const getInputClass = (readOnly, filled = false) => {
+    const base = `${filled && !readOnly ? GLASS_INPUT_FILLED : GLASS_INPUT} w-full text-sm font-semibold text-gray-900 rounded-xl`;
+    return `${base} ${
+      readOnly
+        ? 'bg-slate-100/50 text-slate-900 font-medium cursor-not-allowed border-slate-200/60 focus:ring-0 focus:border-slate-200/80'
+        : ''
+    }`;
+  };
 
   return (
     <div className="space-y-6">
       {/* Premium Prescription Pad */}
       <div className="backdrop-blur-xl bg-white/80 border border-slate-200/60 shadow-[0_12px_40px_rgba(0,0,0,0.06)] rounded-2xl relative overflow-hidden">
-        
+
         {/* Decorative top bar */}
         <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500" />
-        
+
         {/* Clinic branding / Header */}
         <div className="px-8 pt-8 pb-6">
           <div className="flex justify-between items-start border-b border-slate-200/60 pb-6">
@@ -152,6 +155,8 @@ export default function PrescriptionForm({ appointmentId, isReviewMode = false, 
 
           <div className="space-y-4">
             {medications?.map?.((med, idx) => {
+              // A named medicine reads as "chosen" — the whole card tints
+              // brand-teal so the doctor can scan what's already in the order.
               const isPicked = !!(med.name || '').trim();
               return (
               <div
@@ -237,7 +242,7 @@ export default function PrescriptionForm({ appointmentId, isReviewMode = false, 
                       value={med.frequency}
                       onChange={(e) => handleMedicationChange(idx, 'frequency', e.target.value)}
                       placeholder="ví dụ: 2 lần/ngày (Sáng, Tối)"
-                      className={`${getInputClass(isReviewMode)} p-3`}
+                      className={`${getInputClass(isReviewMode, !!(med.frequency || '').trim())} p-3`}
                       readOnly={isReviewMode}
                     />
                   </div>
@@ -252,7 +257,7 @@ export default function PrescriptionForm({ appointmentId, isReviewMode = false, 
                       onChange={(e) => handleMedicationChange(idx, 'instructions', e.target.value)}
                       placeholder="ví dụ: Thoa một lớp mỏng lên nốt mụn viêm buổi tối trước khi đi ngủ."
                       rows="2"
-                      className={`${getInputClass(isReviewMode)} p-3 resize-none`}
+                      className={`${getInputClass(isReviewMode, !!(med.instructions || '').trim())} p-3 resize-none`}
                       readOnly={isReviewMode}
                     />
                   </div>
@@ -301,7 +306,7 @@ export default function PrescriptionForm({ appointmentId, isReviewMode = false, 
               onChange={(e) => setGeneralInstructions(e.target.value)}
               placeholder="Nhập hướng dẫn chế độ ăn uống, chống nắng, dưỡng ẩm thêm..."
               rows="3"
-              className={`${getInputClass(isReviewMode)} p-3.5 resize-none`}
+              className={`${getInputClass(isReviewMode, !!generalInstructions?.trim())} p-3.5 resize-none`}
               readOnly={isReviewMode}
             />
           </div>

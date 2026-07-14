@@ -20,7 +20,7 @@ import { useDoctors } from '../../../hooks/useDoctors';
 import { ServiceTicketModel } from '../../../models/ServiceTicketModel';
 import { MedicalRecordModel } from '../../../models/MedicalRecordModel';
 import { PrescriptionModel } from '../../../models/PrescriptionModel';
-import { GLASS_BASE, GLASS_INPUT } from '../../common/GlassCard';
+import { GLASS_BASE, GLASS_INPUT, GLASS_INPUT_FILLED } from '../../common/GlassCard';
 
 import { supabase } from '../../../supabaseClient';
 
@@ -444,7 +444,9 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
               isPressing ? 'border-emerald-300/50 bg-white/10' : 'border-white/30 bg-white/[0.03]'
             }`}
           >
-            <AnimatePresence mode="wait">
+            {/* NOTE: no mode="wait" — under React StrictMode it deadlocks on the
+                exiting child (stepper advances but content stays stuck). */}
+            <AnimatePresence initial={false}>
               {clinicalStep === 1 && (
                 <motion.div
                   key="step1"
@@ -494,7 +496,7 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
                       value={indicationNote}
                       onChange={(e) => setIndicationNote(e.target.value)}
                       readOnly={isReviewMode}
-                      className={`${GLASS_INPUT} w-full p-4 text-sm font-semibold text-gray-900 resize-none rounded-xl`}
+                      className={`${!isReviewMode && indicationNote?.trim() ? GLASS_INPUT_FILLED : GLASS_INPUT} w-full p-4 text-sm font-semibold text-gray-900 resize-none rounded-xl`}
                       placeholder="Nhập yêu cầu đặc biệt gửi phòng cận lâm sàng (Ví dụ: Soi kỹ vùng má bị đỏ, xét nghiệm AST/ALT trước 12h...)"
                       rows="3"
                     />
