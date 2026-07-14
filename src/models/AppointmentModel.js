@@ -912,7 +912,25 @@ export const AppointmentModel = {
             if (Date.now() - createdAt > 5 * 60 * 1000) return false;
             return true;
           }
-          return a.status === 'Đang chờ' || a.status === 'Đã xác nhận' || a.status === 'Chờ xác nhận' || a.status === 'Pending';
+          if (a.status === 'Đã thanh toán') {
+            if (a.appointment_date) {
+              const [y, mo, d] = String(a.appointment_date).includes('-')
+                ? String(a.appointment_date).split('-').map(Number)
+                : String(a.appointment_date).split('/').reverse().map(Number);
+              const [h = 0, mi = 0] = String(a.start_time || '00:00').split(':').map(Number);
+              const apptMs = new Date(y, (mo || 1) - 1, d || 1, h, mi).getTime();
+              return apptMs > Date.now();
+            }
+            return false;
+          }
+          return (
+            a.status === 'Đang chờ' ||
+            a.status === 'Đang chờ khám' ||
+            a.status === 'Đã xác nhận' ||
+            a.status === 'Đặt lịch thành công' ||
+            a.status === 'Chờ xác nhận' ||
+            a.status === 'Pending'
+          );
         }
       );
       if (upcoming.length >= 2) {
@@ -1089,7 +1107,15 @@ export const AppointmentModel = {
   },
 
   canCancel(status) {
-    return status === 'Đã xác nhận' || status === 'Chờ xác nhận' || status === 'Đang chờ' || status === 'Pending';
+    return (
+      status === 'Đã xác nhận' ||
+      status === 'Đặt lịch thành công' ||
+      status === 'Chờ xác nhận' ||
+      status === 'Đang chờ' ||
+      status === 'Đang chờ khám' ||
+      status === 'Pending' ||
+      status === 'Đã thanh toán'
+    );
   },
 
   lockSlot(doctorId, dateStr, timeStr, durationMinutes = 5) {

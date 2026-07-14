@@ -931,8 +931,17 @@ export default function AppointmentsTab({ setActiveTab, setFeedbackAptId }) {
   // (overdue) instead of lingering in "sắp tới" forever.
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-  const ACTIVE_STATUSES = ['Đã xác nhận', 'Chờ xác nhận', 'Đang chờ', 'Pending'];
-  const TERMINAL_STATUSES = ['Đã khám', 'Đã hủy', 'Reviewed', 'Đã thanh toán'];
+  const ACTIVE_STATUSES = [
+    'Đặt lịch thành công',
+    'Đang chờ khám',
+    'Đang khám',
+    'Đã thanh toán',
+    'Đã xác nhận',
+    'Chờ xác nhận',
+    'Đang chờ',
+    'Pending'
+  ];
+  const TERMINAL_STATUSES = ['Đã khám', 'Đã hủy', 'Reviewed', 'Đã không đến'];
   const aptDate = (a) => a.date || a.appointment_date || '';
 
   const isDateTimePassed = (dateStr, timeStr) => {
