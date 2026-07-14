@@ -7,7 +7,11 @@ import { DoctorModel } from '../../../../models/DoctorModel';
 import { supabase } from '../../../../supabaseClient';
 import ClinicEmailService from '../../../../services/EmailService';
 
-const todayStr = () => new Date().toISOString().slice(0, 10);
+const todayStr = () => {
+    const d = new Date();
+    const tzOffset = d.getTimezoneOffset() * 60000;
+    return new Date(d.getTime() - tzOffset).toISOString().slice(0, 10);
+};
 const toMinutes = (t) => {
     if (!t) return null;
     const [h, m] = String(t).split(':').map(Number);
@@ -181,11 +185,11 @@ export default function FollowUpAppointmentForm({ appointment }) {
                 if (locked) return true;
             } catch { /* ignore malformed cache */ }
 
-            // Past slots when the selected date is today.
-            if (selectedDate === todayStr()) {
-                const now = new Date();
-                if (toMinutes(timeStr) <= now.getHours() * 60 + now.getMinutes()) return true;
-            }
+            // Past slots check disabled in Doctor's workspace to allow full booking flexibility
+            // if (selectedDate === todayStr()) {
+            //     const now = new Date();
+            //     if (toMinutes(timeStr) <= now.getHours() * 60 + now.getMinutes()) return true;
+            // }
             return false;
         },
         [bookedTimes, selectedDoctorId, selectedDate]

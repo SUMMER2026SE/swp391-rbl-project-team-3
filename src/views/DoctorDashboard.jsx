@@ -299,7 +299,7 @@ export default function DoctorDashboard() {
       }
 
       showToast('Đã gửi chỉ định cho Kỹ thuật viên!', 'success');
-      localStorage.removeItem(`appointment_draft_${appointmentId}`);
+      // Draft is preserved in localStorage so the doctor can resume the exam when the patient returns
       setActiveAppointment(null);
       await loadApts();
     } catch (err) {

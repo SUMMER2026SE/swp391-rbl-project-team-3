@@ -22,28 +22,51 @@ import { ServiceTicketModel } from '../../../models/ServiceTicketModel';
 import { MedicalRecordModel } from '../../../models/MedicalRecordModel';
 import { PrescriptionModel } from '../../../models/PrescriptionModel';
 import { GLASS_BASE, GLASS_INPUT, GLASS_INPUT_FILLED } from '../../common/GlassCard';
-
 import { supabase } from '../../../supabaseClient';
 
 export default function VirtualClinicWorkspace({ appointment, onBack, handleCompleteExamination, handleSendIndications }) {
-  const [clinicalStep, setClinicalStep] = useState(1);
-  const [selectedServices, setSelectedServices] = useState([]);
+  const { doctors } = useDoctors();
+  const doctorId = appointment?.doctorId || appointment?.doctor_id || 'doc-01';
+  const patientId = appointment?.patientId || appointment?.patient_id || 'pat-01';
+  const patientName = appointment?.patientName || appointment?.patient_name || 'Bệnh nhân';
+  const activeDoctor = doctors.find(d => d.id === doctorId) || doctors[0] || null;
+
+  const isReviewMode = appointment?.status === 'Đã khám' || appointment?.status === 'Đã thanh toán';
+
+  // Synchronously load draft from localStorage on mount to prevent transient empty states
+  const getInitialDraft = () => {
+    if (!appointment?.id || isReviewMode) return null;
+    const saved = localStorage.getItem(`appointment_draft_${appointment.id}`);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (err) {
+        console.error('Failed to parse draft from localStorage:', err);
+      }
+    }
+    return null;
+  };
+
+  const draft = getInitialDraft();
+
+  const [clinicalStep, setClinicalStep] = useState(() => draft?.clinicalStep || 1);
+  const [selectedServices, setSelectedServices] = useState(() => draft?.selectedServices || []);
   const [isPressing, setIsPressing] = useState(false);
   const [isInitialLoadDone, setIsInitialLoadDone] = useState(false);
 
   // Form states
-  const [symptoms, setSymptoms] = useState('');
-  const [diagnosis, setDiagnosis] = useState('');
+  const [symptoms, setSymptoms] = useState(() => draft?.symptoms || appointment?.symptoms || appointment?.reason || '');
+  const [diagnosis, setDiagnosis] = useState(() => draft?.diagnosis || '');
   const [selectedPlanServices, setSelectedPlanServices] = useState([]);
-  const [doctorNotes, setDoctorNotes] = useState('');
-  const [prescriptionData, setPrescriptionData] = useState({
+  const [doctorNotes, setDoctorNotes] = useState(() => draft?.doctorNotes || '');
+  const [prescriptionData, setPrescriptionData] = useState(() => draft?.prescriptionData || {
     medications: [],
     generalInstructions: '',
     followUpDate: '',
     followUpNotes: ''
   });
   const [medicalRecord, setMedicalRecord] = useState(null);
-  const [indicationNote, setIndicationNote] = useState('');
+  const [indicationNote, setIndicationNote] = useState(() => draft?.indicationNote || '');
 
   // DB service tickets existing for this appointment
   const [existingTickets, setExistingTickets] = useState([]);
@@ -54,14 +77,6 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
   const [conversation, setConversation] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const messagesEndRef = useRef(null);
-
-  const { doctors } = useDoctors();
-  const doctorId = appointment?.doctorId || appointment?.doctor_id || 'doc-01';
-  const patientId = appointment?.patientId || appointment?.patient_id || 'pat-01';
-  const patientName = appointment?.patientName || appointment?.patient_name || 'Bệnh nhân';
-  const activeDoctor = doctors.find(d => d.id === doctorId) || doctors[0] || null;
-
-  const isReviewMode = appointment?.status === 'Đã khám' || appointment?.status === 'Đã thanh toán';
 
   const loadServiceTickets = async () => {
     if (!appointment?.id) return;
@@ -109,9 +124,14 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
         }
       } else {
         setMedicalRecord(null);
-        setDiagnosis('');
-        setSymptoms(appointment.symptoms || appointment.reason || '');
-        setDoctorNotes('');
+        // Only set empty values if there is no local draft, avoiding wiping the draft
+        const key = `appointment_draft_${appointment.id}`;
+        const hasDraft = !isReviewMode && localStorage.getItem(key) !== null;
+        if (!hasDraft) {
+          setDiagnosis('');
+          setSymptoms(appointment.symptoms || appointment.reason || '');
+          setDoctorNotes('');
+        }
       }
     } catch (err) {
       console.error('[Workspace] Error loading medical record:', err);

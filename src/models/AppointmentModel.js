@@ -453,7 +453,7 @@ export const AppointmentModel = {
 
     // Deposit amount (shared by the guest RPC path and the authenticated path).
     const shouldRecordDeposit =
-      !bookingData.bypassPayment && (bookingData.bookingFee || bookingData.fee) && !bookingData.isHold;
+      (bookingData.bookingFee || bookingData.fee) && !bookingData.isHold;
     const depositAmount = bookingData.bookingFee
       || (typeof bookingData.fee === 'string' ? parseInt(bookingData.fee.replace(/\D/g, ''), 10) : bookingData.fee)
       || 50000;
