@@ -12,7 +12,14 @@
 //     payload      : object  (template-specific fields, see builders below)
 //
 // Secrets (set via `supabase secrets set`):
-//   RESEND_API_KEY — required.
+//   BREVO_API_KEY      — preferred provider. Sends via Brevo (300 emails/day free)
+//                        to ANY recipient once the sender address is verified.
+//   BREVO_SENDER_EMAIL — the sender address verified in Brevo (e.g. a Gmail).
+//                        Required when BREVO_API_KEY is set.
+//   RESEND_API_KEY     — fallback provider, used only when BREVO_API_KEY is absent.
+//                        Without a verified domain Resend only delivers to the
+//                        account owner's own inbox.
+//   EMAIL_FROM         — Resend sender identity override (optional).
 
 import "@supabase/functions-js/edge-runtime.d.ts";
 
@@ -309,16 +316,14 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const BREVO_API_KEY = Deno.env.get("BREVO_API_KEY");
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-    if (!RESEND_API_KEY) {
-      console.error("[send-clinic-email] RESEND_API_KEY secret is not set.");
+    if (!BREVO_API_KEY && !RESEND_API_KEY) {
+      console.error(
+        "[send-clinic-email] Neither BREVO_API_KEY nor RESEND_API_KEY secret is set.",
+      );
       return json({ error: "Email service is not configured." }, 500);
     }
-
-    // Sender identity. Overridable so verifying a domain in Resend is a secret
-    // change (`supabase secrets set EMAIL_FROM=...`), not a code change.
-    const EMAIL_FROM = Deno.env.get("EMAIL_FROM") ??
-      "DermaSmart <onboarding@resend.dev>";
 
     const { type, patientEmail, patientName, payload } = await req.json();
 
@@ -345,7 +350,75 @@ Deno.serve(async (req) => {
         return json({ error: `Unsupported email type: '${type}'.` }, 400);
     }
 
-    // 3) Dispatch via Resend.
+    // 3) Dispatch. Brevo is preferred: with a verified sender address it can
+    //    deliver to ANY recipient on the free tier. Resend without a verified
+    //    domain only delivers to the account owner's own inbox.
+    if (BREVO_API_KEY) {
+      const BREVO_SENDER_EMAIL = Deno.env.get("BREVO_SENDER_EMAIL");
+      if (!BREVO_SENDER_EMAIL) {
+        console.error(
+          "[send-clinic-email] BREVO_API_KEY is set but BREVO_SENDER_EMAIL is missing.",
+        );
+        return json(
+          {
+            error:
+              "Thiếu secret BREVO_SENDER_EMAIL (địa chỉ người gửi đã xác thực trên Brevo).",
+            code: "BREVO_MISCONFIGURED",
+          },
+          500,
+        );
+      }
+
+      const brevoRes = await fetch("https://api.brevo.com/v3/smtp/email", {
+        method: "POST",
+        headers: {
+          "api-key": BREVO_API_KEY,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          sender: { name: BRAND.name, email: BREVO_SENDER_EMAIL },
+          to: [{ email: patientEmail, name: patientName || undefined }],
+          subject: built.subject,
+          htmlContent: built.html,
+        }),
+      });
+
+      // Brevo returns 201 + {messageId} on success; error bodies carry {code, message}.
+      const result = brevoRes.status === 204 ? {} : await brevoRes.json();
+
+      if (!brevoRes.ok) {
+        console.error("[send-clinic-email] Brevo rejected the request:", result);
+
+        const isSenderBlock =
+          /sender.*(not valid|not authori[sz]ed|invalid)/i.test(
+            String(result?.message ?? ""),
+          );
+
+        return json(
+          {
+            error: isSenderBlock
+              ? `Địa chỉ người gửi '${BREVO_SENDER_EMAIL}' chưa được xác thực trên Brevo. Vào Brevo → Senders & Domains → Senders, thêm địa chỉ này và bấm link xác nhận trong hộp thư.`
+              : `Không gửi được email: ${result?.message ?? "lỗi không xác định từ nhà cung cấp."}`,
+            code: isSenderBlock ? "BREVO_SENDER_UNVERIFIED" : "BREVO_ERROR",
+            details: result,
+          },
+          brevoRes.status,
+        );
+      }
+
+      console.log(
+        `[send-clinic-email] Sent '${type}' email to ${patientEmail} via Brevo (id: ${result?.messageId}).`,
+      );
+      return json({ success: true, id: result?.messageId, provider: "brevo", data: result });
+    }
+
+    // Fallback: Resend. Sender identity is overridable so verifying a domain in
+    // Resend is a secret change (`supabase secrets set EMAIL_FROM=...`), not a
+    // code change.
+    const EMAIL_FROM = Deno.env.get("EMAIL_FROM") ??
+      "DermaSmart <onboarding@resend.dev>";
+
     const resendRes = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -380,7 +453,7 @@ Deno.serve(async (req) => {
       return json(
         {
           error: isSandboxBlock
-            ? "Hệ thống email đang ở chế độ thử nghiệm nên chỉ gửi được tới email chủ tài khoản Resend. Cần xác minh domain trên Resend và đặt secret EMAIL_FROM để gửi cho bệnh nhân."
+            ? "Hệ thống email đang ở chế độ thử nghiệm nên chỉ gửi được tới email chủ tài khoản Resend. Cấu hình secret BREVO_API_KEY + BREVO_SENDER_EMAIL để gửi cho mọi bệnh nhân, hoặc xác minh domain trên Resend."
             : `Không gửi được email: ${result?.message ?? "lỗi không xác định từ nhà cung cấp."}`,
           code: isSandboxBlock ? "RESEND_SANDBOX" : "RESEND_ERROR",
           details: result,
@@ -389,9 +462,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`[send-clinic-email] Sent '${type}' email to ${patientEmail} (id: ${result?.id}).`);
-    // 4) Return the Resend response.
-    return json({ success: true, id: result?.id, data: result });
+    console.log(`[send-clinic-email] Sent '${type}' email to ${patientEmail} via Resend (id: ${result?.id}).`);
+    // 4) Return the provider response.
+    return json({ success: true, id: result?.id, provider: "resend", data: result });
   } catch (err) {
     console.error("[send-clinic-email] Unhandled error:", err);
     return json({ error: (err as Error)?.message ?? "Unexpected error." }, 500);
