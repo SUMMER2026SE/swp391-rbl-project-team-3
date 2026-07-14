@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, CheckCircle2, Check, ChevronRight, TestTube2, FileText, Pill, XCircle, MessageSquare, X, Send, Loader2, Clock } from 'lucide-react';
-import { motion, AnimatePresence, useMotionValue, useMotionTemplate, animate } from 'framer-motion';
+import { motion, useMotionValue, useMotionTemplate, animate } from 'framer-motion';
 
 // Left Panel Components
 import PatientVitals from './LeftPanel/PatientVitals';
@@ -444,9 +444,11 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
               isPressing ? 'border-emerald-300/50 bg-white/10' : 'border-white/30 bg-white/[0.03]'
             }`}
           >
-            {/* NOTE: no mode="wait" — under React StrictMode it deadlocks on the
-                exiting child (stepper advances but content stays stuck). */}
-            <AnimatePresence initial={false}>
+            {/* NOTE: no AnimatePresence — with framer v12 + StrictMode it
+                strands the exiting step in the DOM (mode="wait" deadlocks;
+                plain mode leaves the old step stacked above the new one).
+                Steps unmount instantly and animate their entrance only. */}
+            <>
               {clinicalStep === 1 && (
                 <motion.div
                   key="step1"
@@ -598,7 +600,7 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
                   </div>
                 </motion.div>
               )}
-            </AnimatePresence>
+            </>
           </motion.div>
         </div>
       </div>
