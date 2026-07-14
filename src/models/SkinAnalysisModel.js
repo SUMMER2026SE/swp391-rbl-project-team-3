@@ -60,6 +60,30 @@ export const SkinAnalysisModel = {
         }])
         .select();
       if (anErr) throw anErr;
+
+      // 4. ENFORCE MAX 4 SCANS — prune oldest records after a successful insert.
+      //    We do this AFTER insert so we always get an accurate count including
+      //    the record we just saved. Errors here are non-fatal (scan is already saved).
+      try {
+        const { data: allScans, error: fetchErr } = await supabase
+          .from('ai_skin_analyses')
+          .select('analysis_id, image_id, image:skin_images(image_url)')
+          .eq('patient_id', patientId)
+          .order('created_at', { ascending: true }); // oldest first
+
+        console.log('[SkinAnalysisModel] Total scans after insert:', allScans?.length, fetchErr?.message);
+
+        if (!fetchErr && allScans && allScans.length > 4) {
+          const excess = allScans.slice(0, allScans.length - 4); // oldest to delete
+          console.log('[SkinAnalysisModel] Pruning', excess.length, 'old scan(s)');
+          for (const old of excess) {
+            await SkinAnalysisModel.deleteScan(old.analysis_id, old.image_id, old.image?.image_url);
+          }
+        }
+      } catch (pruneErr) {
+        console.warn('[SkinAnalysisModel] Prune step failed (non-fatal):', pruneErr.message);
+      }
+
       return rows[0];
     } catch (e) {
       console.warn('[SkinAnalysisModel] Failed to save scan:', e.message);
@@ -74,7 +98,7 @@ export const SkinAnalysisModel = {
     try {
       const { data, error } = await supabase
         .from('ai_skin_analyses')
-        .select('analysis_id, detected_condition, confidence_score, result_summary, recommendation, created_at, image:skin_images(image_url)')
+        .select('analysis_id, detected_condition, confidence_score, result_summary, recommendation, created_at, image_id, image:skin_images(image_url)')
         .eq('patient_id', patientId)
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -101,10 +125,49 @@ export const SkinAnalysisModel = {
         recommendation: s.recommendation,
         createdAt: s.created_at,
         imageUrl: urlByPath[s.image?.image_url] || null,
+        imageId: s.image_id,
+        imagePath: s.image?.image_url || null,
       }));
     } catch (e) {
       console.warn('[SkinAnalysisModel] Failed to load scans:', e.message);
       return [];
     }
   },
+
+  // Delete a scan from both DB tables and storage bucket JIT
+  async deleteScan(analysisId, imageId, imagePath) {
+    if (!analysisId) return false;
+    try {
+      // 1. Delete from DB analyses
+      const { error: err1 } = await supabase
+        .from('ai_skin_analyses')
+        .delete()
+        .eq('analysis_id', analysisId);
+      if (err1) throw err1;
+
+      // 2. Delete from DB images
+      if (imageId) {
+        const { error: err2 } = await supabase
+          .from('skin_images')
+          .delete()
+          .eq('image_id', imageId);
+        if (err2) throw err2;
+      }
+
+      // 3. Delete file from storage bucket
+      if (imagePath) {
+        const { error: err3 } = await supabase.storage
+          .from(BUCKET)
+          .remove([imagePath]);
+        if (err3) {
+          console.warn('[SkinAnalysisModel] Failed to delete file from storage bucket:', err3.message);
+        }
+      }
+
+      return true;
+    } catch (e) {
+      console.warn('[SkinAnalysisModel] Failed to delete scan:', e.message);
+      return false;
+    }
+  }
 };

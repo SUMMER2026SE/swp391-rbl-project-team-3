@@ -150,52 +150,6 @@ const getDeterministicFallback = (file) => {
     return { predicted_class, confidence };
 };
 
-// ─── Image Compression Helper (Max 640x480, JPEG 0.7) ─────────────────────────
-const compressImage = (base64Str, maxWidth = 640, maxHeight = 480) => {
-  return new Promise((resolve) => {
-    if (!base64Str || typeof base64Str !== 'string' || !base64Str.startsWith('data:')) {
-      resolve(base64Str);
-      return;
-    }
-    const img = new Image();
-    img.onload = () => {
-      setTimeout(() => {
-        try {
-          let width = img.width || 640;
-          let height = img.height || 480;
-
-          if (width > height) {
-            if (width > maxWidth) {
-              height = Math.round((height * maxWidth) / width);
-              width = maxWidth;
-            }
-          } else {
-            if (height > maxHeight) {
-              width = Math.round((width * maxHeight) / height);
-              height = maxHeight;
-            }
-          }
-
-          const canvas = document.createElement('canvas');
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, width, height);
-
-          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
-          resolve(compressedBase64);
-        } catch (err) {
-          console.warn('Error during image canvas compression:', err);
-          resolve(base64Str);
-        }
-      }, 0);
-    };
-    img.onerror = () => {
-      resolve(base64Str);
-    };
-    img.src = base64Str;
-  });
-};
 
 const getImageDimensions = (base64Str) => {
   return new Promise((resolve) => {
@@ -227,8 +181,8 @@ const saveScanToHistory = async (userId, base64Image, results) => {
   };
 
   scans.unshift(newScan);
-  if (scans.length > 5) {
-    scans = scans.slice(0, 5); // Keep max 5
+  if (scans.length > 4) {
+    scans = scans.slice(0, 4); // Keep max 4
   }
 
   try {
