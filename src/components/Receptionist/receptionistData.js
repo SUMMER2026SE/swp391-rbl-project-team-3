@@ -23,12 +23,13 @@ export const TODAY_STR = (() => {
 // Canonical appointment lifecycle vocabulary (Vietnamese), matching the strings
 // AppointmentModel.normalizeStatus emits. We do NOT invent new DB values.
 export const APT_STATUS = {
-  REQUEST: 'Chờ xác nhận',   // patient-submitted booking awaiting reception approval
-  CONFIRMED: 'Đã xác nhận',  // approved, patient not yet arrived
-  CHECKED_IN: 'Đang chờ',    // arrived / in clinic (Doctor portal reads this as its queue)
-  EXAMINED: 'Đã khám',       // consultation finished → awaiting payment
-  PAID: 'Đã thanh toán',     // fully settled
+  BOOKED: 'Đặt lịch thành công',  // paid deposit, not yet arrived
+  CHECKED_IN: 'Đang chờ khám',    // arrived / in clinic (Doctor portal reads this as its queue)
+  EXAMINING: 'Đang khám',           // doctor has started the examination
+  EXAMINED: 'Đã khám',            // consultation finished → awaiting payment
+  PAID: 'Đã thanh toán',          // fully settled
   CANCELLED: 'Đã hủy',
+  NO_SHOW: 'Đã không đến',
 };
 
 export function parseFee(fee, fallback = 0) {

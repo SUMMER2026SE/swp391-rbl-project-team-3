@@ -29,7 +29,24 @@ function mapFeedbackToDB(fb = {}) {
   if (rating !== undefined) row.rating = toNum(rating);
   if (technicianRating !== undefined) row.technician_rating = toNum(technicianRating);
   if (fb.comment !== undefined) row.comment = fb.comment; // Kept for backward compatibility if needed
-  if (fb.criteriaRatings !== undefined) row.criteria_ratings = fb.criteriaRatings;
+  
+  // Merge status, adminReply, and isAnonymous into criteria_ratings if present
+  let criteriaRatings = fb.criteriaRatings || {};
+  let changed = false;
+  if (fb.status !== undefined) {
+    criteriaRatings = { ...criteriaRatings, status: fb.status };
+    changed = true;
+  }
+  if (fb.adminReply !== undefined) {
+    criteriaRatings = { ...criteriaRatings, adminReply: fb.adminReply?.text || fb.adminReply };
+    changed = true;
+  }
+  if (fb.isAnonymous !== undefined) {
+    criteriaRatings = { ...criteriaRatings, isAnonymous: fb.isAnonymous };
+    changed = true;
+  }
+  if (fb.criteriaRatings !== undefined || changed) row.criteria_ratings = criteriaRatings;
+
   if (fb.doctorComment !== undefined) row.doctor_comment = fb.doctorComment;
   if (fb.isDoctorPublic !== undefined) row.is_doctor_public = fb.isDoctorPublic;
   if (fb.technicianComment !== undefined) row.technician_comment = fb.technicianComment;
@@ -65,6 +82,8 @@ function mapFeedbackFromDB(row) {
     ...row, // keep raw snake_case keys + the embedded patient(patient_profiles)
     id: row.feedback_id ?? row.id,
     patientId: row.patient_id,
+    patientName: row.patient?.full_name || row.patient?.name || null,
+    isAnonymous: row.criteria_ratings?.isAnonymous ?? false,
     doctorId: row.doctor_id || row.appointment?.doctor_id,
     technicianId: row.technician_id,
     appointmentId: row.appointment_id,
@@ -76,15 +95,16 @@ function mapFeedbackFromDB(row) {
     technicianComment,
     isTechnicianPublic: isTechnicianPublic ?? true,
     createdAt: row.created_at,
-    status: row.status || 'published',
+    status: row.status || row.criteria_ratings?.status || 'published',
     criteriaRatings: row.criteria_ratings ?? {},
+    adminReply: row.criteria_ratings?.adminReply ? { text: row.criteria_ratings.adminReply } : null,
   };
 }
 
 export const FeedbackModel = {
   async getAll() {
     try {
-      const { data, error } = await supabase.from('feedbacks').select('*, patient:patient_profiles(*)');
+      const { data, error } = await supabase.from('feedbacks').select('*, patient:users(full_name)');
       if (error) throw error;
       return (data || []).map(mapFeedbackFromDB);
     } catch (e) {
@@ -97,7 +117,7 @@ export const FeedbackModel = {
     try {
       const { data, error } = await supabase
         .from('feedbacks')
-        .select('*, patient:patient_profiles(*)')
+        .select('*, patient:users(full_name)')
         .order('created_at', { ascending: false })
         .limit(10);
       if (error) throw error;
@@ -113,6 +133,26 @@ export const FeedbackModel = {
     // (previously this swallowed errors and returned null → false "success").
     const row = mapFeedbackToDB(feedbackData);
     const { data, error } = await supabase.from('feedbacks').insert([row]).select();
+    if (error) throw error;
+    return mapFeedbackFromDB(data[0]);
+  },
+
+  async update(id, feedbackData) {
+    const row = mapFeedbackToDB(feedbackData);
+    // Don't update id fields
+    delete row.feedback_id;
+    delete row.id;
+    delete row.patient_id;
+    
+    // We only want to update the fields passed in, but mapFeedbackToDB might return a new full row.
+    // Actually, we can fetch the existing row, merge criteria_ratings, and update.
+    // But since criteria_ratings is merged inside mapFeedbackToDB based on fb.criteriaRatings,
+    // it's better to let the controller do the logic and pass the exact fields.
+    const { data, error } = await supabase
+      .from('feedbacks')
+      .update(row)
+      .eq('feedback_id', id)
+      .select('*, patient:users(full_name)');
     if (error) throw error;
     return mapFeedbackFromDB(data[0]);
   },

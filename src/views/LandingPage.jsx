@@ -71,15 +71,23 @@ function DoctorReviewsList({ doctorId, isTechnician }) {
             <div className="flex items-center justify-between">
               <span className="font-semibold text-slate-700 text-sm flex items-center gap-2">
                 <div className="w-6 h-6 rounded-full bg-sky-100 text-sky-600 flex items-center justify-center text-[10px] font-bold uppercase">
-                  {(fb.patient?.full_name || fb.patient?.name || 'A').charAt(0)}
+                  {fb.isAnonymous ? '?' : (fb.patientName || 'A').charAt(0)}
                 </div>
-                {fb.isAnonymous ? 'Bệnh nhân ẩn danh' : (fb.patient?.full_name || fb.patient?.name || 'Bệnh nhân')}
+                {fb.isAnonymous ? 'Bệnh nhân ẩn danh' : (fb.patientName || 'Bệnh nhân')}
               </span>
               <span className="text-amber-500 text-[11px] font-bold bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-100 flex items-center gap-1">
                 {fb.overallRating || fb.rating || 5} <span className="material-symbols-outlined text-[12px] leading-none">star</span>
               </span>
             </div>
             {fb.commentText && <p className="text-slate-600 text-[13px] leading-relaxed italic pl-8">"{fb.commentText}"</p>}
+            {fb.adminReply && (
+              <div className="bg-white/80 border border-emerald-100 rounded-xl p-3 mt-1 ml-8 shadow-sm">
+                <p className="text-[11px] font-bold text-emerald-700 mb-1 flex items-center gap-1 uppercase tracking-wider">
+                  <span className="material-symbols-outlined text-[14px]">reply</span> Phản hồi từ phòng khám:
+                </p>
+                <p className="text-[12px] text-emerald-800 leading-relaxed italic">{fb.adminReply.text}</p>
+              </div>
+            )}
           </div>
         ))}
       </div>

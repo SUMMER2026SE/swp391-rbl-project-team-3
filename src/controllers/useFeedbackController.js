@@ -64,13 +64,35 @@ export function useFeedbackController(filterBy = {}) {
   };
 
   const updateStatus = async (feedbackId, status) => {
-    console.warn("updateStatus not implemented in model");
-    return { success: false, error: "Not implemented" };
+    try {
+      const fb = (Array.isArray(feedbacks) ? feedbacks : []).find(f => f.id === feedbackId);
+      if (!fb) throw new Error("Feedback not found");
+      const updated = await FeedbackModel.update(feedbackId, { 
+        criteriaRatings: fb.criteriaRatings,
+        status,
+        adminReply: fb.adminReply
+      });
+      await fetchFeedbacks();
+      return { success: true, feedback: updated };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
   };
 
   const replyToFeedback = async (feedbackId, replyText) => {
-    console.warn("replyToFeedback not implemented in model");
-    return { success: false, error: "Not implemented" };
+    try {
+      const fb = (Array.isArray(feedbacks) ? feedbacks : []).find(f => f.id === feedbackId);
+      if (!fb) throw new Error("Feedback not found");
+      const updated = await FeedbackModel.update(feedbackId, {
+        criteriaRatings: fb.criteriaRatings,
+        status: fb.status,
+        adminReply: replyText
+      });
+      await fetchFeedbacks();
+      return { success: true, feedback: updated };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
   };
 
   const getStats = (list = null) => {

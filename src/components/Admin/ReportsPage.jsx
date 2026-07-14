@@ -1064,12 +1064,13 @@ function SystemActivityTab() {
 // Dùng inline style để tránh Tailwind purge dynamic class
 function aptStatusStyle(status) {
   const map = {
-    'Đã xác nhận':  { bg: '#f0fdf4', color: '#15803d', border: '#bbf7d0', dot: '#22c55e' },
-    'Chờ xác nhận': { bg: '#fffbeb', color: '#b45309', border: '#fde68a', dot: '#f59e0b' },
-    'Đang chờ':     { bg: '#f0fdfa', color: '#0f766e', border: '#99f6e4', dot: '#14b8a6' },
-    'Đã khám':      { bg: '#f0f9ff', color: '#0369a1', border: '#bae6fd', dot: '#0ea5e9' },
-    'Đã hủy':       { bg: '#fff1f2', color: '#be123c', border: '#fecdd3', dot: '#f43f5e' },
-    'Đã không đến': { bg: '#faf5ff', color: '#6b21a8', border: '#e9d5ff', dot: '#a855f7' },
+    'Đặt lịch thành công': { bg: '#f8fafc', color: '#0f172a', border: '#cbd5e1', dot: '#0f172a' },  // đen
+    'Đang chờ khám':       { bg: '#fffbeb', color: '#b45309', border: '#fde68a', dot: '#f59e0b' },  // vàng
+    'Đang khám':            { bg: '#fff7ed', color: '#c2410c', border: '#fed7aa', dot: '#f97316' },  // cam
+    'Đã khám':             { bg: '#eff6ff', color: '#1d4ed8', border: '#bfdbfe', dot: '#3b82f6' },  // xanh dương
+    'Đã hủy':             { bg: '#fff1f2', color: '#be123c', border: '#fecdd3', dot: '#f43f5e' },  // đỏ
+    'Đã không đến':     { bg: '#faf5ff', color: '#6b21a8', border: '#e9d5ff', dot: '#a855f7' },  // tím
+    'Đã thanh toán':     { bg: '#f0fdf4', color: '#15803d', border: '#bbf7d0', dot: '#22c55e' },  // xanh lá
   };
   return map[status] || { bg: '#f8fafc', color: '#475569', border: '#e2e8f0', dot: '#94a3b8' };
 }
@@ -1142,7 +1143,7 @@ function AppointmentViewHub() {
     return () => { active = false; };
   }, []);
 
-  const ALL_STATUSES = ['Đã xác nhận','Chờ xác nhận','Đang chờ','Đã khám','Đã hủy','Đã không đến'];
+  const ALL_STATUSES = ['Đặt lịch thành công','Đang chờ khám','Đang khám','Đã hủy','Đã không đến','Đã thanh toán'];
   const apts = Array.isArray(allApts) ? allApts : [];
 
   const stats = useMemo(() => {

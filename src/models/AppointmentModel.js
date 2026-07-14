@@ -5,10 +5,10 @@ import { PatientModel } from './PatientModel';
 // Map legacy/English status codes onto the Vietnamese vocabulary the whole UI
 // is built around, so seed rows (e.g. 'CONFIRMED') stay visible & consistent.
 const STATUS_NORMALIZE_MAP = {
-  PENDING: 'Đã xác nhận',
-  CONFIRMED: 'Đã xác nhận',
-  CHECKED_IN: 'Đang chờ',
-  CHECKEDIN: 'Đang chờ',
+  PENDING: 'Đặt lịch thành công',
+  CONFIRMED: 'Đặt lịch thành công',
+  CHECKED_IN: 'Đang chờ khám',
+  CHECKEDIN: 'Đang chờ khám',
   COMPLETED: 'Đã khám',
   EXAMINED: 'Đã khám',
   DONE: 'Đã khám',
@@ -18,6 +18,11 @@ const STATUS_NORMALIZE_MAP = {
   REVIEWED: 'Reviewed',
   'ĐÃ HỦY': 'Đã hủy',
   'ĐÃ HUỶ': 'Đã hủy',
+  // Legacy Vietnamese
+  'Đã xác nhận': 'Đặt lịch thành công',
+  'Chờ xác nhận': 'Đặt lịch thành công',
+  'Đang chờ': 'Đang chờ khám',
+  EXAMINING: 'Đang khám',
 };
 
 // FK anchor for walk-in guests. `appointments.patient_id` is NOT NULL and chains
@@ -38,7 +43,12 @@ export const AppointmentModel = {
 
   normalizeStatus(status) {
     if (!status) return status;
-    return STATUS_NORMALIZE_MAP[String(status).toUpperCase()] || status;
+    // Try original case first (catches Vietnamese legacy values like 'Đã xác nhận')
+    // then uppercase (catches English codes like 'CONFIRMED')
+    return STATUS_NORMALIZE_MAP[String(status)]
+      || STATUS_NORMALIZE_MAP[String(status).toUpperCase()]
+      || status;
+
   },
 
   // Parse a "HH:mm[:ss]" string into minutes-since-midnight (null when blank).
@@ -93,7 +103,7 @@ export const AppointmentModel = {
       if (isExpiredTime || isPastDate) {
         status = 'Đã hủy';
       }
-    } else if (status === 'Đã xác nhận' || status === 'Chờ xác nhận') {
+    } else if (status === 'Đặt lịch thành công') {
       let isPastDate = false;
       if (row.appointment_date) {
         const [y, mo, d] = String(row.appointment_date).includes('-')

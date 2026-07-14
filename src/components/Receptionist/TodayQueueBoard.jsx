@@ -31,10 +31,10 @@ const COLUMNS = [
   {
     id: 'reception',
     title: 'Chờ tiếp đón',
-    subtitle: 'Đã xác nhận · chưa đến',
+    subtitle: 'Đặt lịch thành công · chưa đến',
     icon: CalendarClock,
     accent: 'sky',
-    statuses: [APT_STATUS.REQUEST, APT_STATUS.CONFIRMED],
+    statuses: [APT_STATUS.BOOKED],
   },
   {
     id: 'inclinic',
@@ -132,7 +132,7 @@ export default function TodayQueueBoard({
   // Only TODAY's non-cancelled, non-paid appointments belong on the board.
   // Hide appointments in "Chờ tiếp đón" if their time has already passed (patient didn't show up).
   const todays = useMemo(() => {
-    const receptionStatuses = [APT_STATUS.REQUEST, APT_STATUS.CONFIRMED];
+    const receptionStatuses = [APT_STATUS.BOOKED];
     return (appointments || [])
       .map((a, i) => normalizeApt(a, i))
       .filter((a) => a.date === TODAY_STR)

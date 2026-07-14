@@ -42,16 +42,18 @@ import InvoiceDetailModal from './InvoiceDetailModal';
 // ─── Status Badge Component ─────────────────────────────────────────────────
 
 const STATUS_STYLES = {
-  'Đã xác nhận': 'bg-emerald-50 text-emerald-700 border border-emerald-200',
-  'Chờ xác nhận': 'bg-amber-50 text-amber-700 border border-amber-200',
-  'Đang chờ': 'bg-teal-50 text-teal-700 border border-teal-200',
-  'Chưa khám': 'bg-blue-50 text-blue-700 border border-blue-200',
-  'Đang khám': 'bg-teal-50 text-teal-700 border border-teal-200',
-  'Đã khám': 'bg-sky-50 text-sky-700 border border-sky-200',
+  'Đặt lịch thành công': 'bg-slate-800 text-white border border-slate-900',
+  'Đang chờ khám': 'bg-amber-50 text-amber-700 border border-amber-200',
+  'Đang khám': 'bg-orange-50 text-orange-700 border border-orange-200',
   'Đã hủy': 'bg-rose-50 text-rose-700 border border-rose-200',
-  'Reviewed': 'bg-indigo-50 text-indigo-700 border border-indigo-200',
+  'Đã không đến': 'bg-violet-50 text-violet-700 border border-violet-200',
   'Đã thanh toán': 'bg-emerald-50 text-emerald-700 border border-emerald-200',
-  'Đã quá hẹn': 'bg-slate-50 text-slate-500 border border-slate-200',
+  // Legacy / internal fallbacks
+  'Đã khám': 'bg-blue-50 text-blue-700 border border-blue-200',
+  'Đã xác nhận': 'bg-slate-800 text-white border border-slate-900',
+  'Chờ xác nhận': 'bg-slate-800 text-white border border-slate-900',
+  'Đang chờ': 'bg-amber-50 text-amber-700 border border-amber-200',
+  'Reviewed': 'bg-indigo-50 text-indigo-700 border border-indigo-200',
 };
 
 const PAYMENT_STYLES = {
