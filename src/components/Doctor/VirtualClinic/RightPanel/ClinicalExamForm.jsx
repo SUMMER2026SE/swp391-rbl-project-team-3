@@ -27,7 +27,7 @@ export default function ClinicalExamForm({
             value={symptoms}
             onChange={(e) => onSymptomsChange && onSymptomsChange(e.target.value)}
             readOnly={isReviewMode}
-            className={`${GLASS_INPUT} w-full p-4 text-sm font-semibold text-gray-900 resize-none rounded-xl ${
+            className={`${!isReviewMode && symptoms?.trim() ? GLASS_INPUT_FILLED : GLASS_INPUT} w-full p-4 text-sm font-semibold text-gray-900 resize-none rounded-xl ${
               isReviewMode ? 'bg-slate-100/50 cursor-not-allowed' : ''
             }`}
             placeholder="Nhập triệu chứng bệnh nhân mô tả, quan sát lâm sàng (ví dụ: mụn bọc sưng đỏ ở má, da tiết dầu nhiều, ngứa...)"
@@ -45,7 +45,7 @@ export default function ClinicalExamForm({
             value={doctorNotes}
             onChange={(e) => onNotesChange && onNotesChange(e.target.value)}
             readOnly={isReviewMode}
-            className={`${GLASS_INPUT} w-full p-4 text-sm font-semibold text-gray-900 resize-none rounded-xl ${
+            className={`${!isReviewMode && doctorNotes?.trim() ? GLASS_INPUT_FILLED : GLASS_INPUT} w-full p-4 text-sm font-semibold text-gray-900 resize-none rounded-xl ${
               isReviewMode ? 'bg-slate-100/50 cursor-not-allowed' : ''
             }`}
             placeholder="Nhập đánh giá tình trạng da của bệnh nhân..."
