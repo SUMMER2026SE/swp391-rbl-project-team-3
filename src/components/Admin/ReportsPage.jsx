@@ -619,7 +619,7 @@ function AppointmentReportTab({ allApts, loading }) {
   const total     = apts.length;
   const done      = apts?.filter?.(a => a.status === 'Đã khám' || a.status === 'Đã thanh toán').length;
   const cancelled = apts?.filter?.(a => a.status === 'Đã hủy').length;
-  const pending   = apts?.filter?.(a => ['Đang chờ','Đã xác nhận','Chờ xác nhận'].includes(a.status)).length;
+  const pending   = apts?.filter?.(a => ['Đặt lịch thành công','Đang chờ khám','Đang khám'].includes(a.status)).length;
   const online    = apts?.filter?.(a => a.notes?.includes('Portal') || a.notes?.includes('website')).length;
 
   // By month

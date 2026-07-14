@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Brain, CheckCircle2, AlertCircle } from 'lucide-react';
 import { AppointmentModel } from '../../models/AppointmentModel';
+import { APT_STATUS } from '../Receptionist/receptionistData';
 import { GLASS_BASE, GLASS_HOVER } from '../common/GlassCard';
 
 export default function DashboardOverview({ doctorId }) {
@@ -31,7 +32,7 @@ export default function DashboardOverview({ doctorId }) {
   const totalPatientsToday = todayAppointments.length;
   
   const waitingPatients = todayAppointments?.filter?.(
-    apt => apt?.status === 'Đang chờ'
+    apt => apt?.status === APT_STATUS.CHECKED_IN
   ).length;
 
   const completedPatients = todayAppointments?.filter?.(apt => apt?.status === 'Đã khám').length;

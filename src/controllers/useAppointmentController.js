@@ -282,7 +282,7 @@ export function useAppointmentController(patientId = null) {
       a.appointment_date === apt.appointment_date && 
       a.start_time === apt.start_time && 
       a.appointment_id !== appointmentId && 
-      (a.status === 'Đã xác nhận' || a.status === 'Đang chờ' || a.status === 'Đã khám')
+      (a.status === 'Đặt lịch thành công' || a.status === 'Đang chờ khám' || a.status === 'Đã khám')
     );
     if (isDoubleBooked) {
       throw new Error('Bác sĩ đã có lịch hẹn được xác nhận/check-in vào khung giờ này. Không thể phê duyệt.');
@@ -309,7 +309,9 @@ export function useAppointmentController(patientId = null) {
   }, [refreshState]);
 
   const checkinAppointment = useCallback((appointmentId) => {
-    const completedApt = AppointmentModel.updateAppointmentStatus(appointmentId, 'Đang chờ');
+    // Canonical check-in value — the same one the front desk writes. Writing the
+    // legacy 'Đang chờ' here left rows the Doctor portal's queue could not match.
+    const completedApt = AppointmentModel.updateAppointmentStatus(appointmentId, 'Đang chờ khám');
     refreshState();
     return completedApt;
   }, [refreshState]);

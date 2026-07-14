@@ -151,7 +151,13 @@ export default function DoctorDashboard() {
     setIsSaving(true);
     try {
       // 1. Lifecycle: appointment → 'Đã khám' (EXAMINED). Leaves billing untouched.
-      await AppointmentModel.updateStatus(appointmentId, 'Đã khám');
+      // updateStatus swallows DB/RLS errors and returns null, so a dropped write
+      // would otherwise still reach the success toast while the front desk never
+      // sees the patient move to "Chờ thanh toán". Fail loudly instead.
+      const statusUpdated = await AppointmentModel.updateStatus(appointmentId, 'Đã khám');
+      if (!statusUpdated) {
+        throw new Error(`Không thể cập nhật trạng thái lịch hẹn #${appointmentId} sang 'Đã khám'.`);
+      }
 
       // 2. Medical record (1:1 with the appointment → upsert).
       const record = await MedicalRecordModel.upsertExam({

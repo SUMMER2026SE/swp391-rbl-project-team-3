@@ -1,5 +1,10 @@
 import React from 'react';
 import { Clock, PlayCircle, Eye, Users, CheckCircle2, AlarmClock, Play } from 'lucide-react';
+import { APT_STATUS } from '../Receptionist/receptionistData';
+
+// The queue the Receptionist feeds us: a checked-in patient. Sourced from the one
+// shared lifecycle vocabulary so the front desk and this board can never drift apart.
+const WAITING_STATUS = APT_STATUS.CHECKED_IN;
 
 // Minutes a checked-in patient has been waiting past their scheduled slot.
 // Only meaningful for today's queue; negative (not yet due) clamps to 0.
@@ -17,13 +22,15 @@ export default function ScheduleWaitingList({ doctorId, onStartExam, appointment
   })();
 
   // PHASE 4 — the active waiting room is strictly patients the Receptionist has
-  // CHECKED IN (status 'Đang chờ' / WAITING). 'Đã xác nhận' (CONFIRMED, not yet
-  // arrived) is intentionally excluded. Completed exams ('Đã khám' & 'Đã thanh toán') stay visible
+  // CHECKED IN (status 'Đang chờ khám' / WAITING — the canonical value emitted by
+  // AppointmentModel.normalizeStatus; the legacy 'Đang chờ' is folded into it and
+  // never reaches the UI). 'Đặt lịch thành công' (booked, not yet arrived) is
+  // intentionally excluded. Completed exams ('Đã khám' & 'Đã thanh toán') stay visible
   // for read-only review. Time-of-day no longer hides a checked-in patient.
   const todayAppointments = [...appointments]?.filter?.(
     (apt) => {
       const isDoctorMatch = String(apt?.doctorId || apt?.doctor_id) === String(doctorId);
-      const isWaiting = apt?.status === 'Đang chờ';
+      const isWaiting = apt?.status === WAITING_STATUS;
       const isExamined = apt?.status === 'Đã khám' || apt?.status === 'Đã thanh toán';
       const isToday = apt?.date === today;
       if (!isDoctorMatch || !isToday || !(isWaiting || isExamined)) return false;
@@ -37,10 +44,10 @@ export default function ScheduleWaitingList({ doctorId, onStartExam, appointment
     }
   ).sort((a, b) => (a?.time || '').localeCompare(b?.time || ''));
 
-  const waitingCount = todayAppointments.filter((a) => a?.status === 'Đang chờ' && localStorage.getItem(`appointment_draft_${a?.id}`) === null).length;
+  const waitingCount = todayAppointments.filter((a) => a?.status === WAITING_STATUS && localStorage.getItem(`appointment_draft_${a?.id}`) === null).length;
   const examinedCount = todayAppointments.filter((a) => a?.status === 'Đã khám' || a?.status === 'Đã thanh toán').length;
   const lateCount = todayAppointments.filter(
-    (a) => a?.status === 'Đang chờ' && localStorage.getItem(`appointment_draft_${a?.id}`) === null && minutesWaiting(a?.time) >= 15
+    (a) => a?.status === WAITING_STATUS && localStorage.getItem(`appointment_draft_${a?.id}`) === null && minutesWaiting(a?.time) >= 15
   ).length;
 
   // Queue position is assigned across WAITING patients only (in time order).
@@ -100,7 +107,7 @@ export default function ScheduleWaitingList({ doctorId, onStartExam, appointment
             <tbody className="divide-y divide-slate-100/50">
               {todayAppointments?.map?.((apt) => {
                 const isCompleted = apt?.status === 'Đã khám' || apt?.status === 'Đã thanh toán';
-                const isWaiting = apt?.status === 'Đang chờ';
+                const isWaiting = apt?.status === WAITING_STATUS;
                 const waited = isWaiting ? minutesWaiting(apt?.time) : 0;
                 const hasPendingTickets = !isCompleted && apt?.serviceTickets && apt.serviceTickets.length > 0 && apt.serviceTickets.some(t => t.status !== 'TECH_COMPLETED');
                 const hasDraft = !isCompleted && !hasPendingTickets && localStorage.getItem(`appointment_draft_${apt?.id}`) !== null;

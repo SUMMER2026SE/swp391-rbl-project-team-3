@@ -6,7 +6,6 @@ import {
   Stethoscope,
   Wallet,
   CheckCircle2,
-  X,
   MessageSquare,
   ArrowRight,
   CalendarClock,
@@ -19,10 +18,12 @@ import { normalizeApt, APT_STATUS, TODAY_STR } from './receptionistData';
 //
 // A kanban of TODAY's front-desk flow. Each column maps onto an existing
 // appointment status (no schema changes) and exposes one forward quick-action:
-//   Chờ tiếp đón (Đã xác nhận)  → "Đã đến"          → Đang chờ
-//   Đang khám   (Đang chờ)      → "Chờ thanh toán"  → Đã khám
-//   Chờ thu     (Đã khám)       → "Thu ngân"        → opens Billing
-// Pending requests (Chờ xác nhận) ride in the first column with approve/decline.
+//   Chờ tiếp đón (Đặt lịch thành công) → "Đã đến"         → Đang chờ khám
+//   Đang khám    (Đang chờ khám)       → doctor completes → Đã khám
+//   Chờ thu      (Đã khám)             → "Thu ngân"       → opens Billing
+//
+// There is no approval gate: a booking is live as soon as the patient pays the
+// deposit, so the front desk's only decision here is "has this patient arrived?".
 // ─────────────────────────────────────────────────────────────────────────────
 
 const spring = { type: 'spring', stiffness: 260, damping: 26 };
@@ -83,8 +84,6 @@ export default function TodayQueueBoard({
   appointments = [],
   doctors = [],
   onChangeStatus, // async (aptId, newStatus)
-  onApprove, // async (aptId)
-  onDecline, // async (aptId)
   onOpenChat, // (patientId, patientName)
   onGoBilling, // (apt) — jump to the Billing module pre-filtered to this patient
   onArrive, // (apt) - open check-in patient lookup/create modal
@@ -182,18 +181,6 @@ export default function TodayQueueBoard({
       showToast?.(`${apt.patientName} đã khám xong, chuyển sang chờ thanh toán.`, 'info');
     });
 
-  const handleApprove = (apt) =>
-    run(apt.key, async () => {
-      await onApprove?.(apt.aptId);
-      showToast?.(`Đã phê duyệt lịch hẹn của ${apt.patientName}.`, 'success');
-    });
-
-  const handleDecline = (apt) =>
-    run(apt.key, async () => {
-      await onDecline?.(apt.aptId);
-      showToast?.(`Đã từ chối lịch hẹn của ${apt.patientName}.`, 'error');
-    });
-
   return (
     <div className="space-y-6 text-left">
       {/* Header */}
@@ -249,7 +236,6 @@ export default function TodayQueueBoard({
                   </div>
                 ) : (
                   cards.map((apt) => {
-                    const isRequest = apt.status === APT_STATUS.REQUEST;
                     const isBusy = busyId === apt.key;
                     return (
                       <motion.div
@@ -267,11 +253,6 @@ export default function TodayQueueBoard({
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-1.5">
                               <h4 className="font-bold text-base md:text-lg text-slate-900 truncate">{apt.patientName}</h4>
-                              {isRequest && (
-                                <span className="text-[9px] font-black uppercase tracking-wide bg-rose-50 text-rose-600 border border-rose-200/60 rounded px-1 py-0.5">
-                                  Mới
-                                </span>
-                              )}
                             </div>
                             <p className="text-xs md:text-sm text-slate-600 font-medium flex items-center gap-1 mt-0.5">
                               <Clock className="w-3.5 h-3.5" />
@@ -287,25 +268,7 @@ export default function TodayQueueBoard({
 
                         {/* Quick actions */}
                         <div className="flex items-center gap-2 mt-3">
-                          {isRequest ? (
-                            <>
-                              <button
-                                disabled={isBusy}
-                                onClick={() => handleApprove(apt)}
-                                className="flex-1 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-sky-600 text-white text-xs font-bold hover:shadow-md hover:shadow-sky-500/20 active:scale-95 transition-all border-none cursor-pointer disabled:opacity-50"
-                              >
-                                Phê duyệt
-                              </button>
-                              <button
-                                disabled={isBusy}
-                                onClick={() => handleDecline(apt)}
-                                title="Từ chối"
-                                className="w-9 py-2 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-rose-500 hover:border-rose-200 flex items-center justify-center transition-all cursor-pointer disabled:opacity-50"
-                              >
-                                <X className="w-3.5 h-3.5" />
-                              </button>
-                            </>
-                          ) : col.id === 'reception' ? (
+                          {col.id === 'reception' ? (
                             canCheckIn(apt.time) ? (
                               <button
                                 disabled={isBusy}

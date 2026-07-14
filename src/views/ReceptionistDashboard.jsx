@@ -252,27 +252,6 @@ export default function ReceptionistDashboard() {
     });
   };
 
-  const handleApproveRequest = async (aptId) => {
-    const apt = (appointments || []).find((a) => (a.appointment_id ?? a.id) === aptId);
-    await AppointmentModel.updateAppointment(aptId, { status: APT_STATUS.CONFIRMED });
-    if (apt) {
-      try {
-        NotificationModel.sendNotification(
-          'PATIENT',
-          apt.patient_id,
-          'Lịch hẹn đã được xác nhận',
-          `Lịch hẹn ${apt.service || apt.service_name || ''} của bạn đã được lễ tân xác nhận. Vui lòng đến đúng giờ.`
-        );
-      } catch { /* non-fatal */ }
-    }
-    await refreshState();
-  };
-
-  const handleDeclineRequest = async (aptId) => {
-    await AppointmentModel.updateAppointment(aptId, { status: APT_STATUS.CANCELLED });
-    await refreshState();
-  };
-
   // Cross-module jump: Queue "Thu ngân" → Billing pre-selected to that patient.
   const [billingFocusPatientId, setBillingFocusPatientId] = useState(null);
   const goBilling = async (apt) => {
@@ -306,11 +285,10 @@ export default function ReceptionistDashboard() {
       checkedIn: todays.filter((a) => a.status === APT_STATUS.CHECKED_IN).length,
       todayTotal: todays.filter((a) => a.status !== APT_STATUS.CANCELLED).length,
       toCollect: todays.filter((a) => a.status === APT_STATUS.EXAMINED).length,
-      requests: (appointments || [])
-        .map((a, i) => normalizeApt(a, i))
-        .filter((a) => a.status === APT_STATUS.REQUEST).length,
+      // Booked for today but not yet through the door — who the desk is still expecting.
+      toReceive: todays.filter((a) => a.status === APT_STATUS.BOOKED).length,
     }),
-    [todays, appointments]
+    [todays]
   );
 
   const headerExtras = (
@@ -408,13 +386,9 @@ export default function ReceptionistDashboard() {
             user={user}
             kpi={kpi}
             todays={todays}
-            requests={(appointments || []).map((a, i) => normalizeApt(a, i)).filter((a) => a.status === APT_STATUS.REQUEST)}
             onGoTab={setActiveTab}
-            onApprove={handleApproveRequest}
             onArrive={(apt) => setSelectedCheckInApt(apt)}
-            onOpenChat={handleOpenChat}
             onAdd={() => walkInBooking.setIsAddOpen(true)}
-            showToast={showToast}
           />
         )}
 
@@ -423,8 +397,6 @@ export default function ReceptionistDashboard() {
             appointments={appointments}
             doctors={doctors}
             onChangeStatus={handleQueueStatusChange}
-            onApprove={handleApproveRequest}
-            onDecline={handleDeclineRequest}
             onOpenChat={handleOpenChat}
             onGoBilling={goBilling}
             onArrive={(apt) => setSelectedCheckInApt(apt)}

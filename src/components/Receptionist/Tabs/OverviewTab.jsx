@@ -4,7 +4,7 @@
 // via props; no state, API calls, or Realtime here.
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Sun, Users, CheckSquare, Wallet, Inbox, ArrowRight, Clock, UserCheck, CalendarClock, Plus } from 'lucide-react';
+import { Sun, Users, CheckSquare, Wallet, ArrowRight, Clock, UserCheck, CalendarClock, Plus } from 'lucide-react';
 import { APT_STATUS, TODAY_STR } from '../receptionistData';
 
 const fadeInUp = {
@@ -13,13 +13,13 @@ const fadeInUp = {
 };
 const stagger = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.08 } } };
 
-export default function OverviewTab({ user, kpi, todays, requests, onGoTab, onApprove, onArrive, onOpenChat, onAdd, showToast }) {
+export default function OverviewTab({ user, kpi, todays, onGoTab, onArrive, onAdd }) {
   const now = new Date();
   const nextUp = todays
-    .filter((a) => a.status === APT_STATUS.CONFIRMED || a.status === APT_STATUS.CHECKED_IN)
+    .filter((a) => a.status === APT_STATUS.BOOKED || a.status === APT_STATUS.CHECKED_IN)
     .filter((a) => {
-      // Hide confirmed (not yet checked-in) appointments whose time has passed
-      if (a.status === APT_STATUS.CONFIRMED && a.time) {
+      // Hide booked (not yet checked-in) appointments whose time has passed
+      if (a.status === APT_STATUS.BOOKED && a.time) {
         const [h, m] = a.time.split(':').map(Number);
         const aptDate = new Date();
         aptDate.setHours(h, m, 0, 0);
@@ -34,7 +34,7 @@ export default function OverviewTab({ user, kpi, todays, requests, onGoTab, onAp
     { label: 'Đang chờ khám', value: kpi.checkedIn, hint: 'người', icon: Users, tone: 'sky', tab: 'queue' },
     { label: 'Lịch hôm nay', value: kpi.todayTotal, hint: 'ca khám', icon: CheckSquare, tone: 'emerald', tab: 'queue' },
     { label: 'Chờ thanh toán', value: kpi.toCollect, hint: 'hóa đơn', icon: Wallet, tone: 'amber', tab: 'billing' },
-    { label: 'Yêu cầu mới', value: kpi.requests, hint: 'cần duyệt', icon: Inbox, tone: 'rose', tab: 'queue' },
+    { label: 'Chờ tiếp đón', value: kpi.toReceive, hint: 'chưa đến', icon: CalendarClock, tone: 'rose', tab: 'queue' },
   ];
   const tones = {
     sky: 'bg-sky-50 text-sky-600 border-sky-100',
@@ -123,34 +123,32 @@ export default function OverviewTab({ user, kpi, todays, requests, onGoTab, onAp
           </div>
         </motion.div>
 
-        {/* New requests */}
+        {/* Quick actions — bookings are live once the deposit is paid, so there is
+            no approval queue here; the desk's job is check-in and walk-ins. */}
         <motion.div variants={fadeInUp} className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="font-extrabold text-lg text-slate-900">Yêu cầu đặt lịch</h3>
-            {requests.length > 0 && <span className="bg-rose-50 text-rose-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-rose-200/40 animate-pulse">{requests.length} MỚI</span>}
-          </div>
-          <div className="space-y-3">
-            {requests.length === 0 ? (
-              <div className="backdrop-blur-md bg-white/40 border border-white/60 rounded-[2rem] p-8 text-center text-slate-400">
-                <CalendarClock className="w-6 h-6 mx-auto mb-2 text-slate-300" />
-                <p className="text-[11px] font-semibold">Không có yêu cầu mới.</p>
+          <h3 className="font-extrabold text-lg text-slate-900">Thao tác nhanh</h3>
+          <div className="backdrop-blur-md bg-white/40 border border-white/60 rounded-[2rem] p-6 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-sky-50 text-sky-600 border border-sky-100 flex items-center justify-center shrink-0">
+                <UserCheck className="w-5 h-5" />
               </div>
-            ) : (
-              requests.slice(0, 4).map((apt) => (
-                <div key={apt.key} className="backdrop-blur-md bg-white/50 border border-white/70 rounded-2xl p-4 border-l-4 border-l-sky-500">
-                  <h4 className="font-bold text-slate-800 text-sm">{apt.patientName}</h4>
-                  <p className="text-[11px] text-slate-400 font-medium mt-1">{apt.date} · <span className="font-bold text-teal-600">{apt.time}</span> · {apt.serviceName}</p>
-                  <div className="flex gap-2 mt-3">
-                    <button onClick={async () => { await onApprove(apt.aptId); showToast(`Đã phê duyệt ${apt.patientName}.`, 'success'); }} className="flex-1 py-2 rounded-xl bg-teal-50 text-teal-700 text-[11px] font-bold hover:bg-teal-100/60 border border-teal-200/20 transition-colors cursor-pointer">Phê duyệt</button>
-                    <button onClick={() => onOpenChat(apt.patientId, apt.patientName)} className="flex-1 py-2 rounded-xl bg-slate-100 text-slate-600 text-[11px] font-bold hover:bg-slate-200/60 border border-slate-200/20 transition-colors cursor-pointer">Liên hệ</button>
-                  </div>
-                </div>
-              ))
-            )}
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-slate-800">Bệnh nhân tới nơi?</p>
+                <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                  Bấm <span className="font-bold text-slate-700">“Đã đến”</span> trên thẻ của họ ở Bàn điều phối để xếp vào hàng chờ của bác sĩ.
+                </p>
+                <button
+                  onClick={() => onGoTab('queue')}
+                  className="mt-2 text-[11px] font-bold text-teal-600 hover:text-teal-700 inline-flex items-center gap-1 border-none bg-transparent cursor-pointer p-0"
+                >
+                  Mở Bàn điều phối <ArrowRight className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+            <button onClick={onAdd} className="w-full py-3 rounded-2xl border border-dashed border-slate-300 text-slate-400 hover:bg-white/40 hover:text-emerald-600 hover:border-emerald-300 transition-all text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer bg-transparent">
+              <Plus className="w-4 h-4" /> Tự thêm lịch hẹn trực tiếp
+            </button>
           </div>
-          <button onClick={onAdd} className="w-full py-3 rounded-2xl border border-dashed border-slate-300 text-slate-400 hover:bg-white/40 hover:text-emerald-600 hover:border-emerald-300 transition-all text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer bg-transparent">
-            <Plus className="w-4 h-4" /> Tự thêm lịch hẹn trực tiếp
-          </button>
         </motion.div>
       </div>
     </motion.div>
