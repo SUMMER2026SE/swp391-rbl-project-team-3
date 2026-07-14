@@ -125,7 +125,7 @@ export default function PrescriptionForm({ appointmentId, isReviewMode = false, 
             onChange={(e) => setDiagnosis(e.target.value)}
             placeholder="Nhập kết luận chẩn đoán bệnh..."
             rows="2"
-            className={`${getInputClass(isReviewMode)} p-3.5 resize-none`}
+            className={`${getInputClass(isReviewMode, !!diagnosis?.trim())} p-3.5 resize-none`}
             readOnly={isReviewMode}
           />
         </div>
