@@ -2,8 +2,8 @@ import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, UploadCloud, Loader2, Sparkles, AlertTriangle, CheckCircle2, Calendar } from 'lucide-react';
 import { GLASS_BASE, GLASS_HOVER } from './common/GlassCard';
-import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
+import { SkinAnalysisModel } from '../models/SkinAnalysisModel';
 
 const CLASS_MAP = {
     "acne": { name: "Mụn trứng cá", color: "from-rose-500 to-red-600", bg: "bg-rose-50 text-rose-700 border-rose-100" },
@@ -208,58 +208,7 @@ const getImageDimensions = (base64Str) => {
 };
 
 const saveScanToHistory = async (userId, base64Image, results) => {
-  // 1. Try to save to Supabase Database
-  if (userId) {
-    try {
-      const topPred = results && results.length > 0
-        ? results.reduce((best, p) => p.confidence > best.confidence ? p : best, results[0])
-        : null;
-
-      const detectedCondition = topPred ? topPred.label : 'normal_skin';
-      const confidenceScore = topPred ? topPred.confidence : 0.95;
-      const recText = topPred 
-        ? (SKIN_RECOMMENDATIONS[detectedCondition.toLowerCase().replace(/\s+/g, '_')] || "Vui lòng tham khảo ý kiến bác sĩ da liễu để được khám chuyên sâu.")
-        : "Làn da khỏe mạnh.";
-
-      // Ensure patient profile exists (auto-heal JIT)
-      await supabase
-        .from('patient_profiles')
-        .upsert({ patient_id: userId }, { onConflict: 'patient_id' });
-
-      // Insert image first
-      const { data: imgData, error: imgErr } = await supabase
-        .from('skin_images')
-        .insert({
-          patient_id: userId,
-          uploaded_by: userId,
-          image_url: base64Image,
-          image_type: 'FACE_SCAN'
-        })
-        .select('image_id')
-        .single();
-
-      if (imgErr) throw imgErr;
-
-      // Insert analysis record next
-      const { error: analysisErr } = await supabase
-        .from('ai_skin_analyses')
-        .insert({
-          patient_id: userId,
-          image_id: imgData.image_id,
-          detected_condition: detectedCondition,
-          confidence_score: confidenceScore,
-          recommendation: recText,
-          result_summary: JSON.stringify(results)
-        });
-
-      if (analysisErr) throw analysisErr;
-      console.log('[FreeSkinScanModal] Saved scan to Supabase database.');
-    } catch (dbErr) {
-      console.warn('[FreeSkinScanModal] Database error, fallback to local:', dbErr);
-    }
-  }
-
-  // 2. Save to localStorage (always, as a fallback / local copy)
+  // Save to localStorage (always, as a fallback / local copy)
   const key = `dermasmart_ai_scans_${userId || 'guest'}`;
   let scans = [];
   try {
@@ -295,8 +244,34 @@ export default function FreeSkinScanModal({ isOpen, onClose, onBookAppointment }
     const [error, setError] = useState(null);
     const [aiResults, setAiResults] = useState(null);
     const [activeTab, setActiveTab] = useState('original'); // 'original', 'annotated', 'cropped'
-    
+    // 'saving' | 'saved' | null — trạng thái lưu kết quả vào hồ sơ bệnh nhân.
+    const [saveStatus, setSaveStatus] = useState(null);
+
     const fileInputRef = useRef(null);
+
+    // Persist a REAL model prediction to the logged-in patient's record.
+    // Hard rules: never for simulated results (isDemo), never for guests, never
+    // for staff accounts — and never block the on-screen result on the save.
+    const persistRealScan = (file, result, classKey) => {
+        if (result.isDemo) return;
+        if (!user?.id || user.role !== 'PATIENT') return;
+        setSaveStatus('saving');
+        SkinAnalysisModel.saveScan({
+            patientId: user.id,
+            file,
+            predictedClass: classKey,
+            conditionName: CLASS_MAP[classKey]?.name || classKey,
+            confidence: result.confidence,
+            recommendation: result.recommendation,
+        })
+            .then((row) => {
+                setSaveStatus(row ? 'saved' : null);
+                if (row) {
+                    window.dispatchEvent(new CustomEvent('ai-scans-updated'));
+                }
+            })
+            .catch(() => setSaveStatus(null));
+    };
 
     const handleUploadClick = () => {
         if (!isLoading) {
@@ -311,6 +286,7 @@ export default function FreeSkinScanModal({ isOpen, onClose, onBookAppointment }
         setError(null);
         setIsLoading(true);
         setAiResults(null);
+        setSaveStatus(null);
 
         const formData = new FormData();
         formData.append('file', file);
@@ -363,8 +339,7 @@ export default function FreeSkinScanModal({ isOpen, onClose, onBookAppointment }
 
             if (predictions.length === 0) {
                 // No detections → healthy skin
-                setImage(objectUrl);
-                setAiResults({
+                const healthyResult = {
                     predicted_class: 'normal_skin',
                     confidence: 0.95,
                     recommendation: SKIN_RECOMMENDATIONS.normal_skin,
@@ -372,8 +347,11 @@ export default function FreeSkinScanModal({ isOpen, onClose, onBookAppointment }
                     annotated_url: objectUrl,
                     cropped_url: objectUrl,
                     isDemo: false
-                });
+                };
+                setImage(objectUrl);
+                setAiResults(healthyResult);
                 setActiveTab('original');
+                persistRealScan(file, healthyResult, 'normal_skin');
             } else {
                 // Use the highest-confidence prediction as the primary result
                 const topPred = predictions.reduce((best, p) =>
@@ -386,8 +364,7 @@ export default function FreeSkinScanModal({ isOpen, onClose, onBookAppointment }
                     .toLowerCase()
                     .replace(/\s+/g, '_');
 
-                setImage(objectUrl);
-                setAiResults({
+                const realResult = {
                     predicted_class: classKey,
                     confidence: topPred.confidence,
                     recommendation: SKIN_RECOMMENDATIONS[classKey] || "Vui lòng tham khảo ý kiến bác sĩ da liễu để được tư vấn chi tiết.",
@@ -396,8 +373,11 @@ export default function FreeSkinScanModal({ isOpen, onClose, onBookAppointment }
                     cropped_url: objectUrl,
                     predictions: predictions, // keep full array for potential future use
                     isDemo: false
-                });
+                };
+                setImage(objectUrl);
+                setAiResults(realResult);
                 setActiveTab('annotated');
+                persistRealScan(file, realResult, classKey);
             }
 
             // Save to history (real api result)
@@ -484,6 +464,7 @@ export default function FreeSkinScanModal({ isOpen, onClose, onBookAppointment }
         setImage(null);
         setAiResults(null);
         setError(null);
+        setSaveStatus(null);
     };
 
     const currentClassInfo = aiResults ? (CLASS_MAP[aiResults.predicted_class] || {
@@ -788,9 +769,30 @@ export default function FreeSkinScanModal({ isOpen, onClose, onBookAppointment }
                                         >
                                             <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                                             <div className="font-medium">
-                                                <strong className="font-extrabold text-amber-900">Chế độ Mô phỏng:</strong> Máy chủ AI đang ngoại tuyến. Hệ thống tự động tạo kết quả thử nghiệm.
+                                                <strong className="font-extrabold text-amber-900">Chế độ Mô phỏng:</strong> Máy chủ AI đang ngoại tuyến. Hệ thống tự động tạo kết quả thử nghiệm — kết quả này <strong className="font-extrabold">không được lưu</strong> vào hồ sơ.
                                             </div>
                                         </motion.div>
+                                    )}
+
+                                    {/* Save-to-record status. Only REAL predictions are persisted;
+                                        a saved scan shows up in the patient's "Hồ sơ bệnh án" and in
+                                        the doctor's workspace as reference material. */}
+                                    {saveStatus === 'saved' && (
+                                        <motion.div
+                                            initial={{ opacity: 0, y: 8 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            className={`${GLASS_BASE} !bg-emerald-500/5 border border-emerald-500/15 rounded-xl p-3 text-[11px] leading-normal text-emerald-800 flex items-start gap-2`}
+                                        >
+                                            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                                            <div className="font-medium">
+                                                <strong className="font-extrabold text-emerald-900">Đã lưu vào hồ sơ của bạn.</strong> Xem lại tại &quot;Hồ sơ bệnh án&quot; — bác sĩ có thể tham khảo kết quả này khi bạn đến khám.
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                    {!aiResults.isDemo && !user && (
+                                        <div className={`${GLASS_BASE} !bg-sky-500/5 border border-sky-500/15 rounded-xl p-3 text-[11px] leading-normal text-sky-800 font-medium`}>
+                                            Đăng nhập trước khi soi da để kết quả được lưu vào hồ sơ và bác sĩ tham khảo khi khám.
+                                        </div>
                                     )}
 
 

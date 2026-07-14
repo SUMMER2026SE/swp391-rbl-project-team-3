@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import ProgressiveList from '../ProgressiveList';
 import MedicalRecordDetailModal from '../../PatientPortal/MedicalRecordDetailModal';
+import AIScanHistory from '../../shared/AIScanHistory';
+import { useAuth } from '../../../context/AuthContext';
 import { GLASS_BASE } from '../../common/GlassCard';
 
 const SEVERITY_TONE = {
@@ -53,6 +55,7 @@ function Section({ icon: Icon, title, subtitle, accent = 'text-primary', tint = 
 
 
 export default function MedicalRecordTab({ profile }) {
+  const { user } = useAuth();
   const { medicalHistory = [], clinicalHistory = [], activeTreatments = [] } = profile.medical || {};
   const [selected, setSelected] = useState(null);
   const [showAllVisits, setShowAllVisits] = useState(false);
@@ -146,6 +149,9 @@ export default function MedicalRecordTab({ profile }) {
           <EmptyState text="Chưa có lịch sử khám bệnh." />
         )}
       </Section>
+
+      {/* ── AI scan history — the patient's own landing-page skin scans ── */}
+      <AIScanHistory patientId={user?.id} variant="patient" />
 
       {/* Prescription / record detail modal */}
       <AnimatePresence>

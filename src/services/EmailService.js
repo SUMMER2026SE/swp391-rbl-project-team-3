@@ -36,17 +36,24 @@ async function dispatch(type, patientEmail, patientName, payload) {
 
     // Edge Function returned a non-2xx (FunctionsHttpError) or transport failed.
     if (error) {
-      // Surface the function's JSON error body when available for easier debugging.
-      let details = error.message;
+      // The function answers with { error, code, details }. `error` is a sentence
+      // meant for a human — show that, and keep the raw body in the console for
+      // debugging. Dumping the whole JSON into a toast (as before) made the UI
+      // unreadable on the most common failure.
+      let message = error.message;
+      let code;
       try {
         if (error.context && typeof error.context.json === 'function') {
-          details = JSON.stringify(await error.context.json());
+          const body = await error.context.json();
+          message = body?.error || JSON.stringify(body);
+          code = body?.code;
+          console.error(`${LOG} ✗ '${type}' email rejected:`, body);
         }
       } catch {
         /* ignore — fall back to error.message */
       }
-      console.error(`${LOG} ✗ '${type}' email failed:`, details);
-      return { ok: false, error: details };
+      console.error(`${LOG} ✗ '${type}' email failed:`, message);
+      return { ok: false, error: message, code };
     }
 
     console.info(`${LOG} ✓ '${type}' email accepted (id: ${data?.id ?? 'n/a'}).`);

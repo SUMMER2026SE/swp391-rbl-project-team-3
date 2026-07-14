@@ -176,7 +176,7 @@ export default function TechnicianDashboard() {
         status: 'TECH_COMPLETED',
         result_notes: resultRecord?.technicianNotes || '',
         // Keep the legacy single-URL column populated for back-compat readers
-        // (Doctor ClinicalHistory / AISkinAnalysis still read result_image_url).
+        // (Doctor's ClinicalHistory timeline still reads result_image_url).
         result_image_url: resultRecord?.images?.[0]?.url || null,
         // Persist the full captured result so review mode can rehydrate it.
         result_images: resultRecord?.images || [],

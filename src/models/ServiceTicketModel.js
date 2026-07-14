@@ -144,18 +144,19 @@ export const ServiceTicketModel = {
     }
   },
 
+  // Throws on failure. Swallowing the error here used to let the Technician see
+  // "Kết quả thủ thuật đã được ghi nhận!" while nothing was written and the
+  // doctor kept waiting on a result that never arrived.
   async update(id, updates) {
-    try {
-      const { data, error } = await supabase
-        .from('service_tickets')
-        .update(updates)
-        .eq('id', id)
-        .select();
-      if (error) throw error;
-      return data[0];
-    } catch (e) {
-      console.warn('Supabase update error (service_tickets):', e.message);
-      return null;
+    const { data, error } = await supabase
+      .from('service_tickets')
+      .update(updates)
+      .eq('id', id)
+      .select();
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      throw new Error(`Không cập nhật được chỉ định #${id} (không có dòng nào được ghi).`);
     }
+    return data[0];
   }
 };

@@ -315,6 +315,11 @@ Deno.serve(async (req) => {
       return json({ error: "Email service is not configured." }, 500);
     }
 
+    // Sender identity. Overridable so verifying a domain in Resend is a secret
+    // change (`supabase secrets set EMAIL_FROM=...`), not a code change.
+    const EMAIL_FROM = Deno.env.get("EMAIL_FROM") ??
+      "DermaSmart <onboarding@resend.dev>";
+
     const { type, patientEmail, patientName, payload } = await req.json();
 
     if (!type || !patientEmail) {
@@ -348,7 +353,11 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "DermaSmart <onboarding@resend.dev>", // Resend testing sender
+        // Verified sender. Falls back to Resend's shared testing address, which
+        // ONLY delivers to the Resend account owner's own inbox — set the
+        // EMAIL_FROM secret to an address on a domain you verified in Resend to
+        // actually reach patients.
+        from: EMAIL_FROM,
         to: [patientEmail],
         subject: built.subject,
         html: built.html,
@@ -359,7 +368,25 @@ Deno.serve(async (req) => {
 
     if (!resendRes.ok) {
       console.error("[send-clinic-email] Resend rejected the request:", result);
-      return json({ error: "Failed to send email.", details: result }, resendRes.status);
+
+      // Resend's sandbox rejection is by far the most common failure here, and its
+      // raw JSON is meaningless to a receptionist. Name the actual problem.
+      const isSandboxBlock =
+        resendRes.status === 403 &&
+        /testing emails|own email address|verify a domain/i.test(
+          String(result?.message ?? ""),
+        );
+
+      return json(
+        {
+          error: isSandboxBlock
+            ? "Hệ thống email đang ở chế độ thử nghiệm nên chỉ gửi được tới email chủ tài khoản Resend. Cần xác minh domain trên Resend và đặt secret EMAIL_FROM để gửi cho bệnh nhân."
+            : `Không gửi được email: ${result?.message ?? "lỗi không xác định từ nhà cung cấp."}`,
+          code: isSandboxBlock ? "RESEND_SANDBOX" : "RESEND_ERROR",
+          details: result,
+        },
+        resendRes.status,
+      );
     }
 
     console.log(`[send-clinic-email] Sent '${type}' email to ${patientEmail} (id: ${result?.id}).`);

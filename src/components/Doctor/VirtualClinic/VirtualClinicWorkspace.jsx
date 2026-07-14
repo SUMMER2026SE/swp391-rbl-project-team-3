@@ -4,7 +4,8 @@ import { motion, useMotionValue, useMotionTemplate, animate } from 'framer-motio
 
 // Left Panel Components
 import PatientVitals from './LeftPanel/PatientVitals';
-import AISkinAnalysis from './LeftPanel/AISkinAnalysis';
+import TechnicianResults from './LeftPanel/TechnicianResults';
+import AIScanHistory from '../../shared/AIScanHistory';
 import ClinicalHistory from './LeftPanel/ClinicalHistory';
 import AmbientScribePanel from './AmbientScribePanel';
 
@@ -381,7 +382,12 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
             <AmbientScribePanel patientName={patientName} onApply={handleApplyScribeDraft} />
           )}
           <PatientVitals patientId={patientId} />
-          <AISkinAnalysis patientId={patientId} ticketsStatusHash={ticketsStatusHash} />
+          {/* Scoped to THIS appointment's tickets (already loaded + kept fresh by
+              the Realtime subscription below) — never another visit's results. */}
+          <TechnicianResults tickets={existingTickets} />
+          {/* The patient's SELF-RUN AI scans (reference only). Renders nothing
+              when the patient never used the landing-page AI feature. */}
+          <AIScanHistory patientId={patientId} variant="doctor" />
           <ClinicalHistory patientId={patientId} ticketsStatusHash={ticketsStatusHash} />
         </div>
 

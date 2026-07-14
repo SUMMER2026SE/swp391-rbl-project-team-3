@@ -53,16 +53,28 @@ export default function ClinicalHistory({ patientId, ticketsStatusHash }) {
 
         if (recordErr) throw recordErr;
 
-        // Map database tickets to UI model
-        const mappedLabs = (tickets || []).map((t) => ({
-          id: t.id,
-          testName: t.service_name,
-          status: t.status === 'TECH_COMPLETED' ? 'Đã hoàn thành' : 'Đang thực hiện',
-          dateRequested: new Date(t.created_at).toLocaleDateString('vi-VN'),
-          dateCompleted: t.updated_at ? new Date(t.updated_at).toLocaleDateString('vi-VN') : '—',
-          summary: t.result_notes || 'Chưa ghi nhận kết luận kỹ thuật.',
-          result_image_url: t.result_image_url,
-        }));
+        // Map database tickets to UI model. PENDING is *not* "đang thực hiện" —
+        // nobody has picked it up yet; collapsing the two hid a stuck queue.
+        const TICKET_STATUS_LABEL = {
+          TECH_COMPLETED: 'Đã hoàn thành',
+          IN_PROGRESS: 'Đang thực hiện',
+          PENDING: 'Chờ thực hiện',
+        };
+        const mappedLabs = (tickets || [])
+          .slice()
+          .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
+          .map((t) => ({
+            id: t.id,
+            testName: t.service_name,
+            status: TICKET_STATUS_LABEL[t.status] || 'Chờ thực hiện',
+            dateRequested: new Date(t.created_at).toLocaleDateString('vi-VN'),
+            dateCompleted:
+              t.status === 'TECH_COMPLETED' && t.updated_at
+                ? new Date(t.updated_at).toLocaleDateString('vi-VN')
+                : '—',
+            summary: t.result_notes || 'Chưa ghi nhận kết luận kỹ thuật.',
+            result_image_url: t.result_image_url,
+          }));
 
         // Map database medical records to UI model
         const mappedRecords = (records || []).map((rec) => ({
@@ -99,7 +111,7 @@ export default function ClinicalHistory({ patientId, ticketsStatusHash }) {
     return (
       <div className={`${GLASS_BASE} water-refract rounded-2xl p-8 text-center text-slate-500 font-medium`}>
         <Activity className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-        <p className="text-sm font-semibold">Chưa có dữ liệu xét nghiệm/AI cho bệnh nhân này.</p>
+        <p className="text-sm font-semibold">Chưa có dữ liệu cận lâm sàng cho bệnh nhân này.</p>
       </div>
     );
   }
