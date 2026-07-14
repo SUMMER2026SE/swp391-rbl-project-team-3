@@ -24,7 +24,7 @@ import {
   normalizeApt,
   parseFee,
   formatVnd,
-  priorPaidFor,
+  depositPaidFor,
   computeVoucherDiscount,
   validateVoucher,
   APT_STATUS,
@@ -289,7 +289,9 @@ export default function BillingCheckout({
   const baseTotal = selected ? parseFee(selected.fee, 0) || docFee(selected.doctorId) || 300000 : 0;
   const followUpFee = selected && followUpsMap[selected.patientId] ? 50000 : 0;
   const total = baseTotal + servicesTotal + followUpFee;
-  const prior = 0;
+  // Booking deposit already prepaid (walk-in / guest RPC) — deducted from the
+  // amount to collect. Reschedule surcharges are NOT in this number.
+  const prior = selected ? depositPaidFor(selected.aptId, payments) : 0;
   const discount = appliedVoucher?.discount || 0;
   const netPayable = Math.max(0, total - prior - discount);
 
@@ -523,8 +525,8 @@ export default function BillingCheckout({
                                 }
                                 return formatVnd(aBaseTotal + aServicesTotal + aFollowUpFee);
                               } else {
-                                // Unpaid: base + services + followUpFee
-                                const aPrior = 0;
+                                // Unpaid: base + services + followUpFee − prepaid deposit
+                                const aPrior = depositPaidFor(a.aptId, payments);
                                 return formatVnd(Math.max(0, aBaseTotal + aServicesTotal + aFollowUpFee - aPrior));
                               }
                             })()}
@@ -552,7 +554,10 @@ export default function BillingCheckout({
 
         {/* ── Checkout panel ───────────────────────────────────────────────── */}
         <div className="col-span-1 lg:col-span-6 lg:sticky lg:top-24">
-          <AnimatePresence mode="wait">
+          {/* NOTE: no mode="wait" — under React StrictMode a "wait" swap can get
+              stuck on the exiting child and the checkout panel never mounts
+              (invoice clicks appear dead). Plain AnimatePresence cross-fades. */}
+          <AnimatePresence>
             {!selected ? (
               <motion.div
                 key="empty"
@@ -860,11 +865,19 @@ function ReceiptModal({ receipt, onClose, receptionistId, showToast }) {
         });
       }
 
+      if (receipt.prior > 0) {
+        items.push({
+          name: 'Khấu trừ tiền cọc đã đóng',
+          qty: 1,
+          price: -receipt.prior
+        });
+      }
+
       const invoiceData = {
         invoiceNo: `HD-${String(receipt.aptId).replace(/\D/g, '').slice(-6) || '100001'}`,
         date: receipt.paidAt ? new Date(receipt.paidAt).toLocaleDateString('vi-VN') : new Date().toLocaleDateString('vi-VN'),
         items: items,
-        total: receipt.total - receipt.discount,
+        total: receipt.netPayable ?? (receipt.total - receipt.discount),
         paymentMethod: receipt.method || 'Tiền mặt',
         status: 'Đã thanh toán'
       };
@@ -949,9 +962,15 @@ function ReceiptModal({ receipt, onClose, receptionistId, showToast }) {
                     <span className="font-mono">−{formatVnd(receipt.discount)}</span>
                   </p>
                 )}
+                {receipt.prior > 0 && (
+                  <p className="flex justify-between text-teal-600">
+                    <span>Khấu trừ tiền cọc đã đóng:</span>
+                    <span className="font-mono">−{formatVnd(receipt.prior)}</span>
+                  </p>
+                )}
                 <div className="border-t border-slate-200 pt-1.5 flex justify-between items-center text-xs font-black text-slate-900">
                   <span>TỔNG ĐÃ THU:</span>
-                  <span className="text-sm">{formatVnd(receipt.total - receipt.discount)}</span>
+                  <span className="text-sm">{formatVnd(receipt.netPayable ?? (receipt.total - receipt.discount))}</span>
                 </div>
               </div>
               <div className="pt-1 text-center">

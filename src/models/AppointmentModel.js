@@ -487,6 +487,7 @@ export const AppointmentModel = {
         total_amount: depositAmount,
         discount_amount: bookingData.discount || 0,
         final_amount: depositAmount,
+        deposit_amount: depositAmount, // prepayment — the cashier deducts it at settlement
         payment_method: 'QR Code',
       }, { markAppointmentPaid: false });
     }
@@ -635,13 +636,22 @@ export const AppointmentModel = {
       const appointmentId = payData.appointment_id || payData.appointmentId || null;
       
       let existingFinal = 0;
+      let existingDeposit = 0;
       if (appointmentId) {
-        const { data: existing } = await supabase.from('payments').select('final_amount').eq('appointment_id', appointmentId).maybeSingle();
-        if (existing) existingFinal = existing.final_amount || 0;
+        const { data: existing } = await supabase.from('payments').select('final_amount, deposit_amount').eq('appointment_id', appointmentId).maybeSingle();
+        if (existing) {
+          existingFinal = existing.final_amount || 0;
+          existingDeposit = existing.deposit_amount || 0;
+        }
       }
 
       const currentFinalAmount = payData.final_amount ?? payData.amount ?? payData.total_amount ?? 0;
       const accumulatedFinalAmount = existingFinal + currentFinalAmount;
+      // deposit_amount tracks only the PREPAYMENT portion (booking deposits) so
+      // the cashier can deduct it at settlement. Reschedule surcharges must not
+      // set it — they are extra charges, not prepayments toward the bill.
+      const currentDepositAmount = Number(payData.deposit_amount) || 0;
+      const accumulatedDepositAmount = existingDeposit + currentDepositAmount;
 
       const totalAmount = payData.total_amount ?? payData.amount ?? currentFinalAmount;
       const discountAmount = payData.discount_amount ?? payData.discount ?? 0;
@@ -728,6 +738,7 @@ export const AppointmentModel = {
         total_amount: totalAmount,
         discount_amount: discountAmount,
         final_amount: accumulatedFinalAmount,
+        deposit_amount: accumulatedDepositAmount,
         payment_method: method,
         payment_status: 'PAID',
         paid_at: new Date().toISOString(),

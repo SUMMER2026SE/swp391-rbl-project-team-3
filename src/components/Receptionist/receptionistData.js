@@ -66,14 +66,16 @@ export function normalizeApt(a = {}, index = 0) {
   };
 }
 
-// Sum of payments already recorded against an appointment (booking deposits and
-// reschedule surcharges are stored as partial rows that don't flip the lifecycle
-// status). Used by Billing to show the remaining balance to collect.
-export function priorPaidFor(aptId, payments = []) {
+// Booking deposit already prepaid against an appointment. Only the
+// `deposit_amount` portion of the accumulated payments row counts — reschedule
+// surcharges also live in that row (final_amount) but are extra charges, not
+// prepayments, so they must NOT reduce the bill. Used by Billing to show the
+// remaining balance to collect.
+export function depositPaidFor(aptId, payments = []) {
   if (!aptId || !Array.isArray(payments)) return 0;
   return payments
     .filter((p) => String(p.appointment_id ?? p.appointmentId) === String(aptId))
-    .reduce((sum, p) => sum + parseFee(p.final_amount ?? p.amount ?? p.total_amount, 0), 0);
+    .reduce((sum, p) => sum + parseFee(p.deposit_amount, 0), 0);
 }
 
 // Compute the discount a voucher grants on `amount`, honoring percentage caps and

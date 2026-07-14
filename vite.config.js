@@ -20,13 +20,4 @@ export default defineConfig({
       },
     }),
   ],
-  server: {
-    proxy: {
-      '/payos-api': {
-        target: 'https://api-merchant.payos.vn',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/payos-api/, '')
-      }
-    }
-  }
 })
