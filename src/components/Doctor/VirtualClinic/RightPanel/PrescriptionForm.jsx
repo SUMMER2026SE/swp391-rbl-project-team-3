@@ -151,15 +151,23 @@ export default function PrescriptionForm({ appointmentId, isReviewMode = false, 
           </div>
 
           <div className="space-y-4">
-            {medications?.map?.((med, idx) => (
-              <div 
-                key={idx} 
-                className="group relative bg-gradient-to-br from-white/80 to-slate-50/80 hover:from-white hover:to-slate-50 border border-slate-200/60 hover:border-emerald-200/80 rounded-2xl transition-all duration-200 shadow-sm hover:shadow-md overflow-hidden"
+            {medications?.map?.((med, idx) => {
+              const isPicked = !!(med.name || '').trim();
+              return (
+              <div
+                key={idx}
+                className={`group relative rounded-2xl transition-all duration-200 shadow-sm hover:shadow-md overflow-hidden border ${
+                  isPicked
+                    ? 'bg-gradient-to-br from-teal-50/90 to-emerald-50/70 border-teal-400/60 shadow-teal-500/10'
+                    : 'bg-gradient-to-br from-white/80 to-slate-50/80 hover:from-white hover:to-slate-50 border-slate-200/60 hover:border-emerald-200/80'
+                }`}
               >
                 {/* Medication Number Badge & Header */}
-                <div className="flex items-center gap-3 px-5 pt-4 pb-3 border-b border-slate-100/80">
-                  <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 text-white text-xs font-black shadow-sm flex-shrink-0">
-                    {idx + 1}
+                <div className={`flex items-center gap-3 px-5 pt-4 pb-3 border-b ${isPicked ? 'border-teal-200/60' : 'border-slate-100/80'}`}>
+                  <span className={`inline-flex items-center justify-center w-7 h-7 rounded-lg text-white text-xs font-black shadow-sm flex-shrink-0 ${
+                    isPicked ? 'bg-gradient-to-br from-teal-500 to-emerald-600' : 'bg-gradient-to-br from-slate-400 to-slate-500'
+                  }`}>
+                    {isPicked ? <CheckCircle2 className="w-4 h-4" /> : idx + 1}
                   </span>
                   <div className="flex-1 min-w-0">
                     {isReviewMode ? (
@@ -214,7 +222,7 @@ export default function PrescriptionForm({ appointmentId, isReviewMode = false, 
                       value={med.dosage}
                       onChange={(e) => handleMedicationChange(idx, 'dosage', e.target.value)}
                       placeholder="ví dụ: 1 viên"
-                      className={`${getInputClass(isReviewMode)} p-3`}
+                      className={`${getInputClass(isReviewMode, !!(med.dosage || '').trim())} p-3`}
                       readOnly={isReviewMode}
                     />
                   </div>
@@ -250,7 +258,8 @@ export default function PrescriptionForm({ appointmentId, isReviewMode = false, 
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
 
             {medications.length === 0 && (
               <div className="text-center py-12 bg-slate-50/30 border-2 border-dashed border-slate-200 rounded-2xl">
