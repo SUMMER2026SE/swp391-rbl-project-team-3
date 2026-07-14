@@ -86,16 +86,8 @@ export default function DoctorScheduleManagement() {
         room: 'Phòng khám 1', 
         status: 'Đã phân công' 
     });
-    const [shifts, setShifts] = useState([{ id: Date.now(), startTime: null, endTime: null }]);
-
     const [searchTerm, setSearchTerm] = useState('');
 
-    const handleAddShift = () =>
-        setShifts(prev => [...prev, { id: Date.now(), startTime: null, endTime: null }]);
-    const handleRemoveShift = (id) =>
-        setShifts(prev => (prev.length > 1 ? prev.filter(s => s.id !== id) : prev));
-    const handleShiftChange = (id, field, date) =>
-        setShifts(prev => prev.map(s => (s.id === id ? { ...s, [field]: date } : s)));
 
     React.useEffect(() => {
         if (doctors.length > 0 && !form.doctorId) {
@@ -211,7 +203,6 @@ export default function DoctorScheduleManagement() {
             const addedShifts = await DoctorScheduleModel.createShifts(newShifts);
             setSchedules([...addedShifts, ...schedules]);
             setForm(prev => ({ ...prev, startDate: '', endDate: '' }));
-            setShifts([{ id: Date.now(), startTime: null, endTime: null }]);
             alert(`Đã tạo thành công ${addedShifts.length} ca làm việc!`);
         } catch (e) {
             alert('Lỗi khi lưu lịch làm việc: ' + e.message);
@@ -417,66 +408,6 @@ export default function DoctorScheduleManagement() {
                         </div>
                     </div>
 
-                    {/* ── Group 3 · Các ca làm việc (dynamic) ───────────────────── */}
-                    <div className="p-5 bg-slate-50/50 rounded-2xl border border-slate-200/60 col-span-full">
-                        <div className="flex items-center gap-2 mb-4">
-                            <Clock className="w-5 h-5 text-emerald-600" />
-                            <h4 className="text-sm font-bold text-slate-700">Các ca làm việc</h4>
-                        </div>
-                        <div className="flex flex-col gap-3">
-                            {shifts.map((shift) => (
-                                <div key={shift.id} className="flex flex-col sm:flex-row gap-3 sm:items-end">
-                                    <div className="flex flex-col flex-1">
-                                        <span className="text-xs font-semibold text-slate-500 mb-1">Giờ bắt đầu</span>
-                                        <DatePicker
-                                            selected={shift.startTime}
-                                            onChange={(date) => handleShiftChange(shift.id, 'startTime', date)}
-                                            showTimeSelect
-                                            showTimeSelectOnly
-                                            timeIntervals={30}
-                                            timeCaption="Giờ"
-                                            dateFormat="HH:mm"
-                                            locale={vi}
-                                            placeholderText="HH:mm"
-                                            className={GLASS_PICKER_CLS}
-                                        />
-                                    </div>
-                                    <div className="flex flex-col flex-1">
-                                        <span className="text-xs font-semibold text-slate-500 mb-1">Giờ kết thúc</span>
-                                        <DatePicker
-                                            selected={shift.endTime}
-                                            onChange={(date) => handleShiftChange(shift.id, 'endTime', date)}
-                                            showTimeSelect
-                                            showTimeSelectOnly
-                                            timeIntervals={30}
-                                            timeCaption="Giờ"
-                                            dateFormat="HH:mm"
-                                            locale={vi}
-                                            placeholderText="HH:mm"
-                                            className={GLASS_PICKER_CLS}
-                                        />
-                                    </div>
-                                    {shifts.length > 1 && (
-                                        <button
-                                            type="button"
-                                            onClick={() => handleRemoveShift(shift.id)}
-                                            title="Xóa ca này"
-                                            className="shrink-0 h-[46px] px-3 flex items-center justify-center text-rose-500 hover:bg-rose-50 rounded-xl transition-colors"
-                                        >
-                                            <Trash2 className="w-5 h-5" />
-                                        </button>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                        <button
-                            type="button"
-                            onClick={handleAddShift}
-                            className="mt-4 w-full flex items-center justify-center gap-2 py-2.5 border-2 border-dashed border-emerald-300 text-emerald-600 font-semibold text-sm rounded-xl hover:bg-emerald-50 transition-colors"
-                        >
-                            <Plus className="w-4 h-4" /> Thêm ca làm việc
-                        </button>
-                    </div>
 
                     {/* ── Group 4 · Submit footer ───────────────────────────────── */}
                     <div className="flex justify-end pt-4 border-t border-slate-200/50">

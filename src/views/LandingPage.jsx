@@ -456,24 +456,7 @@ function LandingPage({ onLogout }) {
 
   // Initialize Carousel Items
   useEffect(() => {
-    const list = activeTab === 'doctor'
-      ? (doctorsList.length > 0 ? doctorsList : LOCAL_MOCK_DOCTORS)
-      : (techniciansList.length > 0 ? techniciansList : [
-          {
-            id: 'mock-tech-01',
-            name: 'KTV. Lê Thị C',
-            title: 'Kỹ thuật viên Soi da',
-            image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBOvstfM_6hjJJ5YCSOBxCzfwbclWI1ikrRl-icFlIHxF4NygZvQxx96GFjFZxtZfN6DVX7pnrS7TqXMZUjIJfYmnBmJt_xPeHBmYZygGsmOKIPBjBM8i3v26RezTALfNa8HpJUnkSbhJc9EtGiYfDAiBXyKOX9luu3_8JaZeWEeVzHXrxAjFArFG7Hl4-cun-bgSaNdsp_yOQ1rG5R3gxsbzFqHx6KnNeKgMSV2VvD1MaqniR6tvUjr6SxPrg-FoHQyjTl83glA0FY',
-            experience: '8 năm kinh nghiệm',
-            bio: 'Vận hành hệ thống soi da quang phổ đa tầng kết hợp phân tích chỉ số AI chính xác nhất.',
-            specialties: ['Soi da AI', 'Vận hành máy laser', 'Chăm sóc da'],
-            consultationFee: 'Kèm theo dịch vụ',
-            rating: 4.8,
-            reviewsCount: 145,
-            schedule: [{ day: 'Thứ Hai - Thứ Bảy', hours: '08:00 - 17:00' }],
-            isTechnician: true
-          }
-        ]);
+    const list = activeTab === 'doctor' ? doctorsList : techniciansList;
     setCarouselItems(list);
   }, [activeTab, doctorsList, techniciansList]);
 
@@ -1464,13 +1447,15 @@ function LandingPage({ onLogout }) {
                   <DoctorReviewsList doctorId={selectedDoctor.id} isTechnician={selectedDoctor.isTechnician} />
 
                   {/* Dynamic Book CTA inside Modal */}
-                  <button
-                    onClick={handleBookFromModal}
-                    className="mt-6 w-full py-4 rounded-2xl bg-gradient-to-r from-teal-500 to-sky-500 text-white font-bold text-sm shadow-md shadow-teal-500/20 hover:shadow-lg hover:scale-[1.01] hover:-translate-y-0.5 border-none cursor-pointer transition-all flex items-center justify-center gap-1.5"
-                  >
-                    <span className="material-symbols-outlined">event_available</span>
-                    Đặt lịch khám ngay
-                  </button>
+                  {!selectedDoctor?.isTechnician && (
+                    <button
+                      onClick={handleBookFromModal}
+                      className="mt-6 w-full py-4 rounded-2xl bg-gradient-to-r from-teal-500 to-sky-500 text-white font-bold text-sm shadow-md shadow-teal-500/20 hover:shadow-lg hover:scale-[1.01] hover:-translate-y-0.5 border-none cursor-pointer transition-all flex items-center justify-center gap-1.5"
+                    >
+                      <span className="material-symbols-outlined">event_available</span>
+                      Đặt lịch khám ngay
+                    </button>
+                  )}
                 </div>
               </div>
             </motion.div>

@@ -106,8 +106,7 @@ export default function ServiceSelectionForm({ onSelectionChange, existingTicket
         const { data: techData } = await supabase
           .from('users')
           .select('user_id, full_name')
-          .eq('role_id', 3)
-          .eq('status', 'ACTIVE');
+          .eq('role_id', 3);
         setTechnicians(techData || []);
 
       } catch (err) {

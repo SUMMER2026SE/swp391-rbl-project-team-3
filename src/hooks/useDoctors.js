@@ -161,30 +161,34 @@ export function useTechnicians() {
             work_schedule
           )
         `)
-        .eq('role_id', 3)
-        .eq('status', 'ACTIVE');
+        .eq('role_id', 3);
 
       if (fetchError) throw fetchError;
 
       const { data: feedbackData } = await anonSupabase
         .from('feedbacks')
-        .select('doctor_id, rating, criteria_ratings');
+        .select('technician_id, rating, technician_rating, criteria_ratings');
 
       const statsMap = {};
       if (feedbackData) {
         feedbackData.forEach(f => {
           let ratingVal = null;
-          if (f.criteria_ratings) {
+          
+          if (f.technician_rating !== null && f.technician_rating !== undefined) {
+             ratingVal = Number(f.technician_rating);
+          } else if (f.criteria_ratings) {
             const cr = typeof f.criteria_ratings === 'string' ? JSON.parse(f.criteria_ratings) : f.criteria_ratings;
             if (cr.technician) ratingVal = Number(cr.technician);
           }
+          
           if (ratingVal === null || isNaN(ratingVal)) {
             ratingVal = Number(f.rating) || 5;
           }
-          if (f.doctor_id) {
-            if (!statsMap[f.doctor_id]) statsMap[f.doctor_id] = { sum: 0, count: 0 };
-            statsMap[f.doctor_id].sum += ratingVal;
-            statsMap[f.doctor_id].count += 1;
+          
+          if (f.technician_id) {
+            if (!statsMap[f.technician_id]) statsMap[f.technician_id] = { sum: 0, count: 0 };
+            statsMap[f.technician_id].sum += ratingVal;
+            statsMap[f.technician_id].count += 1;
           }
         });
       }

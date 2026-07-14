@@ -1,10 +1,6 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import DatePicker from 'react-datepicker';
-import 'react-datepicker/dist/react-datepicker.css';
-import { vi } from 'date-fns/locale';
-import { ymdToDate, dateToYmd } from '../../utils/dateAdapters';
 import {
   Ticket, Plus, Search, Edit3, Trash2, Power, Copy,
   CheckCircle2, AlertCircle, X, Percent, Banknote,
@@ -16,6 +12,7 @@ import { useVoucherController } from '../../controllers/useVoucherController';
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const STATUS_STYLES = {
   'Hoạt động': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  'Sắp diễn ra': 'bg-blue-50 text-blue-700 border-blue-200',
   'Tạm dừng':  'bg-amber-50  text-amber-700  border-amber-200',
   'Hết hạn':   'bg-slate-100 text-slate-500  border-slate-200',
   'Hết lượt':  'bg-rose-50   text-rose-600   border-rose-200',
@@ -81,7 +78,16 @@ function computeVoucherStatus(v) {
   const today = new Date().toISOString().split('T')[0];
   if (v.validTo < today) return 'Hết hạn';
   if (v.usageCount >= v.maxUsage) return 'Hết lượt';
-  return v.status;
+  
+  let st = v.status;
+  if (typeof st === 'string') {
+    const upper = st.trim().toUpperCase();
+    if (upper === 'ACTIVE' || upper === 'ĐANG HOẠT ĐỘNG') st = 'Hoạt động';
+    else if (upper === 'INACTIVE' || upper === 'NGỪNG HOẠT ĐỘNG') st = 'Tạm dừng';
+  }
+  
+  if (st === 'Hoạt động' && v.validFrom > today) return 'Sắp diễn ra';
+  return st;
 }
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
@@ -122,6 +128,97 @@ const EMPTY_FORM = {
   eventTag: null,
 };
 
+const getDatesForEvent = (tag) => {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  let from = null;
+  let to = null;
+  let defaultCode = '';
+  let defaultName = '';
+
+  const createDateStr = (year, month, day) => {
+    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  };
+
+  const getNextOccurrence = (month, day) => {
+    let d = new Date(currentYear, month - 1, day);
+    if (d < now) {
+      d = new Date(currentYear + 1, month - 1, day);
+    }
+    return d;
+  };
+
+  if (!tag) return null;
+
+  switch (tag) {
+    case 'Ngày Thầy Thuốc Việt Nam':
+      from = getNextOccurrence(2, 27);
+      to = new Date(from);
+      to.setDate(to.getDate() + 3);
+      defaultCode = 'THAYTHUOC' + from.getFullYear();
+      defaultName = 'Tri ân Ngày Thầy thuốc Việt Nam ' + from.getFullYear();
+      break;
+    case 'Quốc tế Phụ nữ 8/3':
+      from = getNextOccurrence(3, 8);
+      to = new Date(from);
+      to.setDate(to.getDate() + 3);
+      defaultCode = 'WOMEN83';
+      defaultName = 'Mừng Quốc tế Phụ nữ 8/3';
+      break;
+    case 'Ngày Phụ nữ Việt Nam 20/10':
+      from = getNextOccurrence(10, 20);
+      to = new Date(from);
+      to.setDate(to.getDate() + 3);
+      defaultCode = 'WOMEN2010';
+      defaultName = 'Mừng ngày Phụ nữ Việt Nam 20/10';
+      break;
+    case 'Tết Nguyên Đán':
+      from = getNextOccurrence(1, 25);
+      to = new Date(from);
+      to.setDate(to.getDate() + 14);
+      defaultCode = 'LUNAR' + from.getFullYear();
+      defaultName = 'Đón Tết Nguyên Đán ' + from.getFullYear();
+      break;
+    case 'Giáng Sinh':
+      from = getNextOccurrence(12, 20);
+      to = new Date(from);
+      to.setDate(to.getDate() + 10);
+      defaultCode = 'XMAS' + from.getFullYear();
+      defaultName = 'Vui Giáng sinh - Đón Năm mới';
+      break;
+    case 'Black Friday':
+      from = getNextOccurrence(11, 24);
+      to = new Date(from);
+      to.setDate(to.getDate() + 7);
+      defaultCode = 'BLACKFRIDAY';
+      defaultName = 'Black Friday - Siêu Sale';
+      break;
+    case 'Mùa hè':
+      from = getNextOccurrence(6, 1);
+      to = new Date(from);
+      to.setMonth(to.getMonth() + 2);
+      defaultCode = 'SUMMER' + from.getFullYear();
+      defaultName = 'Chào Hè Rực Rỡ ' + from.getFullYear();
+      break;
+    case 'Kỷ niệm thành lập':
+      from = new Date();
+      to = new Date(from);
+      to.setDate(to.getDate() + 7);
+      defaultCode = 'BIRTHDAY' + from.getFullYear();
+      defaultName = 'Kỷ niệm thành lập phòng khám';
+      break;
+    default:
+      return null;
+  }
+
+  return {
+    validFrom: createDateStr(from.getFullYear(), from.getMonth() + 1, from.getDate()),
+    validTo: createDateStr(to.getFullYear(), to.getMonth() + 1, to.getDate()),
+    defaultCode,
+    defaultName
+  };
+};
+
 // ─── Voucher Form Modal ───────────────────────────────────────────────────────
 function VoucherFormModal({ initial, onClose, onSave }) {
   const isEdit = !!initial?.id;
@@ -146,6 +243,26 @@ function VoucherFormModal({ initial, onClose, onSave }) {
 
   const set = (key, val) => setForm(p => ({ ...p, [key]: val }));
 
+  const handleSelectEvent = (tag) => {
+    if (!tag) {
+      set('eventTag', null);
+      return;
+    }
+    const dates = getDatesForEvent(tag);
+    if (dates) {
+      setForm(p => ({
+        ...p,
+        eventTag: tag,
+        validFrom: dates.validFrom,
+        validTo: dates.validTo,
+        code: dates.defaultCode,
+        name: dates.defaultName
+      }));
+    } else {
+      set('eventTag', tag);
+    }
+  };
+
   const toggleService = (svcId) => {
     setForm(p => ({
       ...p,
@@ -158,6 +275,13 @@ function VoucherFormModal({ initial, onClose, onSave }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    const today = new Date().toISOString().split('T')[0];
+    if (form.validFrom < today) {
+      setError('Ngày bắt đầu không được ở trong quá khứ.');
+      return;
+    }
+
     const res = await onSave(form);
     if (!res?.success) setError(res?.error || 'Lỗi không xác định.');
   };
@@ -208,6 +332,43 @@ function VoucherFormModal({ initial, onClose, onSave }) {
               <span>{error}</span>
             </div>
           )}
+
+          {/* Event tag */}
+          <div>
+            <label className={labelCls}>Gắn sự kiện đặc biệt (tuỳ chọn)</label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {[
+                { tag: null,                            label: 'Không' },
+                { tag: 'Ngày Thầy Thuốc Việt Nam',     label: 'Ngày Thầy Thuốc 27/02' },
+                { tag: 'Quốc tế Phụ nữ 8/3',           label: 'Quốc tế Phụ nữ 8/3' },
+                { tag: 'Ngày Phụ nữ Việt Nam 20/10',   label: 'Phụ nữ VN 20/10' },
+                { tag: 'Tết Nguyên Đán',                label: 'Tết Nguyên Đán' },
+                { tag: 'Giáng Sinh',                    label: 'Giáng Sinh' },
+                { tag: 'Kỷ niệm thành lập',             label: 'Kỷ niệm thành lập' },
+                { tag: 'Black Friday',                  label: 'Black Friday' },
+                { tag: 'Mùa hè',                        label: 'Mùa hè' },
+              ]?.map?.(opt => {
+                const isSelected = (form.eventTag || null) === opt.tag;
+                const OptIcon = opt.tag ? (EVENT_STYLES[opt.tag]?.icon || Tag) : Ban;
+                const optIconColor = opt.tag ? (EVENT_STYLES[opt.tag]?.iconColor || 'text-slate-500') : 'text-slate-300';
+                return (
+                  <button
+                    key={String(opt.tag)}
+                    type="button"
+                    onClick={() => handleSelectEvent(opt.tag)}
+                    className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer text-left ${
+                      isSelected
+                        ? 'bg-indigo-50 border-indigo-300 text-indigo-700 shadow-sm'
+                        : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    <OptIcon className={`w-4 h-4 shrink-0 ${optIconColor}`} strokeWidth={1.5} />
+                    <span className="truncate">{opt.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           {/* Row 1: code + name */}
           <div className="grid grid-cols-2 gap-4">
@@ -321,67 +482,25 @@ function VoucherFormModal({ initial, onClose, onSave }) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={labelCls}>Ngày bắt đầu <span className="text-rose-400">*</span></label>
-              <DatePicker
-                selected={ymdToDate(form.validFrom)}
-                onChange={(date) => set('validFrom', dateToYmd(date))}
-                locale={vi}
-                dateFormat="dd/MM/yyyy"
-                placeholderText="dd/mm/yyyy"
-                portalId="root-portal"
+              <input
+                type="date"
+                min={new Date().toISOString().split('T')[0]}
+                value={form.validFrom}
+                onChange={e => set('validFrom', e.target.value)}
                 required
                 className={inputCls}
               />
             </div>
             <div>
               <label className={labelCls}>Ngày kết thúc <span className="text-rose-400">*</span></label>
-              <DatePicker
-                selected={ymdToDate(form.validTo)}
-                onChange={(date) => set('validTo', dateToYmd(date))}
-                locale={vi}
-                dateFormat="dd/MM/yyyy"
-                placeholderText="dd/mm/yyyy"
-                minDate={ymdToDate(form.validFrom) || undefined}
-                portalId="root-portal"
+              <input
+                type="date"
+                min={form.validFrom || new Date().toISOString().split('T')[0]}
+                value={form.validTo}
+                onChange={e => set('validTo', e.target.value)}
                 required
                 className={inputCls}
               />
-            </div>
-          </div>
-
-          {/* Event tag */}
-          <div>
-            <label className={labelCls}>Gắn sự kiện đặc biệt (tuỳ chọn)</label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {[
-                { tag: null,                            label: 'Không' },
-                { tag: 'Ngày Thầy Thuốc Việt Nam',     label: 'Ngày Thầy Thuốc 27/02' },
-                { tag: 'Quốc tế Phụ nữ 8/3',           label: 'Quốc tế Phụ nữ 8/3' },
-                { tag: 'Ngày Phụ nữ Việt Nam 20/10',   label: 'Phụ nữ VN 20/10' },
-                { tag: 'Tết Nguyên Đán',                label: 'Tết Nguyên Đán' },
-                { tag: 'Giáng Sinh',                    label: 'Giáng Sinh' },
-                { tag: 'Kỷ niệm thành lập',             label: 'Kỷ niệm thành lập' },
-                { tag: 'Black Friday',                  label: 'Black Friday' },
-                { tag: 'Mùa hè',                        label: 'Mùa hè' },
-              ]?.map?.(opt => {
-                const isSelected = (form.eventTag || null) === opt.tag;
-                const OptIcon = opt.tag ? (EVENT_STYLES[opt.tag]?.icon || Tag) : Ban;
-                const optIconColor = opt.tag ? (EVENT_STYLES[opt.tag]?.iconColor || 'text-slate-500') : 'text-slate-300';
-                return (
-                  <button
-                    key={String(opt.tag)}
-                    type="button"
-                    onClick={() => set('eventTag', opt.tag)}
-                    className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer text-left ${
-                      isSelected
-                        ? 'bg-indigo-50 border-indigo-300 text-indigo-700 shadow-sm'
-                        : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-200 hover:bg-slate-50'
-                    }`}
-                  >
-                    <OptIcon className={`w-4 h-4 shrink-0 ${optIconColor}`} strokeWidth={1.5} />
-                    <span className="truncate">{opt.label}</span>
-                  </button>
-                );
-              })}
             </div>
           </div>
 
@@ -445,6 +564,9 @@ function VoucherFormModal({ initial, onClose, onSave }) {
 
 // ─── Delete Confirm Modal ─────────────────────────────────────────────────────
 function DeleteModal({ voucher, onClose, onConfirm, error }) {
+  const isExpired = computeVoucherStatus(voucher) === 'Hết hạn';
+  const blockDelete = voucher.usageCount > 0 && !isExpired;
+
   return createPortal(
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -463,7 +585,7 @@ function DeleteModal({ voucher, onClose, onConfirm, error }) {
         <p className="text-sm text-slate-500 text-center mb-2">
           Bạn sắp xóa voucher <span className="font-bold text-slate-700 font-mono">{voucher.code}</span>.
         </p>
-        {voucher.usageCount > 0 && (
+        {blockDelete && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-xs text-amber-700 text-center font-semibold">
             Voucher này đã được sử dụng {voucher.usageCount} lần và không thể xóa.
           </div>
@@ -476,9 +598,9 @@ function DeleteModal({ voucher, onClose, onConfirm, error }) {
         <div className="flex gap-3 mt-5">
           <button
             onClick={onConfirm}
-            disabled={voucher.usageCount > 0}
+            disabled={blockDelete}
             className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all border-none cursor-pointer ${
-              voucher.usageCount > 0
+              blockDelete
                 ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
                 : 'bg-rose-500 text-white hover:bg-rose-600 shadow-md shadow-rose-500/20'
             }`}
@@ -499,7 +621,7 @@ function DeleteModal({ voucher, onClose, onConfirm, error }) {
 function VoucherCard({ v, onEdit, onToggle, onDelete, onCopy, idx }) {
   const displayStatus = computeVoucherStatus(v);
   const pct = usagePercent(v);
-  const isActive = displayStatus === 'Hoạt động';
+  const isActive = displayStatus === 'Hoạt động' || displayStatus === 'Sắp diễn ra';
   const isExpiredOrFull = displayStatus === 'Hết hạn' || displayStatus === 'Hết lượt';
   const safeServices = Array.isArray(v.applicableServices) 
     ? v.applicableServices 
@@ -659,7 +781,7 @@ function VoucherCard({ v, onEdit, onToggle, onDelete, onCopy, idx }) {
             <Edit3 className="w-3.5 h-3.5" /> Sửa
           </button>
           <button
-            onClick={() => onToggle(v.id, v.isActive)}
+            onClick={() => onToggle(v.id, isActive)}
             disabled={isExpiredOrFull}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
               isExpiredOrFull
@@ -686,8 +808,20 @@ function VoucherCard({ v, onEdit, onToggle, onDelete, onCopy, idx }) {
 
 // ─── Main VoucherManagement ───────────────────────────────────────────────────
 export default function VoucherManagement() {
-  const { vouchers, createVoucher, updateVoucher, toggleStatus, deleteVoucher, getStats } = useVoucherController();
-  const stats = getStats();
+  const { vouchers, createVoucher, updateVoucher, toggleStatus, deleteVoucher } = useVoucherController();
+  
+  const stats = { total: 0, active: 0, paused: 0, expired: 0, totalUsage: 0 };
+  if (vouchers) {
+    stats.total = vouchers.length;
+    vouchers.forEach(v => {
+      const st = computeVoucherStatus(v);
+      if (st === 'Hoạt động' || st === 'Sắp diễn ra') stats.active++;
+      else if (st === 'Tạm dừng') stats.paused++;
+      else if (st === 'Hết hạn' || st === 'Hết lượt') stats.expired++;
+      
+      stats.totalUsage += (v.usageCount || 0);
+    });
+  }
 
   const [search, setSearch]           = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -707,7 +841,11 @@ export default function VoucherManagement() {
     const q = search.toLowerCase();
     const display = computeVoucherStatus(v);
     const matchSearch = !q || v.code.toLowerCase().includes(q) || v.name.toLowerCase().includes(q) || (v.eventTag || '').toLowerCase().includes(q);
-    const matchStatus = filterStatus === 'all' || display === filterStatus;
+    
+    let matchStatus = filterStatus === 'all' || display === filterStatus;
+    if (filterStatus === 'Hoạt động' && display === 'Sắp diễn ra') matchStatus = true;
+    if (filterStatus === 'Hết hạn' && display === 'Hết lượt') matchStatus = true;
+
     const matchType   = filterType === 'all' || (filterType === 'event' ? !!v.eventTag : !v.eventTag);
     return matchSearch && matchStatus && matchType;
   });

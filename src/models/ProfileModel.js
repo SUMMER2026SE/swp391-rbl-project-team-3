@@ -169,7 +169,6 @@ export const ProfileModel = {
   async updateProfile(userId, role, profileData) {
     if (!userId) throw new Error('User ID is required');
 
-    // 1. Update the base users table
     const { error: userError } = await supabase
       .from('users')
       .update({
@@ -183,6 +182,14 @@ export const ProfileModel = {
       .eq('user_id', userId);
 
     if (userError) throw userError;
+
+    // 1.5 Update Auth metadata so the session (and Header) reflects the new name/avatar immediately
+    await supabase.auth.updateUser({
+      data: {
+        full_name: profileData.name,
+        avatar_url: profileData.avatar,
+      }
+    });
 
     // 2. Update role-specific extensions using UPSERT (create if not exists)
     if (role === 'PATIENT') {
@@ -254,13 +261,11 @@ export const ProfileModel = {
       .from('clinic-assets')
       .getPublicUrl(filePath);
 
-    // Update the database profile immediately
-    const { error: dbError } = await supabase
-      .from('users')
-      .update({ avatar_url: publicUrl })
-      .eq('user_id', userId);
+    // Update avatar_url in the users table
+    await supabase.from('users').update({ avatar_url: publicUrl }).eq('user_id', userId);
 
-    if (dbError) throw dbError;
+    // Update auth metadata so header reflects immediately
+    await supabase.auth.updateUser({ data: { avatar_url: publicUrl } });
 
     return publicUrl;
   }

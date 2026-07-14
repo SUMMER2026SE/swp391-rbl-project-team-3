@@ -1090,6 +1090,8 @@ input[type="password"]::-webkit-reveal {
 .react-datepicker__time-list-item--selected { border-radius: 0.5rem !important; }
 .react-datepicker__triangle { display: none !important; }
 .react-datepicker__navigation-icon::before { border-color: #64748b !important; }
+.react-datepicker__day--disabled { color: #cbd5e1 !important; opacity: 0.45 !important; cursor: not-allowed !important; text-decoration: line-through !important; pointer-events: none !important; }
+.react-datepicker__day--disabled:hover { background-color: transparent !important; }
 
 /* Hide scrollbar utility */
 .scrollbar-none::-webkit-scrollbar {

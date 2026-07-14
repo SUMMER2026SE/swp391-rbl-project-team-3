@@ -64,7 +64,7 @@ const parseAptDate = (dateStr) => {
   return null;
 };
 
-function ServiceReportTab({ allApts, services, loading }) {
+function ServiceReportTab({ allTickets, services, loading }) {
   const [period, setPeriod] = useState('Tháng');
   const [selectedPeriodValue, setSelectedPeriodValue] = useState('');
   const [activeDropdown, setActiveDropdown] = useState(null);
@@ -212,13 +212,14 @@ function ServiceReportTab({ allApts, services, loading }) {
   };
 
   // Filter by period
-  const apts = useMemo(() => {
-    if (!allApts) return [];
-    return allApts.filter(a => {
+  const filteredTickets = useMemo(() => {
+    if (!allTickets) return [];
+    return allTickets.filter(a => {
       if (period === 'Tất cả') return true;
       if (!selectedPeriodValue) return false;
 
-      const parsed = parseAptDate(a.date);
+      const dateStr = a.appointment?.appointment_date || a.created_at;
+      const parsed = parseAptDate(dateStr);
       if (!parsed) return false;
 
       const { month, year } = parsed;
@@ -238,7 +239,7 @@ function ServiceReportTab({ allApts, services, loading }) {
       }
       return true;
     });
-  }, [allApts, period, selectedPeriodValue]);
+  }, [allTickets, period, selectedPeriodValue]);
 
   // Usage count per service
   const serviceStats = useMemo(() => {
@@ -248,51 +249,55 @@ function ServiceReportTab({ allApts, services, loading }) {
     const svcs = Array.isArray(services) ? services : [];
     svcs.forEach(s => {
       if (s && s.name) {
-        map[s.name] = { name: s.name, total: 0, done: 0, cancelled: 0, revenue: 0 };
+        map[s.name] = { name: s.name, total: 0, done: 0, cancelled: 0, revenue: 0, price: s.price || 0 };
       }
     });
 
-    apts.forEach(a => {
-      const key = a.service || 'Khác';
+    filteredTickets.forEach(a => {
+      const key = a.service_name || 'Khác';
       let matchedKey = Object.keys(map).find(k => k.toLowerCase() === key.toLowerCase());
       if (!matchedKey) {
         matchedKey = key;
-        map[matchedKey] = { name: key, total: 0, done: 0, cancelled: 0, revenue: 0 };
+        map[matchedKey] = { name: key, total: 0, done: 0, cancelled: 0, revenue: 0, price: Number(a.price || 0) };
       }
       map[matchedKey].total++;
-      if (a.status === 'Đã khám' || a.status === 'Đã thanh toán') { 
+      
+      const st = (a.status || '').toUpperCase();
+      if (st === 'TECH_COMPLETED' || st === 'COMPLETED' || st === 'PAID') { 
         map[matchedKey].done++; 
-        map[matchedKey].revenue += parseFee(a.fee); 
+        map[matchedKey].revenue += Number(a.price || map[matchedKey].price || 0); 
       }
-      if (a.status === 'Đã hủy') {
+      if (st === 'CANCELLED') {
         map[matchedKey].cancelled++;
       }
     });
 
     // Sort by total bookings descending, then by revenue descending
     return Object.values(map).sort((a, b) => b.total - a.total || b.revenue - a.revenue);
-  }, [apts, services]);
+  }, [filteredTickets, services]);
 
-  // Monthly trend — last 6 months for top 3 services of the selected year
-  const MONTHS = ['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6'];
-  const top3 = serviceStats.slice(0, 3)?.map?.(s => s.name) || [];
+  // Monthly trend — full year for top 7 services
+  const MONTHS = ['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6','Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12'];
+  const top7 = serviceStats.slice(0, 7)?.map?.(s => s.name) || [];
   const monthlyTrend = useMemo(() => {
     return MONTHS?.map?.((label, mi) => {
       const row = { label };
-      top3.forEach(svc => {
-        row[svc] = allApts?.filter?.(a => {
-          const parsed = parseAptDate(a.date);
+      top7.forEach(svc => {
+        row[svc] = allTickets?.filter?.(a => {
+          const dateStr = a.appointment?.appointment_date || a.created_at;
+          const parsed = parseAptDate(dateStr);
           if (!parsed) return false;
           const targetYear = period === 'Tất cả' ? new Date().getFullYear() : parsePeriodContext(selectedPeriodValue, period).y;
-          return parsed.month === mi && parsed.year === targetYear && a.service === svc && a.status !== 'Đã hủy';
+          const st = (a.status || '').toUpperCase();
+          return parsed.month === mi && parsed.year === targetYear && a.service_name === svc && st !== 'CANCELLED';
         }).length;
       });
       return row;
     });
-  }, [allApts, top3.join(','), period, selectedPeriodValue]);
+  }, [allTickets, top7.join(','), period, selectedPeriodValue]);
 
-  const TREND_COLORS = ['#4f46e5','#10b981','#d97706'];
-  const TREND_TEXT_COLORS = ['text-indigo-600', 'text-emerald-600', 'text-amber-600'];
+  const TREND_COLORS = ['#4f46e5','#10b981','#d97706', '#e11d48', '#8b5cf6', '#0ea5e9', '#ec4899'];
+  const TREND_TEXT_COLORS = ['text-indigo-600', 'text-emerald-600', 'text-amber-600', 'text-rose-600', 'text-violet-600', 'text-sky-600', 'text-pink-600'];
 
   const totalUsed   = serviceStats.reduce((s, x) => s + x.total, 0);
   const totalDone   = serviceStats.reduce((s, x) => s + x.done, 0);
@@ -305,7 +310,7 @@ function ServiceReportTab({ allApts, services, loading }) {
     return val;
   };
 
-  const maxTrendVal = Math.max(1, ...monthlyTrend?.map?.(row => Math.max(...top3?.map?.(n => row[n] || 0))) || [1]);
+  const maxTrendVal = Math.max(1, ...monthlyTrend?.map?.(row => Math.max(...top7?.map?.(n => row[n] || 0))) || [1]);
 
   const syncedTop4 = useMemo(() => {
     if (serviceStats.length <= 4) return serviceStats;
@@ -501,11 +506,11 @@ function ServiceReportTab({ allApts, services, loading }) {
         </div>
       </div>
       {/* Monthly trend */}
-      <div className="bg-white/60 backdrop-blur-xl border border-white/50 shadow-lg rounded-[18px] p-4">
-        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+      <div className="bg-white/60 backdrop-blur-xl border border-white/50 shadow-lg rounded-[18px] p-4 overflow-x-auto custom-scrollbar">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-2 sticky left-0 min-w-[300px]">
           <h3 className="text-base md:text-lg font-bold text-slate-800">Xu hướng sử dụng dịch vụ theo tháng</h3>
           <div className="flex items-center gap-3">
-            {top3?.map?.((name, i) => (
+            {top7?.map?.((name, i) => (
               <span key={name} className="flex items-center gap-1 text-[10px] font-bold text-slate-700">
                 <span className="w-2 h-2 rounded-full inline-block" style={{ background: TREND_COLORS[i] }} />
                 {name}
@@ -513,15 +518,15 @@ function ServiceReportTab({ allApts, services, loading }) {
             ))}
           </div>
         </div>
-        {top3.length > 0 ? (
-          <div className="w-full h-[225px] mt-3">
-            <svg viewBox="0 0 800 300" className="w-full h-full drop-shadow-sm">
+        {top7.length > 0 ? (
+          <div className="w-full h-[225px] mt-3 min-w-[1000px]">
+            <svg viewBox="0 0 1600 300" className="w-full h-full drop-shadow-sm">
               {/* Grid lines */}
               {[0, 1, 2, 3, 4]?.map?.(step => {
                 const y = 240 - (step / 4) * 200;
                 return (
                   <g key={step}>
-                    <line x1="60" y1={y} x2="760" y2={y} stroke="#f1f5f9" strokeWidth="1.5" strokeDasharray="4 4" />
+                    <line x1="60" y1={y} x2="1560" y2={y} stroke="#f1f5f9" strokeWidth="1.5" strokeDasharray="4 4" />
                     <text x="50" y={y + 4} fontSize="12" fill="#94a3b8" textAnchor="end" fontWeight="600">
                       {Math.round((step / 4) * maxTrendVal)}
                     </text>
@@ -531,15 +536,15 @@ function ServiceReportTab({ allApts, services, loading }) {
 
               {/* X Axis labels */}
               {monthlyTrend?.map?.((row, i) => (
-                <text key={i} x={80 + (i * 128)} y="270" fontSize="13" fill="#64748b" textAnchor="middle" fontWeight="bold">
+                <text key={i} x={80 + (i * 125)} y="270" fontSize="13" fill="#64748b" textAnchor="middle" fontWeight="bold">
                   {row.label}
                 </text>
               ))}
 
               {/* Lines */}
-              {top3?.map?.((name, i) => {
+              {top7?.map?.((name, i) => {
                 const pts = monthlyTrend?.map?.((row, index) => ({
-                  x: 80 + (index * 128),
+                  x: 80 + (index * 125),
                   y: 240 - ((row[name] || 0) / maxTrendVal) * 200,
                   val: row[name] || 0
                 }));
@@ -824,13 +829,13 @@ function SystemActivityTab() {
   const [filterRole, setFilterRole]   = useState('all');
   const [filterCat, setFilterCat]     = useState('all'); // patient category filter
 
-  const sysFiltered = useMemo(() => ([])?.filter?.(l => {
+  const sysFiltered = useMemo(() => (mockSystemLogs || [])?.filter?.(l => {
     const q = search.toLowerCase();
     return (!q || l.action.toLowerCase().includes(q) || l.details.toLowerCase().includes(q) || l.actor.toLowerCase().includes(q))
         && (filterSev === 'all' || l.severity === filterSev);
   }), [search, filterSev]);
 
-  const actFiltered = useMemo(() => ([])?.filter?.(l => {
+  const actFiltered = useMemo(() => (mockUserActivityLogs || [])?.filter?.(l => {
     const q = search.toLowerCase();
     const matchQ    = !q || l.userName.toLowerCase().includes(q) || l.details.toLowerCase().includes(q) || l.action.toLowerCase().includes(q);
     const matchRole = filterRole === 'all' || l.role === filterRole;
@@ -843,7 +848,7 @@ function SystemActivityTab() {
 
   // Stats for patient actions
   const patientStats = useMemo(() => {
-    const pts = ([])?.filter?.(l => l.role === 'PATIENT');
+    const pts = (mockUserActivityLogs || [])?.filter?.(l => l.role === 'PATIENT');
     return {
       booking:     pts?.filter?.(l => l.category === 'booking').length,
       cancel:      pts?.filter?.(l => l.category === 'cancel').length,
@@ -859,6 +864,12 @@ function SystemActivityTab() {
     Info:    'bg-sky-50 text-sky-700 border border-sky-200',
     Warning: 'bg-amber-50 text-amber-700 border border-amber-200',
     Error:   'bg-rose-50 text-rose-700 border border-rose-200',
+  };
+  const SEV_LABEL = {
+    Success: 'Thành công',
+    Info:    'Thông tin',
+    Warning: 'Cảnh báo',
+    Error:   'Lỗi'
   };
   const ROLE_BADGE = {
     ADMIN:        'bg-indigo-50 text-indigo-700 border border-indigo-200',
@@ -893,47 +904,47 @@ function SystemActivityTab() {
 
   // Staff-specific stat counts
   const staffStats = useMemo(() => ({
-    staff_record:       ([])?.filter?.(l => l.category === 'staff_record').length,
-    staff_prescription: ([])?.filter?.(l => l.category === 'staff_prescription').length,
-    staff_treatment:    ([])?.filter?.(l => l.category === 'staff_treatment').length,
-    staff_confirm:      ([])?.filter?.(l => l.category === 'staff_confirm').length,
-    staff_patient_edit: ([])?.filter?.(l => l.category === 'staff_patient_edit').length,
+    staff_record:       (mockUserActivityLogs || [])?.filter?.(l => l.category === 'staff_record').length,
+    staff_prescription: (mockUserActivityLogs || [])?.filter?.(l => l.category === 'staff_prescription').length,
+    staff_treatment:    (mockUserActivityLogs || [])?.filter?.(l => l.category === 'staff_treatment').length,
+    staff_confirm:      (mockUserActivityLogs || [])?.filter?.(l => l.category === 'staff_confirm').length,
+    staff_patient_edit: (mockUserActivityLogs || [])?.filter?.(l => l.category === 'staff_patient_edit').length,
   }), []);
 
   return (
     <div className="space-y-5">
       <div>
-        <h3 className="text-lg font-bold text-slate-900">Nhật ký hệ thống & hoạt động</h3>
-        <p className="text-xs text-slate-500 mt-0.5">Theo dõi sự kiện hệ thống và hành động của người dùng</p>
+        <h2 className="text-xl md:text-2xl font-black text-slate-800 tracking-tight">Nhật ký hệ thống & Hoạt động</h2>
+        <p className="text-xs md:text-sm text-slate-500 mt-1 font-medium">Theo dõi sự kiện hệ thống và hành động của người dùng</p>
       </div>
-      {/* Inner tabs */}
+      {/* Tabs */}
       <div className="flex gap-2">
-        {[['system','Nhật ký hệ thống'],['activity','Hoạt động người dùng']]?.map?.(([k,l]) => (
-          <button key={k} onClick={() => setActiveInner(k)}
-            className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all border-none cursor-pointer ${
-              activeInner === k ? 'bg-indigo-500 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
-            {l}
-          </button>
-        ))}
+        <button onClick={() => { setActiveInner('system'); setSearch(''); }}
+          className={`px-4 py-2 text-sm font-bold rounded-xl transition-all cursor-pointer border-none ${activeInner === 'system' ? 'bg-indigo-500 text-white shadow-md' : 'bg-white text-slate-500 hover:bg-slate-50 border border-slate-200'}`}>
+          Nhật ký hệ thống
+        </button>
+        <button onClick={() => { setActiveInner('activity'); setSearch(''); }}
+          className={`px-4 py-2 text-sm font-bold rounded-xl transition-all cursor-pointer border-none ${activeInner === 'activity' ? 'bg-indigo-500 text-white shadow-md' : 'bg-white text-slate-500 hover:bg-slate-50 border border-slate-200'}`}>
+          Hoạt động người dùng
+        </button>
       </div>
       {/* Patient activity stats (only show in activity tab) */}
       {activeInner === 'activity' && (
-        <div className="space-y-3">
-          {/* Patient group */}
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+        <div className="space-y-4">
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5 pt-1">
             <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" /> Hoạt động bệnh nhân
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             {[
-              { key:'all',        label:'Tất cả',         value: ([]).length, cls:'bg-slate-50 border-slate-200 text-slate-700',     icon: Activity },
-              { key:'booking',    label:'Đặt lịch',       value: patientStats.booking,        cls:'bg-emerald-50 border-emerald-200 text-emerald-700', icon: Calendar },
-              { key:'cancel',     label:'Hủy / Đổi lịch', value: patientStats.cancel + patientStats.reschedule, cls:'bg-rose-50 border-rose-200 text-rose-700', icon: XCircle },
-              { key:'payment',    label:'Thanh toán',     value: patientStats.payment,        cls:'bg-indigo-50 border-indigo-200 text-indigo-700',   icon: TrendingUp },
-              { key:'ai_scan',    label:'AI Skin Analysis',value: patientStats.ai_scan,       cls:'bg-violet-50 border-violet-200 text-violet-700',   icon: Database },
+              { key:'booking',    label:'Đặt lịch',    value: patientStats.booking,    cls:'bg-emerald-50 border-emerald-200 text-emerald-700', icon: Calendar },
+              { key:'cancel',     label:'Hủy & Đổi',   value: patientStats.cancel + patientStats.reschedule, cls:'bg-rose-50 border-rose-200 text-rose-700', icon: XCircle },
+              { key:'payment',    label:'Thanh toán',  value: patientStats.payment,    cls:'bg-indigo-50 border-indigo-200 text-indigo-700',  icon: TrendingUp },
+              { key:'ai_scan',    label:'AI Scan',     value: patientStats.ai_scan,    cls:'bg-violet-50 border-violet-200 text-violet-700',  icon: Database },
+              { key:'all',        label:'Tổng (Tất cả)', value: (mockUserActivityLogs || []).filter(l=>l.role==='PATIENT').length, cls:'bg-slate-50 border-slate-200 text-slate-700', icon: Info },
             ]?.map?.((c, i) => (
               <motion.div key={c.key} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-                onClick={() => { setFilterCat(c.key); setFilterRole('all'); }}
-                className={`border rounded-2xl p-3 text-center cursor-pointer hover:shadow-sm transition-all ${c.cls} ${filterCat === c.key ? 'ring-2 ring-offset-1 ring-amber-400' : ''}`}>
+                onClick={() => { setFilterCat(c.key); setFilterRole('PATIENT'); }}
+                className={`border rounded-2xl p-3 text-center cursor-pointer hover:shadow-sm transition-all ${c.cls} ${filterCat === c.key ? 'ring-2 ring-offset-1 ring-emerald-400' : ''}`}>
                 <c.icon className="w-4 h-4 mx-auto mb-1.5 opacity-80" />
                 <p className="text-xl font-black">{c.value}</p>
                 <p className="text-[10px] font-semibold text-slate-500 mt-0.5 leading-snug">{c.label}</p>
@@ -941,7 +952,6 @@ function SystemActivityTab() {
             ))}
           </div>
 
-          {/* Staff group */}
           <p className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5 pt-1">
             <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> Hoạt động nhân viên
           </p>
@@ -974,7 +984,13 @@ function SystemActivityTab() {
         </div>
         {activeInner === 'system' ? (
           <GlassSelect value={filterSev} onChange={setFilterSev}
-            options={[{ value: 'all', label: 'Tất cả mức độ' }, ...['Success','Info','Warning','Error'].map(s => ({ value: s, label: s }))]}
+            options={[
+              { value: 'all', label: 'Tất cả mức độ' },
+              { value: 'Success', label: 'Thành công' },
+              { value: 'Info', label: 'Thông tin' },
+              { value: 'Warning', label: 'Cảnh báo' },
+              { value: 'Error', label: 'Lỗi' }
+            ]}
             buttonClassName="px-3 py-2.5 text-sm" />
         ) : (
           <GlassSelect value={filterRole} onChange={(v) => { setFilterRole(v); setFilterCat('all'); }}
@@ -1001,7 +1017,9 @@ function SystemActivityTab() {
                         <span className="ml-2 text-[10px] text-slate-400">→ {log.target}</span>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${SEV_BADGE[log.severity] || ''}`}>{log.severity}</span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${SEV_BADGE[log.severity] || ''}`}>
+                          {SEV_LABEL[log.severity] || log.severity}
+                        </span>
                         <span className="text-[10px] text-slate-400">{fmtTime(log.timestamp)}</span>
                       </div>
                     </div>
@@ -1323,6 +1341,9 @@ const TABS = [
   { id: 'logs',         label: 'Nhật ký hoạt động',   icon: Activity },
 ];
 
+import { ServiceTicketModel } from '../../models/ServiceTicketModel';
+import { mockSystemLogs, mockUserActivityLogs } from '../../mockData';
+
 // Sub-tabs bên trong "Báo cáo hệ thống"
 const SYSTEM_SUBTABS = [
   { id: 'service',     label: 'Báo cáo dịch vụ',  icon: Stethoscope },
@@ -1333,6 +1354,7 @@ const SYSTEM_SUBTABS = [
 function SystemReportHub() {
   const [sub, setSub] = useState('service');
   const [allApts, setAllApts] = useState([]);
+  const [allTickets, setAllTickets] = useState([]);
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -1341,13 +1363,15 @@ function SystemReportHub() {
     (async () => {
       try {
         await DoctorModel.getAllDoctors(); // Warm doctors cache
-        const [aptData, svcData] = await Promise.all([
+        const [aptData, svcData, ticketData] = await Promise.all([
           AppointmentModel.getAll(),
-          ServiceModel.getAll()
+          ServiceModel.getAll(),
+          ServiceTicketModel.getAll()
         ]);
         if (active) {
           setAllApts(aptData || []);
           setServices(svcData || []);
+          setAllTickets(ticketData || []);
         }
       } catch (e) {
         console.warn('Failed to fetch system report data:', e);
@@ -1382,7 +1406,7 @@ function SystemReportHub() {
         <motion.div key={sub}
           initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
           transition={{ duration: 0.15 }}>
-          {sub === 'service'     && <ServiceReportTab allApts={allApts} services={services} loading={loading} />}
+          {sub === 'service'     && <ServiceReportTab allTickets={allTickets} services={services} loading={loading} />}
           {sub === 'appointment' && <AppointmentReportTab allApts={allApts} loading={loading} />}
           {sub === 'employee'    && <EmployeeReportTab allApts={allApts} loading={loading} />}
         </motion.div>

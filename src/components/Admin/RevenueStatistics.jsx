@@ -598,6 +598,14 @@ export default function RevenueStatistics() {
       }
 
       return true;
+    }).sort((a, b) => {
+      const [dayA, monthA, yearA] = a.date.split('/');
+      const dateA = new Date(`${yearA}-${monthA}-${dayA}T${a.time}:00`);
+      
+      const [dayB, monthB, yearB] = b.date.split('/');
+      const dateB = new Date(`${yearB}-${monthB}-${dayB}T${b.time}:00`);
+      
+      return dateB - dateA;
     });
   }, [transactions, doctor, method, type, period, selectedPeriodValue]);
 

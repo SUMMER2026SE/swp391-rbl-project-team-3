@@ -59,7 +59,7 @@ create policy "users_select" on public.users
   for select using (
     auth.uid() = user_id
     or public.current_role_id() in (1, 2, 3, 4)
-    or role_id = 2  -- public doctor directory (landing page / booking form)
+    or role_id in (2, 3)  -- public doctor & technician directory (landing page / booking form)
   );
 
 create policy "users_insert_self_patient" on public.users

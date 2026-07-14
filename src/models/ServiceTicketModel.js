@@ -92,6 +92,20 @@ export const ServiceTicketModel = {
     }
   },
 
+  async getAll() {
+    try {
+      const { data, error } = await supabase
+        .from('service_tickets')
+        .select('*, appointment:appointments(patient_id, patient_name, doctor_id, appointment_date, start_time)')
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      return await this.populateDetails(data || []);
+    } catch (e) {
+      console.error('Supabase fetch error (all service_tickets):', e.message);
+      return [];
+    }
+  },
+
   // Pending + in-progress + completed tickets, so the Technician portal can render
   // its claimed ("Đang tiến hành") work AND the "Đã hoàn thành" rows for review
   // alongside the open queue. IN_PROGRESS is what makes a claim survive a refresh.
