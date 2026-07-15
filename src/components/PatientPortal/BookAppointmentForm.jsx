@@ -534,7 +534,7 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
               </div>
 
               {/* ─── RIGHT COLUMN: Time Slots, Price & Submit ─── */}
-              <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-4 overflow-y-auto max-h-[60vh] lg:max-h-[70vh] pr-1 custom-scrollbar">
                 {/* 2. Time Slot Picker — plain conditional. AnimatePresence mode="wait"
                     deadlocked the placeholder→slots swap under React.StrictMode (the exit
                     callback gets dropped on the double-invoke), leaving the time picker stuck. */}
@@ -567,7 +567,7 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
                               <Clock className="w-4 h-4 text-amber-500" />
                               Các khung giờ có thể đặt
                             </label>
-                            <div className="grid grid-cols-4 gap-3 mt-4">
+                            <div className="grid grid-cols-4 gap-3 mt-4 max-h-64 overflow-y-auto custom-scrollbar">
                               {filteredSlots?.map?.(slot => (
                                 <button
                                   key={slot.time}

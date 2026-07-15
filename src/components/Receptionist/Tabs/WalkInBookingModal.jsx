@@ -223,7 +223,7 @@ export default function WalkInBookingModal({
                 </div>
 
                 {/* RIGHT COLUMN: Slots, Warnings, Pricing & Actions */}
-                <div className="w-full lg:w-[420px] bg-white/40 rounded-2xl border border-white/50 p-6 flex flex-col h-full shrink-0 overflow-y-auto justify-between gap-6">
+                <div className="w-full lg:w-[420px] bg-white/40 rounded-2xl border border-white/50 p-6 flex flex-col max-h-full lg:max-h-[85vh] shrink-0 overflow-y-auto justify-between gap-6">
 
                   {/* Slots container or empty calendar message card */}
                   <div className="bg-white/50 backdrop-blur-md border border-white/60 rounded-2xl p-6 shadow-sm flex flex-col flex-1 min-h-[320px] justify-center">
@@ -248,7 +248,7 @@ export default function WalkInBookingModal({
                     ) : (
                       <div className="space-y-4 h-full flex flex-col justify-start">
                         <h4 className="font-extrabold text-sm text-slate-500 uppercase tracking-wider text-left">Khung giờ còn trống</h4>
-                        <div className="grid grid-cols-4 gap-3 mt-4 overflow-y-auto pr-1 flex-1">
+                        <div className="grid grid-cols-4 gap-3 mt-4 max-h-64 overflow-y-auto pr-1 flex-1 custom-scrollbar">
                           {filteredSlots.map((slot) => (
                             <button
                               key={slot.time}

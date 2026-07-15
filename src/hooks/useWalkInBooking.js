@@ -282,35 +282,24 @@ export function useWalkInBooking({
 
     if (!isExistingPatient) {
       try {
-        // Create new user profile (JIT record generation)
+        // Create new user profile via RPC (SECURITY DEFINER bypasses RLS on users table)
         const newUserId = window.crypto?.randomUUID ? window.crypto.randomUUID() : 'pat-' + Math.random().toString(36).substring(2, 15);
-
-        // 1. Insert into users
-        const { error: userErr } = await supabase
-          .from('users')
-          .insert({
-            user_id: newUserId,
-            role_id: 5,
-            full_name: nameTrim,
-            phone: phoneClean,
-            email: emailTrim,
-            gender: newApt.gender,
-            date_of_birth: newApt.dob,
-            status: 'ACTIVE',
-          });
-
-        if (userErr) throw userErr;
-
-        // 2. Insert into patient_profiles
         const fullAddress = `${newApt.district.trim()}, ${newApt.province.trim()}`;
-        const { error: profileErr } = await supabase
-          .from('patient_profiles')
-          .insert({
-            patient_id: newUserId,
-            address: fullAddress,
-          });
 
-        if (profileErr) throw profileErr;
+        const { data: rpcResult, error: rpcErr } = await supabase.rpc('create_walk_in_patient', {
+          p_user_id:   newUserId,
+          p_full_name: nameTrim,
+          p_phone:     phoneClean,
+          p_email:     emailTrim,
+          p_gender:    newApt.gender,
+          p_dob:       newApt.dob,
+          p_address:   fullAddress,
+        });
+
+        if (rpcErr) throw rpcErr;
+        if (rpcResult && rpcResult.success === false) {
+          throw new Error(rpcResult.error || 'Lỗi tạo hồ sơ bệnh nhân.');
+        }
 
         // Also add patient locally for legacy compatibility
         try {
