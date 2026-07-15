@@ -262,7 +262,7 @@ export default function TechnicianDashboard() {
           />
         );
       case 'schedule':
-        return <TechnicianSchedule />;
+        return <TechnicianSchedule technicianId={user?.id} />;
       case 'feedback':
         return <TechnicianFeedbackView />;
       default:
