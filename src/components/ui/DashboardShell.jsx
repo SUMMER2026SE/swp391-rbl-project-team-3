@@ -41,6 +41,7 @@ export default function DashboardShell({
   pageTitle = 'Tổng quan',
   searchPlaceholder = 'Tìm kiếm...',
   onSearch,
+  showSearch = true,
   headerExtras = null,
   // Optional composite key for the content animation container. Portals can pass
   // e.g. `${activeTab}:${activeDetailId}` so deep-diving into a sub-detail (a
@@ -199,15 +200,17 @@ export default function DashboardShell({
             <div className="relative flex items-center justify-between gap-4 w-full">
               <div className="flex items-center gap-4 flex-1">
                 <span className="font-black text-2xl text-gradient-emerald md:hidden tracking-tight">DermaSmart</span>
-                <div className="relative flex-1 max-w-md hidden md:block">
-                  <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
-                  <input
-                    type="text"
-                    placeholder={searchPlaceholder}
-                    onChange={(e) => onSearch?.(e.target.value)}
-                    className={`w-full pl-11 pr-4 py-2.5 text-sm ${GLASS_INPUT}`}
-                  />
-                </div>
+                {showSearch && (
+                  <div className="relative flex-1 max-w-md hidden md:block">
+                    <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                    <input
+                      type="text"
+                      placeholder={searchPlaceholder}
+                      onChange={(e) => onSearch?.(e.target.value)}
+                      className={`w-full pl-11 pr-4 py-2.5 text-sm ${GLASS_INPUT}`}
+                    />
+                  </div>
+                )}
               </div>
               <h1 className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-xl md:text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-teal-800 to-emerald-700 tracking-tight whitespace-nowrap pointer-events-none">
                 {pageTitle}

@@ -68,7 +68,7 @@ const AdminDashboard = () => {
       activeTab={activeTab}
       onTabChange={setActiveTab}
       pageTitle={pageTitles[activeTab] || 'Tổng quan'}
-      searchPlaceholder="Tìm kiếm thông tin, bệnh nhân, nhân viên..."
+      showSearch={false}
     >
       {renderContent()}
     </DashboardShell>

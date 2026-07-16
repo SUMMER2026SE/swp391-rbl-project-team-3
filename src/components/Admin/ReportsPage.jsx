@@ -741,11 +741,94 @@ function AppointmentReportTab({ allApts, loading }) {
 // ══════════════════════════════════════════════════════════════════════════════
 // TAB 3 — Báo cáo nhân viên
 // ══════════════════════════════════════════════════════════════════════════════
-function EmployeeReportTab({ allApts, loading }) {
+import { useAdvancedTimeFilter } from '../../hooks/useAdvancedTimeFilter';
+
+function EmployeeReportTab({ allApts, allTickets, allStaff, services, loading }) {
   const { doctors } = useDoctors();
+  const [roleFilter, setRoleFilter] = useState('doctor');
+
+  const {
+    period, setPeriod,
+    selectedPeriodValue, setSelectedPeriodValue,
+    activeDropdown, setActiveDropdown,
+    tabBarRef,
+    getOptionsForPeriod, getPeriodDetailsLabel
+  } = useAdvancedTimeFilter('Tháng');
+
+  const filteredApts = useMemo(() => {
+    if (!selectedPeriodValue || period === 'Tất cả') return allApts;
+    return allApts?.filter?.(a => {
+      const dateStr = a.appointment_date || a.created_at || a.date;
+      const parsed = parseAptDate(dateStr);
+      if (!parsed) return false;
+      const { month, year, day } = parsed;
+      const quarter = Math.floor(month / 3);
+      
+      if (period === 'Ngày') {
+        const [selYear, selMonth, selDay] = selectedPeriodValue.split('-').map(Number);
+        return day === selDay && month === (selMonth - 1) && year === selYear;
+      }
+      if (period === 'Tuần') {
+        const [selYear, selMonth, selDay] = selectedPeriodValue.split('-').map(Number);
+        const endDate = new Date(selYear, selMonth - 1, selDay);
+        const txDate = new Date(year, month, day);
+        const diffDays = (endDate - txDate) / (1000 * 60 * 60 * 24);
+        return diffDays >= 0 && diffDays <= 6;
+      }
+      if (period === 'Tháng') {
+        const [selMonthStr, selYearStr] = selectedPeriodValue.split('/');
+        return month === (parseInt(selMonthStr, 10) - 1) && year === parseInt(selYearStr, 10);
+      }
+      if (period === 'Quý') {
+        const [selQStr, selYearStr] = selectedPeriodValue.split('/');
+        const selQuarter = parseInt(selQStr.replace('Q', ''), 10) - 1;
+        return quarter === selQuarter && year === parseInt(selYearStr, 10);
+      }
+      if (period === 'Năm') {
+        return year === parseInt(selectedPeriodValue, 10);
+      }
+      return true;
+    }) || [];
+  }, [allApts, period, selectedPeriodValue]);
+
+  const filteredTickets = useMemo(() => {
+    if (!selectedPeriodValue || period === 'Tất cả') return allTickets;
+    return allTickets?.filter?.(t => {
+      const dateStr = t.appointment?.appointment_date || t.created_at;
+      const parsed = parseAptDate(dateStr);
+      if (!parsed) return false;
+      const { month, year, day } = parsed;
+      const quarter = Math.floor(month / 3);
+      
+      if (period === 'Ngày') {
+        const [selYear, selMonth, selDay] = selectedPeriodValue.split('-').map(Number);
+        return day === selDay && month === (selMonth - 1) && year === selYear;
+      }
+      if (period === 'Tuần') {
+        const [selYear, selMonth, selDay] = selectedPeriodValue.split('-').map(Number);
+        const endDate = new Date(selYear, selMonth - 1, selDay);
+        const txDate = new Date(year, month, day);
+        const diffDays = (endDate - txDate) / (1000 * 60 * 60 * 24);
+        return diffDays >= 0 && diffDays <= 6;
+      }
+      if (period === 'Tháng') {
+        const [selMonthStr, selYearStr] = selectedPeriodValue.split('/');
+        return month === (parseInt(selMonthStr, 10) - 1) && year === parseInt(selYearStr, 10);
+      }
+      if (period === 'Quý') {
+        const [selQStr, selYearStr] = selectedPeriodValue.split('/');
+        const selQuarter = parseInt(selQStr.replace('Q', ''), 10) - 1;
+        return quarter === selQuarter && year === parseInt(selYearStr, 10);
+      }
+      if (period === 'Năm') {
+        return year === parseInt(selectedPeriodValue, 10);
+      }
+      return true;
+    }) || [];
+  }, [allTickets, period, selectedPeriodValue]);
 
   const docStats = useMemo(() => {
-    const list = Array.isArray(allApts) ? allApts : [];
+    const list = Array.isArray(filteredApts) ? filteredApts : [];
     return doctors?.map?.(doc => {
       const mine = list?.filter?.(a => String(a.doctorId) === String(doc.id));
       const done = mine?.filter?.(a => a.status === 'Đã khám' || a.status === 'Đã thanh toán');
@@ -753,11 +836,45 @@ function EmployeeReportTab({ allApts, loading }) {
       const patients = new Set(done?.map?.(a => a.patientId)).size;
       const revenue = done.reduce((s, a) => s + parseFee(a.fee), 0);
       const completionRate = mine.length > 0 ? ((done.length / mine.length) * 100).toFixed(0) : 0;
-      return { doc, total: mine.length, done: done.length, cancelled: cancelled.length, patients, revenue, completionRate };
+      return { doc: { ...doc, title: doc.title || 'Bác sĩ Da liễu' }, total: mine.length, done: done.length, cancelled: cancelled.length, patients, revenue, completionRate };
     }).sort((a, b) => b.revenue - a.revenue) || [];
-  }, [allApts, doctors]);
+  }, [filteredApts, doctors]);
 
-  const maxRev = Math.max(...docStats?.map?.(d => d.revenue) || [1], 1);
+  const techStats = useMemo(() => {
+    if (!allStaff || !filteredTickets) return [];
+    const technicians = allStaff.filter(s => s.roleEn === 'TECHNICIAN' || s.roleId === 3);
+    
+    return technicians.map(tech => {
+      const myTickets = filteredTickets.filter(t => String(t.technician_id) === String(tech.id));
+      const done = myTickets.filter(t => t.status === 'TECH_COMPLETED' || t.status === 'COMPLETED');
+      const cancelled = myTickets.filter(t => t.status === 'CANCELLED' || t.status === 'CANCELED');
+      const patients = new Set(done.map(t => t.appointment?.patient_id).filter(Boolean)).size;
+      const revenue = done.reduce((sum, t) => {
+        const svcPrice = services?.find?.(s => s.name === t.service_name)?.price || 0;
+        return sum + Number(t.price || svcPrice || 0);
+      }, 0);
+      const completionRate = myTickets.length > 0 ? ((done.length / myTickets.length) * 100).toFixed(0) : 0;
+
+      return {
+        doc: {
+           id: tech.id,
+           name: tech.name,
+           title: 'Kỹ thuật viên',
+           image: tech.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(tech.name)}&background=e0e7ff&color=4f46e5`,
+           rating: 5,
+        },
+        total: myTickets.length,
+        done: done.length,
+        cancelled: cancelled.length,
+        patients,
+        revenue,
+        completionRate
+      };
+    }).sort((a, b) => b.total - a.total);
+  }, [allStaff, filteredTickets]);
+
+  const activeStats = roleFilter === 'doctor' ? docStats : techStats;
+  const maxRev = Math.max(...activeStats?.map?.(d => d.revenue) || [1], 1);
 
   if (loading) {
     return (
@@ -770,13 +887,103 @@ function EmployeeReportTab({ allApts, loading }) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-bold text-slate-900">Báo cáo Nhân viên</h3>
-        <p className="text-xs text-slate-500 mt-0.5">Hiệu suất làm việc, số bệnh nhân và doanh thu của từng bác sĩ / KTV</p>
+      <div className="flex flex-col xl:flex-row xl:items-start justify-between gap-4">
+        <div>
+          <h3 className="text-lg font-bold text-slate-900">Báo cáo Nhân viên</h3>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Thời gian thống kê: <span className="text-indigo-600 font-extrabold">{getPeriodDetailsLabel()}</span>
+          </p>
+        </div>
+        <div className="flex flex-col md:flex-row items-end gap-3">
+          {/* Time Filter Dropdown */}
+          <div ref={tabBarRef} className="flex bg-indigo-50/50 border border-indigo-100 rounded-full p-1 gap-1 relative z-50">
+            {['Tất cả', 'Ngày', 'Tuần', 'Tháng', 'Quý', 'Năm']?.map?.(p => {
+              const isActive = period === p;
+              const options = p !== 'Tất cả' ? getOptionsForPeriod(p) : [];
+              const isDropdownOpen = activeDropdown === p;
+              return (
+                <div key={p} className="relative">
+                  <button
+                    onClick={() => {
+                      setPeriod(p);
+                      if (p === 'Tất cả') {
+                        setActiveDropdown(null);
+                        setSelectedPeriodValue('');
+                      } else {
+                        setActiveDropdown(activeDropdown === p ? null : p);
+                      }
+                    }}
+                    className={`px-3 py-1.5 rounded-full text-[10px] font-semibold transition-all border-none outline-none cursor-pointer flex items-center gap-1 ${
+                      isActive ? 'bg-white text-indigo-700 shadow-sm' : 'bg-transparent text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    {p}
+                    {p !== 'Tất cả' && (
+                      <ChevronDown className={`w-3 h-3 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                    )}
+                  </button>
+
+                  {p !== 'Tất cả' && (
+                    <AnimatePresence>
+                      {isDropdownOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                          transition={{ duration: 0.15 }}
+                          className="absolute top-full right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-100 py-2 z-[999] max-h-[300px] overflow-y-auto custom-scrollbar"
+                        >
+                          <div className="px-3 pb-2 mb-2 border-b border-slate-50 text-[10px] font-bold text-slate-400">
+                            Chọn {p.toLowerCase()}
+                          </div>
+                          {options.length > 0 ? options.map(opt => (
+                            <button
+                              key={opt.value}
+                              onClick={() => {
+                                setSelectedPeriodValue(opt.value);
+                                setActiveDropdown(null);
+                              }}
+                              className={`w-full text-left px-4 py-2.5 text-xs font-semibold transition-colors border-none outline-none cursor-pointer ${
+                                selectedPeriodValue === opt.value ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50'
+                              }`}
+                            >
+                              {opt.label}
+                            </button>
+                          )) : (
+                            <div className="px-4 py-3 text-xs text-slate-400 text-center">Không có dữ liệu</div>
+                          )}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="flex bg-slate-100 p-1 rounded-xl shrink-0 overflow-x-auto max-w-full">
+            <button
+              onClick={() => setRoleFilter('doctor')}
+              className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all border-none cursor-pointer shrink-0 ${
+                roleFilter === 'doctor' ? 'bg-white text-indigo-600 shadow-sm' : 'bg-transparent text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              Bác sĩ Chuyên khoa
+            </button>
+            <button
+              onClick={() => setRoleFilter('technician')}
+              className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all border-none cursor-pointer shrink-0 ${
+                roleFilter === 'technician' ? 'bg-white text-indigo-600 shadow-sm' : 'bg-transparent text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              Kỹ thuật viên
+            </button>
+          </div>
+        </div>
       </div>
-      {/* Doctor cards */}
+      {/* Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {docStats?.map?.((d, i) => (
+        {activeStats?.map?.((d, i) => (
           <motion.div key={d.doc.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}
             className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all">
             <div className="flex items-start gap-3 mb-4">
@@ -830,44 +1037,159 @@ function SystemActivityTab() {
   const [filterCat, setFilterCat]     = useState('all'); // patient category filter
   const [dynamicLogs, setDynamicLogs] = useState(mockUserActivityLogs || []);
 
+  const [sysLogsState, setSysLogsState] = useState(mockSystemLogs || []);
   useEffect(() => {
-    async function loadRealDoctors() {
+    async function loadLogs() {
       try {
         const docs = await DoctorModel.getAllDoctors();
-        if (docs && docs.length >= 2) {
-          const d1 = docs[0].name || 'Trần Văn A';
-          const d2 = docs[1].name || 'Nguyễn Thị B';
-          
-          const newLogs = (mockUserActivityLogs || []).map(l => {
-            let det = l.details;
-            let un = l.userName;
+        const d1 = docs?.[0]?.name || 'Trần Văn A';
+        const d2 = docs?.[1]?.name || 'Nguyễn Thị B';
 
-            // Replace in details (Longer titles first to prevent partial matches)
-            det = det.replace(/ThS\. BS\. Nguyễn Thị B/g, d2);
-            det = det.replace(/BS\. Nguyễn Thị B/g, d2);
-            det = det.replace(/BS\. CKII\. Trần Văn A/g, d1);
-            det = det.replace(/BS\. Trần Văn A/g, d1);
+        // Base mock user logs
+        let baseUserLogs = (mockUserActivityLogs || []).map(l => {
+          let det = l.details;
+          let un = l.userName;
+          det = det.replace(/ThS\. BS\. Nguyễn Thị B/g, d2);
+          det = det.replace(/BS\. Nguyễn Thị B/g, d2);
+          det = det.replace(/BS\. CKII\. Trần Văn A/g, d1);
+          det = det.replace(/BS\. Trần Văn A/g, d1);
+          if (l.userId === 'doc-01') un = d1;
+          if (l.userId === 'doc-02') un = d2;
+          return { ...l, details: det, userName: un };
+        });
 
-            // Replace in userName for doctor actions
-            if (l.userId === 'doc-01') un = d1;
-            if (l.userId === 'doc-02') un = d2;
+        // Load real logs
+        const { SystemLogModel } = await import('../../models/SystemLogModel');
+        const { ServiceTicketModel } = await import('../../models/ServiceTicketModel');
+        const { StaffModel } = await import('../../models/StaffModel');
+        
+        const [realLogs, apps, tickets, staffData] = await Promise.all([
+          SystemLogModel.getAll(),
+          AppointmentModel.getAll(),
+          ServiceTicketModel.getAll(),
+          StaffModel.getAll()
+        ]);
 
-            return { ...l, details: det, userName: un };
+        const staffMap = {};
+        (staffData || []).forEach(s => {
+          if (s.id) staffMap[s.id] = s.name;
+        });
+
+        const appLogs = (apps || []).map(a => {
+          const isCancel = AppointmentModel.isCancelled(a.status);
+          const action = isCancel ? 'CANCEL_APPOINTMENT' : 'BOOK_APPOINTMENT';
+          return {
+            id: `app-log-${a.appointment_id}`,
+            timestamp: a.created_at || new Date().toISOString(),
+            userId: a.patient_id,
+            userName: a.patient_name || 'Bệnh nhân',
+            role: 'PATIENT',
+            action: action,
+            details: `${isCancel ? 'Hủy' : 'Đặt'} lịch khám với ${a.doctor_name || 'bác sĩ'} - ${a.appointment_date || ''} ${a.start_time || ''}`,
+            module: 'Lịch hẹn',
+            category: isCancel ? 'cancel' : 'booking'
+          };
+        });
+
+        const ticketLogs = (tickets || []).map(t => {
+          const techName = t.technician_id ? (staffMap[t.technician_id] || 'KTV') : 'KTV';
+          return {
+            id: `ticket-log-${t.id}`,
+            timestamp: t.updated_at || t.created_at || new Date().toISOString(),
+            userId: t.technician_id || 'system',
+            userName: techName,
+            role: 'TECHNICIAN',
+            action: 'COMPLETE_TASK',
+            details: `Thực hiện thủ thuật ${t.service_name || 'dịch vụ'} cho bệnh nhân ${t.appointment?.patient_name || ''}`,
+            module: 'Dịch vụ',
+            category: 'staff_treatment'
+          };
+        });
+
+        // Generate equivalent system logs
+        const sysAppLogs = (apps || []).map(a => {
+          const isCancel = AppointmentModel.isCancelled(a.status);
+          const action = isCancel ? 'CANCEL_APPOINTMENT' : 'CREATE_APPOINTMENT';
+          return {
+            id: `sys-app-${a.appointment_id}`,
+            timestamp: a.created_at || new Date().toISOString(),
+            actor: a.patient_name || 'Bệnh nhân',
+            action: action,
+            target: a.appointment_id,
+            details: `${isCancel ? 'Hủy' : 'Tạo mới'} lịch khám ngày ${a.appointment_date || ''} ${a.start_time || ''}`,
+            severity: isCancel ? 'Warning' : 'Info'
+          };
+        });
+
+        const sysTicketLogs = (tickets || []).map(t => {
+          const techName = t.technician_id ? (staffMap[t.technician_id] || 'KTV') : 'KTV';
+          return {
+            id: `sys-ticket-${t.id}`,
+            timestamp: t.updated_at || t.created_at || new Date().toISOString(),
+            actor: techName,
+            action: 'COMPLETE_TASK',
+            target: t.id,
+            details: `Thực hiện thành công thủ thuật ${t.service_name || ''} cho bệnh nhân ${t.appointment?.patient_name || ''}`,
+            severity: 'Success'
+          };
+        });
+
+        if (realLogs || apps || tickets) {
+          const mappedSys = (realLogs || []).map(l => ({
+            id: l.id || `LOG-${Math.random()}`,
+            timestamp: l.created_at,
+            actor: l.user_name || 'Hệ thống',
+            action: l.action || 'INFO',
+            target: l.target || '',
+            details: l.details || '',
+            severity: (l.action||'').includes('ERROR') ? 'Error' : 
+                      (l.action||'').includes('WARN') ? 'Warning' : 
+                      (l.action||'').includes('SUCCESS') ? 'Success' : 'Info'
+          }));
+
+          const mappedUser = (realLogs || []).map(l => {
+            let role = 'PATIENT';
+            let un = l.user_name || 'Người dùng';
+            let unLower = un.toLowerCase();
+            if (unLower.includes('admin') || unLower.includes('hệ thống')) role = 'ADMIN';
+            else if (unLower.includes('bs') || unLower.includes('dr')) role = 'DOCTOR';
+            else if (unLower.includes('ktv')) role = 'TECHNICIAN';
+            else if (unLower.includes('lễ tân')) role = 'RECEPTIONIST';
+            
+            return {
+              id: l.id || `ACT-${Math.random()}`,
+              timestamp: l.created_at,
+              userId: l.user_id,
+              userName: un,
+              role: role,
+              action: l.action || 'ACTION',
+              details: l.details || '',
+              module: 'Khác',
+              category: 'other'
+            };
           });
-          setDynamicLogs(newLogs);
+
+          const combinedSys = [...mappedSys, ...sysAppLogs, ...sysTicketLogs, ...(mockSystemLogs || [])].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+          const combinedUser = [...mappedUser, ...appLogs, ...ticketLogs, ...baseUserLogs].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+          
+          setSysLogsState(combinedSys);
+          setDynamicLogs(combinedUser);
+        } else {
+          const sortedBaseUser = baseUserLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+          setDynamicLogs(sortedBaseUser);
         }
       } catch (err) {
-        console.error("Failed to load doctors for logs", err);
+        console.error("Failed to load logs", err);
       }
     }
-    loadRealDoctors();
+    loadLogs();
   }, []);
 
-  const sysFiltered = useMemo(() => (mockSystemLogs || [])?.filter?.(l => {
+  const sysFiltered = useMemo(() => (sysLogsState || [])?.filter?.(l => {
     const q = search.toLowerCase();
     return (!q || l.action.toLowerCase().includes(q) || l.details.toLowerCase().includes(q) || l.actor.toLowerCase().includes(q))
         && (filterSev === 'all' || l.severity === filterSev);
-  }), [search, filterSev]);
+  }), [search, filterSev, sysLogsState]);
 
   const actFiltered = useMemo(() => dynamicLogs?.filter?.(l => {
     const q = search.toLowerCase();
@@ -882,7 +1204,7 @@ function SystemActivityTab() {
 
   // Stats for patient actions
   const patientStats = useMemo(() => {
-    const pts = (mockUserActivityLogs || [])?.filter?.(l => l.role === 'PATIENT');
+    const pts = (dynamicLogs || [])?.filter?.(l => l.role === 'PATIENT');
     return {
       booking:     pts?.filter?.(l => l.category === 'booking').length,
       cancel:      pts?.filter?.(l => l.category === 'cancel').length,
@@ -890,7 +1212,7 @@ function SystemActivityTab() {
       payment:     pts?.filter?.(l => l.category === 'payment').length,
       ai_scan:     pts?.filter?.(l => l.category === 'ai_scan').length,
     };
-  }, []);
+  }, [dynamicLogs]);
 
   const SEV_DOT   = { Success:'bg-emerald-500', Info:'bg-sky-400', Warning:'bg-amber-500', Error:'bg-rose-500' };
   const SEV_BADGE = {
@@ -938,12 +1260,12 @@ function SystemActivityTab() {
 
   // Staff-specific stat counts
   const staffStats = useMemo(() => ({
-    staff_record:       (mockUserActivityLogs || [])?.filter?.(l => l.category === 'staff_record').length,
-    staff_prescription: (mockUserActivityLogs || [])?.filter?.(l => l.category === 'staff_prescription').length,
-    staff_treatment:    (mockUserActivityLogs || [])?.filter?.(l => l.category === 'staff_treatment').length,
-    staff_confirm:      (mockUserActivityLogs || [])?.filter?.(l => l.category === 'staff_confirm').length,
-    staff_patient_edit: (mockUserActivityLogs || [])?.filter?.(l => l.category === 'staff_patient_edit').length,
-  }), []);
+    staff_record:       (dynamicLogs || [])?.filter?.(l => l.category === 'staff_record').length,
+    staff_prescription: (dynamicLogs || [])?.filter?.(l => l.category === 'staff_prescription').length,
+    staff_treatment:    (dynamicLogs || [])?.filter?.(l => l.category === 'staff_treatment').length,
+    staff_confirm:      (dynamicLogs || [])?.filter?.(l => l.category === 'staff_confirm').length,
+    staff_patient_edit: (dynamicLogs || [])?.filter?.(l => l.category === 'staff_patient_edit').length,
+  }), [dynamicLogs]);
 
   return (
     <div className="space-y-5">
@@ -1376,6 +1698,7 @@ const TABS = [
 ];
 
 import { ServiceTicketModel } from '../../models/ServiceTicketModel';
+import { StaffModel } from '../../models/StaffModel';
 import { mockSystemLogs, mockUserActivityLogs } from '../../mockData';
 
 // Sub-tabs bên trong "Báo cáo hệ thống"
@@ -1389,6 +1712,7 @@ function SystemReportHub() {
   const [sub, setSub] = useState('service');
   const [allApts, setAllApts] = useState([]);
   const [allTickets, setAllTickets] = useState([]);
+  const [allStaff, setAllStaff] = useState([]);
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -1397,15 +1721,17 @@ function SystemReportHub() {
     (async () => {
       try {
         await DoctorModel.getAllDoctors(); // Warm doctors cache
-        const [aptData, svcData, ticketData] = await Promise.all([
+        const [aptData, svcData, ticketData, staffData] = await Promise.all([
           AppointmentModel.getAll(),
           ServiceModel.getAll(),
-          ServiceTicketModel.getAll()
+          ServiceTicketModel.getAll(),
+          StaffModel.getAll()
         ]);
         if (active) {
           setAllApts(aptData || []);
           setServices(svcData || []);
           setAllTickets(ticketData || []);
+          setAllStaff(staffData || []);
         }
       } catch (e) {
         console.warn('Failed to fetch system report data:', e);
@@ -1442,7 +1768,7 @@ function SystemReportHub() {
           transition={{ duration: 0.15 }}>
           {sub === 'service'     && <ServiceReportTab allTickets={allTickets} services={services} loading={loading} />}
           {sub === 'appointment' && <AppointmentReportTab allApts={allApts} loading={loading} />}
-          {sub === 'employee'    && <EmployeeReportTab allApts={allApts} loading={loading} />}
+          {sub === 'employee'    && <EmployeeReportTab allApts={allApts} allTickets={allTickets} allStaff={allStaff} services={services} loading={loading} />}
         </motion.div>
       </AnimatePresence>
     </div>

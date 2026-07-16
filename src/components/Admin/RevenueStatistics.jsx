@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import { AppointmentModel } from '../../models/AppointmentModel';
 import { DoctorModel } from '../../models/DoctorModel';
+import { ServiceTicketModel } from '../../models/ServiceTicketModel';
+import { StaffModel } from '../../models/StaffModel';
 import { GLASS_BASE, GLASS_HOVER, GLASS_TITLE } from '../common/GlassCard';
 
 const formatCurrency = (value) => {
@@ -85,6 +87,7 @@ const FilterDropdown = ({ label, icon: Icon, options, value, onChange, placehold
 
 const generateHistoricalMockData = () => {
   const doctors = ['BS. CKII. Trần Văn A', 'ThS. BS. Nguyễn Thị B', 'BS. Trần Quốc Minh', 'BS. Lê Hoàng Nam'];
+  const technicians = ['KTV. Lê Thị C', 'KTV. Trần Văn D', 'KTV. Phạm Thị E'];
   const methods = ['Tiền mặt', 'QR Code'];
   const services = [
     { name: 'Khám da liễu tổng quát', type: 'KHÁM BỆNH', minAmount: 150000, maxAmount: 300000 },
@@ -107,6 +110,7 @@ const generateHistoricalMockData = () => {
         const mm = String(m).padStart(2, '0');
         
         const doc = doctors[Math.floor(Math.random() * doctors.length)];
+        const tech = technicians[Math.floor(Math.random() * technicians.length)];
         const method = methods[Math.floor(Math.random() * methods.length)];
         const svc = services[Math.floor(Math.random() * services.length)];
         
@@ -124,7 +128,7 @@ const generateHistoricalMockData = () => {
           date: `${dd}/${mm}/${y}`,
           time: timeStr,
           method,
-          doctor: doc,
+          doctor: svc.type === 'DỊCH VỤ' ? tech : doc,
           service: svc.name,
           type: svc.type
         });
@@ -133,6 +137,21 @@ const generateHistoricalMockData = () => {
   });
   
   return mockTransactions;
+};
+
+const calculateNiceMax = (maxVal) => {
+  if (maxVal <= 0) return 3;
+  const roughStep = maxVal / 3;
+  const magnitude = Math.pow(10, Math.floor(Math.log10(roughStep)));
+  const normalizedStep = roughStep / magnitude;
+  let niceMultiplier;
+  if (normalizedStep <= 1) niceMultiplier = 1;
+  else if (normalizedStep <= 1.5) niceMultiplier = 1.5;
+  else if (normalizedStep <= 2) niceMultiplier = 2;
+  else if (normalizedStep <= 2.5) niceMultiplier = 2.5;
+  else if (normalizedStep <= 5) niceMultiplier = 5;
+  else niceMultiplier = 10;
+  return niceMultiplier * magnitude * 3;
 };
 
 export default function RevenueStatistics() {
@@ -215,6 +234,11 @@ export default function RevenueStatistics() {
 
   // Update selected period value when period changes, preserving hierarchical parent/child boundaries
   useEffect(() => {
+    if (period === 'Tất cả') {
+      setSelectedPeriodValue('');
+      prevPeriodRef.current = period;
+      return;
+    }
     const prevPeriod = prevPeriodRef.current;
     const context = parsePeriodContext(selectedPeriodValue, prevPeriod);
     const now = new Date();
@@ -400,6 +424,7 @@ export default function RevenueStatistics() {
   };
 
   const getPeriodDetailsLabel = () => {
+    if (period === 'Tất cả') return 'Tất cả thời gian';
     if (!selectedPeriodValue) return '';
 
     if (period === 'Ngày') {
@@ -430,6 +455,7 @@ export default function RevenueStatistics() {
   };
 
   const getChartDescription = () => {
+    if (period === 'Tất cả') return 'Doanh thu tất cả thời gian';
     if (!selectedPeriodValue) return '';
 
     if (period === 'Ngày') {
@@ -460,11 +486,15 @@ export default function RevenueStatistics() {
     (async () => {
       try {
         await DoctorModel.getAllDoctors(); // warm the name cache for mapAppointment
-        const [payments, appts] = await Promise.all([
+        const [payments, appts, tickets, staff] = await Promise.all([
           AppointmentModel.getAllPayments(),
           AppointmentModel.getAll(),
+          ServiceTicketModel.getAll(),
+          StaffModel.getAll(),
         ]);
         const apptById = new Map((appts || []).map(a => [String(a.appointment_id ?? a.id), a]));
+        const ticketByAppt = new Map((tickets || []).map(t => [String(t.appointment_id), t]));
+        const staffById = new Map((staff || []).map(s => [String(s.id), s]));
         const mapped = (payments || []).flatMap(p => {
           const apt = apptById.get(String(p.appointment_id));
           const dt = new Date(p.paid_at || p.created_at || Date.now());
@@ -475,6 +505,15 @@ export default function RevenueStatistics() {
           const methodStr = /tiền mặt/i.test(p.payment_method || p.method) ? 'Tiền mặt' : 'QR Code';
           const doctorStr = apt?.doctorName || '—';
           
+          const ticket = ticketByAppt.get(String(p.appointment_id));
+          let techStr = doctorStr;
+          if (ticket && ticket.technician_id) {
+            const techStaff = staffById.get(String(ticket.technician_id));
+            if (techStaff && techStaff.name) {
+              techStr = techStaff.name;
+            }
+          }
+
           const finalAmt = Number(p.final_amount ?? p.total_amount ?? p.amount ?? 0);
           const svcName = apt?.service || 'Khám da liễu';
           
@@ -519,7 +558,7 @@ export default function RevenueStatistics() {
                 date: dateStr,
                 time: timeStr,
                 method: methodStr,
-                doctor: doctorStr,
+                doctor: techStr,
                 service: 'Dịch vụ chỉ định',
                 type: 'DỊCH VỤ',
               });
@@ -532,7 +571,7 @@ export default function RevenueStatistics() {
                 date: dateStr,
                 time: timeStr,
                 method: methodStr,
-                doctor: doctorStr,
+                doctor: techStr,
                 service: svcName,
                 type: 'DỊCH VỤ',
               });
@@ -560,12 +599,14 @@ export default function RevenueStatistics() {
   const types = useMemo(() => [...new Set(transactions?.map?.(t => t.type))], [transactions]);
 
   const filteredData = useMemo(() => {
-    if (!selectedPeriodValue) return [];
+    if (!selectedPeriodValue && period !== 'Tất cả') return [];
 
     return transactions?.filter?.(t => {
       if (doctor !== 'all' && t.doctor !== doctor) return false;
       if (method !== 'all' && t.method !== method) return false;
       if (type !== 'all' && t.type !== type) return false;
+
+      if (period === 'Tất cả') return true;
 
       const [dd, mm, yyyy] = t.date.split('/');
       const txDay = parseInt(dd, 10);
@@ -612,6 +653,9 @@ export default function RevenueStatistics() {
   const totalRevenue = filteredData.reduce((sum, t) => sum + t.amount, 0);
   const totalTransactions = filteredData.length;
   const avgRevenue = useMemo(() => {
+    if (period === 'Tất cả') {
+      return totalTransactions > 0 ? totalRevenue / totalTransactions : 0;
+    }
     if (period === 'Ngày') {
       return totalTransactions > 0 ? totalRevenue / totalTransactions : 0;
     }
@@ -809,10 +853,11 @@ export default function RevenueStatistics() {
     }
 
     const maxVal = Math.max(...rawData?.map?.(d => d.value), 1);
+    const niceMax = calculateNiceMax(maxVal);
     return rawData?.map?.(d => ({
       label: d.label,
       value: d.value,
-      height: d.value === 0 ? 0 : Math.max((d.value / maxVal) * 130, 8),
+      height: d.value === 0 ? 0 : Math.max((d.value / niceMax) * 150, 8),
       highlight: d.value > 0
     }));
   }, [transactions, doctor, method, type, period, selectedPeriodValue]);
@@ -852,6 +897,7 @@ export default function RevenueStatistics() {
   // Dynamic Trends
   const getTrend = (metric) => {
     const trends = {
+      'Tất cả': { revenue: 0, tx: 0, avg: 0 },
       'Ngày': { revenue: 5.2, tx: 8.1, avg: -1.5 },
       'Tuần': { revenue: 10.4, tx: 12.0, avg: 3.5 },
       'Tháng': { revenue: 12.5, tx: -2.1, avg: 15.0 },
@@ -871,7 +917,8 @@ export default function RevenueStatistics() {
 
   const maxChartValue = useMemo(() => {
     const vals = chartData?.map?.(d => d.value || 0) || [];
-    return Math.max(...vals, 1);
+    const actualMax = Math.max(...vals, 1);
+    return calculateNiceMax(actualMax);
   }, [chartData]);
 
   const formatYAxisLabel = (val) => {
@@ -898,12 +945,12 @@ export default function RevenueStatistics() {
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white/40 backdrop-blur-md border border-slate-200/50 p-4 rounded-3xl relative z-50">
         <div className="text-xs sm:text-sm font-semibold text-slate-700">
-          Thời gian thống kê: <span className="text-indigo-600 font-extrabold">{getPeriodDetailsLabel()}</span>
+          Thời gian thống kê: <span className="text-indigo-600 font-extrabold">{period === 'Tất cả' ? 'Toàn thời gian' : getPeriodDetailsLabel()}</span>
         </div>
         <div ref={tabBarRef} className="flex bg-slate-100 border border-slate-200 rounded-full p-1 gap-1 relative z-50">
-          {['Ngày', 'Tuần', 'Tháng', 'Quý', 'Năm']?.map?.(p => {
+          {['Tất cả', 'Ngày', 'Tuần', 'Tháng', 'Quý', 'Năm']?.map?.(p => {
             const isActive = period === p;
-            const options = getOptionsForPeriod(p);
+            const options = p !== 'Tất cả' ? getOptionsForPeriod(p) : [];
             const isDropdownOpen = activeDropdown === p;
 
             return (
@@ -911,13 +958,21 @@ export default function RevenueStatistics() {
                 <button
                   onClick={() => {
                     setPeriod(p);
-                    setActiveDropdown(activeDropdown === p ? null : p);
+                    if (p === 'Tất cả') {
+                      setActiveDropdown(null);
+                      setSelectedPeriodValue('');
+                    } else {
+                      setActiveDropdown(activeDropdown === p ? null : p);
+                    }
                   }}
                   className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all border-none outline-none cursor-pointer flex items-center gap-1 ${
-                    isActive ? 'bg-white text-indigo-600 shadow-sm' : 'bg-transparent text-slate-500 hover:text-slate-700'
+                    isActive ? 'bg-white text-indigo-700 shadow-sm' : 'bg-transparent text-slate-500 hover:text-slate-700'
                   }`}
                 >
-                  {p} <ChevronDown className={`w-3 h-3 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                  {p}
+                  {p !== 'Tất cả' && (
+                    <ChevronDown className={`w-3 h-3 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                  )}
                 </button>
 
                 <AnimatePresence>
@@ -1058,7 +1113,7 @@ export default function RevenueStatistics() {
 
           <div className="flex-1 flex gap-3 mt-6 min-h-[180px] relative">
             {/* Y-Axis Labels */}
-            <div className="w-10 flex flex-col justify-between text-right text-[9px] font-bold text-slate-400 select-none pb-5 pr-1.5 h-[150px] mt-auto">
+            <div className="w-10 flex flex-col justify-between text-right text-[9px] font-bold text-slate-400 select-none pr-1.5 h-[150px] mt-auto">
               <span>{formatYAxisLabel(maxChartValue)}</span>
               <span>{formatYAxisLabel(maxChartValue * 2 / 3)}</span>
               <span>{formatYAxisLabel(maxChartValue / 3)}</span>
@@ -1066,9 +1121,9 @@ export default function RevenueStatistics() {
             </div>
 
             {/* Chart Area */}
-            <div className="flex-1 relative flex flex-col justify-end h-[150px] mt-auto border-b border-slate-200/60 pb-5">
+            <div className="flex-1 relative flex flex-col justify-end h-[150px] mt-auto border-b border-slate-200/60">
               {/* Background Grid Lines */}
-              <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pb-5">
+              <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
                 <div className="w-full border-t border-dashed border-slate-300"></div>
                 <div className="w-full border-t border-dashed border-slate-300"></div>
                 <div className="w-full border-t border-dashed border-slate-300"></div>
@@ -1076,7 +1131,7 @@ export default function RevenueStatistics() {
               </div>
 
               {/* Foreground Bars */}
-              <div className="absolute inset-x-0 bottom-5 top-0 flex items-end justify-between gap-2 z-10">
+              <div className="absolute inset-x-0 bottom-0 top-0 flex items-end justify-between gap-2 z-10">
                 {chartData?.map?.((d) => (
                   <div key={d.label} className="flex-1 flex flex-col items-center justify-end h-full group relative">
                     {/* Bar */}
