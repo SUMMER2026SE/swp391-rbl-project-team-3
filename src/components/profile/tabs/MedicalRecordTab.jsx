@@ -17,8 +17,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
   Stethoscope, Calendar, ChevronRight, Sparkles, FileText,
 } from 'lucide-react';
-import ProgressiveList from '../ProgressiveList';
 import MedicalRecordDetailModal from '../../PatientPortal/MedicalRecordDetailModal';
+import GlassPagination from '../../common/GlassPagination';
 import { useAuth } from '../../../context/AuthContext';
 import { GLASS_BASE } from '../../common/GlassCard';
 
@@ -53,13 +53,15 @@ function Section({ icon: Icon, title, subtitle, accent = 'text-primary', tint = 
 
 
 
+// Timeline shows exactly one page of visits; older visits live on next pages.
+const PAGE_SIZE = 5;
+
 export default function MedicalRecordTab({ profile }) {
   const { user } = useAuth();
   const { medicalHistory = [], clinicalHistory = [], activeTreatments = [] } = profile.medical || {};
   const [selected, setSelected] = useState(null);
-  const [showAllVisits, setShowAllVisits] = useState(false);
-  const headVisits = clinicalHistory.slice(0, 2);
-  const tailVisits = clinicalHistory.slice(2);
+  const [visitPage, setVisitPage] = useState(1);
+  const pagedVisits = clinicalHistory.slice((visitPage - 1) * PAGE_SIZE, visitPage * PAGE_SIZE);
 
   const renderVisit = (c, i) => (
     <div key={c.id || i} className="relative pl-11">
@@ -113,36 +115,17 @@ export default function MedicalRecordTab({ profile }) {
               <span className="absolute left-[18px] top-3 bottom-3 w-[3px] rounded-full
                                bg-gradient-to-b from-primary via-sky-400/70 to-transparent
                                shadow-[0_0_14px_rgba(0,104,95,0.35)]" />
-              {headVisits?.map?.(renderVisit)}
-              <AnimatePresence initial={false}>
-                {showAllVisits && tailVisits.length > 0 && (
-                  <motion.div
-                    key="tail-visits"
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                    className="overflow-hidden space-y-4"
-                  >
-                    {tailVisits?.map?.(renderVisit)}
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              {pagedVisits?.map?.(renderVisit)}
             </div>
 
-            {tailVisits.length > 0 && (
-              <button
-                onClick={() => setShowAllVisits((v) => !v)}
-                className="group w-full flex items-center justify-center gap-2 py-3 rounded-2xl
-                           bg-white/45 hover:bg-white/70 border border-white/60 backdrop-blur-xl
-                           text-sm font-bold text-on-surface-variant hover:text-primary shadow-sm transition-all cursor-pointer"
-              >
-                {showAllVisits ? 'Thu gọn' : `Xem thêm ${tailVisits.length} lần khám`}
-                <motion.span animate={{ rotate: showAllVisits ? 180 : 0 }} transition={{ duration: 0.3 }}>
-                  <ChevronRight className="w-4 h-4 rotate-90" />
-                </motion.span>
-              </button>
-            )}
+            {/* Numbered pagination — older visits live on the next pages */}
+            <GlassPagination
+              total={clinicalHistory.length}
+              page={visitPage}
+              pageSize={PAGE_SIZE}
+              onPageChange={setVisitPage}
+              className="pt-1"
+            />
           </div>
         ) : (
           <EmptyState text="Chưa có lịch sử khám bệnh." />

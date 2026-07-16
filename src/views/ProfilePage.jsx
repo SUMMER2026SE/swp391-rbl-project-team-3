@@ -13,7 +13,7 @@
  */
 import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { ArrowLeft, User, Settings, BarChart3, Calendar, FileText, Star, Loader2, ShieldCheck, Activity, CalendarDays, Brain, X } from 'lucide-react';
 
 import { useAuth } from '../context/AuthContext';
@@ -48,10 +48,12 @@ const getProfileBackground = (role) => {
   return patientBg;
 };
 
+// NOTE: no exit variant / AnimatePresence here — `mode="wait"` keyed swaps can
+// deadlock under React StrictMode (content stuck on the exiting child), the
+// same failure previously hit in the receptionist billing panel.
 const tabContentVariants = {
   hidden: { opacity: 0, y: 16, scale: 0.99 },
   visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', damping: 28, stiffness: 200 } },
-  exit: { opacity: 0, y: -12, scale: 0.99, transition: { duration: 0.15 } },
 };
 
 export default function ProfilePage() {
@@ -78,7 +80,7 @@ export default function ProfilePage() {
     if (profile.role === 'TECHNICIAN') {
       return [
         ...common,
-        { id: 'work_schedule', label: 'Lịch làm việc / Ca trực', icon: CalendarDays },
+        { id: 'work_schedule', label: 'Lịch làm việc', icon: CalendarDays },
       ];
     }
     if (profile.role === 'RECEPTIONIST') {
@@ -91,7 +93,7 @@ export default function ProfilePage() {
       ...common,
       { id: 'appointments', label: 'Lịch hẹn của tôi', icon: Calendar },
       { id: 'records', label: 'Hồ sơ bệnh án', icon: FileText },
-      { id: 'aiscans', label: 'Lịch sử soi da AI', icon: Brain },
+      { id: 'aiscans', label: 'Soi da AI', icon: Brain },
       { id: 'feedback', label: 'Đánh giá của tôi', icon: Star },
     ];
   }, [profile?.kind, profile?.role]);
@@ -159,7 +161,7 @@ export default function ProfilePage() {
       <div className="fixed inset-0 bg-slate-900/40 z-10" />
 
       {/* Layer 3: Content Wrapper */}
-      <div className="relative z-20 w-full max-w-7xl mx-auto p-4 md:p-8">
+      <div className="relative z-20 w-full max-w-[100rem] mx-auto p-4 md:p-6 xl:p-8">
         {/* Top bar */}
         <div className="flex items-center gap-4 mb-6">
           <button
@@ -170,8 +172,8 @@ export default function ProfilePage() {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-xl font-extrabold text-on-surface tracking-tight">Hồ sơ cá nhân</h1>
-            <p className="text-xs text-on-surface-variant/70">Quản lý thông tin & hồ sơ của bạn</p>
+            <h1 className="text-2xl font-extrabold text-on-surface tracking-tight">Hồ sơ cá nhân</h1>
+            <p className="text-xs text-on-surface-variant/70 mt-0.5">Quản lý thông tin & hồ sơ của bạn</p>
           </div>
         </div>
 
@@ -183,22 +185,20 @@ export default function ProfilePage() {
           className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start"
         >
           {/* Left — sticky identity card */}
-          <div className="md:col-span-4 md:sticky md:top-6">
+          <div className="md:col-span-4 lg:col-span-3 md:sticky md:top-6">
             <ProfileSummaryCard profile={profile} onAvatarChange={handleAvatarChange} />
           </div>
 
           {/* Right — tabs + dynamic content */}
-          <div className="md:col-span-8 space-y-5">
+          <div className="md:col-span-8 lg:col-span-9 space-y-5">
             <ProfileTabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 
-            <div className="relative flex-1 w-full bg-white/20 backdrop-blur-3xl border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.1)] rounded-[2.5rem] p-8 overflow-y-auto custom-scrollbar min-h-[460px]">
-              <AnimatePresence mode="wait">
+            <div className="relative flex-1 w-full bg-white/25 backdrop-blur-3xl border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.1)] rounded-[2rem] p-6 md:p-8 overflow-y-auto custom-scrollbar min-h-[540px]">
                 <motion.div
                   key={activeTab}
                   variants={tabContentVariants}
                   initial="hidden"
                   animate="visible"
-                  exit="exit"
                 >
                   {activeTab === 'personal' && <PersonalInfoTab profile={profile} onSaved={handleProfileSaved} />}
                   {activeTab === 'settings' && <AccountSettingsTab />}
@@ -226,7 +226,6 @@ export default function ProfilePage() {
                     </div>
                   )}
                 </motion.div>
-              </AnimatePresence>
             </div>
           </div>
         </motion.div>

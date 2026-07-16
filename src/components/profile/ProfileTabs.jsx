@@ -13,7 +13,7 @@ import { motion } from 'framer-motion';
 
 export default function ProfileTabs({ tabs, activeTab, onChange }) {
   return (
-    <div className="bg-slate-900/5 backdrop-blur-md border border-slate-200/50 rounded-2xl p-1.5 flex w-full items-center gap-1">
+    <div className="bg-slate-900/5 backdrop-blur-md border border-slate-200/50 rounded-2xl p-1.5 grid grid-flow-col auto-cols-fr w-full gap-1">
       {tabs?.map?.((tab) => {
         const Icon = tab.icon;
         const isActive = tab.id === activeTab;
@@ -21,8 +21,9 @@ export default function ProfileTabs({ tabs, activeTab, onChange }) {
           <button
             key={tab.id}
             onClick={() => onChange(tab.id)}
-            className={`relative flex items-center justify-center gap-1.5 px-1 py-2.5 rounded-xl text-xs sm:text-sm font-bold
-                        border-none cursor-pointer transition-colors duration-200 z-10 flex-1 min-w-0
+            title={tab.label}
+            className={`relative flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-xl text-[11px] sm:text-[13px] font-bold tracking-tight
+                        border-none cursor-pointer transition-colors duration-200 z-10 min-w-0
                         ${isActive ? 'text-white' : 'text-slate-800 hover:text-black bg-transparent'}`}
           >
             {isActive && (
@@ -32,8 +33,8 @@ export default function ProfileTabs({ tabs, activeTab, onChange }) {
                 transition={{ type: 'spring', damping: 26, stiffness: 280 }}
               />
             )}
-            <Icon className="w-4 h-4" />
-            {tab.label}
+            <Icon className="w-4 h-4 shrink-0" />
+            <span className="truncate whitespace-nowrap">{tab.label}</span>
           </button>
         );
       })}

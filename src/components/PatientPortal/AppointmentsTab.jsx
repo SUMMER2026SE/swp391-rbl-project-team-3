@@ -38,6 +38,7 @@ import { createPaymentLink, getPaymentStatus } from '../../utils/payos';
 import FeedbackFormModal from './FeedbackFormModal';
 import MedicalRecordDetailModal from './MedicalRecordDetailModal';
 import InvoiceDetailModal from './InvoiceDetailModal';
+import GlassPagination from '../common/GlassPagination';
 
 // ─── Status Badge Component ─────────────────────────────────────────────────
 
@@ -71,6 +72,11 @@ function StatusBadge({ text, type = 'status' }) {
   );
 }
 
+// ─── List pagination ─────────────────────────────────────────────────────────
+// Lists render exactly one page of PAGE_SIZE items; older entries live on the
+// NEXT pages of the shared numbered pager (GlassPagination) below the list.
+const PAGE_SIZE = 5;
+
 // ─── Appointment Card Component ──────────────────────────────────────────────
 
 function AppointmentCard({ apt, index, isUpcoming, isOverdue, onCancel, onReschedule, onViewFeedback, onWriteFeedback, onViewInvoice, existingFeedback }) {
@@ -78,7 +84,7 @@ function AppointmentCard({ apt, index, isUpcoming, isOverdue, onCancel, onResche
     <motion.div
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.08 }}
+      transition={{ delay: Math.min(index, 5) * 0.06 }}
       className="bg-white border border-slate-200 shadow-sm rounded-2xl p-5 hover:shadow-md hover:border-slate-300 transition-all group"
     >
       <div className="flex flex-wrap items-center gap-3 mb-3">
@@ -908,6 +914,10 @@ export default function AppointmentsTab({ setActiveTab, setFeedbackAptId }) {
   const [viewTarget, setViewTarget] = useState(null);
   const [writeFeedbackTarget, setWriteFeedbackTarget] = useState(null);
 
+  // Pagination — each list shows exactly one page; page N+1 holds older items.
+  const [upcomingPage, setUpcomingPage] = useState(1);
+  const [pastPage, setPastPage] = useState(1);
+
   // Redirect function for rating
   const handleViewFeedbackRedirect = (apt) => {
     if (setActiveTab && setFeedbackAptId) {
@@ -1100,21 +1110,24 @@ export default function AppointmentsTab({ setActiveTab, setFeedbackAptId }) {
         </div>
         <div className="bg-slate-50/90 border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
           {upcoming.length > 0 ? (
-            upcoming.map((apt, idx) => (
-              <AppointmentCard
-                key={apt.id}
-                apt={apt}
-                index={idx}
-                isUpcoming
-                isOverdue={false}
-                onCancel={setCancelTarget}
-                onReschedule={setRescheduleTarget}
-                onViewFeedback={handleViewFeedbackRedirect}
-                onWriteFeedback={setWriteFeedbackTarget}
-                onViewInvoice={handleViewInvoice}
-                existingFeedback={getFeedbackForApt(apt.id)}
-              />
-            ))
+            <>
+              {upcoming.slice((upcomingPage - 1) * PAGE_SIZE, upcomingPage * PAGE_SIZE).map((apt, idx) => (
+                <AppointmentCard
+                  key={apt.id}
+                  apt={apt}
+                  index={idx}
+                  isUpcoming
+                  isOverdue={false}
+                  onCancel={setCancelTarget}
+                  onReschedule={setRescheduleTarget}
+                  onViewFeedback={handleViewFeedbackRedirect}
+                  onWriteFeedback={setWriteFeedbackTarget}
+                  onViewInvoice={handleViewInvoice}
+                  existingFeedback={getFeedbackForApt(apt.id)}
+                />
+              ))}
+              <GlassPagination total={upcoming.length} page={upcomingPage} pageSize={PAGE_SIZE} onPageChange={setUpcomingPage} className="pt-1" />
+            </>
           ) : (
             <div className="text-center py-8 border border-dashed border-slate-200 rounded-2xl bg-white/60">
               <Calendar className="w-8 h-8 text-slate-300 mx-auto mb-3" />
@@ -1138,21 +1151,24 @@ export default function AppointmentsTab({ setActiveTab, setFeedbackAptId }) {
         </div>
         <div className="bg-slate-50/90 border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
           {past.length > 0 ? (
-            past.map((apt, idx) => (
-              <AppointmentCard
-                key={apt.id}
-                apt={apt}
-                index={idx}
-                isUpcoming={false}
-                isOverdue={ACTIVE_STATUSES.includes(apt.status) && isDateTimePassed(aptDate(apt), apt.time || apt.start_time)}
-                onCancel={setCancelTarget}
-                onReschedule={setRescheduleTarget}
-                onViewFeedback={handleViewFeedbackRedirect}
-                onWriteFeedback={setWriteFeedbackTarget}
-                onViewInvoice={handleViewInvoice}
-                existingFeedback={getFeedbackForApt(apt.id)}
-              />
-            ))
+            <>
+              {past.slice((pastPage - 1) * PAGE_SIZE, pastPage * PAGE_SIZE).map((apt, idx) => (
+                <AppointmentCard
+                  key={apt.id}
+                  apt={apt}
+                  index={idx}
+                  isUpcoming={false}
+                  isOverdue={ACTIVE_STATUSES.includes(apt.status) && isDateTimePassed(aptDate(apt), apt.time || apt.start_time)}
+                  onCancel={setCancelTarget}
+                  onReschedule={setRescheduleTarget}
+                  onViewFeedback={handleViewFeedbackRedirect}
+                  onWriteFeedback={setWriteFeedbackTarget}
+                  onViewInvoice={handleViewInvoice}
+                  existingFeedback={getFeedbackForApt(apt.id)}
+                />
+              ))}
+              <GlassPagination total={past.length} page={pastPage} pageSize={PAGE_SIZE} onPageChange={setPastPage} className="pt-1" />
+            </>
           ) : (
             <div className="text-center py-8 border border-dashed border-slate-200 rounded-2xl bg-white/60">
               <FileText className="w-8 h-8 text-slate-300 mx-auto mb-3" />

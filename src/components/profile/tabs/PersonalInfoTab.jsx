@@ -147,8 +147,8 @@ export default function PersonalInfoTab({ profile, onSaved }) {
           </motion.div>
         )}
       </AnimatePresence>
-      {/* Fields */}
-      <div className={`${GLASS_BASE} p-6 space-y-5`}>
+      {/* Fields — 2 columns on wide screens so the enlarged panel stays balanced */}
+      <div className={`${GLASS_BASE} p-6 grid grid-cols-1 xl:grid-cols-2 gap-x-8 gap-y-5`}>
         {fields?.map?.((f) => (
           <ProfileField
             key={f.key}

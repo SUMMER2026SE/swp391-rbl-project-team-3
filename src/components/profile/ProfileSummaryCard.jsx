@@ -79,7 +79,7 @@ export default function ProfileSummaryCard({ profile, onAvatarChange }) {
     >
       {/* Avatar with hover-blur change overlay */}
       <div className="relative group">
-        <div className={`w-36 h-36 rounded-[2.25rem] p-[3px] bg-gradient-to-br ${theme.ring} shadow-xl shadow-emerald-500/20`}>
+        <div className={`w-36 h-36 rounded-[2.25rem] p-[3px] bg-gradient-to-br ${theme.ring} shadow-lg shadow-slate-900/15`}>
           <div className="w-full h-full rounded-[2rem] overflow-hidden bg-white flex items-center justify-center">
             {profile.avatar ? (
               <img src={profile.avatar} alt={profile.name} className="w-full h-full object-cover" />

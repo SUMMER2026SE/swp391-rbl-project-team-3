@@ -15,6 +15,7 @@ import { useTechnicians } from '../../hooks/useDoctors';
 import { supabase } from '../../supabaseClient';
 import FeedbackFormModal from './FeedbackFormModal';
 import InvoiceDetailModal from './InvoiceDetailModal';
+import GlassPagination from '../common/GlassPagination';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function StarDisplay({ value, size = 'md' }) {
@@ -33,6 +34,10 @@ const CRITERIA_META = [
   { key: 'waitingTime',     label: 'Thời gian chờ',       icon: Clock },
   { key: 'facility',        label: 'Cơ sở vật chất',      icon: Building2 },
 ];
+
+// Lists render exactly one page of PAGE_SIZE entries; older visits live on the
+// next pages of the shared numbered pager (GlassPagination) below the list.
+const PAGE_SIZE = 5;
 
 const RATING_LABELS = { 1: 'Rất tệ', 2: 'Tệ', 3: 'Bình thường', 4: 'Tốt', 5: 'Xuất sắc' };
 const RATING_COLORS = {
@@ -218,12 +223,20 @@ export default function PatientFeedbackTab({ user, feedbackAptId, setFeedbackApt
   const [expandedFeedbackAptId, setExpandedFeedbackAptId] = useState(null);
   const [invoiceRecord, setInvoiceRecord] = useState(null);
   const [invoiceLoading, setInvoiceLoading] = useState(false);
+  const [historyPage, setHistoryPage] = useState(1);
 
   // Scroll & expand effect when redirected from Appointments tab
   useEffect(() => {
     if (feedbackAptId) {
       setExpandedFeedbackAptId(feedbackAptId);
-      
+
+      // Jump to the page that contains the target review so it is rendered
+      // before we try to scroll to it.
+      const idx = completedApts.findIndex((a) => a.id === feedbackAptId);
+      if (idx >= 0) {
+        setHistoryPage(Math.floor(idx / PAGE_SIZE) + 1);
+      }
+
       setTimeout(() => {
         const el = document.getElementById(`apt-feedback-${feedbackAptId}`);
         if (el) {
@@ -322,8 +335,10 @@ export default function PatientFeedbackTab({ user, feedbackAptId, setFeedbackApt
     }
   };
 
-  // Completed appointments that don't have feedback yet
-  const completedApts = appointments?.filter?.(a => a.status === 'Đã khám' || a.status === 'Reviewed' || a.status === 'Đã thanh toán');
+  // Completed appointments that don't have feedback yet — newest visit first,
+  // so the paginated list surfaces recent history and hides the older tail.
+  const completedApts = (appointments?.filter?.(a => a.status === 'Đã khám' || a.status === 'Reviewed' || a.status === 'Đã thanh toán') || [])
+    .sort((a, b) => `${b.date || ''}T${b.time || ''}`.localeCompare(`${a.date || ''}T${a.time || ''}`));
   const pendingApts = completedApts?.filter?.(a => !getFeedbackByAppointment(a.id));
   const myFeedbacks = feedbacks?.filter?.(f => f.patientId === patientId);
 
@@ -374,7 +389,7 @@ export default function PatientFeedbackTab({ user, feedbackAptId, setFeedbackApt
           </div>
         ) : (
           <div className="space-y-4">
-            {completedApts?.map?.(apt => {
+            {completedApts.slice((historyPage - 1) * PAGE_SIZE, historyPage * PAGE_SIZE).map(apt => {
               const fb = getFeedbackByAppointment(apt.id);
               const isHighlighted = feedbackAptId === apt.id;
               const isExpanded = expandedFeedbackAptId === apt.id;
@@ -564,6 +579,15 @@ export default function PatientFeedbackTab({ user, feedbackAptId, setFeedbackApt
                 </div>
               );
             })}
+
+            {/* Numbered pagination — older visits live on the next pages */}
+            <GlassPagination
+              total={completedApts.length}
+              page={historyPage}
+              pageSize={PAGE_SIZE}
+              onPageChange={setHistoryPage}
+              className="pt-1"
+            />
           </div>
         )}
       </div>

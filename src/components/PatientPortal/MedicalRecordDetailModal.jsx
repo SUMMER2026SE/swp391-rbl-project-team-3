@@ -84,7 +84,7 @@ function Section({ icon, title, children, accent = 'emerald' }) {
     teal: 'bg-teal-50 text-teal-600 border-teal-100',
   };
   return (
-    <div className="mb-6">
+    <div className="min-w-0">
       <div className="flex items-center gap-2.5 mb-3">
         <div className={`p-2 rounded-xl border ${accentMap[accent]}`}>
           {icon}
@@ -105,15 +105,29 @@ function InfoRow({ label, value }) {
   );
 }
 
+// Compact placeholder for a form section that has no data yet — the section
+// header stays in place so the form keeps ONE fixed shape for every record.
+function EmptyNote({ text }) {
+  return (
+    <div className="text-center py-6 border border-dashed border-slate-200 rounded-2xl bg-white/50">
+      <p className="text-sm text-slate-400 font-medium">{text}</p>
+    </div>
+  );
+}
+
 // ─── Tab Navigation ───────────────────────────────────────────────────────────
+// "Tổng quan" is the overview page; each remaining feature keeps its own tab
+// so it can be viewed on its own. All six tabs are ALWAYS offered — a tab
+// without data renders its explicit empty state instead of disappearing, so
+// the card keeps one fixed form for every record.
 
 const TABS = [
-  { id: 'overview', label: 'Tổng quan', icon: <FileText className="w-3.5 h-3.5" /> },
-  { id: 'ai', label: 'AI Analysis', icon: <Brain className="w-3.5 h-3.5" /> },
-  { id: 'treatment', label: 'Điều trị', icon: <Activity className="w-3.5 h-3.5" /> },
-  { id: 'prescription', label: 'Đơn thuốc', icon: <Pill className="w-3.5 h-3.5" /> },
-  { id: 'images', label: 'Hình ảnh', icon: <Image className="w-3.5 h-3.5" /> },
-  { id: 'followup', label: 'Tái khám', icon: <RefreshCw className="w-3.5 h-3.5" /> },
+  { id: 'overview', label: 'Tổng quan', icon: <FileText className="w-4 h-4" /> },
+  { id: 'ai', label: 'Phân tích AI', icon: <Brain className="w-4 h-4" /> },
+  { id: 'treatment', label: 'Điều trị', icon: <Activity className="w-4 h-4" /> },
+  { id: 'prescription', label: 'Đơn thuốc', icon: <Pill className="w-4 h-4" /> },
+  { id: 'images', label: 'Hình ảnh', icon: <Image className="w-4 h-4" /> },
+  { id: 'followup', label: 'Tái khám', icon: <RefreshCw className="w-4 h-4" /> },
 ];
 
 // ─── Tab: Tổng quan ───────────────────────────────────────────────────────────
@@ -123,51 +137,55 @@ function OverviewTab({ record }) {
   const age = calculateAge(patient.dob);
 
   return (
-    <div className="space-y-5">
-      {/* Thông tin bệnh nhân */}
-      <Section icon={<User className="w-4 h-4" />} title="Thông tin bệnh nhân" accent="sky">
-        <div className="bg-white/40 backdrop-blur-md border border-white/60 rounded-2xl p-4">
-          <div className="flex items-center gap-4 mb-4">
-            <img
-              src={patient.avatar || `https://i.pravatar.cc/80?u=${patient.id}`}
-              alt={patient.fullName}
-              className="w-14 h-14 rounded-xl object-cover border border-slate-200 shadow-sm"
-            />
-            <div>
-              <p className="text-base font-bold text-slate-800">{patient.fullName}</p>
-              <p className="text-xs text-slate-500 mt-0.5">{age} tuổi • {patient.gender}</p>
+    <div className="space-y-6">
+      {/* Patient + exam info sit side-by-side on the wide modal */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        {/* Thông tin bệnh nhân */}
+        <Section icon={<User className="w-4 h-4" />} title="Thông tin bệnh nhân" accent="sky">
+          <div className="bg-white/40 backdrop-blur-md border border-white/60 rounded-2xl p-4">
+            <div className="flex items-center gap-4 mb-4">
+              <img
+                src={patient.avatar || `https://i.pravatar.cc/80?u=${patient.id}`}
+                alt={patient.fullName}
+                className="w-14 h-14 rounded-xl object-cover border border-slate-200 shadow-sm"
+              />
+              <div>
+                <p className="text-base font-bold text-slate-800">{patient.fullName}</p>
+                <p className="text-xs text-slate-500 mt-0.5">{age} tuổi • {patient.gender}</p>
+              </div>
+            </div>
+            <div className="space-y-0 divide-y divide-slate-100">
+              <InfoRow label="Ngày sinh" value={patient.dob ? new Date(patient.dob).toLocaleDateString('vi-VN') : '—'} />
+              <InfoRow label="Giới tính" value={patient.gender} />
+              <InfoRow label="Điện thoại" value={patient.phone} />
+              <InfoRow label="Email" value={patient.email} />
+              <InfoRow label="Địa chỉ" value={patient.address} />
             </div>
           </div>
-          <div className="space-y-0 divide-y divide-slate-100">
-            <InfoRow label="Ngày sinh" value={patient.dob ? new Date(patient.dob).toLocaleDateString('vi-VN') : '—'} />
-            <InfoRow label="Giới tính" value={patient.gender} />
-            <InfoRow label="Điện thoại" value={patient.phone} />
-            <InfoRow label="Email" value={patient.email} />
-            <InfoRow label="Địa chỉ" value={patient.address} />
+        </Section>
+        {/* Thông tin khám bệnh — every row is always visible ("—" when empty)
+            so the form never changes shape between records */}
+        <Section icon={<Stethoscope className="w-4 h-4" />} title="Thông tin khám bệnh" accent="emerald">
+          <div className="bg-white/40 backdrop-blur-md border border-white/60 rounded-2xl p-4 space-y-0 divide-y divide-slate-100">
+            <InfoRow label="Ngày khám" value={record.date} />
+            <InfoRow label="Giờ khám" value={record.time} />
+            <InfoRow label="Bác sĩ phụ trách" value={record.doctor} />
+            <InfoRow label="Chuyên khoa" value={record.specialty} />
+            <InfoRow label="Dịch vụ" value={record.service} />
+            <InfoRow label="Phí dịch vụ" value={record.fee} />
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 py-2.5">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider w-40 shrink-0">Thanh toán</span>
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${PAYMENT_BADGE[record.paymentStatus] || 'bg-slate-50 text-slate-600 border-slate-200'}`}>
+                {record.paymentStatus}
+              </span>
+            </div>
           </div>
-        </div>
-      </Section>
-      {/* Thông tin khám bệnh */}
-      <Section icon={<Stethoscope className="w-4 h-4" />} title="Thông tin khám bệnh" accent="emerald">
-        <div className="bg-white/40 backdrop-blur-md border border-white/60 rounded-2xl p-4 space-y-0 divide-y divide-slate-100">
-          <InfoRow label="Ngày khám" value={record.date} />
-          <InfoRow label="Giờ khám" value={record.time} />
-          <InfoRow label="Bác sĩ phụ trách" value={record.doctor} />
-          <InfoRow label="Chuyên khoa" value={record.specialty} />
-          <InfoRow label="Dịch vụ" value={record.service} />
-          <InfoRow label="Phí dịch vụ" value={record.fee} />
-          <div className="flex flex-col sm:flex-row sm:items-center gap-1 py-2.5">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider w-40 shrink-0">Thanh toán</span>
-            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${PAYMENT_BADGE[record.paymentStatus] || 'bg-slate-50 text-slate-600 border-slate-200'}`}>
-              {record.paymentStatus}
-            </span>
-          </div>
-        </div>
-      </Section>
+        </Section>
+      </div>
       {/* Triệu chứng */}
       <Section icon={<AlertCircle className="w-4 h-4" />} title="Triệu chứng lâm sàng" accent="amber">
         <div className="bg-white/40 backdrop-blur-md border border-white/60 rounded-2xl p-4">
-          <p className="text-sm text-slate-700 leading-relaxed">{record.symptoms || '—'}</p>
+          <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{record.symptoms || '—'}</p>
         </div>
       </Section>
 
@@ -191,9 +209,9 @@ function OverviewTab({ record }) {
           )}
         </div>
       </Section>
-      {/* Ghi chú */}
-      {(record?.notes || record?.technicianNotes) && (
-        <Section icon={<MessageSquare className="w-4 h-4" />} title="Ghi chú" accent="teal">
+      {/* Ghi chú — always rendered so the form keeps one fixed shape */}
+      <Section icon={<MessageSquare className="w-4 h-4" />} title="Ghi chú" accent="teal">
+        {(record?.notes || record?.technicianNotes) ? (
           <div className="bg-white/30 backdrop-blur-md border border-white/50 rounded-2xl p-4 space-y-4">
             {record?.notes && (
               <div>
@@ -212,8 +230,10 @@ function OverviewTab({ record }) {
               </div>
             )}
           </div>
-        </Section>
-      )}
+        ) : (
+          <EmptyNote text="Chưa có ghi chú cho hồ sơ này." />
+        )}
+      </Section>
     </div>
   );
 }
@@ -315,6 +335,15 @@ function AIAnalysisTab({ record }) {
 function TreatmentTab({ record }) {
   const plan = record.treatmentPlan;
   const history = record.treatmentHistory || [];
+
+  if (!plan && history.length === 0) {
+    return (
+      <div className="text-center py-16">
+        <Activity className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+        <p className="text-sm text-slate-500 font-semibold">Chưa có kế hoạch điều trị hoặc thủ thuật cho hồ sơ này.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">
@@ -444,7 +473,7 @@ function PrescriptionTab({ record }) {
   };
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
       {prescriptions?.map?.((p, i) => (
         <motion.div
           key={i}
@@ -563,24 +592,22 @@ function ImagesTab({ record }) {
               </div>
             </div>
 
-            {/* Image */}
+            {/* Image — keyed entrance-only swap (no AnimatePresence: mode="wait"
+                deadlocks under StrictMode in this repo) */}
             <div className="relative">
-              <AnimatePresence mode="wait">
-                <motion.img
-                  key={mode}
-                  src={mode === 'before' ? img.beforeUrl : img.afterUrl}
-                  alt={`${img.label} — ${mode === 'before' ? 'trước' : 'sau'} điều trị`}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="w-full h-52 object-cover cursor-pointer"
-                  onClick={() => setActiveImg({ img, mode })}
-                  onError={(e) => {
-                    e.target.src = `https://placehold.co/400x300/e2e8f0/94a3b8?text=${mode === 'before' ? 'Trước+điều+trị' : 'Sau+điều+trị'}`;
-                  }}
-                />
-              </AnimatePresence>
+              <motion.img
+                key={mode}
+                src={mode === 'before' ? img.beforeUrl : img.afterUrl}
+                alt={`${img.label} — ${mode === 'before' ? 'trước' : 'sau'} điều trị`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3 }}
+                className="w-full h-52 object-cover cursor-pointer"
+                onClick={() => setActiveImg({ img, mode })}
+                onError={(e) => {
+                  e.target.src = `https://placehold.co/400x300/e2e8f0/94a3b8?text=${mode === 'before' ? 'Trước+điều+trị' : 'Sau+điều+trị'}`;
+                }}
+              />
               <div className={`absolute top-2 left-2 flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold ${mode === 'before' ? 'bg-rose-500 text-white' : 'bg-emerald-500 text-white'}`}>
                 {mode === 'before'
                   ? <><Camera className="w-3 h-3" /> Trước — {img.beforeDate}</>
@@ -601,20 +628,18 @@ function ImagesTab({ record }) {
       <div className="text-center">
         <p className="text-xs text-slate-400 italic">* Hình ảnh minh họa từ hồ sơ điều trị của phòng khám.</p>
       </div>
-      {/* Lightbox */}
-      <AnimatePresence>
-        {activeImg && (
+      {/* Lightbox — entrance-only, instant unmount (AnimatePresence show/hide
+          can strand an invisible overlay that swallows clicks in this repo) */}
+      {activeImg && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
             className="fixed inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4"
             onClick={() => setActiveImg(null)}
           >
             <motion.div
               initial={{ scale: 0.8 }}
               animate={{ scale: 1 }}
-              exit={{ scale: 0.8 }}
               className="relative max-w-2xl w-full"
               onClick={(e) => e.stopPropagation()}
             >
@@ -635,8 +660,7 @@ function ImagesTab({ record }) {
               <p className="text-center text-white/70 text-sm mt-3">{activeImg.img.label} — {activeImg.mode === 'before' ? 'Trước điều trị' : 'Sau điều trị'}</p>
             </motion.div>
           </motion.div>
-        )}
-      </AnimatePresence>
+      )}
     </div>
   );
 }
@@ -770,7 +794,7 @@ export default function MedicalRecordDetailModal({ record, onClose }) {
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.92, opacity: 0, y: 20 }}
           transition={{ type: 'spring', damping: 26, stiffness: 200 }}
-          className={`${GLASS_BASE} w-full max-w-2xl flex flex-col max-h-[92vh] overflow-hidden`}
+          className={`${GLASS_BASE} w-[94vw] md:w-[85vw] lg:w-[70vw] max-w-[80rem] flex flex-col max-h-[92vh] overflow-hidden`}
           onClick={(e) => e.stopPropagation()}
         >
           {/* ── Header ── */}
@@ -780,9 +804,9 @@ export default function MedicalRecordDetailModal({ record, onClose }) {
                 <FileText className="w-5 h-5 text-emerald-600" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-slate-900 leading-tight">Hồ sơ bệnh án chi tiết</h3>
+                <h3 className="text-lg font-bold text-slate-900 leading-tight tracking-tight">Hồ sơ bệnh án chi tiết</h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  {record.date} • {record.doctor} • {record.service}
+                  {[record.date, record.doctor, record.service].filter(Boolean).join(' • ')}
                 </p>
               </div>
             </div>
@@ -794,44 +818,46 @@ export default function MedicalRecordDetailModal({ record, onClose }) {
             </button>
           </div>
 
-          {/* ── Tab Bar ── */}
-          <div className="flex gap-1 px-4 pt-3 pb-1 overflow-x-auto shrink-0 border-b border-slate-100">
-            {TABS?.map?.((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border-none cursor-pointer ${
-                  activeTab === tab.id
-                    ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-500/20'
-                    : 'bg-transparent text-slate-500 hover:bg-slate-100 hover:text-slate-700'
-                }`}
-              >
-                {tab.icon}
-                {tab.label}
-              </button>
-            ))}
+          {/* ── Tab Bar — every feature keeps its own tab; all six always shown,
+                 evenly balanced ── */}
+          <div className="px-4 pt-3 pb-3 shrink-0 border-b border-slate-100">
+            <div className="grid grid-flow-col auto-cols-fr gap-1 bg-slate-900/5 rounded-2xl p-1.5">
+              {TABS.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  title={tab.label}
+                  className={`flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-xl text-[11px] sm:text-[13px] font-bold min-w-0 transition-all border-none cursor-pointer ${
+                    activeTab === tab.id
+                      ? 'bg-gradient-to-br from-[#00685f] to-[#0058be] text-white shadow-md shadow-emerald-600/25'
+                      : 'bg-transparent text-slate-600 hover:bg-white/70 hover:text-slate-900'
+                  }`}
+                >
+                  <span className="shrink-0">{tab.icon}</span>
+                  <span className="truncate whitespace-nowrap">{tab.label}</span>
+                </button>
+              ))}
+            </div>
           </div>
 
-          {/* ── Tab Content ── */}
-          <div className="flex-1 overflow-y-auto p-4 md:p-8">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={activeTab}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.18 }}
-              >
-                {tabContent[activeTab]}
-              </motion.div>
-            </AnimatePresence>
+          {/* ── Tab Content — entrance-only keyed swap (no AnimatePresence:
+                 mode="wait" deadlocks under StrictMode in this repo) ── */}
+          <div className="flex-1 overflow-y-auto p-5 md:p-8 custom-scrollbar">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.18 }}
+            >
+              {tabContent[activeTab]}
+            </motion.div>
           </div>
 
           {/* ── Footer ── */}
-          <div className="px-5 py-4 border-t border-slate-100 shrink-0">
+          <div className="flex items-center justify-end px-6 py-4 border-t border-slate-100 shrink-0">
             <button
               onClick={onClose}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-semibold text-sm shadow-md shadow-emerald-500/20 hover:shadow-lg hover:-translate-y-0.5 transition-all border-none cursor-pointer"
+              className="px-8 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-semibold text-sm shadow-md shadow-emerald-500/20 hover:shadow-lg hover:-translate-y-0.5 transition-all border-none cursor-pointer"
             >
               Đóng hồ sơ
             </button>
