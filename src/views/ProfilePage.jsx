@@ -14,7 +14,7 @@
 import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, User, Settings, BarChart3, Calendar, FileText, Star, Loader2, ShieldCheck, Activity, CalendarDays, Brain, X } from 'lucide-react';
+import { ArrowLeft, User, Settings, BarChart3, Calendar, FileText, Star, Loader2, ShieldCheck, Activity, CalendarDays, Brain, X, Clock } from 'lucide-react';
 
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
@@ -25,6 +25,7 @@ import ProfileTabs from '../components/profile/ProfileTabs';
 import PersonalInfoTab from '../components/profile/tabs/PersonalInfoTab';
 import AccountSettingsTab from '../components/profile/tabs/AccountSettingsTab';
 import StaffInsightsTab from '../components/profile/tabs/StaffInsightsTab';
+import WorkHoursTab from '../components/profile/tabs/WorkHoursTab';
 import MedicalLoader from '../components/common/MedicalLoader';
 import MedicalRecordTab from '../components/profile/tabs/MedicalRecordTab';
 import AppointmentsTab from '../components/PatientPortal/AppointmentsTab';
@@ -80,14 +81,19 @@ export default function ProfilePage() {
     if (profile.role === 'TECHNICIAN') {
       return [
         ...common,
+        { id: 'timesheet', label: 'Chấm công', icon: Clock },
         { id: 'work_schedule', label: 'Lịch làm việc', icon: CalendarDays },
       ];
     }
     if (profile.role === 'RECEPTIONIST') {
-      return [...common];
+      return [...common, { id: 'timesheet', label: 'Chấm công', icon: Clock }];
     }
     if (profile.kind === 'staff') {
-      return [...common, { id: 'insights', label: 'Hồ sơ chuyên sâu', icon: BarChart3 }];
+      return [
+        ...common,
+        { id: 'timesheet', label: 'Chấm công', icon: Clock },
+        { id: 'insights', label: 'Hồ sơ chuyên sâu', icon: BarChart3 },
+      ];
     }
     return [
       ...common,
@@ -203,6 +209,7 @@ export default function ProfilePage() {
                   {activeTab === 'personal' && <PersonalInfoTab profile={profile} onSaved={handleProfileSaved} />}
                   {activeTab === 'settings' && <AccountSettingsTab />}
                   {activeTab === 'insights' && <StaffInsightsTab profile={profile} />}
+                  {activeTab === 'timesheet' && <WorkHoursTab staffId={user?.id} />}
                   {activeTab === 'appointments' && <AppointmentsTab setActiveTab={setActiveTab} setFeedbackAptId={setFeedbackAptId} />}
                   {activeTab === 'records' && <MedicalRecordTab profile={profile} />}
                   {activeTab === 'feedback' && <PatientFeedbackTab user={user} feedbackAptId={feedbackAptId} setFeedbackAptId={setFeedbackAptId} />}
