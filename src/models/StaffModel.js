@@ -139,9 +139,10 @@ export const StaffModel = {
   },
 
   // Updates an existing staff member's core fields (Admin-privileged write).
-  async update(userId, { name, phone, roleVi }) {
+  async update(userId, { name, email, phone, roleVi }) {
     const role = ROLE_BY_VI[roleVi];
     const patch = { full_name: name, phone };
+    if (email) patch.email = email.toLowerCase().trim();
     if (role) patch.role_id = role.id;
 
     const { error } = await supabase.from('users').update(patch).eq('user_id', userId);
@@ -153,6 +154,12 @@ export const StaffModel = {
     const role = ROLE_BY_VI[roleVi];
     if (!role) return;
     const { error } = await supabase.from('users').update({ role_id: role.id }).eq('user_id', userId);
+    if (error) throw error;
+  },
+
+  // Set user account active/inactive status
+  async setStatus(userId, status) {
+    const { error } = await supabase.from('users').update({ status }).eq('user_id', userId);
     if (error) throw error;
   },
 };

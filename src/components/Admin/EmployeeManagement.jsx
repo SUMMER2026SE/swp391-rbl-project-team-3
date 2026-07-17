@@ -21,6 +21,8 @@ import {
   Shield,
   Headset,
   UserCog,
+  Lock,
+  Unlock
 } from 'lucide-react';
 
 // Icon per role for the GlassSelect dropdowns.
@@ -153,6 +155,7 @@ const EmployeeManagement = () => {
     try {
       await StaffModel.update(editingEmployee.id, {
         name: form.name.trim(),
+        email: form.email.trim(),
         phone: form.phone.trim(),
         roleVi: form.role,
       });
@@ -178,7 +181,19 @@ const EmployeeManagement = () => {
     } catch (err) {
       console.error('Failed to change role:', err);
       setEmployees(prev); // rollback
-      notify('Đổi vai trò thất bại (có thể do quyền RLS).', 'error');
+    }
+  };
+
+  const handleToggleStatus = async (emp) => {
+    const newStatus = emp.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+    const actionLabel = newStatus === 'ACTIVE' ? 'Kích hoạt' : 'Vô hiệu hóa';
+    try {
+      await StaffModel.setStatus(emp.id, newStatus);
+      notify(`Đã ${actionLabel.toLowerCase()} tài khoản của ${emp.name}.`, 'success');
+      await loadStaff();
+    } catch (err) {
+      console.error('Failed to toggle staff status:', err);
+      notify(`${actionLabel} thất bại (quyền RLS).`, 'error');
     }
   };
 
@@ -241,7 +256,7 @@ const EmployeeManagement = () => {
                   </tr>
                 ) : (
                   filteredEmployees.map((emp) => (
-                    <tr key={emp.id} className="hover:bg-white/50 transition-colors group">
+                    <tr key={emp.id} className={`hover:bg-white/50 transition-colors group ${emp.status !== 'ACTIVE' ? 'opacity-60 bg-slate-50/50' : ''}`}>
                       <td className="px-8 py-5">
                         <div className="flex items-center">
                           <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-100 to-sky-100 flex items-center justify-center text-indigo-700 font-extrabold text-lg border border-white shadow-sm mr-4 group-hover:scale-105 transition-transform overflow-hidden">
@@ -260,6 +275,11 @@ const EmployeeManagement = () => {
                               {emp.role}
                               {emp.specialty ? ` · ${emp.specialty}` : ''}
                             </span>
+                            {emp.status !== 'ACTIVE' && (
+                              <span className="inline-flex items-center gap-1 mt-1 ml-2 px-2.5 py-0.5 rounded-full text-[11px] font-bold border bg-rose-50 text-rose-700 border-rose-200">
+                                Đã vô hiệu hóa
+                              </span>
+                            )}
                           </div>
                         </div>
                       </td>
@@ -288,18 +308,29 @@ const EmployeeManagement = () => {
                         <div className="flex justify-end space-x-2">
                           <button
                             onClick={() => handleOpenEditModal(emp)}
-                            className="p-2.5 text-slate-400 hover:text-sky-600 hover:bg-sky-50 rounded-xl transition-colors border border-transparent hover:border-sky-100 shadow-sm"
+                            className="p-2.5 text-slate-400 hover:text-sky-600 hover:bg-sky-50 rounded-xl transition-colors border border-transparent hover:border-sky-100 shadow-sm disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:border-transparent disabled:cursor-not-allowed"
                             title="Chỉnh sửa"
+                            disabled={emp.status !== 'ACTIVE'}
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
-                          <button
-                            onClick={() => handleOpenEditModal(emp)}
-                            className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors border border-transparent hover:border-indigo-100 shadow-sm"
-                            title="Phân quyền"
-                          >
-                            <ShieldCheck className="w-4 h-4" />
-                          </button>
+                          {emp.status === 'ACTIVE' ? (
+                            <button
+                              onClick={() => handleToggleStatus(emp)}
+                              className="p-2.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors border border-transparent hover:border-rose-100 shadow-sm"
+                              title="Vô hiệu hóa"
+                            >
+                              <Lock className="w-4 h-4" />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleToggleStatus(emp)}
+                              className="p-2.5 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border border-transparent hover:border-emerald-200 rounded-xl transition-colors shadow-sm"
+                              title="Kích hoạt"
+                            >
+                              <Unlock className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -338,7 +369,6 @@ const EmployeeManagement = () => {
         form={form}
         setForm={setForm}
         roleOptions={roleNames}
-        emailLocked
         onClose={() => setIsEditModalOpen(false)}
         onSubmit={handleUpdateEmployee}
         submitLabel="Lưu thay đổi"
@@ -475,7 +505,6 @@ function FormInput({ label, icon: Icon, value, onChange, placeholder, type = 'te
     <div>
       <label className="block text-sm font-bold text-slate-800 mb-2">{label}</label>
       <div className="relative">
-        <Icon size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-500" />
         <input
           type={type}
           value={value}
@@ -484,6 +513,7 @@ function FormInput({ label, icon: Icon, value, onChange, placeholder, type = 'te
           className="w-full pl-12 pr-4 p-3 bg-white/70 backdrop-blur-sm border border-white/60 rounded-2xl focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-300 outline-none text-base font-medium text-slate-900 transition-all shadow-sm disabled:bg-slate-100/70 disabled:text-slate-400 disabled:cursor-not-allowed"
           placeholder={placeholder}
         />
+        <Icon size={20} className={`absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none z-10 ${disabled ? 'text-slate-300' : 'text-indigo-500'}`} />
       </div>
     </div>
   );

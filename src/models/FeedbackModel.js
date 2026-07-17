@@ -101,12 +101,38 @@ function mapFeedbackFromDB(row) {
   };
 }
 
+async function attachUserNames(feedbacksOrSingle) {
+  const isArray = Array.isArray(feedbacksOrSingle);
+  const feedbacks = isArray ? feedbacksOrSingle : [feedbacksOrSingle].filter(Boolean);
+  if (feedbacks.length === 0) return feedbacksOrSingle;
+
+  const userIds = [...new Set(feedbacks.flatMap(f => [f.patientId, f.doctorId, f.technicianId]).filter(Boolean))];
+  let userMap = {};
+  if (userIds.length > 0) {
+    const { data: usersData } = await supabase.from('users').select('user_id, full_name').in('user_id', userIds);
+    if (usersData) {
+      usersData.forEach(u => {
+        userMap[u.user_id] = u.full_name;
+      });
+    }
+  }
+
+  feedbacks.forEach(fb => {
+    fb.patientName = userMap[fb.patientId] || fb.patientName || 'Bệnh nhân';
+    fb.doctorName = userMap[fb.doctorId] || fb.doctorName || null;
+    fb.technicianName = userMap[fb.technicianId] || fb.technicianName || null;
+  });
+
+  return isArray ? feedbacks : feedbacks[0];
+}
+
 export const FeedbackModel = {
   async getAll() {
     try {
-      const { data, error } = await supabase.from('feedbacks').select('*, patient:users(full_name)');
+      const { data, error } = await supabase.from('feedbacks').select('*');
       if (error) throw error;
-      return (data || []).map(mapFeedbackFromDB);
+      const list = (data || []).map(mapFeedbackFromDB);
+      return await attachUserNames(list);
     } catch (e) {
       console.warn('Supabase fetch error (feedbacks):', e.message);
       return [];
@@ -117,11 +143,12 @@ export const FeedbackModel = {
     try {
       const { data, error } = await supabase
         .from('feedbacks')
-        .select('*, patient:users(full_name)')
+        .select('*')
         .order('created_at', { ascending: false })
         .limit(10);
       if (error) throw error;
-      return (data || []).map(mapFeedbackFromDB);
+      const list = (data || []).map(mapFeedbackFromDB);
+      return await attachUserNames(list);
     } catch (e) {
       console.warn('Supabase fetch error (recent feedbacks):', e.message);
       return [];
@@ -129,31 +156,26 @@ export const FeedbackModel = {
   },
 
   async create(feedbackData) {
-    // Throw on failure so the controller's try/catch surfaces the real error
-    // (previously this swallowed errors and returned null → false "success").
     const row = mapFeedbackToDB(feedbackData);
     const { data, error } = await supabase.from('feedbacks').insert([row]).select();
     if (error) throw error;
-    return mapFeedbackFromDB(data[0]);
+    const fb = mapFeedbackFromDB(data[0]);
+    return await attachUserNames(fb);
   },
 
   async update(id, feedbackData) {
     const row = mapFeedbackToDB(feedbackData);
-    // Don't update id fields
     delete row.feedback_id;
     delete row.id;
     delete row.patient_id;
     
-    // We only want to update the fields passed in, but mapFeedbackToDB might return a new full row.
-    // Actually, we can fetch the existing row, merge criteria_ratings, and update.
-    // But since criteria_ratings is merged inside mapFeedbackToDB based on fb.criteriaRatings,
-    // it's better to let the controller do the logic and pass the exact fields.
     const { data, error } = await supabase
       .from('feedbacks')
       .update(row)
       .eq('feedback_id', id)
-      .select('*, patient:users(full_name)');
+      .select();
     if (error) throw error;
-    return mapFeedbackFromDB(data[0]);
+    const fb = mapFeedbackFromDB(data[0]);
+    return await attachUserNames(fb);
   },
 };

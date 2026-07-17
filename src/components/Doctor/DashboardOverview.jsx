@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Brain, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Users, Clock, Star, Stethoscope } from 'lucide-react';
+import { supabase } from '../../supabaseClient';
 import { AppointmentModel } from '../../models/AppointmentModel';
-import { APT_STATUS } from '../Receptionist/receptionistData';
 import { GLASS_BASE, GLASS_HOVER } from '../common/GlassCard';
 
 export default function DashboardOverview({ doctorId }) {
@@ -23,23 +23,70 @@ export default function DashboardOverview({ doctorId }) {
     };
 
     fetchAppointments();
+    fetchAppointments();
     window.addEventListener('appointments-updated', fetchAppointments);
     return () => {
       window.removeEventListener('appointments-updated', fetchAppointments);
     };
   }, [doctorId]);
 
+  const [successVisits, setSuccessVisits] = useState(0);
+  const [workHours, setWorkHours] = useState('0 giờ');
+  const [avgRating, setAvgRating] = useState('Chưa có');
+
+  useEffect(() => {
+    if (!doctorId) return;
+    
+    const fetchDoctorMetrics = async () => {
+      // 1. Ca khám đã hoàn thành
+      const { count: successCount } = await supabase
+        .from('appointments')
+        .select('*', { count: 'exact', head: true })
+        .eq('doctor_id', doctorId)
+        .in('status', ['Đã khám', 'Reviewed', 'Đã thanh toán', 'COMPLETED', 'EXAMINED', 'DONE', 'PAID']);
+      
+      if (successCount !== null) setSuccessVisits(successCount);
+
+      // 2. Đánh giá trung bình
+      const { data: feedbacks } = await supabase
+        .from('feedbacks')
+        .select('rating')
+        .eq('doctor_id', doctorId);
+      
+      if (feedbacks && feedbacks.length > 0) {
+        const sum = feedbacks.reduce((acc, f) => acc + (f.rating || 0), 0);
+        setAvgRating((sum / feedbacks.length).toFixed(1) + '/5');
+      }
+
+      // 3. Giờ làm việc thực tế
+      const today = new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+      const { data: shifts } = await supabase
+        .from('doctor_shifts')
+        .select('start_time, end_time')
+        .eq('doctor_id', doctorId)
+        .eq('status', 'Đã xác nhận')
+        .lte('work_date', todayStr);
+      
+      if (shifts && shifts.length > 0) {
+        const parseTimeToHours = (t) => {
+          if (!t) return 0;
+          const [h, m] = t.split(':').map(Number);
+          return h + (m || 0) / 60;
+        };
+        const hours = shifts.reduce((acc, s) => {
+          const diff = parseTimeToHours(s.end_time) - parseTimeToHours(s.start_time);
+          return acc + (diff > 0 ? diff : 0);
+        }, 0);
+        if (hours > 0) setWorkHours(`${Math.round(hours)} giờ`);
+      }
+    };
+
+    fetchDoctorMetrics();
+  }, [doctorId]);
+
   const totalPatientsToday = todayAppointments.length;
-  
-  const waitingPatients = todayAppointments?.filter?.(
-    apt => apt?.status === APT_STATUS.CHECKED_IN
-  ).length;
-
-  const completedPatients = todayAppointments?.filter?.(apt => apt?.status === 'Đã khám').length;
-
-  // TODO: Connect to actual AI analysis queue API (ai_skin_analyses pending count).
-  // Show 0 rather than fake data until the real queue is wired up.
-  const pendingAIResults = 0;
 
   return (
     <div className="space-y-6">
@@ -54,30 +101,30 @@ export default function DashboardOverview({ doctorId }) {
         </div>
 
         <div className={`${GLASS_BASE} ${GLASS_HOVER} p-6 relative overflow-hidden group cursor-pointer h-full flex flex-col`}>
-          <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 rounded-bl-full -z-10 group-hover:bg-amber-500/10 transition-all duration-500"></div>
-          <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-600 mb-4 shadow-inner border border-amber-100/50">
-            <AlertCircle className="w-6 h-6" />
+          <div className="absolute top-0 right-0 w-24 h-24 bg-fuchsia-500/5 rounded-bl-full -z-10 group-hover:bg-fuchsia-500/10 transition-all duration-500"></div>
+          <div className="w-12 h-12 rounded-2xl bg-fuchsia-50 flex items-center justify-center text-fuchsia-600 mb-4 shadow-inner border border-fuchsia-100/50">
+            <Stethoscope className="w-6 h-6" />
           </div>
-          <p className="text-xs text-slate-900 font-medium uppercase tracking-wider mb-1">Đang chờ khám</p>
-          <p className="font-extrabold text-3xl text-slate-900">{waitingPatients}</p>
+          <p className="text-xs text-slate-900 font-medium uppercase tracking-wider mb-1">Ca khám đã hoàn thành</p>
+          <p className="font-extrabold text-3xl text-slate-900">{successVisits}</p>
         </div>
 
         <div className={`${GLASS_BASE} ${GLASS_HOVER} p-6 relative overflow-hidden group cursor-pointer h-full flex flex-col`}>
-          <div className="absolute top-0 right-0 w-24 h-24 bg-sky-500/5 rounded-bl-full -z-10 group-hover:bg-sky-500/10 transition-all duration-500"></div>
-          <div className="w-12 h-12 rounded-2xl bg-sky-50 flex items-center justify-center text-sky-600 mb-4 shadow-inner border border-sky-100/50">
-            <Brain className="w-6 h-6" />
+          <div className="absolute top-0 right-0 w-24 h-24 bg-violet-500/5 rounded-bl-full -z-10 group-hover:bg-violet-500/10 transition-all duration-500"></div>
+          <div className="w-12 h-12 rounded-2xl bg-violet-50 flex items-center justify-center text-violet-600 mb-4 shadow-inner border border-violet-100/50">
+            <Clock className="w-6 h-6" />
           </div>
-          <p className="text-xs text-slate-900 font-medium uppercase tracking-wider mb-1">Kết quả AI chờ duyệt</p>
-          <p className="font-extrabold text-3xl text-slate-900">{pendingAIResults}</p>
+          <p className="text-xs text-slate-900 font-medium uppercase tracking-wider mb-1">Giờ làm việc</p>
+          <p className="font-extrabold text-3xl text-slate-900">{workHours}</p>
         </div>
 
         <div className={`${GLASS_BASE} ${GLASS_HOVER} p-6 relative overflow-hidden group cursor-pointer h-full flex flex-col`}>
-          <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-bl-full -z-10 group-hover:bg-emerald-500/10 transition-all duration-500"></div>
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 mb-4 shadow-inner border border-emerald-100/50">
-            <CheckCircle2 className="w-6 h-6" />
+          <div className="absolute top-0 right-0 w-24 h-24 bg-orange-500/5 rounded-bl-full -z-10 group-hover:bg-orange-500/10 transition-all duration-500"></div>
+          <div className="w-12 h-12 rounded-2xl bg-orange-50 flex items-center justify-center text-orange-600 mb-4 shadow-inner border border-orange-100/50">
+            <Star className="w-6 h-6" />
           </div>
-          <p className="text-xs text-slate-900 font-medium uppercase tracking-wider mb-1">Đã hoàn thành</p>
-          <p className="font-extrabold text-3xl text-slate-900">{completedPatients}</p>
+          <p className="text-xs text-slate-900 font-medium uppercase tracking-wider mb-1">Đánh giá trung bình</p>
+          <p className="font-extrabold text-3xl text-slate-900">{avgRating}</p>
         </div>
       </div>
     </div>

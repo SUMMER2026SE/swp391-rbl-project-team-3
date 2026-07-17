@@ -70,8 +70,12 @@ export function useAdvancedTimeFilter(initialPeriod = 'Tháng') {
     const context = parsePeriodContext(selectedPeriodValue, prevPeriod);
 
     if (period === 'Ngày') {
-      const lastDay = new Date(context.y, context.m, 0).getDate();
-      setSelectedPeriodValue(`${context.y}-${String(context.m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`);
+      if (prevPeriod === 'Tuần') {
+        setSelectedPeriodValue(`${context.y}-${String(context.m).padStart(2, '0')}-${String(context.d).padStart(2, '0')}`);
+      } else {
+        const lastDay = new Date(context.y, context.m, 0).getDate();
+        setSelectedPeriodValue(`${context.y}-${String(context.m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`);
+      }
     } else if (period === 'Tuần') {
       const lastDay = new Date(context.y, context.m, 0).getDate();
       setSelectedPeriodValue(`${context.y}-${String(context.m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`);
@@ -96,7 +100,13 @@ export function useAdvancedTimeFilter(initialPeriod = 'Tháng') {
     if (targetPeriod === 'Ngày') {
       const list = [];
       const lastDay = new Date(context.y, context.m, 0).getDate();
-      const refDate = new Date(context.y, context.m - 1, lastDay);
+      
+      // Calculate which week chunk the current context.d belongs to.
+      // Weeks are defined by counting backwards from lastDay in chunks of 7.
+      const weekIndex = Math.floor((lastDay - context.d) / 7);
+      const weekEndDate = lastDay - (weekIndex * 7);
+      const refDate = new Date(context.y, context.m - 1, weekEndDate);
+
       for (let i = 0; i < 7; i++) {
         const d = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate() - i);
         const dd = String(d.getDate()).padStart(2, '0');

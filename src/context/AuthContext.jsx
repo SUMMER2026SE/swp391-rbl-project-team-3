@@ -71,7 +71,7 @@ export function AuthProvider({ children }) {
     }, 6000);
     supabase
       .from('users')
-      .select('role_id')
+      .select('role_id, status')
       .eq('user_id', uid)
       .maybeSingle()
       .then(async ({ data }) => {
@@ -89,6 +89,14 @@ export function AuthProvider({ children }) {
             }
           }
         } else {
+          if (data.status && data.status !== 'ACTIVE') {
+            if (active) {
+              setRoleState({ uid, role: null, resolved: true });
+              await AuthModel.signOut();
+              window.location.replace('/login');
+            }
+            return;
+          }
           if (active) setRoleState({ uid, role: ROLE_BY_ID[Number(data.role_id)] || 'PATIENT', resolved: true });
         }
       })

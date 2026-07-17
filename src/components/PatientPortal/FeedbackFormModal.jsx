@@ -72,8 +72,8 @@ export default function FeedbackFormModal({ apt, onClose, onSubmitted }) {
   const [doctorComment, setDoctorComment] = useState('');
   const [techComment, setTechComment] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(false);
-  const [isPublicDoctor, setIsPublicDoctor] = useState(false);
-  const [isPublicTech, setIsPublicTech] = useState(false);
+  const [isPublicDoctor, setIsPublicDoctor] = useState(true);
+  const [isPublicTech, setIsPublicTech] = useState(true);
   const [images, setImages] = useState([]);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);

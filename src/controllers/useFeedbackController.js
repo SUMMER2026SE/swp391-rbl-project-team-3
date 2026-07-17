@@ -95,7 +95,22 @@ export function useFeedbackController(filterBy = {}) {
     }
   };
 
-  const getStats = (list = null) => {
+  const toggleVisibility = async (feedbackId, role, isPublic) => {
+    try {
+      const fb = (Array.isArray(feedbacks) ? feedbacks : []).find(f => f.id === feedbackId);
+      if (!fb) throw new Error("Feedback not found");
+      const updateData = {};
+      if (role === 'doctor') updateData.isDoctorPublic = isPublic;
+      if (role === 'technician') updateData.isTechnicianPublic = isPublic;
+      const updated = await FeedbackModel.update(feedbackId, updateData);
+      await fetchFeedbacks();
+      return { success: true, feedback: updated };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  };
+
+  const getStats = (list = null, role = 'doctor') => {
     const data = Array.isArray(list || feedbacks) ? (list || feedbacks) : [];
     const total = data.length;
     
@@ -107,11 +122,17 @@ export function useFeedbackController(filterBy = {}) {
     
     data.forEach(f => {
       if (!f) return;
-      const r = Math.round(f.overallRating || f.rating || 0);
+      let r = 0;
+      if (role === 'technician') {
+        r = Math.round(f.technicianRating !== undefined && f.technicianRating !== null ? f.technicianRating : (f.overallRating || f.rating || 0));
+      } else {
+        r = Math.round(f.overallRating || f.rating || 0);
+      }
+      
       if (r >= 1 && r <= 5) {
         distribution[r] = (distribution[r] || 0) + 1;
       }
-      sumRating += (f.overallRating || f.rating || 0);
+      sumRating += r;
       
       const cr = f.criteriaRatings || {};
       Object.keys(criteriaSums).forEach(key => {
@@ -148,6 +169,7 @@ export function useFeedbackController(filterBy = {}) {
     submitFeedback,
     getFeedbackByAppointment,
     updateStatus,
+    toggleVisibility,
     replyToFeedback,
     getStats,
   };

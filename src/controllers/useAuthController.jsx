@@ -353,14 +353,20 @@ export function useAuthController(onSuccessCallback = null) {
           
           if (authResult.success) {
             const { data: userData, error: userError } = await supabase
-              .from('users')
-              .select('role_id')
-              .eq('user_id', authResult.user.id)
-              .maybeSingle();
-              
+            .from('users')
+            .select('role_id, status')
+            .eq('user_id', authResult.user.id)
+            .maybeSingle();
+            
             if (userError || !userData) {
               // Fallback if user profile isn't fully generated yet
               navigate('/profile');
+              return;
+            }
+
+            if (userData.status && userData.status !== 'ACTIVE') {
+              await AuthModel.signOut();
+              setErrorMsg('Tài khoản của bạn đã bị khóa hoặc vô hiệu hóa.');
               return;
             }
 

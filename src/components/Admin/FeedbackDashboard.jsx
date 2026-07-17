@@ -97,7 +97,7 @@ function ReplyModal({ feedback, onClose, onSubmit }) {
 }
 
 // ─── Feedback Card (Admin view) ───────────────────────────────────────────────
-function FeedbackCard({ fb, onStatusChange, onReply }) {
+function FeedbackCard({ fb, onStatusChange, onReply, activeTab, onToggleVisibility }) {
   const [expanded, setExpanded] = useState(false);
   const s = STATUS_STYLES[fb.status] || STATUS_STYLES.published;
 
@@ -112,12 +112,18 @@ function FeedbackCard({ fb, onStatusChange, onReply }) {
           </div>
           <div>
             <p className="text-sm font-bold text-slate-800">{fb.patientName || 'Bệnh nhân'}</p>
-            <p className="text-xs text-slate-400">{fb.date} • {fb.service}</p>
-            <p className="text-xs text-slate-400">{fb.doctorName}</p>
+            {(fb.date || fb.service) && (
+              <p className="text-xs text-slate-400">
+                {[fb.date, fb.service].filter(Boolean).join(' • ')}
+              </p>
+            )}
+            <p className="text-xs font-semibold text-slate-500 mt-0.5">
+              {activeTab === 'technician' ? (fb.technicianName || 'Chưa cập nhật KTV') : (fb.doctorName || 'Chưa cập nhật Bác sĩ')}
+            </p>
           </div>
         </div>
         <div className="flex flex-col items-end gap-1.5 shrink-0">
-          <StarDisplay value={fb.overallRating} size="sm" />
+          <StarDisplay value={activeTab === 'technician' ? (fb.technicianRating || fb.overallRating || fb.rating || 5) : (fb.overallRating || fb.rating || 5)} size="sm" />
           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${s.bg} ${s.text} ${s.border}`}>
             {s.label}
           </span>
@@ -125,19 +131,23 @@ function FeedbackCard({ fb, onStatusChange, onReply }) {
       </div>
       <div className="text-sm text-slate-700 leading-relaxed mb-3">
         {(() => {
-          if (fb.doctorComment || fb.technicianComment) {
+          if (activeTab === 'doctor') {
             return (
               <div className="space-y-1 mt-1 text-xs text-left">
-                {fb.doctorComment && (
+                {fb.doctorComment ? (
                   <p><span className="font-bold text-slate-500">BS:</span> "{fb.doctorComment}" <span className="text-[10px] text-slate-400 font-semibold">({(fb.isDoctorPublic ?? true) ? 'Công khai' : 'Ẩn'})</span></p>
-                )}
-                {fb.technicianComment && (
+                ) : <p className="text-slate-400 italic">Chưa có đánh giá cho Bác sĩ</p>}
+              </div>
+            );
+          } else {
+            return (
+              <div className="space-y-1 mt-1 text-xs text-left">
+                {fb.technicianComment ? (
                   <p><span className="font-bold text-slate-500">KTV:</span> "{fb.technicianComment}" <span className="text-[10px] text-slate-400 font-semibold">({(fb.isTechnicianPublic ?? true) ? 'Công khai' : 'Ẩn'})</span></p>
-                )}
+                ) : <p className="text-slate-400 italic">Chưa có đánh giá cho KTV</p>}
               </div>
             );
           }
-          return <p className="line-clamp-2">"{fb.comment || 'Chưa có nhận xét'}"</p>;
         })()}
       </div>
       {/* Images */}
@@ -182,19 +192,36 @@ function FeedbackCard({ fb, onStatusChange, onReply }) {
           className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 transition-all cursor-pointer">
           <Reply className="w-3 h-3" /> {fb.adminReply ? 'Sửa phản hồi' : 'Phản hồi'}
         </button>
-        {fb.status !== 'hidden' && (
-          <button onClick={() => onStatusChange(fb.id, 'hidden')}
+        {activeTab === 'doctor' && (fb.isDoctorPublic ?? true) && (
+          <button onClick={() => onToggleVisibility(fb.id, 'doctor', false)}
             className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200 transition-all cursor-pointer">
-            <EyeOff className="w-3 h-3" /> Ẩn
+            <EyeOff className="w-3 h-3" /> Ẩn bình luận
           </button>
         )}
-        {fb.status === 'hidden' && (
-          <button onClick={() => onStatusChange(fb.id, 'published')}
+        {activeTab === 'doctor' && !(fb.isDoctorPublic ?? true) && (
+          <button onClick={() => onToggleVisibility(fb.id, 'doctor', true)}
             className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-all cursor-pointer">
-            <Eye className="w-3 h-3" /> Hiện lại
+            <Eye className="w-3 h-3" /> Hiện bình luận
           </button>
         )}
-        {fb.status !== 'flagged' && (
+        {activeTab === 'technician' && (fb.isTechnicianPublic ?? true) && (
+          <button onClick={() => onToggleVisibility(fb.id, 'technician', false)}
+            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200 transition-all cursor-pointer">
+            <EyeOff className="w-3 h-3" /> Ẩn bình luận
+          </button>
+        )}
+        {activeTab === 'technician' && !(fb.isTechnicianPublic ?? true) && (
+          <button onClick={() => onToggleVisibility(fb.id, 'technician', true)}
+            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-all cursor-pointer">
+            <Eye className="w-3 h-3" /> Hiện bình luận
+          </button>
+        )}
+        {fb.status === 'flagged' ? (
+          <button onClick={() => onStatusChange(fb.id, 'published')}
+            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-sky-50 text-sky-600 border border-sky-200 hover:bg-sky-100 transition-all cursor-pointer">
+            <CheckCircle2 className="w-3 h-3" /> Bỏ gắn cờ
+          </button>
+        ) : (
           <button onClick={() => onStatusChange(fb.id, 'flagged')}
             className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 transition-all cursor-pointer">
             <Flag className="w-3 h-3" /> Gắn cờ
@@ -207,24 +234,28 @@ function FeedbackCard({ fb, onStatusChange, onReply }) {
 
 // ─── Main FeedbackDashboard ───────────────────────────────────────────────────
 export default function FeedbackDashboard() {
-  const { feedbacks, getStats, updateStatus, replyToFeedback } = useFeedbackController();
+  const { feedbacks, getStats, updateStatus, toggleVisibility, replyToFeedback } = useFeedbackController();
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterRating, setFilterRating] = useState(0);
   const [replyTarget, setReplyTarget] = useState(null);
+  const [activeTab, setActiveTab] = useState('doctor');
 
   // Filter
   const filtered = feedbacks?.filter?.(f => {
+    const searchTarget = activeTab === 'technician' ? (f.technicianName || '') : (f.doctorName || '');
     const matchSearch = search === '' ||
       (f.patientName || '').toLowerCase().includes(search.toLowerCase()) ||
-      (f.doctorName || '').toLowerCase().includes(search.toLowerCase()) ||
+      searchTarget.toLowerCase().includes(search.toLowerCase()) ||
       (f.comment || '').toLowerCase().includes(search.toLowerCase());
     const matchStatus = filterStatus === 'all' || f.status === filterStatus;
-    const matchRating = filterRating === 0 || f.overallRating === filterRating;
+    
+    let roleRating = activeTab === 'technician' ? (f.technicianRating || f.overallRating || f.rating || 0) : (f.overallRating || f.rating || 0);
+    const matchRating = filterRating === 0 || Math.round(roleRating) === filterRating;
     return matchSearch && matchStatus && matchRating;
   });
 
-  const stats = getStats(feedbacks?.filter?.(f => f.status === 'published'));
+  const stats = getStats(feedbacks?.filter?.(f => f.status === 'published'), activeTab);
 
   const handleReplySubmit = (text) => {
     replyToFeedback(replyTarget.id, text);
@@ -268,6 +299,24 @@ export default function FeedbackDashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Tabs */}
+      <div className="flex justify-start mb-6">
+        <div className="inline-flex bg-white/60 p-1.5 rounded-[20px] shadow-sm backdrop-blur-xl border border-white">
+          <button
+            onClick={() => setActiveTab('doctor')}
+            className={`px-8 py-3 rounded-2xl font-bold text-sm transition-all duration-300 border-none cursor-pointer ${activeTab === 'doctor' ? 'bg-white text-indigo-600 shadow-[0_4px_12px_rgba(0,0,0,0.05)]' : 'bg-transparent text-slate-500 hover:text-slate-700'}`}
+          >
+            Bác sĩ Chuyên khoa
+          </button>
+          <button
+            onClick={() => setActiveTab('technician')}
+            className={`px-8 py-3 rounded-2xl font-bold text-sm transition-all duration-300 border-none cursor-pointer ${activeTab === 'technician' ? 'bg-white text-indigo-600 shadow-[0_4px_12px_rgba(0,0,0,0.05)]' : 'bg-transparent text-slate-500 hover:text-slate-700'}`}
+          >
+            Kỹ thuật viên
+          </button>
+        </div>
+      </div>
+
       {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
@@ -366,7 +415,6 @@ export default function FeedbackDashboard() {
           {filtered.length} / {feedbacks.length} đánh giá
         </span>
       </div>
-      {/* Feedback List */}
       <div className="space-y-4">
         {filtered.length > 0 ? (
           filtered?.map?.(fb => (
@@ -375,6 +423,8 @@ export default function FeedbackDashboard() {
               fb={fb}
               onStatusChange={updateStatus}
               onReply={setReplyTarget}
+              activeTab={activeTab}
+              onToggleVisibility={toggleVisibility}
             />
           ))
         ) : (

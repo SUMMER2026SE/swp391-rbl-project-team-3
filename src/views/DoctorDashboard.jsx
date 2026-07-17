@@ -427,14 +427,7 @@ export default function DoctorDashboard() {
         customKey={activeAppointment ? `exam-${activeAppointment.id}` : `tab-${activeTab}`}
         onTabChange={(id) => { setActiveTab(id); setActiveAppointment(null); }}
         pageTitle={getPageTitle()}
-        searchPlaceholder="Tìm kiếm bệnh nhân, hồ sơ..."
-        onSearch={(v) => {
-          setGlobalSearch(v);
-          if (v.trim() && activeTab !== 'history' && activeTab !== 'waiting_list') {
-            setActiveTab('history');
-            setActiveAppointment(null);
-          }
-        }}
+        showSearch={false}
         headerExtras={headerExtras}
       >
         {activeAppointment ? (

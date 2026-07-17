@@ -35,26 +35,27 @@ function DoctorReviewsList({ doctorId, isTechnician }) {
 
   // Filter public comments
   const visibleFeedbacks = (feedbacks || []).map(fb => {
+    if (fb.status && fb.status !== 'published') return null;
+
+    let commentText = null;
+    
     if (isTechnician) {
       // Only show feedbacks where this person is the technician
       if (String(fb.technicianId || fb.technician_id) !== String(doctorId)) return null;
-      if (fb.technicianComment && (fb.isTechnicianPublic ?? true)) {
-        return { ...fb, commentText: fb.technicianComment };
-      }
+      if (fb.isTechnicianPublic === false) return null;
+      commentText = fb.technicianComment;
     } else {
       // For doctors — feedbacks are already filtered by doctorId
-      if (fb.doctorComment && (fb.isDoctorPublic ?? true)) {
-        return { ...fb, commentText: fb.doctorComment };
+      if (fb.isDoctorPublic === false || fb.isPublic === false) return null;
+      commentText = fb.doctorComment;
+      
+      // Legacy fallback
+      if (!commentText && !fb.technicianComment && fb.comment) {
+        commentText = fb.comment;
       }
     }
     
-    // Legacy fallback
-    if (!fb.doctorComment && !fb.technicianComment && fb.comment) {
-      if (isTechnician) return null;
-      return (fb.isPublic !== false || (fb.isDoctorPublic ?? true)) ? { ...fb, commentText: fb.comment } : null;
-    }
-    
-    return null;
+    return { ...fb, commentText };
   }).filter(Boolean);
 
   if (visibleFeedbacks.length === 0) return <div className="text-slate-500 text-sm mt-6 bg-slate-50/80 backdrop-blur-sm p-4 rounded-2xl border border-slate-100">Chưa có đánh giá nào cho chuyên gia này.</div>;
@@ -65,7 +66,7 @@ function DoctorReviewsList({ doctorId, isTechnician }) {
         <span className="material-symbols-outlined text-[18px] text-sky-500">forum</span>
         Đánh giá từ bệnh nhân ({visibleFeedbacks.length})
       </h4>
-      <div className="flex flex-col gap-3 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
+      <div className="flex flex-col gap-3">
         {visibleFeedbacks.map((fb, idx) => (
           <div key={idx} className="bg-white/60 backdrop-blur-md border border-slate-200/50 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
             <div className="flex items-center justify-between">
@@ -73,7 +74,7 @@ function DoctorReviewsList({ doctorId, isTechnician }) {
                 <div className="w-6 h-6 rounded-full bg-sky-100 text-sky-600 flex items-center justify-center text-[10px] font-bold uppercase">
                   {fb.isAnonymous ? '?' : (fb.patientName || 'A').charAt(0)}
                 </div>
-                {fb.isAnonymous ? 'Bệnh nhân ẩn danh' : (fb.patientName || 'Bệnh nhân')}
+                {fb.isAnonymous ? 'Bệnh nhân' : (fb.patientName || 'Bệnh nhân')}
               </span>
               <span className="text-amber-500 text-[11px] font-bold bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-100 flex items-center gap-1">
                 {fb.overallRating || fb.rating || 5} <span className="material-symbols-outlined text-[12px] leading-none">star</span>
@@ -1432,7 +1433,9 @@ function LandingPage({ onLogout }) {
                     <div className="bg-white/50 backdrop-blur-md rounded-2xl p-4 border border-white/60 shadow-sm">
                       <span className="material-symbols-outlined text-sky-500 mb-1">star</span>
                       <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Đánh giá</p>
-                      <p className="text-sm font-bold text-slate-800">{selectedDoctor.rating} ★</p>
+                      <p className="text-sm font-bold text-slate-800">
+                        {selectedDoctor.rating ? `${selectedDoctor.rating} ★` : 'Chưa có'}
+                      </p>
                     </div>
                     <div className="bg-white/50 backdrop-blur-md rounded-2xl p-4 border border-white/60 shadow-sm">
                       <span className="material-symbols-outlined text-teal-500 mb-1">calendar_month</span>

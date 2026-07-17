@@ -110,12 +110,7 @@ export default function FeedbackCard({
             <div>
               {showPatient && (
                 <p className="text-sm font-bold text-slate-800 leading-none mb-0.5">
-                  {fb.isAnonymous ? 'Ẩn danh' : fb.patientName}
-                  {fb.isAnonymous && (
-                    <span className="ml-2 text-[10px] font-bold text-violet-600 bg-violet-50 border border-violet-200 rounded-full px-1.5 py-0.5">
-                      Ẩn danh
-                    </span>
-                  )}
+                  {fb.isAnonymous ? 'Bệnh nhân' : fb.patientName}
                 </p>
               )}
               {showDoctor && (

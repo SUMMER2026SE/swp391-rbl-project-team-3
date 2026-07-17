@@ -37,14 +37,24 @@ export function useDoctors() {
       if (fetchError) throw fetchError;
 
       // Fetch all feedbacks to compute real ratings and review counts dynamically
+      // Only include feedbacks where the doctor's review is public
       const { data: feedbackData } = await anonSupabase
         .from('feedbacks')
-        .select('doctor_id, rating');
+        .select('doctor_id, rating, is_doctor_public, criteria_ratings');
 
       const statsMap = {};
       if (feedbackData) {
         feedbackData.forEach(f => {
           if (!f.doctor_id) return;
+          if (f.is_doctor_public === false) return; // Ignore explicitly hidden feedbacks
+          
+          let fbStatus = 'published';
+          if (f.criteria_ratings) {
+            const cr = typeof f.criteria_ratings === 'string' ? JSON.parse(f.criteria_ratings) : f.criteria_ratings;
+            fbStatus = cr.status || 'published';
+          }
+          if (fbStatus !== 'published') return;
+
           if (!statsMap[f.doctor_id]) statsMap[f.doctor_id] = { sum: 0, count: 0 };
           const r = Number(f.rating);
           statsMap[f.doctor_id].sum += isNaN(r) ? 5 : r;
@@ -167,11 +177,21 @@ export function useTechnicians() {
 
       const { data: feedbackData } = await anonSupabase
         .from('feedbacks')
-        .select('technician_id, rating, technician_rating, criteria_ratings');
+        .select('technician_id, rating, technician_rating, criteria_ratings, is_technician_public');
 
       const statsMap = {};
       if (feedbackData) {
         feedbackData.forEach(f => {
+          if (!f.technician_id) return;
+          if (f.is_technician_public === false) return; // Ignore explicitly hidden feedbacks
+          
+          let fbStatus = 'published';
+          if (f.criteria_ratings) {
+            const cr = typeof f.criteria_ratings === 'string' ? JSON.parse(f.criteria_ratings) : f.criteria_ratings;
+            fbStatus = cr.status || 'published';
+          }
+          if (fbStatus !== 'published') return;
+          
           let ratingVal = null;
           
           if (f.technician_rating !== null && f.technician_rating !== undefined) {
@@ -185,11 +205,9 @@ export function useTechnicians() {
             ratingVal = Number(f.rating) || 5;
           }
           
-          if (f.technician_id) {
-            if (!statsMap[f.technician_id]) statsMap[f.technician_id] = { sum: 0, count: 0 };
-            statsMap[f.technician_id].sum += ratingVal;
-            statsMap[f.technician_id].count += 1;
-          }
+          if (!statsMap[f.technician_id]) statsMap[f.technician_id] = { sum: 0, count: 0 };
+          statsMap[f.technician_id].sum += ratingVal;
+          statsMap[f.technician_id].count += 1;
         });
       }
 
@@ -204,7 +222,7 @@ export function useTechnicians() {
         }
 
         const fStats = statsMap[user.user_id];
-        const rating = fStats && fStats.count > 0 ? Number((fStats.sum / fStats.count).toFixed(1)) : 4.7;
+        const rating = fStats && fStats.count > 0 ? Number((fStats.sum / fStats.count).toFixed(1)) : null;
         const reviewsCount = fStats ? fStats.count : 0;
 
         return {
