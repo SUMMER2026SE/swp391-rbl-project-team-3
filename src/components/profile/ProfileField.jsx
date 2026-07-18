@@ -37,10 +37,10 @@ export default function ProfileField({
       <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-4">
         {/* Label */}
         <div className="flex items-center gap-2.5 w-full sm:w-44 shrink-0">
-          <span className={`${canEdit ? 'text-primary' : 'text-on-surface-variant/60'} transition-colors`}>
+          <span className={`${canEdit ? 'text-primary' : 'text-on-surface-variant/80'} transition-colors`}>
             <Icon className="w-4 h-4" />
           </span>
-          <span className="text-[11px] font-bold text-on-surface-variant/70 uppercase tracking-wider">
+          <span className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">
             {label}
           </span>
           {!editable && (
@@ -61,7 +61,7 @@ export default function ProfileField({
             />
           ) : (
             <div className="w-full text-[15px] font-semibold text-on-surface px-4 py-2.5 rounded-xl bg-white/55 border border-white/60 truncate">
-              {value || <span className="text-on-surface-variant/40 font-normal">—</span>}
+              {value || <span className="text-on-surface-variant/60 font-normal">—</span>}
             </div>
           )}
         </div>

@@ -16,8 +16,8 @@ import { GLASS_BASE } from '../common/GlassCard';
 function InfoRow({ icon: Icon, label, value, valueNode }) {
   return (
     <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-2xl bg-white/40 border border-white/55">
-      <span className="inline-flex items-center gap-2 text-sm font-medium text-on-surface-variant/70">
-        <Icon className="w-4 h-4 text-on-surface-variant/50" /> {label}
+      <span className="inline-flex items-center gap-2 text-sm font-medium text-on-surface-variant">
+        <Icon className="w-4 h-4 text-on-surface-variant/70" /> {label}
       </span>
       {valueNode || <span className="text-sm font-bold text-on-surface truncate max-w-[55%] text-right">{value}</span>}
     </div>
@@ -110,12 +110,13 @@ export default function ProfileSummaryCard({ profile, onAvatarChange }) {
         {profile.roleLabel}
       </span>
       {profile.kind === 'staff' && (
-        <p className="mt-2 text-sm font-semibold text-on-surface-variant/70 leading-relaxed">
+        <p className="mt-2 text-sm font-semibold text-on-surface-variant/90 leading-relaxed">
           {profile.employeeId} • {profile.department}
         </p>
       )}
       {/* Contact quick-actions removed as per request */}
-      {/* Quick metrics — data over labels */}
+      {/* Quick metrics — data over labels (section hidden when the role has none) */}
+      {metrics?.length > 0 && (
       <div className="w-full mt-5 pt-5 border-t border-white/50 grid grid-cols-1 gap-2.5">
         {metrics?.map?.((m) => {
           const Icon = m.icon;
@@ -129,16 +130,17 @@ export default function ProfileSummaryCard({ profile, onAvatarChange }) {
                 <Icon className="w-5 h-5" />
               </span>
               <div className="min-w-0 text-left">
-                <p className="text-sm font-medium text-on-surface-variant/70 leading-none">{m.label}</p>
+                <p className="text-sm font-medium text-on-surface-variant leading-none">{m.label}</p>
                 <p className={`mt-1 text-2xl font-extrabold leading-none ${m.accent}`}>{m.value}</p>
                 {profile.memberSince && (
-                  <p className="mt-1.5 text-[10px] text-on-surface-variant/50 font-medium italic">Tính từ {profile.memberSince}</p>
+                  <p className="mt-1.5 text-[10px] text-on-surface-variant/75 font-medium italic">Tính từ {profile.memberSince}</p>
                 )}
               </div>
             </div>
           );
         })}
       </div>
+      )}
       {/* Administrative info — fills the column, anchored to the bottom */}
       <div className="w-full mt-auto pt-5 border-t border-white/50 space-y-2.5">
         <InfoRow

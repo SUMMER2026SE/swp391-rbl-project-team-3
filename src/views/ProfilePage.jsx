@@ -81,17 +81,17 @@ export default function ProfilePage() {
     if (profile.role === 'TECHNICIAN') {
       return [
         ...common,
-        { id: 'timesheet', label: 'Chấm công', icon: Clock },
+        { id: 'timesheet', label: 'Giờ làm việc', icon: Clock },
         { id: 'work_schedule', label: 'Lịch làm việc', icon: CalendarDays },
       ];
     }
     if (profile.role === 'RECEPTIONIST') {
-      return [...common, { id: 'timesheet', label: 'Chấm công', icon: Clock }];
+      return [...common, { id: 'timesheet', label: 'Giờ làm việc', icon: Clock }];
     }
     if (profile.kind === 'staff') {
       return [
         ...common,
-        { id: 'timesheet', label: 'Chấm công', icon: Clock },
+        { id: 'timesheet', label: 'Giờ làm việc', icon: Clock },
         { id: 'insights', label: 'Hồ sơ chuyên sâu', icon: BarChart3 },
       ];
     }
@@ -179,7 +179,7 @@ export default function ProfilePage() {
           </button>
           <div>
             <h1 className="text-2xl font-extrabold text-on-surface tracking-tight">Hồ sơ cá nhân</h1>
-            <p className="text-xs text-on-surface-variant/70 mt-0.5">Quản lý thông tin & hồ sơ của bạn</p>
+            <p className="text-xs text-on-surface-variant/90 mt-0.5">Quản lý thông tin & hồ sơ của bạn</p>
           </div>
         </div>
 

@@ -43,7 +43,7 @@ function Section({ icon: Icon, title, subtitle, accent = 'text-primary', tint = 
         </span>
         <div>
           <h4 className="text-lg font-extrabold text-on-surface leading-tight tracking-tight">{title}</h4>
-          {subtitle && <p className="text-sm font-medium text-on-surface-variant/70">{subtitle}</p>}
+          {subtitle && <p className="text-sm font-medium text-on-surface-variant">{subtitle}</p>}
         </div>
       </div>
       {children}
@@ -75,10 +75,10 @@ export default function MedicalRecordTab({ profile }) {
           <span className="text-primary/50 font-semibold">• {c.specialty}</span>
         </span>
         {/* diagnosis = hero data */}
-        <p className="text-sm font-medium text-on-surface-variant/70">Chẩn đoán</p>
+        <p className="text-sm font-medium text-on-surface-variant">Chẩn đoán</p>
         <p className="text-lg font-extrabold text-on-surface leading-snug">
           {c.diagnosis}
-          {c.diagnosisCode && <span className="text-sm font-bold text-on-surface-variant/40"> · {c.diagnosisCode}</span>}
+          {c.diagnosisCode && <span className="text-sm font-bold text-on-surface-variant/60"> · {c.diagnosisCode}</span>}
         </p>
         <div className="flex items-center justify-between gap-3 mt-2.5">
           <span className="inline-flex items-center gap-1.5 text-sm font-bold text-on-surface-variant/80">
@@ -101,7 +101,7 @@ export default function MedicalRecordTab({ profile }) {
     <div className="space-y-5">
       <div>
         <h3 className="text-2xl font-extrabold text-on-surface tracking-tight">Hồ sơ bệnh án</h3>
-        <p className="text-sm font-medium text-on-surface-variant/70 mt-1 leading-relaxed">
+        <p className="text-sm font-medium text-on-surface-variant mt-1 leading-relaxed">
           Bản tổng hợp sức khỏe của bạn — chỉ xem. Liên hệ phòng khám để cập nhật.
         </p>
       </div>
@@ -146,7 +146,7 @@ function EmptyState({ text }) {
   return (
     <div className="text-center py-8 border border-dashed border-slate-200 rounded-2xl bg-white/50">
       <FileText className="w-7 h-7 text-slate-300 mx-auto mb-2" />
-      <p className="text-sm font-medium text-on-surface-variant/70">{text}</p>
+      <p className="text-sm font-medium text-on-surface-variant">{text}</p>
     </div>
   );
 }

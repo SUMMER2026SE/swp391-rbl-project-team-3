@@ -19,7 +19,7 @@ export default function StaffInsightsTab({ profile }) {
     <div className="space-y-6">
       <div>
         <h3 className="text-xl font-extrabold text-on-surface tracking-tight">Hồ sơ chuyên sâu</h3>
-        <p className="text-sm text-on-surface-variant/70 mt-0.5">
+        <p className="text-sm text-on-surface-variant mt-0.5">
           Chỉ số hiệu suất và thông tin công tác của bạn.
         </p>
       </div>
@@ -40,7 +40,7 @@ export default function StaffInsightsTab({ profile }) {
               </span>
               <div>
                 <p className={`text-3xl font-extrabold leading-none ${m.accent}`}>{m.value ?? '—'}</p>
-                <p className="text-xs font-semibold text-on-surface-variant/70 mt-1.5">{m.label}</p>
+                <p className="text-xs font-semibold text-on-surface-variant mt-1.5">{m.label}</p>
               </div>
               <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 mt-auto">
                 <TrendingUp className="w-3.5 h-3.5" /> Cập nhật theo thời gian thực
@@ -78,7 +78,7 @@ function InfoTile({ icon: Icon, label, value, accent, full }) {
         <Icon className="w-4 h-4" />
       </span>
       <div className="min-w-0">
-        <p className="text-[11px] font-bold text-on-surface-variant/60 uppercase tracking-wider">{label}</p>
+        <p className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">{label}</p>
         <p className="text-sm font-bold text-on-surface truncate">{value || '—'}</p>
       </div>
     </div>

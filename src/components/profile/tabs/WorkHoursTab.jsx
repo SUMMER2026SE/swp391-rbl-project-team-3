@@ -142,7 +142,7 @@ export default function WorkHoursTab({ staffId }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center gap-2 py-16 text-slate-400 text-sm font-semibold">
-        <Loader2 className="w-4 h-4 animate-spin" /> Đang tải dữ liệu chấm công…
+        <Loader2 className="w-4 h-4 animate-spin" /> Đang tải dữ liệu giờ làm việc…
       </div>
     );
   }
@@ -155,8 +155,8 @@ export default function WorkHoursTab({ staffId }) {
           <Clock className="w-6 h-6" />
         </div>
         <div>
-          <h3 className="text-lg font-bold text-slate-900">Chấm công & Giờ làm việc</h3>
-          <p className="text-xs text-slate-400 mt-0.5">Theo dõi số giờ bạn đã làm theo tuần, tháng hoặc năm — chỉ tính các ca đã xác nhận</p>
+          <h3 className="text-lg font-bold text-slate-900">Thống kê giờ làm việc</h3>
+          <p className="text-xs text-slate-500 mt-0.5">Theo dõi số giờ bạn đã làm theo tuần, tháng hoặc năm — chỉ tính các ca đã xác nhận</p>
         </div>
       </div>
 
@@ -214,26 +214,26 @@ export default function WorkHoursTab({ staffId }) {
           {/* Stat tiles */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="bg-teal-50 border border-teal-100 rounded-2xl p-4">
-              <p className="text-[11px] font-bold text-slate-500 flex items-center gap-1.5"><Timer className="w-3.5 h-3.5 text-teal-600" /> Tổng giờ đã làm</p>
+              <p className="text-[11px] font-bold text-slate-600 flex items-center gap-1.5"><Timer className="w-3.5 h-3.5 text-teal-600" /> Tổng giờ đã làm</p>
               <p className="mt-1.5 text-3xl font-extrabold text-teal-700 leading-none">{fmtH(doneHours)}<span className="text-sm font-bold text-teal-600/70 ml-1">giờ</span></p>
             </div>
             <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4">
-              <p className="text-[11px] font-bold text-slate-500 flex items-center gap-1.5"><CalendarCheck className="w-3.5 h-3.5 text-emerald-600" /> Ca đã hoàn thành</p>
+              <p className="text-[11px] font-bold text-slate-600 flex items-center gap-1.5"><CalendarCheck className="w-3.5 h-3.5 text-emerald-600" /> Ca đã hoàn thành</p>
               <p className="mt-1.5 text-3xl font-extrabold text-emerald-700 leading-none">{doneCount}<span className="text-sm font-bold text-emerald-600/70 ml-1">ca</span></p>
             </div>
             <div className="bg-sky-50 border border-sky-100 rounded-2xl p-4">
-              <p className="text-[11px] font-bold text-slate-500 flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-sky-600" /> Trung bình / ca</p>
+              <p className="text-[11px] font-bold text-slate-600 flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-sky-600" /> Trung bình / ca</p>
               <p className="mt-1.5 text-3xl font-extrabold text-sky-700 leading-none">{fmtH(avgHours)}<span className="text-sm font-bold text-sky-600/70 ml-1">giờ</span></p>
             </div>
             <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4">
-              <p className="text-[11px] font-bold text-slate-500 flex items-center gap-1.5"><CalendarClock className="w-3.5 h-3.5 text-slate-500" /> Giờ sắp tới trong kỳ</p>
+              <p className="text-[11px] font-bold text-slate-600 flex items-center gap-1.5"><CalendarClock className="w-3.5 h-3.5 text-slate-500" /> Giờ sắp tới trong kỳ</p>
               <p className="mt-1.5 text-3xl font-extrabold text-slate-600 leading-none">{fmtH(upcomingHours)}<span className="text-sm font-bold text-slate-500/70 ml-1">giờ</span></p>
             </div>
           </div>
 
           {/* Bar breakdown — single series (worked hours), brand teal */}
           <div className="bg-white/60 border border-white/70 backdrop-blur-xl rounded-2xl p-5">
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">
+            <p className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-4">
               Giờ đã làm {mode === 'week' ? 'theo ngày' : mode === 'month' ? 'theo tuần' : 'theo tháng'}
             </p>
             {maxBucket > 0 ? (
@@ -267,7 +267,7 @@ export default function WorkHoursTab({ staffId }) {
             {/* bucket labels under the baseline */}
             <div className="flex gap-1.5 mt-2">
               {buckets.map((b) => (
-                <span key={b.label} className="flex-1 min-w-0 text-center text-[10px] font-bold text-slate-500 truncate">{b.label}</span>
+                <span key={b.label} className="flex-1 min-w-0 text-center text-[10px] font-bold text-slate-600 truncate">{b.label}</span>
               ))}
             </div>
           </div>

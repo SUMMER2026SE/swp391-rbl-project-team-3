@@ -14,7 +14,7 @@ function PasswordInput({ label, value, onChange, placeholder }) {
   const [show, setShow] = useState(false);
   return (
     <div>
-      <label className="block text-[11px] font-bold text-on-surface-variant/70 uppercase tracking-wider mb-2">
+      <label className="block text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-2">
         {label}
       </label>
       <div className="relative">
@@ -28,7 +28,7 @@ function PasswordInput({ label, value, onChange, placeholder }) {
         <button
           type="button"
           onClick={() => setShow((s) => !s)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/50 hover:text-on-surface
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/70 hover:text-on-surface
                      bg-transparent border-none cursor-pointer p-1"
         >
           {show ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
@@ -43,7 +43,7 @@ function ToggleRow({ label, description, checked = false, onChange }) {
     <div className={`flex items-center justify-between gap-4 ${GLASS_INPUT_RECESSED} px-4 py-3.5`}>
       <div className="min-w-0">
         <p className="text-sm font-bold text-on-surface">{label}</p>
-        <p className="text-xs text-on-surface-variant/70 mt-0.5">{description}</p>
+        <p className="text-xs text-on-surface-variant mt-0.5">{description}</p>
       </div>
       <button
         onClick={() => onChange(!checked)}
@@ -126,7 +126,7 @@ export default function AccountSettingsTab() {
     <div className="space-y-6">
       <div>
         <h3 className="text-xl font-extrabold text-on-surface tracking-tight">Cài đặt tài khoản</h3>
-        <p className="text-sm text-on-surface-variant/70 mt-0.5">Bảo mật và tùy chọn thông báo của bạn.</p>
+        <p className="text-sm text-on-surface-variant mt-0.5">Bảo mật và tùy chọn thông báo của bạn.</p>
       </div>
 
       <AnimatePresence>

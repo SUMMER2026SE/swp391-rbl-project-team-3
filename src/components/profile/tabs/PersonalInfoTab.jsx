@@ -112,7 +112,7 @@ export default function PersonalInfoTab({ profile, onSaved }) {
       <div className="flex items-center justify-between gap-4">
         <div>
           <h3 className="text-xl font-extrabold text-on-surface tracking-tight">Thông tin cá nhân</h3>
-          <p className="text-sm text-on-surface-variant/70 mt-0.5">
+          <p className="text-sm text-on-surface-variant mt-0.5">
             Quản lý thông tin liên hệ và hồ sơ của bạn.
           </p>
         </div>

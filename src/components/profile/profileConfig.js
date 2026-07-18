@@ -79,7 +79,11 @@ export const ROLE_METRICS = {
     { icon: Users, label: 'Nhân sự quản lý', value: null, accent: 'text-violet-600' },
     { icon: Activity, label: 'Phiên hệ thống', value: null, accent: 'text-fuchsia-600' },
   ],
-  DOCTOR: [],
+  DOCTOR: [
+    { icon: Stethoscope, label: 'Ca khám thành công', value: null, accent: 'text-emerald-600' },
+    { icon: Clock, label: 'Giờ làm việc', value: null, accent: 'text-teal-600' },
+    { icon: Star, label: 'Đánh giá trung bình', value: null, accent: 'text-amber-500' },
+  ],
   TECHNICIAN: [
     { icon: FlaskConical, label: 'Thủ thuật hoàn tất', value: null, accent: 'text-sky-600' },
     { icon: Clock, label: 'Giờ làm việc', value: null, accent: 'text-indigo-600' },
