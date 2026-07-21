@@ -1,3 +1,5 @@
+[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/r92bbHwx)
+
 # DermaSmart - Dermatology Clinic Management System
 
 DermaSmart là hệ thống quản lý phòng khám da liễu toàn diện dành cho các cơ sở y tế và thẩm mỹ da liễu. Hệ thống tích hợp các công nghệ thông minh bao gồm trợ lý lễ tân ảo (DermaBot), trợ lý ghi chép bệnh án y khoa (Ambient Scribe) bằng mô hình ngôn ngữ lớn (Gemini), và module tự động phân tích tình trạng da mặt (MediaPipe & Gemini).
