@@ -100,12 +100,17 @@ function TicketCard({ ticket }) {
               {images.map((img) => (
                 <div
                   key={img.url}
-                  className="relative rounded-xl overflow-hidden border border-slate-200/60 bg-slate-50"
+                  className="relative rounded-xl overflow-hidden border border-slate-200/60 bg-slate-50 min-h-[8rem]"
                 >
+                  {/* NOT `loading="lazy"`: with `h-auto` the element is 0px tall
+                      until the photo decodes, so the lazy IntersectionObserver
+                      never saw it intersect, never fetched it, and it stayed 0px
+                      forever — the card announced "Đã có kết quả" over an empty
+                      strip. These are the few result photos the doctor opened the
+                      record to read, so they load eagerly. */}
                   <img
                     src={img.url}
                     alt={img.name}
-                    loading="lazy"
                     className="w-full h-auto max-h-72 object-contain"
                   />
                   <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent px-2.5 py-1.5">

@@ -23,7 +23,6 @@ export default function DashboardOverview({ doctorId }) {
     };
 
     fetchAppointments();
-    fetchAppointments();
     window.addEventListener('appointments-updated', fetchAppointments);
     return () => {
       window.removeEventListener('appointments-updated', fetchAppointments);
@@ -58,29 +57,39 @@ export default function DashboardOverview({ doctorId }) {
         setAvgRating((sum / feedbacks.length).toFixed(1) + '/5');
       }
 
-      // 3. Giờ làm việc thực tế
-      const today = new Date();
-      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      // 3. Giờ làm việc — the CURRENT WEEK (Mon–Sun), not every confirmed shift
+      // ever worked. This tile sits next to "Tổng bệnh nhân hôm nay", so an
+      // all-time running total (it read "47 giờ") was taken for a short-term
+      // figure. Dates are local YYYY-MM-DD, matching how `work_date` is stored.
+      const toLocalYmd = (d) => d.toLocaleDateString('en-CA');
+      const now = new Date();
+      // getDay(): Sun=0 → shift so the week starts on Monday.
+      const mondayOffset = (now.getDay() + 6) % 7;
+      const weekStart = new Date(now);
+      weekStart.setDate(now.getDate() - mondayOffset);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
 
       const { data: shifts } = await supabase
         .from('doctor_shifts')
         .select('start_time, end_time')
         .eq('doctor_id', doctorId)
         .eq('status', 'Đã xác nhận')
-        .lte('work_date', todayStr);
-      
-      if (shifts && shifts.length > 0) {
-        const parseTimeToHours = (t) => {
-          if (!t) return 0;
-          const [h, m] = t.split(':').map(Number);
-          return h + (m || 0) / 60;
-        };
-        const hours = shifts.reduce((acc, s) => {
-          const diff = parseTimeToHours(s.end_time) - parseTimeToHours(s.start_time);
-          return acc + (diff > 0 ? diff : 0);
-        }, 0);
-        if (hours > 0) setWorkHours(`${Math.round(hours)} giờ`);
-      }
+        .gte('work_date', toLocalYmd(weekStart))
+        .lte('work_date', toLocalYmd(weekEnd));
+
+      const parseTimeToHours = (t) => {
+        if (!t) return 0;
+        const [h, m] = t.split(':').map(Number);
+        return h + (m || 0) / 60;
+      };
+      const hours = (shifts || []).reduce((acc, s) => {
+        const diff = parseTimeToHours(s.end_time) - parseTimeToHours(s.start_time);
+        return acc + (diff > 0 ? diff : 0);
+      }, 0);
+      // Set unconditionally: a week with no confirmed shift must read "0 giờ",
+      // not silently keep a stale value from a previous doctor selection.
+      setWorkHours(`${Math.round(hours)} giờ`);
     };
 
     fetchDoctorMetrics();
@@ -114,7 +123,7 @@ export default function DashboardOverview({ doctorId }) {
           <div className="w-12 h-12 rounded-2xl bg-violet-50 flex items-center justify-center text-violet-600 mb-4 shadow-inner border border-violet-100/50">
             <Clock className="w-6 h-6" />
           </div>
-          <p className="text-xs text-slate-900 font-medium uppercase tracking-wider mb-1">Giờ làm việc</p>
+          <p className="text-xs text-slate-900 font-medium uppercase tracking-wider mb-1">Giờ làm tuần này</p>
           <p className="font-extrabold text-3xl text-slate-900">{workHours}</p>
         </div>
 

@@ -401,7 +401,11 @@ export default function VirtualClinicWorkspace({ appointment, onBack, handleComp
           {!isReviewMode && (
             <AmbientScribePanel patientName={patientName} onApply={handleApplyScribeDraft} />
           )}
-          <PatientVitals patientId={patientId} />
+          <PatientVitals
+            patientId={patientId}
+            fallbackName={patientName}
+            fallbackPhone={appointment?.patientPhone || appointment?.patient_phone || ''}
+          />
           {/* Scoped to THIS appointment's tickets (already loaded + kept fresh by
               the Realtime subscription below) — never another visit's results. */}
           <TechnicianResults tickets={existingTickets} />
