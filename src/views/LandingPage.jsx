@@ -713,7 +713,7 @@ function LandingPage({ onLogout }) {
           >
             Đặt lịch khám
           </a>
-          <a className={`transition-colors duration-300 font-semibold text-sm ${scrolled ? 'text-on-surface hover:text-primary' : 'text-gray-100 hover:text-white'}`} href="#pricing">Bảng giá</a>
+          <a className={`transition-colors duration-300 font-semibold text-sm ${scrolled ? 'text-on-surface hover:text-primary' : 'text-gray-100 hover:text-white'}`} href="#pricing">Ưu đãi</a>
         </div>
 
         {/* Desktop Nav Actions */}
@@ -844,7 +844,7 @@ function LandingPage({ onLogout }) {
           >
             Đặt lịch khám
           </a>
-          <a className="text-white/90 font-semibold text-sm py-2" href="#pricing">Bảng giá</a>
+          <a className="text-white/90 font-semibold text-sm py-2" href="#pricing">Ưu đãi</a>
           <div className="h-px bg-white/[0.08] my-2" />
           {isLoadingAuth ? (
             <div className="text-white/50 text-sm py-2">Đang tải...</div>
@@ -1003,7 +1003,7 @@ function LandingPage({ onLogout }) {
             <div className="flex items-center justify-center gap-4 mt-2">
               <button
                 onClick={() => setActiveTab('doctor')}
-                className={`px-5 py-2.5 rounded-full text-sm font-bold border transition-all cursor-pointer ${
+                className={`px-5 py-2.5 rounded-xl text-sm font-bold border transition-all cursor-pointer ${
                   activeTab === 'doctor'
                     ? 'bg-sky-500 border-sky-500 text-white shadow-md shadow-sky-500/20'
                     : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
@@ -1013,7 +1013,7 @@ function LandingPage({ onLogout }) {
               </button>
               <button
                 onClick={() => setActiveTab('technician')}
-                className={`px-5 py-2.5 rounded-full text-sm font-bold border transition-all cursor-pointer ${
+                className={`px-5 py-2.5 rounded-xl text-sm font-bold border transition-all cursor-pointer ${
                   activeTab === 'technician'
                     ? 'bg-sky-500 border-sky-500 text-white shadow-md shadow-sky-500/20'
                     : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
@@ -1022,7 +1022,6 @@ function LandingPage({ onLogout }) {
                 Kỹ thuật viên
               </button>
             </div>
-            <p className="text-on-surface-variant text-xs mt-1">Hãy thả tim để lưu lại nhé!</p>
           </div>
           
           <div className="w-full max-w-[1008px] mx-auto overflow-hidden relative py-4">

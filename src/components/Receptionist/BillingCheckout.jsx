@@ -15,7 +15,10 @@ import {
   Sparkles,
   Mail,
   Loader2,
+  QrCode,
+  RefreshCw,
 } from 'lucide-react';
+import { createPaymentLink, getPaymentStatus } from '../../utils/payos';
 import { AppointmentModel } from '../../models/AppointmentModel';
 import GlassCard, { GLASS_BASE, GLASS_INPUT } from '../common/GlassCard';
 import { supabase } from '../../supabaseClient';
@@ -43,8 +46,7 @@ import {
 
 const PAYMENT_METHODS = [
   { id: 'Tiền mặt', icon: Banknote },
-  { id: 'Chuyển khoản', icon: Wallet },
-  { id: 'Thẻ ngân hàng', icon: CreditCard },
+  { id: 'Quét mã QR', icon: QrCode },
 ];
 
 const FILTERS = ['Chờ thu', 'Đã thanh toán', 'Tất cả'];
@@ -71,6 +73,14 @@ export default function BillingCheckout({
   const [voucherError, setVoucherError] = useState('');
   const [processing, setProcessing] = useState(false);
   const [receipt, setReceipt] = useState(null);
+
+  // PayOS QR States
+  const [payosData, setPayosData] = useState(null);
+  const [payosLoading, setPayosLoading] = useState(false);
+  const [payosPaid, setPayosPaid] = useState(false);
+  const [payosError, setPayosError] = useState('');
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [qrActive, setQrActive] = useState(false);
 
   const [usedServices, setUsedServices] = useState([]);
   const [servicesTotal, setServicesTotal] = useState(0);
@@ -283,6 +293,12 @@ export default function BillingCheckout({
     setAppliedVoucher(null);
     setVoucherError('');
     setMethod('Tiền mặt');
+    setPayosData(null);
+    setPayosLoading(false);
+    setPayosPaid(false);
+    setPayosError('');
+    setShowQrModal(false);
+    setQrActive(false);
   }, [selectedKey]);
 
   // ── Money math for the selected invoice ───────────────────────────────────
@@ -294,6 +310,73 @@ export default function BillingCheckout({
   const prior = selected ? depositPaidFor(selected.aptId, payments) : 0;
   const discount = appliedVoucher?.discount || 0;
   const netPayable = Math.max(0, total - prior - discount);
+
+  // PayOS QR initialization & status polling
+  useEffect(() => {
+    if (method !== 'Quét mã QR' || !qrActive || !selectedKey || netPayable <= 0) {
+      setPayosData(null);
+      setPayosLoading(false);
+      setPayosPaid(false);
+      setPayosError('');
+      return;
+    }
+
+    let isSubscribed = true;
+    const orderCode = Date.now();
+    setPayosLoading(true);
+    setPayosError('');
+    setPayosPaid(false);
+
+    const initPayOS = async () => {
+      try {
+        const desc = `Thanh toan ${orderCode}`.substring(0, 25);
+        const data = await createPaymentLink(orderCode, netPayable, desc);
+        if (isSubscribed) {
+          setPayosData(data || {
+            bin: '970422',
+            accountNumber: 'VQRQAKQF2M2361',
+            accountName: 'NGUYEN QUANG NHUT',
+            amount: netPayable,
+            description: desc,
+          });
+          setPayosLoading(false);
+        }
+      } catch (err) {
+        console.error('PayOS init error:', err);
+        if (isSubscribed) {
+          setPayosData({
+            bin: '970422',
+            accountNumber: 'VQRQAKQF2M2361',
+            accountName: 'NGUYEN QUANG NHUT',
+            amount: netPayable,
+            description: `Thanh toan ${selected?.patientName || ''}`,
+          });
+          setPayosLoading(false);
+        }
+      }
+    };
+    initPayOS();
+
+    const interval = setInterval(async () => {
+      try {
+        const statusData = await getPaymentStatus(orderCode);
+        if (statusData.status === 'PAID') {
+          clearInterval(interval);
+          if (isSubscribed) {
+            setPayosPaid(true);
+            showToast?.('Khách hàng đã chuyển khoản PayOS thành công!', 'success');
+          }
+        }
+      } catch (e) {
+        // Ignore polling error
+      }
+    }, 3000);
+
+    return () => {
+      isSubscribed = false;
+      clearInterval(interval);
+    };
+  }, [method, selectedKey, netPayable]);
 
   const suggestions = useMemo(() => {
     if (!selected || isPaid(selected) || typeof getAutoApplicable !== 'function') return [];
@@ -399,6 +482,13 @@ export default function BillingCheckout({
       setProcessing(false);
     }
   };
+
+  // Auto-complete payment once customer successfully scans and pays via PayOS QR
+  useEffect(() => {
+    if (payosPaid && method === 'Quét mã QR' && selected && !processing) {
+      handleConfirm();
+    }
+  }, [payosPaid]);
 
   // ── Stats ──────────────────────────────────────────────────────────────────
   const stats = useMemo(() => {
@@ -738,19 +828,26 @@ export default function BillingCheckout({
                     </div>
 
                     {/* Method */}
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-2">
+                    <div className="space-y-3">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
                         Phương thức thanh toán
                       </label>
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid grid-cols-2 gap-2">
                         {PAYMENT_METHODS.map((m) => {
                           const Icon = m.icon;
                           const on = method === m.id;
                           return (
                             <button
                               key={m.id}
-                              onClick={() => setMethod(m.id)}
-                              className={`py-2.5 rounded-xl border text-[10px] font-bold transition-all cursor-pointer flex flex-col items-center gap-1 ${
+                              onClick={() => {
+                                setMethod(m.id);
+                                if (m.id === 'Quét mã QR') {
+                                  setShowQrModal(true);
+                                } else {
+                                  setQrActive(false);
+                                }
+                              }}
+                              className={`py-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 ${
                                 on
                                   ? 'bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-500/20'
                                   : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
@@ -762,15 +859,99 @@ export default function BillingCheckout({
                           );
                         })}
                       </div>
+
+                      {/* PayOS QR Box */}
+                      {method === 'Quét mã QR' && (
+                        <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 flex flex-col items-center justify-center gap-3 text-center">
+                          {!qrActive ? (
+                            <div className="flex flex-col items-center gap-3 py-2">
+                              <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                                <QrCode className="w-6 h-6" />
+                              </div>
+                              <div className="text-center">
+                                <h4 className="text-xs font-bold text-slate-800">Khởi tạo mã QR PayOS</h4>
+                                <p className="text-[11px] text-slate-500 mt-0.5 max-w-xs">
+                                  Vui lòng mở biểu mẫu xác nhận số tiền <strong className="text-emerald-600 font-bold">{formatVnd(netPayable)}</strong> trước khi hiển thị mã cho khách quét.
+                                </p>
+                              </div>
+                              <button
+                                onClick={() => setShowQrModal(true)}
+                                className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs shadow-md shadow-emerald-500/20 cursor-pointer border-none transition-all flex items-center gap-2"
+                              >
+                                <QrCode className="w-4 h-4" />
+                                Mở biểu mẫu xác nhận
+                              </button>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                                <QrCode className="w-4 h-4 text-emerald-600" />
+                                <span>Mã QR Thanh Toán PayOS</span>
+                              </div>
+
+                              {payosLoading ? (
+                                <div className="w-48 h-48 flex flex-col items-center justify-center gap-2 bg-white rounded-xl border border-slate-200">
+                                  <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
+                                  <span className="text-[11px] font-semibold text-slate-500">Đang khởi tạo mã QR...</span>
+                                </div>
+                              ) : (
+                                <div className="relative group flex flex-col items-center">
+                                  <img
+                                    src={
+                                      payosData?.qrCode
+                                        ? `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(payosData.qrCode)}`
+                                        : `https://img.vietqr.io/image/${payosData?.bin || '970422'}-${payosData?.accountNumber || 'VQRQAKQF2M2361'}-compact2.png?amount=${payosData?.amount || netPayable}&addInfo=${encodeURIComponent(payosData?.description || `Thanh toan ${selected?.patientName || ''}`)}&accountName=${encodeURIComponent(payosData?.accountName || 'NGUYEN QUANG NHUT')}`
+                                    }
+                                    onError={(e) => {
+                                      const fallbackUrl = `https://img.vietqr.io/image/970422-VQRQAKQF2M2361-compact2.png?amount=${netPayable}&addInfo=${encodeURIComponent(`Thanh toan ${selected?.patientName || ''}`)}&accountName=${encodeURIComponent('NGUYEN QUANG NHUT')}`;
+                                      if (e.target.src !== fallbackUrl) {
+                                        e.target.src = fallbackUrl;
+                                      }
+                                    }}
+                                    alt="PayOS QR Code"
+                                    className="w-48 h-48 object-contain rounded-xl border border-slate-200 p-1.5 bg-white shadow-sm"
+                                  />
+                                  <p className="text-[11px] font-bold text-slate-700 mt-2">
+                                    Số tiền: <span className="text-emerald-600 font-extrabold">{formatVnd(netPayable)}</span>
+                                  </p>
+                                  {payosPaid && (
+                                    <div className="absolute inset-0 bg-emerald-950/80 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center text-white p-2">
+                                      <CheckCircle2 className="w-10 h-10 text-emerald-400 mb-1" />
+                                      <span className="text-xs font-bold">Đã nhận thanh toán!</span>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {payosPaid ? (
+                                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-bold">
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                  Đã nhận chuyển khoản PayOS
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500">
+                                  <span className="relative flex h-2 w-2">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                                  </span>
+                                  Đang chờ khách hàng quét mã chuyển khoản...
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      )}
                     </div>
 
-                    <button
-                      onClick={handleConfirm}
-                      disabled={processing}
-                      className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-sm font-black hover:shadow-lg hover:shadow-emerald-600/20 active:scale-[0.98] transition-all cursor-pointer border-none disabled:opacity-60 flex items-center justify-center gap-2"
-                    >
-                      {processing ? 'Đang xử lý...' : <>Xác nhận thu {formatVnd(netPayable)}</>}
-                    </button>
+                    {method === 'Tiền mặt' && (
+                      <button
+                        onClick={handleConfirm}
+                        disabled={processing}
+                        className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-sm font-black hover:shadow-lg hover:shadow-emerald-600/20 active:scale-[0.98] transition-all cursor-pointer border-none disabled:opacity-60 flex items-center justify-center gap-2"
+                      >
+                        {processing ? 'Đang xử lý...' : <>Xác nhận thu {formatVnd(netPayable)}</>}
+                      </button>
+                    )}
                   </>
                 )}
               </motion.div>
@@ -781,6 +962,81 @@ export default function BillingCheckout({
 
       {/* Receipt modal */}
       <ReceiptModal receipt={receipt} onClose={() => setReceipt(null)} receptionistId={receptionistId} showToast={showToast} />
+
+      {/* Confirmation Modal before generating PayOS QR Code */}
+      <AnimatePresence>
+        {showQrModal && selected && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-100 flex flex-col gap-5 text-left"
+            >
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2 font-bold text-slate-800 text-base">
+                  <QrCode className="w-5 h-5 text-emerald-600" />
+                  <span>Xác nhận tạo mã QR thanh toán</span>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowQrModal(false);
+                    if (!qrActive) setMethod('Tiền mặt');
+                  }}
+                  className="text-slate-400 hover:text-slate-600 bg-transparent border-none cursor-pointer p-1"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-3 text-xs text-slate-600 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                <div className="flex justify-between">
+                  <span className="text-slate-500 font-medium">Bệnh nhân:</span>
+                  <span className="font-bold text-slate-800">{selected.patientName}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500 font-medium">Số điện thoại:</span>
+                  <span className="font-semibold text-slate-700">{selected.phone || 'N/A'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500 font-medium">Dịch vụ khám:</span>
+                  <span className="font-semibold text-slate-700">{selected.serviceName}</span>
+                </div>
+                <div className="border-t border-slate-200 pt-2 flex justify-between items-center">
+                  <span className="font-bold text-slate-800 text-sm">Số tiền thực thu:</span>
+                  <span className="font-black text-emerald-600 text-lg">{formatVnd(netPayable)}</span>
+                </div>
+              </div>
+
+              <p className="text-[11px] text-slate-500 leading-relaxed">
+                Sau khi bấm xác nhận, hệ thống sẽ tự động khởi tạo mã QR PayOS với số tiền <strong className="text-emerald-600 font-bold">{formatVnd(netPayable)}</strong> cho khách hàng quét chuyển khoản.
+              </p>
+
+              <div className="flex gap-3 pt-1">
+                <button
+                  onClick={() => {
+                    setShowQrModal(false);
+                    if (!qrActive) setMethod('Tiền mặt');
+                  }}
+                  className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 cursor-pointer bg-white"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={() => {
+                    setShowQrModal(false);
+                    setQrActive(true);
+                  }}
+                  className="flex-1 py-3 rounded-xl bg-emerald-500 text-white font-bold text-xs hover:bg-emerald-600 cursor-pointer border-none shadow-md shadow-emerald-500/20 flex items-center justify-center gap-1.5"
+                >
+                  <QrCode className="w-4 h-4" />
+                  Xác nhận tạo mã QR
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

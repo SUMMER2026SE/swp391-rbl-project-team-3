@@ -380,6 +380,7 @@ export default function ReceptionistDashboard() {
         onTabChange={setActiveTab}
         pageTitle={PAGE_TITLES[activeTab] || 'Tổng quan'}
         headerExtras={headerExtras}
+        showSearch={false}
       >
         {activeTab === 'overview' && (
           <OverviewTab
