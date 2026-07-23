@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { ClipboardList, CheckCircle2, Clock, TrendingUp, Calendar, ChevronRight } from 'lucide-react';
 import GlassCard, { GLASS_BASE, GLASS_HOVER, GLASS_TITLE } from '../../common/GlassCard';
 import { DoctorScheduleModel } from '../../../models/DoctorScheduleModel';
-import { timeToMinutes } from '../../common/scheduleUtils';
+import { timeToMinutes, dateKey } from '../../common/scheduleUtils';
 
 const TechnicianOverview = ({ tasks, technicianId, shifts: initialShifts, onNavigate }) => {
     const [shifts, setShifts] = useState(initialShifts || []);
@@ -34,8 +34,23 @@ const TechnicianOverview = ({ tasks, technicianId, shifts: initialShifts, onNavi
         (t) => t.status === "Đã hoàn thành" && (technicianId ? String(t.technicianId) === String(technicianId) : true)
     ).length;
 
-    const confirmedShifts = (Array.isArray(shifts) ? shifts : []).filter(s => s.status === 'Đã xác nhận');
-    const totalMinutes = confirmedShifts.reduce((sum, s) => {
+    const todayKeyStr = dateKey(new Date());
+    const now = new Date();
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+    const confirmedPastShifts = (Array.isArray(shifts) ? shifts : []).filter((s) => {
+        if (s.status !== 'Đã xác nhận') return false;
+        const shiftDate = String(s.work_date || '').slice(0, 10);
+        if (!shiftDate) return false;
+        if (shiftDate < todayKeyStr) return true;
+        if (shiftDate === todayKeyStr) {
+            const startMin = timeToMinutes(s.start_time) ?? 0;
+            return startMin <= nowMinutes;
+        }
+        return false;
+    });
+
+    const totalMinutes = confirmedPastShifts.reduce((sum, s) => {
         const a = timeToMinutes(s.start_time) ?? 0;
         const b = timeToMinutes(s.end_time) ?? a;
         return sum + Math.max(b - a, 0);
