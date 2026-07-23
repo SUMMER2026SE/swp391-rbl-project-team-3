@@ -4,14 +4,22 @@ import { Activity, Clock, Play, CheckCircle2, Eye, Loader2, Lock } from 'lucide-
 import { GLASS_BASE } from '../../common/GlassCard';
 
 const AssignedTasksList = ({ tasks, currentTechId, onExecuteTask, onReviewTask }) => {
+  // Filter tasks:
+  // - Completed tasks are shown ONLY if they were performed by the logged-in technician (currentTechId).
+  // - Pending and In Progress tasks are displayed so technicians can claim or view ongoing work.
+  const filteredTasks = (tasks || []).filter((t) => {
+    if (t.status === 'Đã hoàn thành') {
+      return currentTechId ? String(t.technicianId) === String(currentTechId) : true;
+    }
+    return true;
+  });
+
   // Sort tasks: pending → in-progress → completed, each group keeps chronological order.
-  // This puts patients who still need examination at the top for easy technician workflow.
   const STATUS_PRIORITY = { 'Chờ thực hiện': 0, 'Đang tiến hành': 1, 'Đã hoàn thành': 2 };
-  const taskList = (tasks || []).slice().sort((a, b) => {
+  const taskList = filteredTasks.slice().sort((a, b) => {
     const pa = STATUS_PRIORITY[a.status] ?? 1;
     const pb = STATUS_PRIORITY[b.status] ?? 1;
     if (pa !== pb) return pa - pb;
-    // Within the same status group, keep chronological order (earliest first)
     const ta = new Date(a.createdAt || a.requestTime || 0).getTime();
     const tb = new Date(b.createdAt || b.requestTime || 0).getTime();
     return ta - tb;

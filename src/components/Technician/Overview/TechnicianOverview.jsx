@@ -1,12 +1,46 @@
-import React from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { ClipboardList, CheckCircle2, Clock, TrendingUp } from 'lucide-react';
+import { ClipboardList, CheckCircle2, Clock, TrendingUp, Calendar, ChevronRight } from 'lucide-react';
 import GlassCard, { GLASS_BASE, GLASS_HOVER, GLASS_TITLE } from '../../common/GlassCard';
+import { DoctorScheduleModel } from '../../../models/DoctorScheduleModel';
+import { timeToMinutes } from '../../common/scheduleUtils';
 
-const TechnicianOverview = ({ tasks }) => {
-    const pendingTasks = (Array.isArray(tasks) ? tasks : []).filter(t => t.status === "Chờ thực hiện")?.length || 0;
-    const completedTasks = (Array.isArray(tasks) ? tasks : []).filter(t => t.status === "Đã hoàn thành")?.length || 0;
-    const totalShifts = ([])?.length || 0;
+const TechnicianOverview = ({ tasks, technicianId, shifts: initialShifts, onNavigate }) => {
+    const [shifts, setShifts] = useState(initialShifts || []);
+
+    useEffect(() => {
+        if (initialShifts && initialShifts.length > 0) {
+            setShifts(initialShifts);
+            return;
+        }
+        if (!technicianId) return;
+        let alive = true;
+        const fetchShifts = async () => {
+            const data = await DoctorScheduleModel.getShiftsByDoctor(technicianId);
+            if (alive) {
+                setShifts(Array.isArray(data) ? data : []);
+            }
+        };
+        fetchShifts();
+        return () => {
+            alive = false;
+        };
+    }, [technicianId, initialShifts]);
+
+    const pendingTasks = (Array.isArray(tasks) ? tasks : []).filter(
+        (t) => t.status === "Chờ thực hiện" && (!t.technicianId || (technicianId && String(t.technicianId) === String(technicianId)))
+    ).length;
+    const completedTasks = (Array.isArray(tasks) ? tasks : []).filter(
+        (t) => t.status === "Đã hoàn thành" && (technicianId ? String(t.technicianId) === String(technicianId) : true)
+    ).length;
+
+    const confirmedShifts = (Array.isArray(shifts) ? shifts : []).filter(s => s.status === 'Đã xác nhận');
+    const totalMinutes = confirmedShifts.reduce((sum, s) => {
+        const a = timeToMinutes(s.start_time) ?? 0;
+        const b = timeToMinutes(s.end_time) ?? a;
+        return sum + Math.max(b - a, 0);
+    }, 0);
+    const totalHours = Math.round((totalMinutes / 60) * 10) / 10;
 
     const stats = [
         { 
@@ -20,7 +54,7 @@ const TechnicianOverview = ({ tasks }) => {
             trendColor: "text-amber-600"
         },
         { 
-            title: "Đã hoàn thành", 
+            title: "Tổng ca đã hoàn thành", 
             value: completedTasks, 
             icon: CheckCircle2, 
             color: "text-emerald-500", 
@@ -30,16 +64,57 @@ const TechnicianOverview = ({ tasks }) => {
             trendColor: "text-emerald-600"
         },
         { 
-            title: "Tổng ca làm", 
-            value: totalShifts, 
+            title: "Tổng giờ làm", 
+            value: `${totalHours} giờ`, 
             icon: Clock, 
             color: "text-sky-500", 
             bg: "bg-sky-100/50",
-            trend: "Tháng này",
+            trend: "Ca đã xác nhận",
             trendIcon: null,
             trendColor: "text-slate-500"
         }
     ];
+
+    // Dynamic notification generation for Technician
+    const notifications = useMemo(() => {
+        const list = [];
+
+        // 1. New indications/service tickets waiting to be processed
+        (tasks || []).forEach((t) => {
+            if (t.status === 'Chờ thực hiện') {
+                list.push({
+                    id: `task-${t.id}`,
+                    icon: ClipboardList,
+                    iconBg: 'bg-amber-100 text-amber-600',
+                    title: 'Chỉ định thủ thuật mới',
+                    message: `Bác sĩ ${t.assignedBy || 'chuyên khoa'} vừa chỉ định "${t.procedureType || t.service}" cho bệnh nhân ${t.patientName}`,
+                    time: t.createdAt || t.requestTime,
+                    badge: 'Chờ thực hiện',
+                    badgeStyle: 'bg-amber-50 text-amber-700 border-amber-200',
+                    targetTab: 'tasks',
+                });
+            }
+        });
+
+        // 2. New work shifts assigned by Admin waiting for technician confirmation
+        (shifts || []).forEach((s) => {
+            if (s.status === 'Đã phân công') {
+                list.push({
+                    id: `shift-${s.id}`,
+                    icon: Calendar,
+                    iconBg: 'bg-sky-100 text-sky-600',
+                    title: 'Ca làm việc mới cần xác nhận',
+                    message: `Quản trị viên đã phân ca làm việc (${s.start_time?.slice(0, 5)} - ${s.end_time?.slice(0, 5)}) cho ngày ${s.work_date}`,
+                    time: s.created_at || s.work_date,
+                    badge: 'Chờ xác nhận',
+                    badgeStyle: 'bg-sky-50 text-sky-700 border-sky-200',
+                    targetTab: 'schedule',
+                });
+            }
+        });
+
+        return list;
+    }, [tasks, shifts]);
 
     return (
         <motion.div 
@@ -72,12 +147,52 @@ const TechnicianOverview = ({ tasks }) => {
             </div>
             
             <GlassCard>
-                <h3 className={`${GLASS_TITLE} mb-4 border-b border-slate-100 pb-4`}>Thông báo mới</h3>
-                <div className="flex items-center justify-center py-12 text-slate-500 italic">
-                    <span className="bg-slate-50 px-4 py-2 rounded-full border border-slate-100 text-sm">
-                        Chưa có thông báo nào trong hôm nay.
-                    </span>
+                <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+                    <h3 className={GLASS_TITLE}>Thông báo mới trong ngày</h3>
+                    {notifications.length > 0 && (
+                        <span className="px-2.5 py-1 text-xs font-extrabold rounded-full bg-teal-100 text-teal-700 border border-teal-200">
+                            {notifications.length} thông báo
+                        </span>
+                    )}
                 </div>
+
+                {notifications.length > 0 ? (
+                    <div className="divide-y divide-slate-100">
+                        {notifications.map((n) => {
+                            const IconComp = n.icon;
+                            return (
+                                <div
+                                    key={n.id}
+                                    onClick={() => onNavigate && n.targetTab && onNavigate(n.targetTab)}
+                                    className="py-4 first:pt-0 last:pb-0 flex items-start gap-4 p-3 rounded-xl transition-all cursor-pointer group hover:bg-teal-50/60 hover:shadow-sm"
+                                    title="Click để đến trang tương ứng"
+                                >
+                                    <div className={`p-3 rounded-xl shrink-0 ${n.iconBg} transition-transform group-hover:scale-105`}>
+                                        <IconComp className="w-5 h-5" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center justify-between gap-2">
+                                            <h4 className="text-sm font-bold text-slate-800 group-hover:text-teal-700 transition-colors flex items-center gap-1">
+                                                {n.title}
+                                                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-teal-600 group-hover:translate-x-0.5 transition-all" />
+                                            </h4>
+                                            <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${n.badgeStyle}`}>
+                                                {n.badge}
+                                            </span>
+                                        </div>
+                                        <p className="text-sm text-slate-600 mt-1">{n.message}</p>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <div className="flex items-center justify-center py-12 text-slate-500 italic">
+                        <span className="bg-slate-50 px-4 py-2 rounded-full border border-slate-100 text-sm">
+                            Chưa có thông báo nào trong hôm nay.
+                        </span>
+                    </div>
+                )}
             </GlassCard>
         </motion.div>
     );

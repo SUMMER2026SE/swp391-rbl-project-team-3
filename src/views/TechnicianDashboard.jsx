@@ -251,7 +251,7 @@ export default function TechnicianDashboard() {
 
     switch (activeTab) {
       case 'overview':
-        return <TechnicianOverview tasks={tasks} />;
+        return <TechnicianOverview tasks={tasks} technicianId={user?.id} onNavigate={setActiveTab} />;
       case 'tasks':
         return (
           <AssignedTasksList
@@ -266,7 +266,7 @@ export default function TechnicianDashboard() {
       case 'feedback':
         return <TechnicianFeedbackView />;
       default:
-        return <TechnicianOverview tasks={tasks} />;
+        return <TechnicianOverview tasks={tasks} technicianId={user?.id} onNavigate={setActiveTab} />;
     }
   };
 

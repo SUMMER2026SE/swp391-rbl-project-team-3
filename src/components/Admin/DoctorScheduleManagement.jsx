@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     AlertTriangle,
@@ -58,7 +59,7 @@ import {
 
 const SNAP = 30; // drag snaps to 30-minute slots
 const GRID_START_MIN = 7 * 60;
-const GRID_END_MIN = 21 * 60;
+const GRID_END_MIN = 24 * 60;
 
 const TIME_OPTIONS = [];
 for (let m = GRID_START_MIN; m <= GRID_END_MIN; m += SNAP) {
@@ -91,9 +92,10 @@ const WEEKDAY_CHIPS = [
 
 // Shift templates for one-click time ranges inside the draft dialog.
 const SHIFT_TEMPLATES = [
-    { label: 'Ca sáng', start: 8 * 60, end: 12 * 60 },
-    { label: 'Ca chiều', start: 13 * 60, end: 17 * 60 },
-    { label: 'Cả ngày', start: 8 * 60, end: 17 * 60 },
+    { label: 'Ca sáng', start: 7 * 60, end: 12 * 60 },
+    { label: 'Ca chiều', start: 12 * 60, end: 17 * 60 },
+    { label: 'Ca tối', start: 17 * 60, end: 24 * 60 },
+    { label: 'Cả ngày', start: 7 * 60, end: 24 * 60 },
 ];
 
 const todayKeyStr = () => dateKey(new Date());
@@ -140,6 +142,19 @@ export default function DoctorScheduleManagement() {
     const [editDlg, setEditDlg] = useState(null); // editing a saved shift
     const [copyDlg, setCopyDlg] = useState(null);
     const [toast, setToast] = useState(null);
+
+    // Current time in minutes from midnight, updated every 30s.
+    const [nowMinutes, setNowMinutes] = useState(() => {
+        const d = new Date();
+        return d.getHours() * 60 + d.getMinutes();
+    });
+    useEffect(() => {
+        const timer = setInterval(() => {
+            const d = new Date();
+            setNowMinutes(d.getHours() * 60 + d.getMinutes());
+        }, 30000);
+        return () => clearInterval(timer);
+    }, []);
 
     const notify = (message, type = 'success') => {
         setToast({ message, type });
@@ -272,8 +287,10 @@ export default function DoctorScheduleManagement() {
 
     const beginDrag = (e, day, colEl) => {
         if (e.button !== 0 || !staffId || saving) return;
-        if (dateKey(day) < todayKeyStr()) {
-            notify('Không thể tạo ca trong quá khứ.', 'error');
+        const curKey = dateKey(day);
+        const todayStr = todayKeyStr();
+        if (curKey < todayStr) {
+            notify('Không thể tạo lịch trong quá khứ', 'error');
             return;
         }
         e.preventDefault();
@@ -286,15 +303,25 @@ export default function DoctorScheduleManagement() {
             const snapped = Math.round(raw / SNAP) * SNAP;
             return Math.max(gridStartMin, Math.min(gridEndMin, snapped));
         };
-        const anchor = Math.min(minsAt(e.clientY), gridEndMin - SNAP);
-        setDragSel({ day, key: dateKey(day), startMin: anchor, endMin: anchor + SNAP });
+
+        const minAllowed = curKey === todayStr ? Math.floor(nowMinutes / SNAP) * SNAP : gridStartMin;
+        const rawAnchor = minsAt(e.clientY);
+
+        if (curKey === todayStr && rawAnchor < minAllowed) {
+            notify('Không thể tạo lịch trong quá khứ', 'error');
+            return;
+        }
+
+        const anchor = Math.max(rawAnchor, minAllowed);
+        if (anchor >= gridEndMin) return;
+        setDragSel({ day, key: curKey, startMin: anchor, endMin: anchor + SNAP });
 
         const onMove = (ev) => {
-            const cur = minsAt(ev.clientY);
+            const cur = Math.max(minsAt(ev.clientY), minAllowed);
             setDragSel({
                 day,
-                key: dateKey(day),
-                startMin: Math.min(anchor, cur),
+                key: curKey,
+                startMin: Math.max(Math.min(anchor, cur), minAllowed),
                 endMin: Math.max(anchor + SNAP, cur),
             });
         };
@@ -352,6 +379,14 @@ export default function DoctorScheduleManagement() {
         if (!cfg) return;
         if (cfg.endMin <= cfg.startMin) {
             notify('Giờ kết thúc phải sau giờ bắt đầu.', 'error');
+            return;
+        }
+        if (dateKey(cfg.date) < todayKeyStr()) {
+            notify('Không thể tạo lịch trong quá khứ', 'error');
+            return;
+        }
+        if (dateKey(cfg.date) === todayKeyStr() && cfg.startMin < Math.floor(nowMinutes / SNAP) * SNAP) {
+            notify('Không thể tạo lịch trong quá khứ', 'error');
             return;
         }
         if (cfg.repeat && cfg.repeatDays.length === 0) {
@@ -722,6 +757,7 @@ export default function DoctorScheduleManagement() {
                             : null
                     }
                     conflictsFor={conflictsFor}
+                    nowMinutes={nowMinutes}
                     onBeginDrag={beginDrag}
                     onSelectShift={openEdit}
                     onSelectDraft={openDraft}
@@ -838,29 +874,33 @@ export default function DoctorScheduleManagement() {
             </AnimatePresence>
 
             {/* ── Toast ── */}
-            <AnimatePresence>
-                {toast && (
-                    <motion.div
-                        key="toast"
-                        initial={{ opacity: 0, y: -12, scale: 0.97 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: -8 }}
-                        transition={{ duration: DUR * 0.8, ease: EASE }}
-                        className={`fixed top-6 right-6 z-[90] px-4 py-3 rounded-2xl shadow-xl border backdrop-blur-xl flex items-center gap-2 text-sm font-bold ${
-                            toast.type === 'error'
-                                ? 'bg-rose-50/95 border-rose-200 text-rose-700'
-                                : 'bg-emerald-50/95 border-emerald-200 text-emerald-700'
-                        }`}
-                    >
-                        {toast.type === 'error' ? (
-                            <AlertTriangle className="w-4 h-4 shrink-0" />
-                        ) : (
-                            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            {typeof document !== 'undefined' &&
+                createPortal(
+                    <AnimatePresence>
+                        {toast && (
+                            <motion.div
+                                key="toast"
+                                initial={{ opacity: 0, y: -16, scale: 0.95 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, y: -12 }}
+                                transition={{ duration: DUR * 0.8, ease: EASE }}
+                                className={`fixed top-20 right-6 z-[99999] px-5 py-3.5 rounded-2xl shadow-2xl border backdrop-blur-xl flex items-center gap-3 text-sm font-extrabold ${
+                                    toast.type === 'error'
+                                        ? 'bg-rose-500 text-white border-rose-600 shadow-rose-500/30'
+                                        : 'bg-emerald-500 text-white border-emerald-600 shadow-emerald-500/30'
+                                }`}
+                            >
+                                {toast.type === 'error' ? (
+                                    <AlertTriangle className="w-5 h-5 shrink-0 text-white" />
+                                ) : (
+                                    <CheckCircle2 className="w-5 h-5 shrink-0 text-white" />
+                                )}
+                                <span>{toast.message}</span>
+                            </motion.div>
                         )}
-                        {toast.message}
-                    </motion.div>
+                    </AnimatePresence>,
+                    document.body
                 )}
-            </AnimatePresence>
         </motion.div>
     );
 }
@@ -877,6 +917,7 @@ function AdminWeekGrid({
     loading,
     emptyHint,
     conflictsFor,
+    nowMinutes,
     onBeginDrag,
     onSelectShift,
     onSelectDraft,
@@ -886,6 +927,9 @@ function AdminWeekGrid({
     const hours = Array.from({ length: hourEnd - hourStart + 1 }, (_, i) => hourStart + i);
     const todayKey = dateKey(new Date());
     const colRefs = useRef({});
+
+    const nowOffset = ((nowMinutes - hourStart * 60) / totalMinutes) * gridHeight;
+    const showNowLine = nowOffset >= 0 && nowOffset <= gridHeight;
 
     const toPx = (min) => ((min - hourStart * 60) / totalMinutes) * gridHeight;
 
@@ -977,6 +1021,25 @@ function AdminWeekGrid({
                                         style={{ top: (h - hourStart) * HOUR_HEIGHT }}
                                     />
                                 ))}
+
+                                {/* past hours overlay for today */}
+                                {isToday && showNowLine && (
+                                    <div
+                                        className="absolute top-0 left-0 right-0 bg-slate-100/40 pointer-events-none z-10"
+                                        style={{ height: nowOffset }}
+                                    />
+                                )}
+
+                                {/* current time indicator (red line) */}
+                                {isToday && showNowLine && (
+                                    <div
+                                        className="absolute left-0 right-0 z-20 pointer-events-none"
+                                        style={{ top: nowOffset }}
+                                    >
+                                        <div className="h-[2px] bg-rose-500/80" />
+                                        <div className="w-2 h-2 rounded-full bg-rose-500 -mt-[5px]" />
+                                    </div>
+                                )}
 
                                 {/* saved shifts */}
                                 {layoutDayShifts(dayShifts, hourStart * 60).map(

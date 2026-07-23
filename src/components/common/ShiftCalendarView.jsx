@@ -109,11 +109,11 @@ export default function ShiftCalendarView({ staffId }) {
         [weekDays, shiftsByDate]
     );
 
-    // Hour bounds for the week grid: default 07:00–17:00, expanded to fit any
+    // Hour bounds for the week grid: default 07:00–24:00, expanded to fit any
     // shift that falls outside that window.
     const [hourStart, hourEnd] = useMemo(() => {
         let min = 7;
-        let max = 17;
+        let max = 24;
         weekDays.forEach((d) => {
             (shiftsByDate[dateKey(d)] || []).forEach((s) => {
                 const sm = timeToMinutes(s.start_time);
