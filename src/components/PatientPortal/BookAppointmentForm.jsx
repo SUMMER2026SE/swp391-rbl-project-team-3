@@ -322,13 +322,13 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
       notes: user
         ? `Khách hàng đặt lịch khám qua cổng Portal.`
         : `Khách vãng lai đăng ký qua website.`,
-      bookingFee: 50000,
-      paymentStatus: 'Đã thanh toán một phần (Giữ chỗ)',
-      status: 'Đã xác nhận'
+      bookingFee: 0,
+      paymentStatus: 'Chưa thanh toán',
+      status: 'Đã xác nhận',
+      bypassPayment: true
     };
 
-    // Validate BEFORE taking the deposit so a patient is never charged for an
-    // invalid booking (past slot, slot just taken, >2 upcoming, etc.).
+    // Validate BEFORE saving the booking
     const validation = await validateBooking(bookingPayload);
     if (!validation.valid) {
       setErrorMessage(validation.error);
@@ -337,42 +337,39 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
       return;
     }
 
+    let finalPayload = bookingPayload;
     try {
       const holdApt = await holdSlot(bookingPayload);
       if (holdApt) {
-        setPaymentPayload({
+        finalPayload = {
           ...bookingPayload,
           holdAptId: holdApt.appointment_id || holdApt.id
-        });
-      } else {
-        setPaymentPayload(bookingPayload);
+        };
       }
-      
-      // Also lock locally for immediate UI feedback
-      const lockedListStr = localStorage.getItem('dermasmart_locked_slots') || '[]';
-      let lockedList = [];
-      try { lockedList = JSON.parse(lockedListStr); } catch (e) {}
-      
-      const filteredList = lockedList?.filter?.(
-        l => !(String(l.doctorId) === String(finalDoctorId) && l.date === selectedDate && l.time === selectedTime)
-      );
-      filteredList.push({
-        doctorId: finalDoctorId,
-        date: selectedDate,
-        time: selectedTime,
-        lockedUntil: Date.now() + 5 * 60 * 1000 // 5 minutes
-      });
-      localStorage.setItem('dermasmart_locked_slots', JSON.stringify(filteredList));
-      
-      lockSlot(finalDoctorId, selectedDate, selectedTime, 5);
     } catch (err) {
-      console.error('Error locking slot immediately:', err);
-      setPaymentPayload(bookingPayload);
+      console.error('Error holding slot immediately:', err);
     }
-    
-    isSubmittingRef.current = false;
-    setStep('payment');
-    setTimeLeft(300); // 5 minutes
+
+    try {
+      const result = await bookAppointment(finalPayload);
+      if (result.success) {
+        setStep('success');
+        window.dispatchEvent(new CustomEvent('show-toast', {
+          detail: { message: 'Đặt lịch khám thành công!', type: 'success' }
+        }));
+        setTimeout(() => {
+          isSubmittingRef.current = false;
+          onClose();
+        }, 3500);
+      } else {
+        isSubmittingRef.current = false;
+        setErrorMessage(result.error);
+      }
+    } catch (err) {
+      console.error('Error confirming booking:', err);
+      setErrorMessage('Có lỗi xảy ra khi xác nhận đặt lịch.');
+      isSubmittingRef.current = false;
+    }
   };
 
   // ── Confirm Payment ─────────────────────────────────────────────────────────
@@ -630,7 +627,7 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
                       : 'bg-slate-300 cursor-not-allowed shadow-none'
                   }`}
                 >
-                  Tiếp tục thanh toán giữ chỗ (50.000 VNĐ)
+                  Xác nhận đặt lịch (Không cần thanh toán)
                 </button>
               </div>
             </div>
@@ -724,7 +721,7 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
             <h3 className="text-2xl font-bold text-slate-800 mb-2">Đặt lịch thành công!</h3>
             <div className="mb-3 inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold px-3 py-1.5 rounded-full">
               <Ticket className="w-3.5 h-3.5" />
-              Đã thanh toán cọc 50,000 VNĐ
+              Lịch khám đã được xác nhận tự động
             </div>
             <p className="text-sm text-slate-700 max-w-sm leading-relaxed">
               Yêu cầu đặt lịch đã được xác nhận.{' '}
@@ -735,16 +732,16 @@ export default function BookAppointmentForm({ isOpen, onClose }) {
             {(
               <div className="mt-4 bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3 text-sm space-y-1.5 text-left w-full max-w-xs mx-auto">
                 <div className="flex justify-between font-black text-slate-900 border-b border-slate-200 pb-1.5 mb-1.5">
-                  <span>Dự kiến thanh toán thêm</span>
-                  <span className="text-emerald-600">{formatVND(Math.max(0, originalAmount - 50000))}</span>
+                  <span>Dự kiến thanh toán</span>
+                  <span className="text-emerald-600">{formatVND(originalAmount)}</span>
                 </div>
                 <div className="flex justify-between text-slate-700 text-[11px]">
-                  <span>Chi phí gốc (bác sĩ)</span>
+                  <span>Chi phí khám (bác sĩ)</span>
                   <span>{formatVND(originalAmount)}</span>
                 </div>
                 <div className="flex justify-between text-slate-700 font-semibold text-[11px]">
-                  <span>Đã thanh toán (Cọc)</span>
-                  <span>-50.000 VNĐ</span>
+                  <span>Đã thanh toán trước</span>
+                  <span>0 VNĐ (Đặt lịch miễn phí)</span>
                 </div>
               </div>
             )}
