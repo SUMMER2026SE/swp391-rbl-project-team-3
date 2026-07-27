@@ -120,6 +120,18 @@ export const AppointmentModel = {
       }
     }
 
+    let paymentStatus = row.payment_status || row.paymentStatus;
+    if (status === 'Đã hủy' || status === 'Đã không đến') {
+      paymentStatus = '—';
+    } else if (paymentStatus === 'PAID' || paymentStatus === 'Đã thanh toán' || status === 'Đã thanh toán') {
+      paymentStatus = 'Đã thanh toán';
+      if (status === 'Đã khám' || status === 'EXAMINED') {
+        status = 'Đã thanh toán';
+      }
+    } else {
+      paymentStatus = paymentStatus || 'Chưa thanh toán';
+    }
+
     return {
       ...row,
       id: row.appointment_id || row.id,
@@ -130,6 +142,7 @@ export const AppointmentModel = {
       patientEmail: row.patient_email || row.patientEmail,
       reason: row.reason,
       status: status,
+      paymentStatus: paymentStatus,
       createdAt: row.created_at,
       service: row.service || 'Khám da liễu tổng quát',
       fee: row.fee || '300,000 VNĐ',

@@ -12,8 +12,6 @@ import {
 import {
   LogOut,
   Search,
-  Bell,
-  Settings,
   User,
   PanelLeftClose,
   PanelLeftOpen,
@@ -222,32 +220,7 @@ export default function DashboardShell({
                   <span className="text-[11px] text-gray-500">{portalName}</span>
                 </div>
 
-                {/* Portals with real header controls (notifications, doctor
-                    selector, chat shortcut) pass them via headerExtras, which
-                    replaces the default decorative Bell/Settings so there's no
-                    duplicate bell. */}
-                {headerExtras ? (
-                  headerExtras
-                ) : (
-                  <>
-                    <motion.button
-                      whileHover={{ scale: 1.08 }}
-                      whileTap={{ scale: 0.95 }}
-                      className="relative w-10 h-10 rounded-2xl bg-white/50 border border-white/60 backdrop-blur-md flex items-center justify-center text-slate-500 hover:text-emerald-600 shadow-sm transition-colors"
-                    >
-                      <Bell size={18} />
-                      <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-red-500 border-2 border-white" />
-                    </motion.button>
-
-                    <motion.button
-                      whileHover={{ scale: 1.08 }}
-                      whileTap={{ scale: 0.95 }}
-                      className="w-10 h-10 rounded-2xl bg-white/50 border border-white/60 backdrop-blur-md flex items-center justify-center text-slate-500 hover:text-emerald-600 shadow-sm transition-colors"
-                    >
-                      <Settings size={18} />
-                    </motion.button>
-                  </>
-                )}
+                {headerExtras}
 
                 <div className="relative">
                   <motion.button

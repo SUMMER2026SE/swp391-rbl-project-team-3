@@ -1063,16 +1063,174 @@ function SystemActivityTab() {
         const { ServiceTicketModel } = await import('../../models/ServiceTicketModel');
         const { StaffModel } = await import('../../models/StaffModel');
         
-        const [realLogs, apps, tickets, staffData] = await Promise.all([
+        const [realLogs, apps, tickets, staffData, realPayments] = await Promise.all([
           SystemLogModel.getAll(),
           AppointmentModel.getAll(),
           ServiceTicketModel.getAll(),
-          StaffModel.getAll()
+          StaffModel.getAll(),
+          AppointmentModel.getAllPayments()
         ]);
 
         const staffMap = {};
         (staffData || []).forEach(s => {
           if (s.id) staffMap[s.id] = s.name;
+        });
+
+        const appMap = new Map((apps || []).map(a => [String(a.appointment_id ?? a.id), a]));
+
+        // Build synchronized payment logs from real payments table and paid appointments
+        const paymentLogs = [];
+        const processedAppIds = new Set();
+
+        (realPayments || []).forEach(p => {
+          const apt = appMap.get(String(p.appointment_id));
+          if (p.appointment_id) processedAppIds.add(String(p.appointment_id));
+          const finalAmt = Number(p.final_amount ?? p.total_amount ?? p.amount ?? 0);
+          const formattedAmt = finalAmt > 0 
+            ? `${finalAmt.toLocaleString('vi-VN')} VNĐ` 
+            : (apt?.fee || '300.000 VNĐ');
+          const methodStr = p.payment_method || p.method || 'Online VNPay';
+          const svcName = apt?.service || 'Khám da liễu';
+          const patientName = apt?.patient_name || p.patient_name || 'Bệnh nhân';
+          const patientId = apt?.patient_id || p.patient_id || 'PATIENT';
+          const aptCode = p.appointment_id ? `apt-${p.appointment_id}` : (apt?.id || '');
+
+          paymentLogs.push({
+            id: `pay-log-${p.payment_id || p.id || Math.random()}`,
+            timestamp: p.paid_at || p.created_at || apt?.created_at || new Date().toISOString(),
+            userId: patientId,
+            userName: patientName,
+            role: 'PATIENT',
+            action: 'PAYMENT',
+            details: `Thanh toán ${formattedAmt} cho ${svcName}${aptCode ? ` (${aptCode})` : ''} — ${methodStr}`,
+            module: 'Thanh toán',
+            category: 'payment'
+          });
+        });
+
+        // Also add paid appointments from apps list if not in realPayments table yet
+        (apps || []).forEach(a => {
+          const aId = String(a.appointment_id ?? a.id);
+          const isPaid = a.paymentStatus === 'Đã thanh toán' || a.status === 'Đã thanh toán' || a.payment_status === 'paid';
+          if (isPaid && !processedAppIds.has(aId)) {
+            processedAppIds.add(aId);
+            const aptCode = a.id ? (String(a.id).startsWith('apt-') ? a.id : `apt-${a.id}`) : `apt-${aId}`;
+            paymentLogs.push({
+              id: `pay-app-log-${aId}`,
+              timestamp: a.updated_at || a.created_at || new Date().toISOString(),
+              userId: a.patient_id || a.patientId || 'PATIENT',
+              userName: a.patient_name || a.patientName || 'Bệnh nhân',
+              role: 'PATIENT',
+              action: 'PAYMENT',
+              details: `Thanh toán ${a.fee || '300.000 VNĐ'} cho ${a.service || 'Khám da liễu'} (${aptCode}) — ${a.paymentMethod || 'Online VNPay'}`,
+              module: 'Thanh toán',
+              category: 'payment'
+            });
+          }
+        });
+
+        // Build dynamic prescription & medical record logs for all completed cases across DB and mock appointments
+        const allCompletedAppsMap = new Map();
+
+        // 1. Add completed cases from mockAppointments
+        (mockAppointments || []).forEach(a => {
+          const isExamined = a.status === 'Đã khám' || a.status === 'EXAMINED' || a.diagnosis || a.prescription;
+          if (isExamined) {
+            const aId = String(a.appointment_id ?? a.id);
+            allCompletedAppsMap.set(aId, a);
+          }
+        });
+
+        // 2. Merge completed cases from real DB appointments
+        (apps || []).forEach(a => {
+          const isExamined = a.status === 'Đã khám' || a.status === 'EXAMINED' || a.diagnosis || a.prescription;
+          if (isExamined) {
+            const aId = String(a.appointment_id ?? a.id);
+            allCompletedAppsMap.set(aId, a);
+          }
+        });
+
+        const prescriptionLogs = [];
+        const recordLogs = [];
+
+        Array.from(allCompletedAppsMap.values()).forEach(a => {
+          const aId = String(a.appointment_id ?? a.id);
+          const aptCode = a.id ? (String(a.id).startsWith('apt-') ? a.id : `apt-${a.id}`) : `apt-${aId}`;
+          const docName = a.doctor_name || a.doctorName || 'BS. CKII. Trần Văn A';
+          const docId = a.doctor_id || a.doctorId || 'doc-01';
+          const patName = a.patient_name || a.patientName || 'Bệnh nhân';
+          const rxText = a.prescription || 'Đơn thuốc chuyên khoa da liễu theo phác đồ';
+          const diagText = a.diagnosis || a.service || 'Khám da liễu';
+          const ts = a.updated_at || a.created_at || (a.date ? `${a.date}T${a.time || '10:00'}:00Z` : new Date().toISOString());
+
+          prescriptionLogs.push({
+            id: `rx-log-${aId}`,
+            timestamp: ts,
+            userId: docId,
+            userName: docName,
+            role: 'DOCTOR',
+            action: 'PRESCRIBE_MEDICINE',
+            details: `Kê đơn thuốc ${aptCode} cho ${patName} — ${rxText}`,
+            module: 'Đơn thuốc',
+            category: 'staff_prescription'
+          });
+
+          recordLogs.push({
+            id: `rec-log-${aId}`,
+            timestamp: ts,
+            userId: docId,
+            userName: docName,
+            role: 'DOCTOR',
+            action: 'CREATE_MEDICAL_RECORD',
+            details: `Tạo/cập nhật hồ sơ bệnh án cho ${patName} — Chẩn đoán: ${diagText}`,
+            module: 'Hồ sơ bệnh án',
+            category: 'staff_record'
+          });
+        });
+
+        // Build dynamic confirm/check-in logs for all non-cancelled appointments across DB and mock appointments
+        const allConfirmedAppsMap = new Map();
+
+        // 1. Add non-cancelled cases from mockAppointments
+        (mockAppointments || []).forEach(a => {
+          const isNotCancelled = a.status !== 'Đã hủy' && a.status !== 'Đã không đến' && a.status !== 'CANCELLED';
+          if (isNotCancelled) {
+            const aId = String(a.appointment_id ?? a.id);
+            allConfirmedAppsMap.set(aId, a);
+          }
+        });
+
+        // 2. Merge non-cancelled cases from real DB appointments
+        (apps || []).forEach(a => {
+          const isNotCancelled = a.status !== 'Đã hủy' && a.status !== 'Đã không đến' && a.status !== 'CANCELLED';
+          if (isNotCancelled) {
+            const aId = String(a.appointment_id ?? a.id);
+            allConfirmedAppsMap.set(aId, a);
+          }
+        });
+
+        const confirmLogs = [];
+        Array.from(allConfirmedAppsMap.values()).forEach(a => {
+          const aId = String(a.appointment_id ?? a.id);
+          const aptCode = a.id ? (String(a.id).startsWith('apt-') ? a.id : `apt-${a.id}`) : `apt-${aId}`;
+          const patName = a.patient_name || a.patientName || 'Bệnh nhân';
+          const svcName = a.service || 'Khám da liễu';
+          const dtStr = a.appointment_date || a.date || '';
+          const tmStr = a.start_time || a.time || '';
+          const dateInfo = dtStr ? `${dtStr} ${tmStr}`.trim() : '';
+          const ts = a.updated_at || a.created_at || (a.date ? `${a.date}T${a.time || '08:00'}:00Z` : new Date().toISOString());
+
+          confirmLogs.push({
+            id: `confirm-log-${aId}`,
+            timestamp: ts,
+            userId: 'staff-01',
+            userName: 'Lễ tân Hoàng Anh',
+            role: 'RECEPTIONIST',
+            action: 'CONFIRM_APPOINTMENT',
+            details: `Xác nhận lịch hẹn ${aptCode} — ${patName}, ${svcName}${dateInfo ? ` (${dateInfo})` : ''}`,
+            module: 'Quản lý lịch hẹn',
+            category: 'staff_confirm'
+          });
         });
 
         const appLogs = (apps || []).map(a => {
@@ -1169,8 +1327,29 @@ function SystemActivityTab() {
             };
           });
 
+          // Filter out baseUserLogs categories that we have dynamically generated, avoid deleting non-duplicate records
+          const generatedRxAppIds = new Set(prescriptionLogs.map(l => l.id.replace('rx-log-', '')));
+          let filteredBaseUserLogs = baseUserLogs.filter(l => {
+            if (l.category === 'payment' && paymentLogs.length > 0) return false;
+            if (l.category === 'staff_confirm' && confirmLogs.length > 0) return false;
+            if ((l.category === 'staff_prescription' || l.category === 'staff_record') && prescriptionLogs.length > 0) {
+              const matchesGenerated = Array.from(generatedRxAppIds).some(id => l.details.includes(id));
+              if (matchesGenerated) return false;
+            }
+            return true;
+          });
+
           const combinedSys = [...mappedSys, ...sysAppLogs, ...sysTicketLogs, ...(mockSystemLogs || [])].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-          const combinedUser = [...mappedUser, ...appLogs, ...ticketLogs, ...baseUserLogs].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+          const combinedUser = [
+            ...mappedUser,
+            ...appLogs,
+            ...ticketLogs,
+            ...paymentLogs,
+            ...prescriptionLogs,
+            ...recordLogs,
+            ...confirmLogs,
+            ...filteredBaseUserLogs
+          ].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
           
           setSysLogsState(combinedSys);
           setDynamicLogs(combinedUser);
@@ -1499,6 +1678,15 @@ function AppointmentViewHub() {
   const [sortBy, setSortBy]             = useState('date-desc');
   const [expandId, setExpandId]         = useState(null);
 
+  const handleStatusChange = async (aptId, newStatus) => {
+    try {
+      await AppointmentModel.updateStatus(aptId, newStatus);
+      setAllApts(prev => (prev || []).map(a => (String(a.id) === String(aptId) || String(a.appointment_id) === String(aptId)) ? { ...a, status: newStatus } : a));
+    } catch (err) {
+      console.error("Failed to update status", err);
+    }
+  };
+
   useEffect(() => {
     let active = true;
     (async () => {
@@ -1517,7 +1705,7 @@ function AppointmentViewHub() {
     return () => { active = false; };
   }, []);
 
-  const ALL_STATUSES = ['Đặt lịch thành công','Đang chờ khám','Đang khám','Đã hủy','Đã không đến','Đã thanh toán'];
+  const ALL_STATUSES = ['Đặt lịch thành công','Đang chờ khám','Đang khám','Đã khám','Đã hủy','Đã không đến','Đã thanh toán'];
   const apts = Array.isArray(allApts) ? allApts : [];
 
   const stats = useMemo(() => {
@@ -1670,6 +1858,22 @@ function AppointmentViewHub() {
                               <p className="text-xs font-semibold text-slate-700 break-words">{f.value}</p>
                             </div>
                           ))}
+                          {/* Quick status updater */}
+                          <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-3 shadow-sm col-span-2 sm:col-span-3 flex items-center justify-between gap-3 flex-wrap">
+                            <div>
+                              <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider">Cập nhật trạng thái lịch hẹn</p>
+                              <p className="text-xs text-slate-500 font-medium">Thay đổi trạng thái ca khám này trên hệ thống</p>
+                            </div>
+                            <select
+                              value={apt.status}
+                              onChange={(e) => handleStatusChange(apt.id, e.target.value)}
+                              className="text-xs font-bold bg-white border border-indigo-200 rounded-xl px-3 py-1.5 outline-none text-indigo-700 cursor-pointer shadow-sm focus:ring-2 focus:ring-indigo-400"
+                            >
+                              {ALL_STATUSES.map(st => (
+                                <option key={st} value={st}>{st}</option>
+                              ))}
+                            </select>
+                          </div>
                         </div>
                       </motion.div>
                     )}
@@ -1699,7 +1903,7 @@ const TABS = [
 
 import { ServiceTicketModel } from '../../models/ServiceTicketModel';
 import { StaffModel } from '../../models/StaffModel';
-import { mockSystemLogs, mockUserActivityLogs } from '../../mockData';
+import { mockSystemLogs, mockUserActivityLogs, mockAppointments } from '../../mockData';
 
 // Sub-tabs bên trong "Báo cáo hệ thống"
 const SYSTEM_SUBTABS = [
