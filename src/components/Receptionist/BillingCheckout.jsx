@@ -79,6 +79,7 @@ export default function BillingCheckout({
   const [voucherError, setVoucherError] = useState('');
   const [processing, setProcessing] = useState(false);
   const [receipt, setReceipt] = useState(null);
+  const [emrPrintData, setEmrPrintData] = useState(null);
 
   // PayOS QR States
   const [payosData, setPayosData] = useState(null);
@@ -763,7 +764,7 @@ export default function BillingCheckout({
                           priorAmount = 0;
                           checkoutAmount = paidRecord.final_amount;
                         }
-                        setReceipt({
+                        setEmrPrintData({
                           ...selected,
                           baseTotal: parseFee(selected.fee, 0) || 300000,
                           usedServices,
@@ -775,7 +776,6 @@ export default function BillingCheckout({
                           method: paidRecord?.payment_method || '—',
                           voucherCode: null,
                           paidAt: paidRecord?.paid_at ? new Date(paidRecord.paid_at) : new Date(),
-                          initialTab: 'emr',
                         });
                       }}
                       className="flex-1 py-3 rounded-xl bg-emerald-50 border border-emerald-200/80 text-emerald-800 text-xs font-bold hover:bg-emerald-100 cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
@@ -1005,6 +1005,9 @@ export default function BillingCheckout({
       {/* Receipt modal */}
       <ReceiptModal receipt={receipt} onClose={() => setReceipt(null)} receptionistId={receptionistId} showToast={showToast} />
 
+      {/* Medical Record print modal */}
+      <MedicalRecordPrintModal data={emrPrintData} onClose={() => setEmrPrintData(null)} showToast={showToast} />
+
       {/* Confirmation Modal before generating PayOS QR Code */}
       <AnimatePresence>
         {showQrModal && selected && (
@@ -1115,79 +1118,6 @@ function StatCard({ label, value, hint, icon: Icon, tone }) {
 
 function ReceiptModal({ receipt, onClose, receptionistId, showToast }) {
   const [isSendingEmail, setIsSendingEmail] = useState(false);
-  const [activeTab, setActiveTab] = useState(receipt?.initialTab || 'receipt'); // 'receipt' | 'emr'
-  const [examData, setExamData] = useState(null);
-  const [loadingExam, setLoadingExam] = useState(false);
-
-  useEffect(() => {
-    if (!receipt) return;
-    let isSubscribed = true;
-    setLoadingExam(true);
-
-    async function loadExamDetails() {
-      try {
-        let record = null;
-        if (receipt.aptId) {
-          const { data } = await supabase
-            .from('medical_records')
-            .select('*, doctor:doctor_profiles(*)')
-            .eq('appointment_id', receipt.aptId)
-            .maybeSingle();
-          record = data;
-        }
-
-        if (!record && receipt.patientId) {
-          const { data } = await supabase
-            .from('medical_records')
-            .select('*, doctor:doctor_profiles(*)')
-            .eq('patient_id', receipt.patientId)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-          record = data;
-        }
-
-        let presList = [];
-        const mrId = record?.record_id || record?.id;
-        if (mrId) {
-          const { data: pData } = await supabase
-            .from('prescriptions')
-            .select('*')
-            .eq('medical_record_id', mrId);
-          presList = pData || [];
-        }
-
-        let patDetail = null;
-        if (receipt.patientId) {
-          const { data: uData } = await supabase
-            .from('users')
-            .select('user_id, full_name, phone, email, date_of_birth, gender, patient_profiles(address)')
-            .eq('user_id', receipt.patientId)
-            .maybeSingle();
-          patDetail = uData;
-        }
-
-        if (isSubscribed) {
-          setExamData({
-            record,
-            symptoms: record?.symptoms || receipt.notes || 'Khám da liễu theo lịch hẹn',
-            diagnosis: record?.diagnosis || 'Viêm da cơ địa / Khám da liễu tổng quát',
-            doctorNote: record?.doctor_note || record?.notes || 'Vệ sinh da sạch sẽ, bôi kem dưỡng ẩm, che chắn cẩn thận khi ra ngoài.',
-            followUpDate: record?.follow_up_date || record?.next_appointment_date || (receipt.followUpFee > 0 ? 'Sau 2 tuần' : null),
-            prescriptions: presList.length > 0 ? presList : (record?.prescriptions || []),
-            patientDetail: patDetail,
-          });
-        }
-      } catch (err) {
-        console.error('Error fetching EMR for print modal:', err);
-      } finally {
-        if (isSubscribed) setLoadingExam(false);
-      }
-    }
-
-    loadExamDetails();
-    return () => { isSubscribed = false; };
-  }, [receipt]);
 
   const handleSendEmail = async () => {
     if (isSendingEmail) return;
@@ -1252,8 +1182,8 @@ function ReceiptModal({ receipt, onClose, receptionistId, showToast }) {
     }
   };
 
-  const handlePrint = (documentTitle) => {
-    showToast?.(`Đang gửi lệnh in ${documentTitle}...`, 'success');
+  const handlePrint = () => {
+    showToast?.('Đang gửi lệnh in hóa đơn thanh toán...', 'success');
     setTimeout(() => {
       window.print?.();
     }, 150);
@@ -1266,8 +1196,257 @@ function ReceiptModal({ receipt, onClose, receptionistId, showToast }) {
           <style>{`
             @media print {
               body * { visibility: hidden !important; }
-              #printable-modal-doc, #printable-modal-doc * { visibility: visible !important; }
-              #printable-modal-doc { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; margin: 0 !important; padding: 20px !important; }
+              #rcp-print, #rcp-print * { visibility: visible !important; }
+              #rcp-print { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; margin: 0 !important; padding: 20px !important; }
+            }
+          `}</style>
+
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100]"
+          />
+          <div className="fixed inset-0 z-[101] flex items-center justify-center p-4 pointer-events-none">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 250 }}
+              className="w-full max-w-md bg-white border border-slate-300 shadow-2xl rounded-3xl p-6 pointer-events-auto flex flex-col gap-4 text-left"
+            >
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                <div className="flex items-center gap-2 text-slate-800 font-extrabold text-sm">
+                  <Receipt className="w-4 h-4 text-emerald-600" />
+                  Hóa đơn thanh toán
+                </div>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center border-none cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Thermal Receipt Print Document */}
+              <div id="rcp-print" className="bg-white p-4 text-xs font-mono text-slate-800 text-left space-y-4 border border-slate-200 rounded-2xl shadow-xs">
+                <div className="text-center space-y-1">
+                  <h4 className="font-extrabold text-sm uppercase tracking-wider text-slate-900">PHÒNG KHÁM DA LIỄU DERMASMART</h4>
+                  <p className="text-[10px] text-slate-500 font-semibold">123 Đường Ba Tháng Hai, Quận 10, TP.HCM</p>
+                  <div className="border-b-2 border-double border-slate-300 my-2" />
+                  <h5 className="font-extrabold text-xs uppercase tracking-widest py-1">HÓA ĐƠN THANH TOÁN</h5>
+                  <p className="text-[9px] text-slate-500 font-semibold">
+                    Mã HĐ: HD-{String(receipt.aptId).replace(/\D/g, '').slice(-6) || '100001'}
+                  </p>
+                </div>
+                <div className="space-y-1 text-[10px] text-slate-600 font-semibold">
+                  <p className="flex justify-between"><span>Thời gian:</span><span>{receipt.paidAt?.toLocaleString('vi-VN')}</span></p>
+                  <p className="flex justify-between"><span>Thu ngân:</span><span className="truncate max-w-[120px]">{receptionistId || 'staff'}</span></p>
+                  <p className="flex justify-between"><span>Hình thức:</span><span>{receipt.method}</span></p>
+                </div>
+                <div className="border-b border-dashed border-slate-200 my-2" />
+                <div className="space-y-1 text-[10px] text-slate-700 font-semibold">
+                  <p><span className="text-slate-500 font-bold">Khách hàng:</span> <strong>{receipt.patientName}</strong></p>
+                  <p><span className="text-slate-500 font-bold">Bác sĩ:</span> {receipt.doctorName}</p>
+                </div>
+                <div className="border-t border-dashed border-slate-300 my-2 pt-2 space-y-1 text-[10px] text-slate-700 font-semibold">
+                  <div className="flex justify-between">
+                    <span>Khám: {receipt.serviceName}</span>
+                    <span className="font-mono">{formatVnd(receipt.baseTotal)}</span>
+                  </div>
+                  {receipt.usedServices && receipt.usedServices.map((s, idx) => (
+                    <div key={idx} className="flex justify-between">
+                      <span>DV/Thủ thuật: {s.name}</span>
+                      <span className="font-mono">{formatVnd(s.price)}</span>
+                    </div>
+                  ))}
+                  {receipt.followUpFee > 0 && (
+                    <div className="flex justify-between">
+                      <span>Đặt lịch tái khám:</span>
+                      <span className="font-mono">{formatVnd(receipt.followUpFee)}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="border-b-2 border-double border-slate-300 my-2" />
+                <div className="space-y-1 text-[10px] font-semibold text-slate-600">
+                  <p className="flex justify-between"><span>Cộng tiền dịch vụ:</span><span className="font-mono">{formatVnd(receipt.total)}</span></p>
+                  {receipt.discount > 0 && (
+                    <p className="flex justify-between text-emerald-600">
+                      <span>Giảm giá (voucher) {receipt.voucherCode ? `[${receipt.voucherCode}]` : ''}:</span>
+                      <span className="font-mono">−{formatVnd(receipt.discount)}</span>
+                    </p>
+                  )}
+                  {receipt.prior > 0 && (
+                    <p className="flex justify-between text-teal-600">
+                      <span>Khấu trừ tiền cọc đã đóng:</span>
+                      <span className="font-mono">−{formatVnd(receipt.prior)}</span>
+                    </p>
+                  )}
+                  <div className="border-t border-slate-200 pt-1.5 flex justify-between items-center text-xs font-black text-slate-900">
+                    <span>TỔNG ĐÃ THU:</span>
+                    <span className="text-sm">{formatVnd(receipt.netPayable ?? (receipt.total - receipt.discount))}</span>
+                  </div>
+                </div>
+                <div className="pt-1 text-center">
+                  <span className="text-[8px] text-slate-500 tracking-wider">Cảm ơn quý khách đã tin tưởng DermaSmart!</span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="sm:flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 cursor-pointer bg-white"
+                >
+                  Đóng lại
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSendEmail}
+                  disabled={isSendingEmail}
+                  className="sm:flex-1 py-3 rounded-xl bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 cursor-pointer text-xs font-bold flex justify-center items-center gap-1.5 disabled:opacity-70"
+                >
+                  {isSendingEmail ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" /> Đang gửi...
+                    </>
+                  ) : (
+                    <>
+                      <Mail size={16} /> Gửi Email
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={handlePrint}
+                  className="sm:flex-1 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 text-white text-xs font-bold hover:shadow-lg transition-all cursor-pointer border-none flex justify-center items-center gap-1.5"
+                >
+                  <Printer className="w-4 h-4" /> In Hóa đơn
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+}
+
+function MedicalRecordPrintModal({ data, onClose, showToast }) {
+  const [examData, setExamData] = useState(null);
+  const [loadingExam, setLoadingExam] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+
+  useEffect(() => {
+    if (!data) return;
+    let isSubscribed = true;
+    setLoadingExam(true);
+
+    async function loadExamDetails() {
+      try {
+        let record = null;
+        if (data.aptId) {
+          const { data: rData } = await supabase
+            .from('medical_records')
+            .select('*, doctor:doctor_profiles(*)')
+            .eq('appointment_id', data.aptId)
+            .maybeSingle();
+          record = rData;
+        }
+
+        if (!record && data.patientId) {
+          const { data: rData } = await supabase
+            .from('medical_records')
+            .select('*, doctor:doctor_profiles(*)')
+            .eq('patient_id', data.patientId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          record = rData;
+        }
+
+        let presList = [];
+        const mrId = record?.record_id || record?.id;
+        if (mrId) {
+          const { data: pData } = await supabase
+            .from('prescriptions')
+            .select('*')
+            .eq('medical_record_id', mrId);
+          presList = pData || [];
+        }
+
+        let patDetail = null;
+        if (data.patientId) {
+          const { data: uData } = await supabase
+            .from('users')
+            .select('user_id, full_name, phone, email, date_of_birth, gender, patient_profiles(address)')
+            .eq('user_id', data.patientId)
+            .maybeSingle();
+          patDetail = uData;
+        }
+
+        if (isSubscribed) {
+          setExamData({
+            record,
+            symptoms: record?.symptoms || data.notes || 'Khám da liễu theo lịch hẹn',
+            diagnosis: record?.diagnosis || 'Viêm da cơ địa / Khám da liễu tổng quát',
+            doctorNote: record?.doctor_note || record?.notes || 'Vệ sinh da sạch sẽ, bôi kem dưỡng ẩm, che chắn cẩn thận khi ra ngoài.',
+            followUpDate: record?.follow_up_date || record?.next_appointment_date || (data.followUpFee > 0 ? 'Sau 2 tuần' : null),
+            prescriptions: presList.length > 0 ? presList : (record?.prescriptions || []),
+            patientDetail: patDetail,
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching EMR for print modal:', err);
+      } finally {
+        if (isSubscribed) setLoadingExam(false);
+      }
+    }
+
+    loadExamDetails();
+    return () => { isSubscribed = false; };
+  }, [data]);
+
+  const handlePrint = () => {
+    showToast?.('Đang gửi lệnh in Hồ sơ bệnh án & Kết quả...', 'success');
+    setTimeout(() => {
+      window.print?.();
+    }, 150);
+  };
+
+  const handleSendEmail = async () => {
+    if (isSendingEmail) return;
+    setIsSendingEmail(true);
+    try {
+      let emailToUse = data.patientEmail || examData?.patientDetail?.email;
+      if (!emailToUse && data.patientId) {
+        const { data: u } = await supabase.from('users').select('email').eq('user_id', data.patientId).maybeSingle();
+        if (u?.email) emailToUse = u.email;
+      }
+      if (!emailToUse) {
+        showToast?.('Không tìm thấy email bệnh nhân để gửi hồ sơ.', 'error');
+        return;
+      }
+      showToast?.('Đã gửi thông tin hồ sơ & kết quả khám tới email bệnh nhân!', 'success');
+    } catch (err) {
+      console.error('Email error:', err);
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
+
+  return (
+    <AnimatePresence>
+      {data && (
+        <>
+          <style>{`
+            @media print {
+              body * { visibility: hidden !important; }
+              #emr-print, #emr-print * { visibility: visible !important; }
+              #emr-print { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; margin: 0 !important; padding: 20px !important; }
             }
           `}</style>
 
@@ -1286,243 +1465,163 @@ function ReceiptModal({ receipt, onClose, receptionistId, showToast }) {
               transition={{ type: 'spring', damping: 25, stiffness: 250 }}
               className="w-full max-w-xl bg-white border border-slate-300 shadow-2xl rounded-3xl p-6 pointer-events-auto my-auto max-h-[92vh] flex flex-col"
             >
-              {/* Tab Selector */}
-              <div className="flex bg-slate-100 p-1 rounded-2xl mb-4 shrink-0">
+              {/* Header Bar */}
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4 shrink-0">
+                <div className="flex items-center gap-2 text-emerald-800 font-extrabold text-sm">
+                  <FileText className="w-5 h-5 text-emerald-600" />
+                  Hồ sơ bệnh án & Kết quả khám
+                </div>
                 <button
                   type="button"
-                  onClick={() => setActiveTab('receipt')}
-                  className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer border-none ${
-                    activeTab === 'receipt'
-                      ? 'bg-white text-emerald-800 shadow-sm'
-                      : 'text-slate-500 hover:text-slate-800'
-                  }`}
+                  onClick={onClose}
+                  className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center border-none cursor-pointer transition-colors"
                 >
-                  <Receipt className="w-4 h-4" /> Hóa đơn thanh toán
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('emr')}
-                  className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer border-none ${
-                    activeTab === 'emr'
-                      ? 'bg-white text-emerald-800 shadow-sm'
-                      : 'text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  <FileText className="w-4 h-4" /> Hồ sơ bệnh án & Kết quả
+                  <X className="w-4 h-4" />
                 </button>
               </div>
 
-              {/* Printable Body Container */}
+              {/* Printable Medical Record Document */}
               <div className="flex-1 overflow-y-auto min-h-0 pr-1">
-                <div id="printable-modal-doc">
-                  {activeTab === 'receipt' ? (
-                    /* ── DOCUMENT 1: HÓA ĐƠN THANH TOÁN ── */
-                    <div id="rcp-print" className="bg-white p-4 text-xs font-mono text-slate-800 text-left space-y-4 border border-slate-200 rounded-2xl shadow-xs">
-                      <div className="text-center space-y-1">
-                        <h4 className="font-extrabold text-sm uppercase tracking-wider text-slate-900">PHÒNG KHÁM DA LIỄU DERMASMART</h4>
-                        <p className="text-[10px] text-slate-500 font-semibold">123 Đường Ba Tháng Hai, Quận 10, TP.HCM</p>
-                        <div className="border-b-2 border-double border-slate-300 my-2" />
-                        <h5 className="font-extrabold text-xs uppercase tracking-widest py-1">HÓA ĐƠN THANH TOÁN</h5>
-                        <p className="text-[9px] text-slate-500 font-semibold">
-                          Mã HĐ: HD-{String(receipt.aptId).replace(/\D/g, '').slice(-6) || '100001'}
-                        </p>
+                <div id="emr-print" className="bg-white p-5 text-xs text-slate-800 text-left space-y-4 border border-slate-200 rounded-2xl shadow-xs">
+                  {/* Header Phòng khám */}
+                  <div className="flex justify-between items-start border-b border-slate-200 pb-3">
+                    <div>
+                      <h4 className="font-extrabold text-sm uppercase text-emerald-800 tracking-wide">PHÒNG KHÁM DA LIỄU DERMASMART</h4>
+                      <p className="text-[10px] text-slate-500 font-semibold">123 Đường Ba Tháng Hai, Quận 10, TP. Hồ Chí Minh</p>
+                      <p className="text-[10px] text-slate-500 font-semibold">Hotline: 1900 6789 | Email: contact@dermasmart.vn</p>
+                    </div>
+                    <div className="text-right font-mono text-[10px] text-slate-500">
+                      <p className="font-bold text-slate-700">Mã ca: #{String(data.aptId).replace(/\D/g, '').slice(-6) || '100001'}</p>
+                      <p>Ngày khám: {data.paidAt ? new Date(data.paidAt).toLocaleDateString('vi-VN') : new Date().toLocaleDateString('vi-VN')}</p>
+                    </div>
+                  </div>
+
+                  <div className="text-center py-1">
+                    <h3 className="font-extrabold text-base text-slate-900 uppercase tracking-wider">PHIẾU KẾT QUẢ KHÁM & HỒ SƠ BỆNH ÁN</h3>
+                    <p className="text-[11px] text-slate-500 italic">Chuyên khoa: Da liễu & Thẩm mỹ da</p>
+                  </div>
+
+                  {/* 1. Thông tin bệnh nhân */}
+                  <div className="bg-slate-50/80 border border-slate-200/80 rounded-xl p-3.5 space-y-2">
+                    <h5 className="font-black text-xs text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
+                      <User className="w-3.5 h-3.5 text-emerald-600" /> I. THÔNG TIN BỆNH NHÂN
+                    </h5>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-slate-700 font-medium">
+                      <p><span className="font-bold text-slate-500">Họ và tên:</span> <strong className="text-slate-900">{data.patientName}</strong></p>
+                      <p><span className="font-bold text-slate-500">Số điện thoại:</span> {data.patientPhone || examData?.patientDetail?.phone || '—'}</p>
+                      <p><span className="font-bold text-slate-500">Giới tính:</span> {examData?.patientDetail?.gender || 'Nam'}</p>
+                      <p><span className="font-bold text-slate-500">Ngày sinh:</span> {examData?.patientDetail?.date_of_birth ? new Date(examData.patientDetail.date_of_birth).toLocaleDateString('vi-VN') : '—'}</p>
+                      <p className="col-span-2"><span className="font-bold text-slate-500">Địa chỉ:</span> {examData?.patientDetail?.patient_profiles?.address || 'TP. Hồ Chí Minh'}</p>
+                    </div>
+                  </div>
+
+                  {/* 2. Thông tin khám bệnh */}
+                  <div className="bg-slate-50/80 border border-slate-200/80 rounded-xl p-3.5 space-y-2">
+                    <h5 className="font-black text-xs text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
+                      <Stethoscope className="w-3.5 h-3.5 text-emerald-600" /> II. KẾT QUẢ KHÁM LÂM SÀNG
+                    </h5>
+                    <div className="space-y-1.5 text-xs text-slate-700 font-medium">
+                      <p><span className="font-bold text-slate-500">Bác sĩ phụ trách:</span> <strong className="text-slate-900">{data.doctorName}</strong></p>
+                      <p><span className="font-bold text-slate-500">Triệu chứng ban đầu:</span> {examData?.symptoms || 'Khám da liễu theo lịch hẹn'}</p>
+                      <p><span className="font-bold text-slate-500">Chẩn đoán bệnh (ICD-10):</span> <strong className="text-emerald-700 font-bold">{examData?.diagnosis || 'Viêm da cơ địa / Khám tổng quát'}</strong></p>
+                      <p><span className="font-bold text-slate-500">Dặn dò của bác sĩ:</span> {examData?.doctorNote}</p>
+                    </div>
+                  </div>
+
+                  {/* 3. Thủ thuật & Dịch vụ đã thực hiện */}
+                  <div className="bg-slate-50/80 border border-slate-200/80 rounded-xl p-3.5 space-y-2">
+                    <h5 className="font-black text-xs text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
+                      <Wrench className="w-3.5 h-3.5 text-emerald-600" /> III. THỦ THUẬT & DỊCH VỤ ĐÃ THỰC HIỆN
+                    </h5>
+                    <div className="border border-slate-200 rounded-lg overflow-hidden">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead className="bg-slate-100 font-bold text-slate-700">
+                          <tr>
+                            <th className="p-2 border-b border-slate-200 w-10 text-center">STT</th>
+                            <th className="p-2 border-b border-slate-200">Tên dịch vụ / Thủ thuật kỹ thuật</th>
+                            <th className="p-2 border-b border-slate-200 text-right">Chi phí</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200 font-medium text-slate-700">
+                          <tr>
+                            <td className="p-2 text-center">1</td>
+                            <td className="p-2">Khám chuyên khoa: {data.serviceName}</td>
+                            <td className="p-2 text-right font-mono">{formatVnd(data.baseTotal)}</td>
+                          </tr>
+                          {data.usedServices && data.usedServices.map((s, idx) => (
+                            <tr key={idx}>
+                              <td className="p-2 text-center">{idx + 2}</td>
+                              <td className="p-2">{s.name}</td>
+                              <td className="p-2 text-right font-mono">{formatVnd(s.price)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* 4. Đơn thuốc */}
+                  <div className="bg-slate-50/80 border border-slate-200/80 rounded-xl p-3.5 space-y-2">
+                    <h5 className="font-black text-xs text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
+                      <Pill className="w-3.5 h-3.5 text-emerald-600" /> IV. ĐƠN THUỐC ĐIỀU TRỊ
+                    </h5>
+                    {examData?.prescriptions && examData.prescriptions.length > 0 ? (
+                      <div className="border border-slate-200 rounded-lg overflow-hidden">
+                        <table className="w-full text-left border-collapse text-xs">
+                          <thead className="bg-slate-100 font-bold text-slate-700">
+                            <tr>
+                              <th className="p-2 border-b border-slate-200 w-10 text-center">STT</th>
+                              <th className="p-2 border-b border-slate-200">Tên thuốc</th>
+                              <th className="p-2 border-b border-slate-200 text-center w-16">SL</th>
+                              <th className="p-2 border-b border-slate-200">Cách dùng</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-200 font-medium text-slate-700">
+                            {examData.prescriptions.map((med, idx) => (
+                              <tr key={idx}>
+                                <td className="p-2 text-center">{idx + 1}</td>
+                                <td className="p-2 font-bold text-slate-800">{med.medication_name || med.name || med.medicationName}</td>
+                                <td className="p-2 text-center font-semibold">{med.quantity || med.amount || 1} {med.unit || 'viên'}</td>
+                                <td className="p-2 text-slate-600">{med.dosage || med.instructions || med.dosage_instructions || 'Theo hướng dẫn bác sĩ'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
-                      <div className="space-y-1 text-[10px] text-slate-600 font-semibold">
-                        <p className="flex justify-between"><span>Thời gian:</span><span>{receipt.paidAt.toLocaleString('vi-VN')}</span></p>
-                        <p className="flex justify-between"><span>Thu ngân:</span><span className="truncate max-w-[120px]">{receptionistId || 'staff'}</span></p>
-                        <p className="flex justify-between"><span>Hình thức:</span><span>{receipt.method}</span></p>
-                      </div>
-                      <div className="border-b border-dashed border-slate-200 my-2" />
-                      <div className="space-y-1 text-[10px] text-slate-700 font-semibold">
-                        <p><span className="text-slate-500 font-bold">Khách hàng:</span> <strong>{receipt.patientName}</strong></p>
-                        <p><span className="text-slate-500 font-bold">Bác sĩ:</span> {receipt.doctorName}</p>
-                      </div>
-                      <div className="border-t border-dashed border-slate-300 my-2 pt-2 space-y-1 text-[10px] text-slate-700 font-semibold">
-                        <div className="flex justify-between">
-                          <span>Khám: {receipt.serviceName}</span>
-                          <span className="font-mono">{formatVnd(receipt.baseTotal)}</span>
+                    ) : (
+                      <p className="text-xs text-slate-500 italic p-2.5 bg-white rounded-lg border border-slate-200">
+                        Bệnh nhân không có đơn thuốc kèm theo.
+                      </p>
+                    )}
+                  </div>
+
+                  {/* 5. Lịch tái khám & Chữ ký */}
+                  <div className="pt-2 space-y-4">
+                    {examData?.followUpDate && (
+                      <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2 text-emerald-800 font-bold">
+                          <Calendar className="w-4 h-4 text-emerald-600" />
+                          <span>Lịch hẹn tái khám dự kiến:</span>
                         </div>
-                        {receipt.usedServices && receipt.usedServices.map((s, idx) => (
-                          <div key={idx} className="flex justify-between">
-                            <span>DV/Thủ thuật: {s.name}</span>
-                            <span className="font-mono">{formatVnd(s.price)}</span>
-                          </div>
-                        ))}
-                        {receipt.followUpFee > 0 && (
-                          <div className="flex justify-between">
-                            <span>Đặt lịch tái khám:</span>
-                            <span className="font-mono">{formatVnd(receipt.followUpFee)}</span>
-                          </div>
-                        )}
+                        <span className="font-extrabold text-emerald-900 bg-emerald-200/80 px-3 py-1 rounded-lg">
+                          {examData.followUpDate}
+                        </span>
                       </div>
-                      <div className="border-b-2 border-double border-slate-300 my-2" />
-                      <div className="space-y-1 text-[10px] font-semibold text-slate-600">
-                        <p className="flex justify-between"><span>Cộng tiền dịch vụ:</span><span className="font-mono">{formatVnd(receipt.total)}</span></p>
-                        {receipt.discount > 0 && (
-                          <p className="flex justify-between text-emerald-600">
-                            <span>Giảm giá (voucher) {receipt.voucherCode ? `[${receipt.voucherCode}]` : ''}:</span>
-                            <span className="font-mono">−{formatVnd(receipt.discount)}</span>
-                          </p>
-                        )}
-                        {receipt.prior > 0 && (
-                          <p className="flex justify-between text-teal-600">
-                            <span>Khấu trừ tiền cọc đã đóng:</span>
-                            <span className="font-mono">−{formatVnd(receipt.prior)}</span>
-                          </p>
-                        )}
-                        <div className="border-t border-slate-200 pt-1.5 flex justify-between items-center text-xs font-black text-slate-900">
-                          <span>TỔNG ĐÃ THU:</span>
-                          <span className="text-sm">{formatVnd(receipt.netPayable ?? (receipt.total - receipt.discount))}</span>
-                        </div>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-4 text-center text-xs pt-4">
+                      <div>
+                        <p className="font-bold text-slate-700">BỆNH NHÂN</p>
+                        <p className="text-[10px] text-slate-400 italic mb-10">(Ký và ghi rõ họ tên)</p>
+                        <p className="font-semibold text-slate-800">{data.patientName}</p>
                       </div>
-                      <div className="pt-1 text-center">
-                        <span className="text-[8px] text-slate-500 tracking-wider">Cảm ơn quý khách đã tin tưởng DermaSmart!</span>
+                      <div>
+                        <p className="font-bold text-slate-700">BÁC SĨ KHÁM BỆNH</p>
+                        <p className="text-[10px] text-slate-400 italic mb-10">(Ký và đóng dấu)</p>
+                        <p className="font-bold text-slate-900">{data.doctorName}</p>
                       </div>
                     </div>
-                  ) : (
-                    /* ── DOCUMENT 2: PHIẾU KẾT QUẢ KHÁM BỆNH & HỒ SƠ BỆNH ÁN ── */
-                    <div id="emr-print" className="bg-white p-5 text-xs text-slate-800 text-left space-y-4 border border-slate-200 rounded-2xl shadow-xs">
-                      {/* Header Phòng khám */}
-                      <div className="flex justify-between items-start border-b border-slate-200 pb-3">
-                        <div>
-                          <h4 className="font-extrabold text-sm uppercase text-emerald-800 tracking-wide">PHÒNG KHÁM DA LIỄU DERMASMART</h4>
-                          <p className="text-[10px] text-slate-500 font-semibold">123 Đường Ba Tháng Hai, Quận 10, TP. Hồ Chí Minh</p>
-                          <p className="text-[10px] text-slate-500 font-semibold">Hotline: 1900 6789 | Email: contact@dermasmart.vn</p>
-                        </div>
-                        <div className="text-right font-mono text-[10px] text-slate-500">
-                          <p className="font-bold text-slate-700">Mã ca: #{String(receipt.aptId).replace(/\D/g, '').slice(-6) || '100001'}</p>
-                          <p>Ngày khám: {receipt.paidAt ? new Date(receipt.paidAt).toLocaleDateString('vi-VN') : new Date().toLocaleDateString('vi-VN')}</p>
-                        </div>
-                      </div>
-
-                      <div className="text-center py-1">
-                        <h3 className="font-extrabold text-base text-slate-900 uppercase tracking-wider">PHIẾU KẾT QUẢ KHÁM & HỒ SƠ BỆNH ÁN</h3>
-                        <p className="text-[11px] text-slate-500 italic">Chuyên khoa: Da liễu & Thẩm mỹ da</p>
-                      </div>
-
-                      {/* 1. Thông tin bệnh nhân */}
-                      <div className="bg-slate-50/80 border border-slate-200/80 rounded-xl p-3.5 space-y-2">
-                        <h5 className="font-black text-xs text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
-                          <User className="w-3.5 h-3.5 text-emerald-600" /> I. THÔNG TIN BỆNH NHÂN
-                        </h5>
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-slate-700 font-medium">
-                          <p><span className="font-bold text-slate-500">Họ và tên:</span> <strong className="text-slate-900">{receipt.patientName}</strong></p>
-                          <p><span className="font-bold text-slate-500">Số điện thoại:</span> {receipt.patientPhone || examData?.patientDetail?.phone || '—'}</p>
-                          <p><span className="font-bold text-slate-500">Giới tính:</span> {examData?.patientDetail?.gender || 'Nam'}</p>
-                          <p><span className="font-bold text-slate-500">Ngày sinh:</span> {examData?.patientDetail?.date_of_birth ? new Date(examData.patientDetail.date_of_birth).toLocaleDateString('vi-VN') : '—'}</p>
-                          <p className="col-span-2"><span className="font-bold text-slate-500">Địa chỉ:</span> {examData?.patientDetail?.patient_profiles?.address || 'TP. Hồ Chí Minh'}</p>
-                        </div>
-                      </div>
-
-                      {/* 2. Thông tin khám bệnh */}
-                      <div className="bg-slate-50/80 border border-slate-200/80 rounded-xl p-3.5 space-y-2">
-                        <h5 className="font-black text-xs text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
-                          <Stethoscope className="w-3.5 h-3.5 text-emerald-600" /> II. KẾT QUẢ KHÁM LÂM SÀNG
-                        </h5>
-                        <div className="space-y-1.5 text-xs text-slate-700 font-medium">
-                          <p><span className="font-bold text-slate-500">Bác sĩ phụ trách:</span> <strong className="text-slate-900">{receipt.doctorName}</strong></p>
-                          <p><span className="font-bold text-slate-500">Triệu chứng ban đầu:</span> {examData?.symptoms || 'Khám da liễu theo lịch hẹn'}</p>
-                          <p><span className="font-bold text-slate-500">Chẩn đoán bệnh (ICD-10):</span> <strong className="text-emerald-700 font-bold">{examData?.diagnosis || 'Viêm da cơ địa / Khám tổng quát'}</strong></p>
-                          <p><span className="font-bold text-slate-500">Dặn dò của bác sĩ:</span> {examData?.doctorNote}</p>
-                        </div>
-                      </div>
-
-                      {/* 3. Thủ thuật & Dịch vụ đã thực hiện */}
-                      <div className="bg-slate-50/80 border border-slate-200/80 rounded-xl p-3.5 space-y-2">
-                        <h5 className="font-black text-xs text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
-                          <Wrench className="w-3.5 h-3.5 text-emerald-600" /> III. THỦ THUẬT & DỊCH VỤ ĐÃ THỰC HIỆN
-                        </h5>
-                        <div className="border border-slate-200 rounded-lg overflow-hidden">
-                          <table className="w-full text-left border-collapse text-xs">
-                            <thead className="bg-slate-100 font-bold text-slate-700">
-                              <tr>
-                                <th className="p-2 border-b border-slate-200 w-10 text-center">STT</th>
-                                <th className="p-2 border-b border-slate-200">Tên dịch vụ / Thủ thuật kỹ thuật</th>
-                                <th className="p-2 border-b border-slate-200 text-right">Chi phí</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-200 font-medium text-slate-700">
-                              <tr>
-                                <td className="p-2 text-center">1</td>
-                                <td className="p-2">Khám chuyên khoa: {receipt.serviceName}</td>
-                                <td className="p-2 text-right font-mono">{formatVnd(receipt.baseTotal)}</td>
-                              </tr>
-                              {receipt.usedServices && receipt.usedServices.map((s, idx) => (
-                                <tr key={idx}>
-                                  <td className="p-2 text-center">{idx + 2}</td>
-                                  <td className="p-2">{s.name}</td>
-                                  <td className="p-2 text-right font-mono">{formatVnd(s.price)}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-
-                      {/* 4. Đơn thuốc */}
-                      <div className="bg-slate-50/80 border border-slate-200/80 rounded-xl p-3.5 space-y-2">
-                        <h5 className="font-black text-xs text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
-                          <Pill className="w-3.5 h-3.5 text-emerald-600" /> IV. ĐƠN THUỐC ĐIỀU TRỊ
-                        </h5>
-                        {examData?.prescriptions && examData.prescriptions.length > 0 ? (
-                          <div className="border border-slate-200 rounded-lg overflow-hidden">
-                            <table className="w-full text-left border-collapse text-xs">
-                              <thead className="bg-slate-100 font-bold text-slate-700">
-                                <tr>
-                                  <th className="p-2 border-b border-slate-200 w-10 text-center">STT</th>
-                                  <th className="p-2 border-b border-slate-200">Tên thuốc</th>
-                                  <th className="p-2 border-b border-slate-200 text-center w-16">SL</th>
-                                  <th className="p-2 border-b border-slate-200">Cách dùng</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-slate-200 font-medium text-slate-700">
-                                {examData.prescriptions.map((med, idx) => (
-                                  <tr key={idx}>
-                                    <td className="p-2 text-center">{idx + 1}</td>
-                                    <td className="p-2 font-bold text-slate-800">{med.medication_name || med.name || med.medicationName}</td>
-                                    <td className="p-2 text-center font-semibold">{med.quantity || med.amount || 1} {med.unit || 'viên'}</td>
-                                    <td className="p-2 text-slate-600">{med.dosage || med.instructions || med.dosage_instructions || 'Theo hướng dẫn bác sĩ'}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        ) : (
-                          <p className="text-xs text-slate-500 italic p-2.5 bg-white rounded-lg border border-slate-200">
-                            Bệnh nhân không có đơn thuốc kèm theo.
-                          </p>
-                        )}
-                      </div>
-
-                      {/* 5. Lịch tái khám & Chữ ký */}
-                      <div className="pt-2 space-y-4">
-                        {examData?.followUpDate && (
-                          <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl flex items-center justify-between text-xs">
-                            <div className="flex items-center gap-2 text-emerald-800 font-bold">
-                              <Calendar className="w-4 h-4 text-emerald-600" />
-                              <span>Lịch hẹn tái khám dự kiến:</span>
-                            </div>
-                            <span className="font-extrabold text-emerald-900 bg-emerald-200/80 px-3 py-1 rounded-lg">
-                              {examData.followUpDate}
-                            </span>
-                          </div>
-                        )}
-
-                        <div className="grid grid-cols-2 gap-4 text-center text-xs pt-4">
-                          <div>
-                            <p className="font-bold text-slate-700">BỆNH NHÂN</p>
-                            <p className="text-[10px] text-slate-400 italic mb-10">(Ký và ghi rõ họ tên)</p>
-                            <p className="font-semibold text-slate-800">{receipt.patientName}</p>
-                          </div>
-                          <div>
-                            <p className="font-bold text-slate-700">BÁC SĨ KHÁM BỆNH</p>
-                            <p className="text-[10px] text-slate-400 italic mb-10">(Ký và đóng dấu)</p>
-                            <p className="font-bold text-slate-900">{receipt.doctorName}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                  </div>
                 </div>
               </div>
 
@@ -1553,10 +1652,10 @@ function ReceiptModal({ receipt, onClose, receptionistId, showToast }) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => handlePrint(activeTab === 'receipt' ? 'Hóa đơn' : 'Hồ sơ bệnh án & Kết quả khám')}
+                  onClick={handlePrint}
                   className="sm:flex-1 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 text-white text-xs font-bold hover:shadow-lg transition-all cursor-pointer border-none flex justify-center items-center gap-1.5"
                 >
-                  <Printer className="w-4 h-4" /> {activeTab === 'receipt' ? 'In Hóa đơn' : 'In Kết Quả Khám'}
+                  <Printer className="w-4 h-4" /> In Kết Quả Khám
                 </button>
               </div>
             </motion.div>
