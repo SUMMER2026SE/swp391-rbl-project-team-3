@@ -540,39 +540,40 @@ export default function BillingCheckout({
         />
       </div>
 
+      {/* ── Filter & Search Toolbar ── */}
+      <div className="flex flex-col sm:flex-row gap-3 sm:items-center justify-between mb-4">
+        <div className="flex bg-slate-100/80 p-1 rounded-2xl gap-1 w-fit border border-slate-200/40">
+          {FILTERS.map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`py-2 px-4 rounded-xl border-none font-bold text-xs cursor-pointer transition-all ${
+                filter === f ? 'bg-white text-slate-800 shadow-sm' : 'bg-transparent text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
+        <div className="backdrop-blur-md bg-white/20 border border-white/40 rounded-2xl px-3.5 py-2 flex items-center max-w-xs w-full focus-within:bg-white/40 focus-within:border-white focus-within:ring-2 focus-within:ring-emerald-400/50 transition-all">
+          <Search className="w-4 h-4 text-slate-500 mr-2 shrink-0" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Tìm bệnh nhân / mã..."
+            className="bg-transparent border-none outline-none text-xs font-semibold w-full text-gray-800 placeholder-gray-500 focus:ring-0 p-0"
+          />
+          {search && (
+            <button onClick={() => setSearch('')} className="bg-transparent border-none cursor-pointer text-slate-500 hover:text-slate-600">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* ── Invoice list ─────────────────────────────────────────────────── */}
-        <div className="col-span-1 lg:col-span-6 space-y-4">
-          <div className="flex flex-col sm:flex-row gap-3 sm:items-center justify-between">
-            <div className="flex bg-slate-100/80 p-1 rounded-2xl gap-1 w-fit border border-slate-200/40">
-              {FILTERS.map((f) => (
-                <button
-                  key={f}
-                  onClick={() => setFilter(f)}
-                  className={`py-2 px-4 rounded-xl border-none font-bold text-xs cursor-pointer transition-all ${
-                    filter === f ? 'bg-white text-slate-800 shadow-sm' : 'bg-transparent text-slate-500 hover:text-slate-700'
-                  }`}
-                >
-                  {f}
-                </button>
-              ))}
-            </div>
-            <div className="backdrop-blur-md bg-white/20 border border-white/40 rounded-2xl px-3.5 py-2 flex items-center max-w-xs w-full focus-within:bg-white/40 focus-within:border-white focus-within:ring-2 focus-within:ring-emerald-400/50 transition-all">
-              <Search className="w-4 h-4 text-slate-500 mr-2 shrink-0" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Tìm bệnh nhân / mã..."
-                className="bg-transparent border-none outline-none text-xs font-semibold w-full text-gray-800 placeholder-gray-500 focus:ring-0 p-0"
-              />
-              {search && (
-                <button onClick={() => setSearch('')} className="bg-transparent border-none cursor-pointer text-slate-500 hover:text-slate-600">
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-          </div>
-
+        <div className="col-span-1 lg:col-span-6">
           <div className={`${GLASS_BASE} overflow-hidden`}>
             {visible.length === 0 ? (
               <div className="py-14 text-center text-slate-500">
