@@ -58,6 +58,8 @@ export function useWalkInBooking({
      profile — and (b) which came straight from the database, which we leave
      alone even if an old row would fail today's stricter validators. */
   const prefillRef = useRef(null);
+  // Last email address actually sent to the lookup — see handleEmailBlur.
+  const lastLookupEmailRef = useRef(null);
 
   const minDate = useMemo(() => {
     const todayDate = new Date();
@@ -114,6 +116,7 @@ export function useWalkInBooking({
       setIsExistingPatient(false);
       setIsCheckingEmail(false);
       prefillRef.current = null;
+      lastLookupEmailRef.current = null;
 
       // Fetch doctor shift schedules
       DoctorScheduleModel.getAllShifts().then((data) => setAdminSchedules(data || []));
@@ -221,6 +224,15 @@ export function useWalkInBooking({
     if (!emailVal || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
       return;
     }
+    /* Look each address up ONCE. This handler fires on every blur of the email
+       box, so without this guard clicking back into the email field and out
+       again re-ran the lookup and overwrote whatever the receptionist had just
+       corrected in the pre-filled fields — the form looked like it refused to be
+       edited. A genuinely different address still re-fills, which is intended. */
+    if (lastLookupEmailRef.current === emailVal) {
+      return;
+    }
+    lastLookupEmailRef.current = emailVal;
     setIsCheckingEmail(true);
     try {
       const { data, error } = await supabase
@@ -284,6 +296,9 @@ export function useWalkInBooking({
       }
     } catch (err) {
       console.error('Error checking email:', err);
+      // Failed lookup — forget the guard so blurring the field retries instead
+      // of silently treating this address as "already checked".
+      lastLookupEmailRef.current = null;
     } finally {
       setIsCheckingEmail(false);
     }

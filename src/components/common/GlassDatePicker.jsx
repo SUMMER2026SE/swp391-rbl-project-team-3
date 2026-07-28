@@ -44,6 +44,10 @@ export default function GlassDatePicker({
   value,
   onChange,
   min,
+  // Callers (e.g. the walk-in booking form) have always passed `disabled`, but it
+  // was not in this list, so it was silently dropped: the picker stayed clickable
+  // while every sibling input around it was locked.
+  disabled = false,
   placeholder = 'Chọn ngày khám',
   className = '',
   buttonClassName = '',
@@ -119,10 +123,11 @@ export default function GlassDatePicker({
       {/* Trigger */}
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => !disabled && setOpen((o) => !o)}
+        disabled={disabled}
         aria-haspopup="dialog"
         aria-expanded={open}
-        className={`bg-white/50 border border-white/40 text-gray-900 rounded-xl p-4 w-full cursor-pointer flex justify-between items-center outline-none focus:ring-2 focus:ring-teal-500/50 transition-all ${buttonClassName}`}
+        className={`bg-white/50 border border-white/40 text-gray-900 rounded-xl p-4 w-full cursor-pointer flex justify-between items-center outline-none focus:ring-2 focus:ring-teal-500/50 transition-all disabled:opacity-70 disabled:cursor-not-allowed ${buttonClassName}`}
       >
         <span className={selectedDate ? 'text-slate-900 text-sm font-semibold' : 'text-slate-800 text-sm font-semibold'}>
           {triggerLabel}
