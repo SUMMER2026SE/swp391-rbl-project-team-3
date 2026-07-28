@@ -14,6 +14,33 @@ const fadeInUp = {
 const stagger = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.08 } } };
 
 export default function OverviewTab({ user, kpi, todays, onGoTab, onArrive, onAdd }) {
+  const [currentTime, setCurrentTime] = React.useState(new Date());
+
+  React.useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 30000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const canCheckIn = (aptTime) => {
+    if (!aptTime) return false;
+    const [h, m] = aptTime.split(':').map(Number);
+    const aptDate = new Date();
+    aptDate.setHours(h, m, 0, 0);
+    const diffMin = (aptDate - currentTime) / 60000;
+    return diffMin <= 30;
+  };
+
+  const getCheckInMessage = (aptTime) => {
+    if (!aptTime) return '';
+    const [h, m] = aptTime.split(':').map(Number);
+    const aptDate = new Date();
+    aptDate.setHours(h, m, 0, 0);
+    const earlyDate = new Date(aptDate.getTime() - 30 * 60000);
+    const hh = String(earlyDate.getHours()).padStart(2, '0');
+    const mm = String(earlyDate.getMinutes()).padStart(2, '0');
+    return `Từ ${hh}:${mm}`;
+  };
+
   const now = new Date();
   const nextUp = todays
     .filter((a) => a.status === APT_STATUS.BOOKED || a.status === APT_STATUS.CHECKED_IN)
@@ -93,6 +120,7 @@ export default function OverviewTab({ user, kpi, todays, onGoTab, onArrive, onAd
             ) : (
               nextUp.map((apt) => {
                 const arrived = apt.status === APT_STATUS.CHECKED_IN;
+                const canCheck = canCheckIn(apt.time);
                 return (
                   <div key={apt.key} className="p-4 border-b border-slate-200/40 last:border-0 flex items-center justify-between gap-3 hover:bg-white/50 transition-colors">
                     <div className="flex items-center gap-3 min-w-0">
@@ -108,13 +136,21 @@ export default function OverviewTab({ user, kpi, todays, onGoTab, onArrive, onAd
                     </div>
                     {arrived ? (
                       <span className="px-3 py-1.5 text-[11px] text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-xl font-bold shrink-0">Đã đến</span>
-                    ) : (
+                    ) : canCheck ? (
                       <button
                         onClick={() => onArrive(apt)}
                         className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-sky-500 to-teal-600 text-white text-[11px] font-bold hover:shadow-md active:scale-95 transition-all cursor-pointer border-none shrink-0 flex items-center gap-1.5"
                       >
                         <UserCheck className="w-3.5 h-3.5" /> Đã đến
                       </button>
+                    ) : (
+                      <div
+                        title={`Chưa đến giờ check-in (Chỉ cho phép check-in trước giờ hẹn tối đa 30 phút). ${getCheckInMessage(apt.time)}`}
+                        className="px-3 py-1.5 text-[11px] text-slate-400 bg-slate-100 border border-slate-200/80 rounded-xl font-semibold shrink-0 flex items-center gap-1 cursor-not-allowed select-none"
+                      >
+                        <Clock className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Chưa tới giờ</span>
+                      </div>
                     )}
                   </div>
                 );

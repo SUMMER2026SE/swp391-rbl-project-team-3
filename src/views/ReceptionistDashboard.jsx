@@ -100,6 +100,28 @@ export default function ReceptionistDashboard() {
     setTimeout(() => setToast(null), 3200);
   };
 
+  const canCheckIn = (aptTime) => {
+    if (!aptTime) return false;
+    const [h, m] = aptTime.split(':').map(Number);
+    const aptDate = new Date();
+    aptDate.setHours(h, m, 0, 0);
+    const diffMin = (aptDate - new Date()) / 60000;
+    return diffMin <= 30;
+  };
+
+  const handleArriveAttempt = (apt) => {
+    if (apt && apt.time && !canCheckIn(apt.time)) {
+      const [h, m] = apt.time.split(':').map(Number);
+      const earlyDate = new Date();
+      earlyDate.setHours(h, m - 30, 0, 0);
+      const hh = String(earlyDate.getHours()).padStart(2, '0');
+      const mm = String(earlyDate.getMinutes()).padStart(2, '0');
+      showToast(`Chưa tới giờ check-in cho ca khám ${apt.time} (Chỉ được check-in từ ${hh}:${mm}).`, 'warning');
+      return;
+    }
+    setSelectedCheckInApt(apt);
+  };
+
   // ─── Notifications ────────────────────────────────────────────────────────
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -388,7 +410,7 @@ export default function ReceptionistDashboard() {
             kpi={kpi}
             todays={todays}
             onGoTab={setActiveTab}
-            onArrive={(apt) => setSelectedCheckInApt(apt)}
+            onArrive={handleArriveAttempt}
             onAdd={() => walkInBooking.setIsAddOpen(true)}
           />
         )}
@@ -400,7 +422,7 @@ export default function ReceptionistDashboard() {
             onChangeStatus={handleQueueStatusChange}
             onOpenChat={handleOpenChat}
             onGoBilling={goBilling}
-            onArrive={(apt) => setSelectedCheckInApt(apt)}
+            onArrive={handleArriveAttempt}
             showToast={showToast}
           />
         )}
