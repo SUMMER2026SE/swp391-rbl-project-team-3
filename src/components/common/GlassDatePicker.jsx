@@ -140,27 +140,52 @@ export default function GlassDatePicker({
             transition={{ duration: 0.18, ease: 'easeOut' }}
             className="absolute z-[9999] mt-2 bg-white/95 backdrop-blur-3xl border border-slate-200 shadow-2xl rounded-2xl p-4 w-80 origin-top"
           >
-            {/* Month navigation */}
-            <div className="flex items-center justify-between mb-4">
+            {/* Month & Year navigation with / separator */}
+            <div className="flex items-center justify-between mb-4 px-1">
               <button
                 type="button"
                 onClick={goPrevMonth}
                 disabled={prevMonthDisabled}
                 aria-label="Tháng trước"
-                className="w-9 h-9 flex items-center justify-center rounded-xl bg-transparent border-none text-gray-600 hover:bg-white/60 hover:text-emerald-700 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-all"
+                className="w-8 h-8 flex items-center justify-center rounded-xl bg-transparent border-none text-gray-600 hover:bg-slate-100 hover:text-emerald-700 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-all shrink-0"
               >
-                <ChevronLeft className="w-5 h-5" />
+                <ChevronLeft className="w-4 h-4" />
               </button>
-              <span className="text-sm font-bold text-gray-800">
-                {MONTHS[month]} {year}
-              </span>
+              
+              <div className="flex items-center gap-1 font-extrabold text-slate-800 text-sm">
+                <span>Tháng</span>
+                <select
+                  value={month}
+                  onChange={(e) => setViewDate(new Date(year, Number(e.target.value), 1))}
+                  className="bg-transparent font-extrabold text-slate-800 outline-none cursor-pointer hover:bg-slate-100/80 rounded px-1 py-0.5 border-none text-sm"
+                >
+                  {Array.from({ length: 12 }).map((_, i) => (
+                    <option key={i} value={i}>
+                      {i + 1}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-slate-400 font-bold mx-0.5">/</span>
+                <select
+                  value={year}
+                  onChange={(e) => setViewDate(new Date(Number(e.target.value), month, 1))}
+                  className="bg-transparent font-extrabold text-slate-800 outline-none cursor-pointer hover:bg-slate-100/80 rounded px-1 py-0.5 border-none text-sm"
+                >
+                  {Array.from({ length: 110 }, (_, i) => new Date().getFullYear() - 95 + i).map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <button
                 type="button"
                 onClick={goNextMonth}
                 aria-label="Tháng sau"
-                className="w-9 h-9 flex items-center justify-center rounded-xl bg-transparent border-none text-gray-600 hover:bg-white/60 hover:text-emerald-700 cursor-pointer transition-all"
+                className="w-8 h-8 flex items-center justify-center rounded-xl bg-transparent border-none text-gray-600 hover:bg-slate-100 hover:text-emerald-700 cursor-pointer transition-all shrink-0"
               >
-                <ChevronRight className="w-5 h-5" />
+                <ChevronRight className="w-4 h-4" />
               </button>
             </div>
 

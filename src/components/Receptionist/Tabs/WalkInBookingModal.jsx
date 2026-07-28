@@ -82,7 +82,7 @@ export default function WalkInBookingModal({
                         value={selectedDate}
                         onChange={(d) => { setSelectedDate(d); setSelectedTime(''); }}
                         min={minDate}
-                        placeholder="mm/dd/yyyy"
+                        placeholder="dd/mm/yyyy"
                       />
                     </div>
                   </div>
