@@ -551,86 +551,15 @@ export default function FreeSkinScanModal({ isOpen, onClose, onBookAppointment }
                                 </div>
                             ) : (
                                 <div className="flex-1 flex flex-col h-full gap-3">
-                                    {/* Glass Tabs */}
-                                    {aiResults?.cropped && (
-                                        <div className="
-                                            flex bg-slate-950/5 border border-slate-200/50 backdrop-blur-md
-                                            p-1 rounded-xl gap-1 text-xs self-start font-semibold shrink-0
-                                            shadow-inner
-                                        ">
-                                            <button 
-                                                onClick={() => setActiveTab('original')}
-                                                className={`px-3.5 py-1.5 rounded-lg transition-all duration-200 cursor-pointer border-none ${
-                                                    activeTab === 'original' 
-                                                        ? 'bg-white text-slate-900 shadow-sm font-bold' 
-                                                        : 'text-slate-600 hover:text-slate-900 hover:bg-white/30'
-                                                }`}
-                                            >
-                                                Ảnh gốc
-                                            </button>
-                                            <button 
-                                                onClick={() => setActiveTab('annotated')}
-                                                className={`px-3.5 py-1.5 rounded-lg transition-all duration-200 cursor-pointer border-none ${
-                                                    activeTab === 'annotated' 
-                                                        ? 'bg-teal-600 text-white shadow-sm font-bold' 
-                                                        : 'text-slate-600 hover:text-teal-600 hover:bg-teal-50/30'
-                                                }`}
-                                            >
-                                                AI Nhận diện mặt
-                                            </button>
-                                            <button 
-                                                onClick={() => setActiveTab('cropped')}
-                                                className={`px-3.5 py-1.5 rounded-lg transition-all duration-200 cursor-pointer border-none ${
-                                                    activeTab === 'cropped' 
-                                                        ? 'bg-teal-600 text-white shadow-sm font-bold' 
-                                                        : 'text-slate-600 hover:text-teal-600 hover:bg-teal-50/30'
-                                                }`}
-                                            >
-                                                Vùng má phân tích
-                                            </button>
-                                        </div>
-                                    )}
-
                                     {/* Image Display — Dark Glass Container */}
                                     <div className="flex-1 relative bg-slate-900/90 backdrop-blur-sm rounded-2xl overflow-hidden flex items-center justify-center min-h-[220px] border border-white/10">
-                                        <AnimatePresence mode="wait">
-                                            {activeTab === 'original' && (
-                                                <motion.img 
-                                                    key="original"
-                                                    initial={{ opacity: 0 }}
-                                                    animate={{ opacity: 1 }}
-                                                    exit={{ opacity: 0 }}
-                                                    src={image} 
-                                                    alt="Original Patient Skin" 
-                                                    className="w-full h-full object-contain" 
-                                                />
-                                            )}
-                                            {activeTab === 'annotated' && aiResults?.annotated_url && (
-                                                <motion.img 
-                                                    key="annotated"
-                                                    initial={{ opacity: 0 }}
-                                                    animate={{ opacity: 1 }}
-                                                    exit={{ opacity: 0 }}
-                                                    src={aiResults.annotated_url} 
-                                                    alt="Face Detection AI" 
-                                                    className="w-full h-full object-contain" 
-                                                />
-                                            )}
-                                            {activeTab === 'cropped' && aiResults?.cropped_url && (
-                                                <motion.img 
-                                                    key="cropped"
-                                                    initial={{ opacity: 0 }}
-                                                    animate={{ opacity: 1 }}
-                                                    exit={{ opacity: 0 }}
-                                                    src={aiResults.cropped_url} 
-                                                    alt="Skin Patch Crop AI" 
-                                                    className="w-full h-full object-contain" 
-                                                />
-                                            )}
-                                        </AnimatePresence>
-                                        
+                                        <img
+                                            src={image}
+                                            alt="Original Patient Skin"
+                                            className="w-full h-full object-contain"
+                                        />
                                         {/* Reset button — Frosted */}
-                                        <button 
+                                        <button
                                             onClick={handleReset}
                                             className="
                                                 absolute top-3 right-3
