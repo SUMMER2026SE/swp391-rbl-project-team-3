@@ -140,64 +140,14 @@ export default function InvoiceDetailModal({ invoice, onClose }) {
               Đóng lại
             </button>
             <button
-              onClick={() => {
-                const printWindow = window.open('', '_blank');
-                printWindow.document.write(`
-                  <html>
-                    <head>
-                      <title>Hoa don thanh toan - ${invoice.patientName}</title>
-                      <style>
-                        body { font-family: monospace; padding: 20px; color: #333; max-width: 400px; margin: 0 auto; }
-                        .text-center { text-align: center; }
-                        .flex { display: flex; justify-content: space-between; }
-                        .border-b { border-bottom: 1px dashed #ccc; margin: 10px 0; }
-                        .border-double { border-bottom: 3px double #333; margin: 10px 0; }
-                        .font-bold { font-weight: bold; }
-                        .text-emerald { color: #16a34a; }
-                      </style>
-                    </head>
-                    <body>
-                      <div class="text-center">
-                        <h3>PHONG KHAM DA LIEU DERMASMART</h3>
-                        <p style="font-size: 10px; color: #666;">123 Duong Ba Thang Hai, Quan 10, TP.HCM</p>
-                        <div class="border-double"></div>
-                        <h4>HOA DON THANH TOAN</h4>
-                        <p style="font-size: 10px;">Ma HD: HD-${String(invoice.aptId).replace(/\D/g, '').slice(-6)}</p>
-                      </div>
-                      <div style="font-size: 11px; line-height: 1.6;">
-                        <div class="flex"><span>Thoi gian:</span><span>${invoice.paidAt ? invoice.paidAt.toLocaleString('vi-VN') : ''}</span></div>
-                        <div class="flex"><span>Thu ngan:</span><span>Le tan (${invoice.receptionistId})</span></div>
-                        <div class="flex"><span>Phuong thuc:</span><span>${invoice.method}</span></div>
-                        <div class="border-b"></div>
-                        <p><b>Khach hang:</b> ${invoice.patientName}</p>
-                        <p><b>Bac si:</b> ${invoice.doctorName}</p>
-                        <div class="border-double"></div>
-                        <div class="flex"><span>Kham: ${invoice.serviceName}</span><span>${formatVnd(invoice.baseTotal || invoice.total)}</span></div>
-                        ${invoice.usedServices ? invoice.usedServices.map(s => `<div class="flex"><span>DV: ${s.name}</span><span>${formatVnd(s.price)}</span></div>`).join('') : ''}
-                        ${invoice.followUpFee > 0 ? `<div class="flex"><span>Dat lich tai kham:</span><span>${formatVnd(invoice.followUpFee)}</span></div>` : ''}
-                        <div class="border-b"></div>
-                        <div class="flex"><span>Cong tien dich vu:</span><span>${formatVnd(invoice.total)}</span></div>
-                        \${invoice.discount > 0 ? \`<div class="flex text-emerald"><span>Uu dai:</span><span>-\${formatVnd(invoice.discount)}</span></div>\` : ''}
-                        <div class="border-b"></div>
-                        <div class="flex" style="font-weight: bold; font-size: 13px;">
-                          <span>TONG DA THU:</span>
-                          <span>\${formatVnd(invoice.netPayable)}</span>
-                        </div>
-                      </div>
-                      <div class="text-center" style="margin-top: 20px; font-size: 10px; color: #888;">
-                        Cam on quy khach da tin tuong DermaSmart!
-                      </div>
-                      <script>
-                        window.onload = function() {
-                          window.print();
-                          window.close();
-                        };
-                      </script>
-                    </body>
-                  </html>
-                `);
-                printWindow.document.close();
-              }}
+              /* Prints the invoice node above via the @media print rules in
+                 index.css. The previous version hand-wrote a second HTML document
+                 into window.open(), which (a) had every Vietnamese accent stripped
+                 out ("PHONG KHAM DA LIEU"), (b) escaped two of its own template
+                 placeholders so the total line printed the literal text
+                 "${formatVnd(invoice.netPayable)}" instead of the amount, and
+                 (c) crashed when a popup blocker returned null. */
+              onClick={() => window.print?.()}
               className="flex-1 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-xs font-bold hover:shadow-lg active:scale-95 transition-all cursor-pointer border-none flex justify-center items-center gap-1.5"
             >
               <Printer className="w-4 h-4" /> In hóa đơn

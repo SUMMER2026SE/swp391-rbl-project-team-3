@@ -83,7 +83,9 @@ export default function LiveChatDrawer({ patient, isOpen, onClose, messages, onS
             animate={{ opacity: 0.4 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-slate-900/30 backdrop-blur-sm z-40 transition-opacity"
+            /* z-40 tied with the shell sidebar, so which one covered which came
+               down to DOM order. Sit clearly above the whole chrome instead. */
+            className="fixed inset-0 bg-slate-900/30 backdrop-blur-sm z-[90] transition-opacity"
           />
 
           {/* Glass Drawer Panel */}
@@ -92,7 +94,7 @@ export default function LiveChatDrawer({ patient, isOpen, onClose, messages, onS
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: "100%", opacity: 0.95 }}
             transition={{ type: "spring", damping: 28, stiffness: 220 }}
-            className="w-[90vw] max-w-[400px] backdrop-blur-3xl bg-white/90 border-l border-white/20 shadow-[0_0_50px_rgba(0,0,0,0.15)] z-50 fixed right-0 top-0 h-full flex flex-col overflow-hidden"
+            className="w-[90vw] max-w-[400px] backdrop-blur-3xl bg-white/90 border-l border-white/20 shadow-[0_0_50px_rgba(0,0,0,0.15)] z-[91] fixed right-0 top-0 h-full flex flex-col overflow-hidden"
           >
             {/* Header: Patient Info and Status */}
             <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between shrink-0 bg-slate-50/50 gap-2">

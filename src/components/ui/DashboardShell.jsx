@@ -285,7 +285,14 @@ export default function DashboardShell({
 
           {/* Page content — keyed remount (matches Doctor baseline; avoids the
               AnimatePresence mode="wait" exit-stall that can block tab swaps). */}
-          <main className="relative z-10 px-4 md:px-8 py-8 max-w-[1600px] mx-auto">
+          {/* `relative` WITHOUT a z-index on purpose. `relative z-10` used to open a
+              stacking context here, which trapped every modal rendered by a tab:
+              an overlay asking for z-[100] still painted inside the z-10 layer, so
+              the sticky topbar (z-30) and the fixed sidebar (z-40) sat on top of it
+              — the receptionist receipt dialog was the visible symptom. Without a
+              z-index the content still paints above the z-0 background decoration
+              (it comes later in the DOM) and modals can rise above the chrome. */}
+          <main className="relative px-4 md:px-8 py-8 max-w-[1600px] mx-auto">
             <motion.div
               key={customKey || `tab-${activeTab}`}
               initial={{ opacity: 0, y: 16 }}

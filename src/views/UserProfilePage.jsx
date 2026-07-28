@@ -729,9 +729,6 @@ export default function UserProfilePage() {
             
             {/* Layer 3: Elevate existing children (like Edit buttons or Back buttons) */}
             <div className="relative z-20 w-full h-full p-6 flex flex-col justify-end">
-              <div className="bg-rose-600 text-white font-mono text-[10px] p-2 break-all mb-4 rounded-md shadow-lg border border-rose-400 z-50 relative">
-                DEBUG URL: {typeof profileBgImage === 'object' ? JSON.stringify(profileBgImage) : String(profileBgImage)}
-              </div>
               <div className="flex items-center gap-4">
                 <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-teal-400 to-sky-500 flex items-center justify-center text-white text-3xl font-bold shadow-xl shadow-black/20 overflow-hidden border-2 border-white/20">
                   {user?.avatar

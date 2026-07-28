@@ -1176,3 +1176,60 @@ input[type="password"]::-webkit-reveal {
 .dashboard-theme textarea {
   letter-spacing: -0.01em !important;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   PRINT — receipt / invoice only.
+
+   "In hóa đơn" (BillingCheckout) and the patient-portal invoice both call
+   window.print() while the whole dashboard is still mounted, and there was no
+   print stylesheet — so the printout was the entire blurred page: sidebar,
+   topbar, invoice list and the dialog's own buttons. Hide everything, then
+   re-show just the receipt node and pin it to the top-left of the sheet.
+   ───────────────────────────────────────────────────────────────────────────── */
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+
+  #rcp-print,
+  #rcp-print *,
+  #invoice-print-area,
+  #invoice-print-area * {
+    visibility: visible !important;
+  }
+
+  /* Flatten every ancestor of the receipt. The dialog wrappers are `fixed`, may
+     carry a framer-motion transform, and the card scrolls (`max-h` +
+     `overflow-y-auto`) — any of those would either become the containing block
+     for the absolutely positioned receipt below or clip it off the sheet. */
+  :has(#rcp-print),
+  :has(#invoice-print-area) {
+    position: static !important;
+    transform: none !important;
+    overflow: visible !important;
+    max-height: none !important;
+    padding: 0 !important;
+    background: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  #rcp-print,
+  #invoice-print-area {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+    /* Keep the emerald/teal accents and dashed rules on paper. */
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  @page {
+    margin: 12mm;
+  }
+}

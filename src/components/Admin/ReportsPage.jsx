@@ -1548,7 +1548,7 @@ function SystemActivityTab() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2 flex-wrap">
                       <div>
-                        <span className="text-xs font-black text-slate-800 font-mono">{log.action}</span>
+                        <span className="text-xs font-black text-slate-800">{log.action}</span>
                         <span className="ml-2 text-[10px] text-slate-400">→ {log.target}</span>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
@@ -1589,7 +1589,7 @@ function SystemActivityTab() {
                           {actionMeta ? (
                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${actionMeta.cls}`}>{actionMeta.label}</span>
                           ) : (
-                            <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-mono">{log.action}</span>
+                            <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-semibold">{log.action}</span>
                           )}
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
