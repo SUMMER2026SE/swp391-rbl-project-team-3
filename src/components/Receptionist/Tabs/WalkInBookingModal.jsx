@@ -6,7 +6,7 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
-import { Plus, X, AlertCircle, Users, ClipboardList, Clock, AlertTriangle } from 'lucide-react';
+import { Plus, X, AlertCircle, Users, ClipboardList, Clock, AlertTriangle, Ticket } from 'lucide-react';
 import GlassDatePicker from '../../common/GlassDatePicker';
 import GlassSelect from '../../common/GlassSelect';
 
@@ -279,6 +279,22 @@ export default function WalkInBookingModal({
                     </div>
                   </div>
 
+                  {/* Booking Fee / Deposit Info matching patient flow */}
+                  <div className="bg-emerald-50/80 border border-emerald-200/80 rounded-2xl p-4 space-y-2 shrink-0 shadow-sm text-left">
+                    <div className="flex items-center justify-between font-bold text-slate-800">
+                      <span className="flex items-center gap-1.5 text-emerald-800 text-xs font-bold">
+                        <Ticket className="w-4 h-4 text-emerald-600" />
+                        Phí đặt lịch (giữ chỗ):
+                      </span>
+                      <span className="text-emerald-700 font-extrabold text-xs bg-emerald-100/90 px-2.5 py-1 rounded-lg border border-emerald-200 shadow-xs">
+                        50.000 VNĐ
+                      </span>
+                    </div>
+                    <p className="text-[10.5px] text-emerald-700/90 font-medium leading-relaxed">
+                      Thu trực tiếp tại quầy. Số tiền này sẽ được trừ vào chi phí khám bệnh thực tế khi bệnh nhân thanh toán dịch vụ.
+                    </p>
+                  </div>
+
                   {/* Bottom details and buttons */}
                   <div className="space-y-4 shrink-0 mt-auto">
                     {errorMessage && (
@@ -303,10 +319,10 @@ export default function WalkInBookingModal({
                         <button
                           type="submit"
                           disabled={isSubmittingRef.current}
-                          className="relative z-50 px-6 py-2 bg-[#0d473b] hover:bg-[#072d24] text-white font-bold rounded-xl text-xs leading-tight transition-all flex flex-col items-center justify-center min-h-[46px] min-w-[100px] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border-none shadow-sm"
+                          className="relative z-50 px-6 py-2 bg-[#0d473b] hover:bg-[#072d24] text-white font-bold rounded-xl text-xs leading-tight transition-all flex flex-col items-center justify-center min-h-[46px] min-w-[120px] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border-none shadow-sm"
                         >
-                          <span>Xác nhận</span>
-                          <span>lịch</span>
+                          <span>Xác nhận lịch</span>
+                          <span className="text-[10px] opacity-90 font-semibold">(Thu cọc 50k)</span>
                         </button>
                       </div>
                     </div>
