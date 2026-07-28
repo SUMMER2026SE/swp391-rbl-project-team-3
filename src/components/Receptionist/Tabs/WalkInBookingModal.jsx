@@ -6,7 +6,7 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
-import { Plus, X, AlertCircle, Users, ClipboardList, Clock, AlertTriangle, Ticket, QrCode, Banknote, Loader2, CheckCircle2 } from 'lucide-react';
+import { Plus, X, AlertCircle, Users, ClipboardList, Clock, AlertTriangle, Ticket, QrCode, Banknote, Loader2, CheckCircle2, UserCheck } from 'lucide-react';
 import GlassDatePicker from '../../common/GlassDatePicker';
 import GlassSelect from '../../common/GlassSelect';
 
@@ -130,6 +130,20 @@ export default function WalkInBookingModal({
                       HỒ SƠ BỆNH ÁN BỆNH NHÂN
                     </div>
 
+                    {/* Auto-fill notice. The fields below stay editable on purpose:
+                        a returning patient may have changed phone/address, and the
+                        stored profile is often incomplete. Anything the receptionist
+                        edits here is written back to the patient's profile on submit. */}
+                    {isExistingPatient && (
+                      <div className="flex items-start gap-2 mb-3 px-3 py-2 rounded-xl bg-teal-50/80 border border-teal-200/70 text-[11px] font-semibold text-teal-800">
+                        <UserCheck className="w-3.5 h-3.5 mt-0.5 shrink-0 text-teal-600" />
+                        <span>
+                          Đã tìm thấy hồ sơ theo email này và điền sẵn thông tin.
+                          Bạn vẫn có thể sửa trực tiếp — thay đổi sẽ được cập nhật vào hồ sơ bệnh nhân.
+                        </span>
+                      </div>
+                    )}
+
                     {/* Patient Profile Fields */}
                     <div className="space-y-4">
                       {/* Email */}
@@ -156,7 +170,7 @@ export default function WalkInBookingModal({
                             onChange={(e) => setNewApt({ ...newApt, patientName: e.target.value })}
                             className="w-full p-4 rounded-xl bg-white/70 backdrop-blur-xl border border-white/80 text-slate-900 font-semibold placeholder-slate-500 outline-none focus:ring-2 focus:ring-teal-500/50 transition-all text-sm shadow-sm disabled:text-slate-400 disabled:opacity-70"
                             placeholder="Nguyễn Văn A"
-                            disabled={isExistingPatient || isCheckingEmail}
+                            disabled={isCheckingEmail}
                             required
                           />
                         </div>
@@ -168,7 +182,7 @@ export default function WalkInBookingModal({
                             onChange={(e) => setNewApt({ ...newApt, phone: e.target.value })}
                             className="w-full p-4 rounded-xl bg-white/70 backdrop-blur-xl border border-white/80 text-slate-900 font-semibold placeholder-slate-500 outline-none focus:ring-2 focus:ring-teal-500/50 transition-all text-sm shadow-sm disabled:text-slate-400 disabled:opacity-70"
                             placeholder="09xx xxx xxx"
-                            disabled={isExistingPatient || isCheckingEmail}
+                            disabled={isCheckingEmail}
                             required
                           />
                         </div>
@@ -181,7 +195,7 @@ export default function WalkInBookingModal({
                           <GlassDatePicker
                             value={newApt.dob}
                             onChange={(d) => setNewApt({ ...newApt, dob: d })}
-                            disabled={isExistingPatient || isCheckingEmail}
+                            disabled={isCheckingEmail}
                             placeholder="Ngày sinh"
                           />
                         </div>
@@ -194,7 +208,7 @@ export default function WalkInBookingModal({
                               { value: 'Nam', label: 'Nam' },
                               { value: 'Nữ', label: 'Nữ' }
                             ]}
-                            disabled={isExistingPatient || isCheckingEmail}
+                            disabled={isCheckingEmail}
                             buttonClassName="p-4 text-base text-slate-900 font-semibold"
                           />
                         </div>
@@ -210,7 +224,7 @@ export default function WalkInBookingModal({
                             onChange={(e) => setNewApt({ ...newApt, district: e.target.value })}
                             className="w-full p-4 rounded-xl bg-white/70 backdrop-blur-xl border border-white/80 text-slate-900 font-semibold placeholder-slate-500 outline-none focus:ring-2 focus:ring-teal-500/50 transition-all text-sm shadow-sm disabled:text-slate-400 disabled:opacity-70"
                             placeholder="Quận 1, Quận Bình Thạnh..."
-                            disabled={isExistingPatient || isCheckingEmail}
+                            disabled={isCheckingEmail}
                             required
                           />
                         </div>
@@ -222,7 +236,7 @@ export default function WalkInBookingModal({
                             onChange={(e) => setNewApt({ ...newApt, province: e.target.value })}
                             className="w-full p-4 rounded-xl bg-white/70 backdrop-blur-xl border border-white/80 text-slate-900 font-semibold placeholder-slate-500 outline-none focus:ring-2 focus:ring-teal-500/50 transition-all text-sm shadow-sm disabled:text-slate-400 disabled:opacity-70"
                             placeholder="TP. Hồ Chí Minh"
-                            disabled={isExistingPatient || isCheckingEmail}
+                            disabled={isCheckingEmail}
                             required
                           />
                         </div>

@@ -52,6 +52,12 @@ export function useWalkInBooking({
   const [newApt, setNewApt] = useState(BLANK_NEW_APT);
   const [isCheckingEmail, setIsCheckingEmail] = useState(false);
   const [isExistingPatient, setIsExistingPatient] = useState(false);
+  /* Snapshot of what the email lookup auto-filled. The fields stay editable, so
+     on submit we compare against this to know (a) which values the receptionist
+     actually changed — those get validated and written back to the patient's
+     profile — and (b) which came straight from the database, which we leave
+     alone even if an old row would fail today's stricter validators. */
+  const prefillRef = useRef(null);
 
   const minDate = useMemo(() => {
     const todayDate = new Date();
@@ -107,6 +113,7 @@ export function useWalkInBooking({
       });
       setIsExistingPatient(false);
       setIsCheckingEmail(false);
+      prefillRef.current = null;
 
       // Fetch doctor shift schedules
       DoctorScheduleModel.getAllShifts().then((data) => setAdminSchedules(data || []));
@@ -247,19 +254,32 @@ export function useWalkInBooking({
           province = fullAddress;
         }
 
-        setNewApt((prev) => ({
-          ...prev,
-          patientName: data.full_name || prev.patientName,
-          phone: data.phone || prev.phone,
-          dob: data.date_of_birth || prev.dob,
-          gender: data.gender || prev.gender,
-          district: district || prev.district,
-          province: province || prev.province,
-          existingPatientId: data.user_id,
-        }));
-        showToast('Tìm thấy tài khoản đã đăng ký! Thông tin hồ sơ được tự động điền.', 'info');
+        setNewApt((prev) => {
+          const filled = {
+            ...prev,
+            patientName: data.full_name || prev.patientName,
+            phone: data.phone || prev.phone,
+            dob: data.date_of_birth || prev.dob,
+            gender: data.gender || prev.gender,
+            district: district || prev.district,
+            province: province || prev.province,
+            existingPatientId: data.user_id,
+          };
+          // Remember exactly what came from the database, before any edit.
+          prefillRef.current = {
+            patientName: filled.patientName,
+            phone: filled.phone,
+            dob: filled.dob,
+            gender: filled.gender,
+            district: filled.district,
+            province: filled.province,
+          };
+          return filled;
+        });
+        showToast('Tìm thấy hồ sơ đã đăng ký — đã điền sẵn, bạn có thể sửa lại nếu cần.', 'info');
       } else {
         setIsExistingPatient(false);
+        prefillRef.current = null;
         setNewApt((prev) => ({ ...prev, existingPatientId: null }));
       }
     } catch (err) {
@@ -294,7 +314,22 @@ export function useWalkInBooking({
       return;
     }
 
-    if (!isExistingPatient) {
+    /* Profile validation scope.
+       New patient  → validate everything (the desk types it all).
+       Existing one → the form was auto-filled from the database but left
+       editable, so validate exactly the fields the receptionist changed. Running
+       today's stricter rules over an untouched legacy row would block bookings
+       over data nobody typed (e.g. an old profile with no date of birth). */
+    const prefill = prefillRef.current;
+    const isEdited = (field, value) => !isExistingPatient || !prefill || prefill[field] !== value;
+
+    if (!nameTrim || !phoneClean) {
+      alert('Lỗi: Thiếu họ tên hoặc số điện thoại!');
+      setErrorMessage('Vui lòng nhập đầy đủ họ tên và số điện thoại.');
+      return;
+    }
+
+    if (isEdited('patientName', newApt.patientName)) {
       if (nameTrim.length < 4) {
         alert('Lỗi: Họ và tên ngắn hơn 4 ký tự! ' + nameTrim);
         setErrorMessage('Họ và tên phải từ 4 ký tự trở lên.');
@@ -311,14 +346,18 @@ export function useWalkInBooking({
         setErrorMessage('Họ và tên phải bao gồm ít nhất Họ và Tên (2 từ).');
         return;
       }
+    }
 
+    if (isEdited('phone', newApt.phone)) {
       const phoneRegex = /^(03|05|07|08|09)\d{8}$/;
       if (!phoneRegex.test(phoneClean)) {
         alert('Lỗi: Số điện thoại không hợp lệ! ' + phoneClean);
         setErrorMessage('Số điện thoại không hợp lệ (gồm 10 chữ số, bắt đầu bằng 03, 05, 07, 08, 09).');
         return;
       }
+    }
 
+    if (isEdited('dob', newApt.dob)) {
       if (!newApt.dob) {
         alert('Lỗi: Chưa chọn ngày sinh!');
         setErrorMessage('Vui lòng chọn ngày sinh.');
@@ -330,7 +369,9 @@ export function useWalkInBooking({
         setErrorMessage('Ngày sinh không thể ở tương lai.');
         return;
       }
+    }
 
+    if (isEdited('district', newApt.district) || isEdited('province', newApt.province)) {
       if (!newApt.district.trim() || !newApt.province.trim()) {
         alert('Lỗi: Chưa nhập Quận/Huyện hoặc Tỉnh/Thành phố!');
         setErrorMessage('Vui lòng nhập Quận/Huyện và Tỉnh/Thành phố.');
@@ -415,6 +456,48 @@ export function useWalkInBooking({
         setErrorMessage(userFriendlyMsg);
         isSubmittingRef.current = false;
         return;
+      }
+    } else if (patientId && prefill) {
+      /* Returning patient whose auto-filled profile the receptionist corrected —
+         write the changes back, otherwise the next lookup would helpfully
+         re-fill the stale values the desk just fixed. RLS blocks a receptionist
+         from updating someone else's users row, so this goes through the
+         update_walk_in_patient SECURITY DEFINER helper. Booking is never blocked
+         by a failed profile sync: we warn and carry on. */
+      const changedProfile =
+        prefill.patientName !== newApt.patientName ||
+        prefill.phone !== newApt.phone ||
+        prefill.gender !== newApt.gender ||
+        prefill.dob !== newApt.dob ||
+        prefill.district !== newApt.district ||
+        prefill.province !== newApt.province;
+
+      if (changedProfile) {
+        try {
+          const addressChanged =
+            prefill.district !== newApt.district || prefill.province !== newApt.province;
+          const { data: updRes, error: updErr } = await supabase.rpc('update_walk_in_patient', {
+            p_user_id:   patientId,
+            p_full_name: nameTrim,
+            p_phone:     phoneClean,
+            p_gender:    newApt.gender,
+            p_dob:       newApt.dob || null,
+            p_address:   addressChanged
+              ? `${newApt.district.trim()}, ${newApt.province.trim()}`.replace(/^,\s*|,\s*$/g, '')
+              : null,
+          });
+
+          if (updErr) throw updErr;
+          if (updRes && updRes.success === false) {
+            setErrorMessage(updRes.error || 'Không cập nhật được hồ sơ bệnh nhân.');
+            isSubmittingRef.current = false;
+            return;
+          }
+          showToast?.('Đã cập nhật hồ sơ bệnh nhân theo thông tin vừa sửa.', 'success');
+        } catch (err) {
+          console.error('Error updating existing patient profile:', err);
+          showToast?.('Đặt lịch vẫn tiếp tục, nhưng chưa lưu được thay đổi hồ sơ bệnh nhân.', 'error');
+        }
       }
     }
 
