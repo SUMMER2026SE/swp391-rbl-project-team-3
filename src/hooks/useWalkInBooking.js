@@ -144,14 +144,14 @@ export function useWalkInBooking({
     const interval = setInterval(async () => {
       try {
         const statusData = await getPaymentStatus(newOrderCode);
-        if (statusData && statusData.status === 'PAID') {
+        if (statusData && (statusData.status === 'PAID' || statusData.status === 'SUCCESS')) {
           clearInterval(interval);
           if (isSubscribed) setIsPayOSPaid(true);
         }
       } catch (e) {
         // ignore polling error
       }
-    }, 2500);
+    }, 1500);
 
     return () => {
       isSubscribed = false;

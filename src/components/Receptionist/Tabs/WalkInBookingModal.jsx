@@ -71,8 +71,9 @@ export default function WalkInBookingModal({
                 </button>
               </div>
 
-              {/* Form Content */}
-              <form onSubmit={handleSubmitBooking} noValidate className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden text-xs font-semibold text-slate-700">
+              {/* ── Step 1: Form Content ── */}
+              {step === 'form' && (
+                <form onSubmit={handleSubmitBooking} noValidate className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden text-xs font-semibold text-slate-700">
 
                 {/* LEFT COLUMN: Scrollable Form Inputs */}
                 <div className="flex-1 overflow-y-auto p-8 space-y-5">
@@ -374,25 +375,25 @@ export default function WalkInBookingModal({
               </form>
               )}
 
-              {/* ── Step 2: PayOS QR Code Scanning View ── */}
+              {/* ── Step 2: PayOS QR Code Scanning View (Full Modal Body Replacement) ── */}
               {step === 'payment' && (
-                <div className="flex-1 p-8 flex flex-col items-center justify-center text-center overflow-y-auto min-h-[400px]">
-                  <div className="w-full max-w-md bg-white/80 backdrop-blur-xl border border-white/80 rounded-3xl p-6 shadow-xl space-y-5 relative">
+                <div className="flex-1 p-8 flex flex-col items-center justify-center text-center overflow-y-auto min-h-[440px] bg-slate-50/50">
+                  <div className="w-full max-w-md bg-white backdrop-blur-xl border border-slate-200/80 rounded-3xl p-6 shadow-xl space-y-5 relative">
                     <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                       <div className="flex items-center gap-2 text-emerald-800 font-extrabold text-sm">
                         <QrCode className="w-5 h-5 text-emerald-600" />
-                        Thanh toán cọc qua mã PayOS (VietQR)
+                        Quét mã PayOS (VietQR)
                       </div>
-                      <span className="text-xs font-extrabold text-emerald-600 bg-emerald-100 px-3 py-1 rounded-full">
+                      <span className="text-xs font-extrabold text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full border border-emerald-200">
                         50.000 VNĐ
                       </span>
                     </div>
 
-                    {/* QR image or loading */}
-                    <div className="bg-slate-50 border border-slate-200/80 p-4 rounded-2xl flex flex-col items-center justify-center min-h-[260px] relative overflow-hidden group">
+                    {/* QR Image Box */}
+                    <div className="bg-white border border-slate-200 p-4 rounded-2xl flex flex-col items-center justify-center min-h-[260px] relative overflow-hidden shadow-inner">
                       {payosLoading ? (
-                        <div className="flex flex-col items-center gap-3 py-10">
-                          <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+                        <div className="flex flex-col items-center gap-3 py-12">
+                          <Loader2 className="w-9 h-9 text-emerald-600 animate-spin" />
                           <span className="text-xs font-bold text-slate-500">Đang khởi tạo mã QR PayOS...</span>
                         </div>
                       ) : payosData ? (
@@ -404,49 +405,41 @@ export default function WalkInBookingModal({
                                 : `https://img.vietqr.io/image/${payosData.bin || '970422'}-${payosData.accountNumber}-compact2.png?amount=${payosData.amount}&addInfo=${encodeURIComponent(payosData.description)}&accountName=${encodeURIComponent(payosData.accountName)}`
                             }
                             alt="QR Code PayOS"
-                            className="w-56 h-56 object-contain rounded-xl shadow-xs mix-blend-multiply"
+                            className="w-56 h-56 object-contain rounded-xl shadow-xs"
                           />
-                          {orderCode && <div className="text-[10px] font-mono text-slate-600 mt-2">Mã đơn: {orderCode}</div>}
+                          {orderCode && <div className="text-[11px] font-mono text-slate-500 font-bold mt-2">Mã giao dịch: {orderCode}</div>}
                         </>
                       ) : (
                         <div className="text-xs text-rose-500 font-bold p-4">
-                          Không thể tải mã QR. Vui lòng bấm nút bên dưới để xác nhận thủ công.
+                          Không thể tải mã QR. Vui lòng bấm &quot;Quay lại sửa&quot; để thử lại hoặc chọn tiền mặt.
                         </div>
                       )}
                     </div>
 
-                    {/* Live Polling Status Indicator */}
-                    <div className="flex items-center justify-center gap-2 bg-emerald-50 border border-emerald-200 px-4 py-2.5 rounded-xl">
-                      <Loader2 className="w-4 h-4 text-emerald-600 animate-spin" />
-                      <span className="text-xs font-bold text-emerald-800">
-                        Hệ thống đang tự động nhận diện thanh toán...
+                    {/* Automatic Polling Status Badge */}
+                    <div className="flex items-center justify-center gap-2.5 bg-emerald-50 border border-emerald-200 px-4 py-3 rounded-2xl shadow-xs">
+                      <Loader2 className="w-4 h-4 text-emerald-600 animate-spin shrink-0" />
+                      <span className="text-xs font-bold text-emerald-900 leading-snug">
+                        Hệ thống đang tự động nhận diện khi bệnh nhân quét mã & chuyển khoản...
                       </span>
                     </div>
 
                     {/* Error display */}
                     {errorMessage && (
-                      <div className="bg-red-100 text-red-600 p-3 rounded-xl border border-red-200 text-xs font-bold flex items-center gap-2">
+                      <div className="bg-red-100 text-red-600 p-3 rounded-xl border border-red-200 text-xs font-bold flex items-center gap-2 text-left">
                         <AlertCircle className="w-4 h-4 shrink-0" />
                         <span>{errorMessage}</span>
                       </div>
                     )}
 
                     {/* Actions */}
-                    <div className="flex gap-3 pt-2">
+                    <div className="pt-1">
                       <button
                         type="button"
                         onClick={() => setStep('form')}
-                        className="flex-1 py-3 px-4 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors text-xs border-none cursor-pointer"
+                        className="w-full py-3 px-4 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors text-xs border-none cursor-pointer"
                       >
-                        Quay lại sửa
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleConfirmPayOSBooking(paymentPayload)}
-                        className="flex-1 py-3 px-4 rounded-xl font-bold text-white bg-[#0d473b] hover:bg-[#072d24] transition-all text-xs border-none cursor-pointer shadow-md flex items-center justify-center gap-1.5"
-                      >
-                        <CheckCircle2 className="w-4 h-4" />
-                        Xác nhận đã nhận cọc
+                        Quay lại sửa thông tin
                       </button>
                     </div>
                   </div>
@@ -455,13 +448,13 @@ export default function WalkInBookingModal({
 
               {/* ── Step 3: Success Confirmation View ── */}
               {step === 'success' && (
-                <div className="flex-1 p-12 flex flex-col items-center justify-center text-center min-h-[350px]">
+                <div className="flex-1 p-12 flex flex-col items-center justify-center text-center min-h-[380px] bg-white">
                   <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', damping: 15 }}>
                     <CheckCircle2 className="w-16 h-16 text-emerald-500 mb-4" />
                   </motion.div>
-                  <h3 className="text-xl font-bold text-slate-800 mb-2">Đặt lịch & Thanh toán cọc thành công!</h3>
+                  <h3 className="text-xl font-bold text-slate-800 mb-2">Đã nhận thanh toán & Đặt lịch thành công!</h3>
                   <p className="text-xs text-slate-500 max-w-sm leading-relaxed mb-6">
-                    Lịch hẹn và hồ sơ bệnh nhân đã được khởi tạo và xác nhận thành công trên hệ thống.
+                    Hệ thống đã nhận được tiền cọc 50.000 VNĐ qua PayOS. Lịch hẹn đã được tự động xác nhận.
                   </p>
                 </div>
               )}
