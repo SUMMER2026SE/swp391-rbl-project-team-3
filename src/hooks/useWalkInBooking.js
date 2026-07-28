@@ -229,7 +229,6 @@ export function useWalkInBooking({
             address
           )
         `)
-        .eq('role_id', 5)
         .eq('email', emailVal)
         .maybeSingle();
 
@@ -354,30 +353,23 @@ export function useWalkInBooking({
     isSubmittingRef.current = true;
     setErrorMessage('');
 
-    if (!isExistingPatient) {
-      // Check if phone already registered in public users
-      const { data: phoneUser, error: phoneCheckErr } = await supabase
+    let patientId = newApt.existingPatientId;
+
+    if (!patientId) {
+      // Check if email or phone already exists in users table to link existing patient
+      const { data: existingUser } = await supabase
         .from('users')
-        .select('user_id, full_name, email')
-        .eq('role_id', 5)
-        .eq('phone', phoneClean)
+        .select('user_id, full_name, email, phone')
+        .or(`email.eq.${emailTrim},phone.eq.${phoneClean}`)
         .maybeSingle();
 
-      if (phoneCheckErr) {
-        console.error('Phone check error:', phoneCheckErr);
-      }
-
-      if (phoneUser) {
-        alert('Lỗi: Số điện thoại đã được đăng ký cho bệnh nhân: ' + phoneUser.full_name);
-        setErrorMessage(`Số điện thoại này đã được đăng ký cho bệnh nhân: ${phoneUser.full_name} (${phoneUser.email}).`);
-        isSubmittingRef.current = false;
-        return;
+      if (existingUser) {
+        patientId = existingUser.user_id;
+        setIsExistingPatient(true);
       }
     }
 
-    let patientId = newApt.existingPatientId;
-
-    if (!isExistingPatient) {
+    if (!patientId && !isExistingPatient) {
       try {
         // Create new user profile via RPC (SECURITY DEFINER bypasses RLS on users table)
         const newUserId = window.crypto?.randomUUID ? window.crypto.randomUUID() : 'pat-' + Math.random().toString(36).substring(2, 15);
@@ -416,8 +408,11 @@ export function useWalkInBooking({
 
         patientId = newUserId;
       } catch (err) {
-        alert('Lỗi tạo hồ sơ bệnh nhân mới: ' + err.message);
-        setErrorMessage(err.message || 'Lỗi khi tạo hồ sơ bệnh nhân mới.');
+        console.error('Error creating patient:', err);
+        const userFriendlyMsg = err.message?.includes('duplicate key') || err.message?.includes('users_email_partial_key') || err.message?.includes('users_phone_key')
+          ? `Email "${emailTrim}" hoặc Số điện thoại "${phoneClean}" đã được đăng ký trên hệ thống.`
+          : (err.message || 'Lỗi khi tạo hồ sơ bệnh nhân mới.');
+        setErrorMessage(userFriendlyMsg);
         isSubmittingRef.current = false;
         return;
       }
