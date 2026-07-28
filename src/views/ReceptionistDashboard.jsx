@@ -341,54 +341,6 @@ export default function ReceptionistDashboard() {
         {hasUnreadChat && <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-rose-500 border-2 border-white animate-pulse" />}
       </motion.button>
 
-      {/* Notifications */}
-      <div className="relative">
-        <motion.button
-          whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.95 }}
-          onClick={() => setShowNotifications((v) => !v)}
-          className="relative w-10 h-10 rounded-2xl bg-white/50 border border-white/60 backdrop-blur-md flex items-center justify-center text-slate-500 hover:text-emerald-600 shadow-sm transition-colors"
-        >
-          <Bell size={18} />
-          {unreadCount > 0 && <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-rose-500 border-2 border-white" />}
-        </motion.button>
-        <AnimatePresence>
-          {showNotifications && (
-            <>
-              <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)} />
-              <motion.div
-                initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                className="absolute right-0 mt-2 w-80 bg-white/95 backdrop-blur-md border border-slate-200 shadow-2xl rounded-2xl p-4 z-50 max-h-[350px] overflow-y-auto"
-              >
-                <div className="flex justify-between items-center pb-2 border-b border-slate-100 mb-2">
-                  <span className="text-sm font-extrabold text-slate-800">Thông báo</span>
-                  {unreadCount > 0 && (
-                    <button onClick={() => NotificationModel.markAllAsRead('RECEPTIONIST', receptionistId)} className="text-[10px] text-emerald-600 hover:text-emerald-700 font-bold border-none bg-transparent cursor-pointer">
-                      Đọc tất cả
-                    </button>
-                  )}
-                </div>
-                <div className="space-y-2.5">
-                  {myNotifications.length === 0 ? (
-                    <p className="text-xs text-slate-400 italic text-center py-4">Chưa có thông báo nào.</p>
-                  ) : (
-                    myNotifications.map((notif, i) => (
-                      <div
-                        key={notif.id ?? ('notif-' + i)}
-                        onClick={() => NotificationModel.markAsRead(notif.id)}
-                        className={'p-2.5 rounded-xl transition-all border cursor-pointer text-left ' + (notif.isRead ? 'bg-transparent border-slate-100 hover:bg-slate-50' : 'bg-emerald-50/50 border-emerald-100/50 hover:bg-emerald-50')}
-                      >
-                        <p className="text-xs font-bold text-slate-800">{notif.title}</p>
-                        <p className="text-[10px] text-slate-500 mt-0.5 leading-snug">{notif.content}</p>
-                        <span className="text-[8px] text-slate-400 block mt-1.5">{notif.timestamp ? new Date(notif.timestamp).toLocaleString('vi-VN') : ''}</span>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </motion.div>
-            </>
-          )}
-        </AnimatePresence>
-      </div>
     </>
   );
 
@@ -473,9 +425,8 @@ export default function ReceptionistDashboard() {
       <AnimatePresence>
         {toast && (
           <motion.div
-            initial={{ opacity: 0, y: 50, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 20, scale: 0.9 }}
-            className={'fixed bottom-6 left-1/2 z-[110] p-4 rounded-2xl shadow-xl backdrop-blur-xl flex items-center gap-3 border ' + (toast.type === 'success' ? 'bg-emerald-600/90 border-emerald-500 text-white' : toast.type === 'info' ? 'bg-sky-600/90 border-sky-500 text-white' : 'bg-rose-600/90 border-rose-500 text-white')}
-            style={{ transform: 'translateX(-50%)' }}
+            initial={{ opacity: 0, y: -20, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -20, scale: 0.9 }}
+            className={'fixed top-20 right-6 z-[90] p-4 rounded-2xl shadow-xl backdrop-blur-xl flex items-center gap-3 border ' + (toast.type === 'success' ? 'bg-emerald-600/90 border-emerald-500 text-white' : toast.type === 'info' ? 'bg-sky-600/90 border-sky-500 text-white' : 'bg-rose-600/90 border-rose-500 text-white')}
           >
             <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center shrink-0">
               {toast.type === 'success' ? <CheckSquare className="w-3.5 h-3.5" /> : toast.type === 'info' ? <Sparkles className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}

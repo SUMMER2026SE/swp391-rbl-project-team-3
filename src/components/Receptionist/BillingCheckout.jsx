@@ -541,8 +541,8 @@ export default function BillingCheckout({
       </div>
 
       {/* ── Filter & Search Toolbar ── */}
-      <div className="flex flex-col sm:flex-row gap-3 sm:items-center justify-between mb-4">
-        <div className="flex bg-slate-100/80 p-1 rounded-2xl gap-1 w-fit border border-slate-200/40">
+      <div className="flex flex-col sm:flex-row gap-3 items-center justify-between mb-4">
+        <div className="flex bg-slate-100/80 p-1 rounded-2xl gap-1 w-fit border border-slate-200/40 shrink-0">
           {FILTERS.map((f) => (
             <button
               key={f}
@@ -555,16 +555,17 @@ export default function BillingCheckout({
             </button>
           ))}
         </div>
-        <div className="backdrop-blur-md bg-white/20 border border-white/40 rounded-2xl px-3.5 py-2 flex items-center max-w-xs w-full focus-within:bg-white/40 focus-within:border-white focus-within:ring-2 focus-within:ring-emerald-400/50 transition-all">
-          <Search className="w-4 h-4 text-slate-500 mr-2 shrink-0" />
+
+        <div className="backdrop-blur-md bg-white/40 border border-emerald-300/70 shadow-xs rounded-full px-4 py-2 flex items-center max-w-xs w-full focus-within:bg-white focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-400/30 transition-all">
+          <Search className="w-4 h-4 text-emerald-600 mr-2 shrink-0" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Tìm bệnh nhân / mã..."
-            className="bg-transparent border-none outline-none text-xs font-semibold w-full text-gray-800 placeholder-gray-500 focus:ring-0 p-0"
+            className="bg-transparent border-none outline-none text-xs font-semibold w-full text-slate-800 placeholder-slate-400 focus:ring-0 p-0"
           />
           {search && (
-            <button onClick={() => setSearch('')} className="bg-transparent border-none cursor-pointer text-slate-500 hover:text-slate-600">
+            <button onClick={() => setSearch('')} className="bg-transparent border-none cursor-pointer text-slate-400 hover:text-slate-600">
               <X className="w-3.5 h-3.5" />
             </button>
           )}
@@ -574,7 +575,7 @@ export default function BillingCheckout({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* ── Invoice list ─────────────────────────────────────────────────── */}
         <div className="col-span-1 lg:col-span-6">
-          <div className={`${GLASS_BASE} overflow-hidden`}>
+          <div className={`${GLASS_BASE} overflow-hidden min-h-[500px]`}>
             {visible.length === 0 ? (
               <div className="py-14 text-center text-slate-500">
                 <Receipt className="w-8 h-8 mx-auto mb-2 text-slate-300" />
@@ -763,7 +764,7 @@ export default function BillingCheckout({
                             paidAt: paidRecord?.paid_at ? new Date(paidRecord.paid_at) : new Date(),
                           });
                         }}
-                        className="flex-1 py-3 rounded-xl bg-emerald-50 border border-emerald-200/80 text-emerald-800 text-xs font-bold hover:bg-emerald-100 cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
+                        className="flex-1 py-3 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
                       >
                         <FileText className="w-4 h-4 text-emerald-600" /> In Hồ sơ & Kết quả
                       </button>
@@ -1192,15 +1193,15 @@ function ReceiptModal({ receipt, onClose, receptionistId, showToast }) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100]"
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[9999]"
           />
-          <div className="fixed inset-0 z-[101] flex items-center justify-center p-4 pointer-events-none">
+          <div className="fixed inset-0 z-[10000] flex items-center justify-center pt-20 pb-6 px-4 pointer-events-none">
             <motion.div
               initial={{ scale: 0.95, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
               transition={{ type: 'spring', damping: 25, stiffness: 250 }}
-              className="w-full max-w-md bg-white border border-slate-300 shadow-2xl rounded-3xl p-6 pointer-events-auto flex flex-col gap-4 text-left"
+              className="w-full max-w-md bg-white border border-slate-300 shadow-2xl rounded-3xl p-6 pointer-events-auto flex flex-col gap-4 text-left max-h-[85vh]"
             >
               <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                 <div className="flex items-center gap-2 text-slate-800 font-extrabold text-sm">
@@ -1501,15 +1502,15 @@ function MedicalRecordPrintModal({ data, onClose, showToast }) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100]"
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[9999]"
           />
-          <div className="fixed inset-0 z-[101] flex items-center justify-center p-4 pointer-events-none overflow-y-auto">
+          <div className="fixed inset-0 z-[10000] flex items-center justify-center pt-16 pb-4 px-4 pointer-events-none overflow-y-auto">
             <motion.div
               initial={{ scale: 0.95, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
               transition={{ type: 'spring', damping: 25, stiffness: 250 }}
-              className="w-full max-w-xl bg-white border border-slate-300 shadow-2xl rounded-3xl p-6 pointer-events-auto my-auto max-h-[92vh] flex flex-col"
+              className="w-full max-w-xl bg-white border border-slate-300 shadow-2xl rounded-3xl p-6 pointer-events-auto my-auto max-h-[88vh] flex flex-col"
             >
               {/* Header Bar */}
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4 shrink-0">
@@ -1641,9 +1642,9 @@ function MedicalRecordPrintModal({ data, onClose, showToast }) {
                     )}
                   </div>
 
-                  {/* 5. Lịch tái khám & Chữ ký */}
-                  <div className="pt-2 space-y-4">
-                    {examData?.followUpDate && (
+                  {/* 5. Lịch tái khám */}
+                  {examData?.followUpDate && (
+                    <div className="pt-2">
                       <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl flex items-center justify-between text-xs">
                         <div className="flex items-center gap-2 text-emerald-800 font-bold">
                           <Calendar className="w-4 h-4 text-emerald-600" />
@@ -1653,21 +1654,8 @@ function MedicalRecordPrintModal({ data, onClose, showToast }) {
                           {examData.followUpDate}
                         </span>
                       </div>
-                    )}
-
-                    <div className="grid grid-cols-2 gap-4 text-center text-xs pt-4">
-                      <div>
-                        <p className="font-bold text-slate-700">BỆNH NHÂN</p>
-                        <p className="text-[10px] text-slate-400 italic mb-10">(Ký và ghi rõ họ tên)</p>
-                        <p className="font-semibold text-slate-800">{data.patientName}</p>
-                      </div>
-                      <div>
-                        <p className="font-bold text-slate-700">BÁC SĨ KHÁM BỆNH</p>
-                        <p className="text-[10px] text-slate-400 italic mb-10">(Ký và đóng dấu)</p>
-                        <p className="font-bold text-slate-900">{data.doctorName}</p>
-                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
 
