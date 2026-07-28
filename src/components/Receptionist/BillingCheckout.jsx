@@ -710,78 +710,62 @@ export default function BillingCheckout({
                       <CheckCircle2 className="w-5 h-5" />
                       <span className="text-xs font-bold">Hóa đơn này đã được thanh toán đầy đủ.</span>
                     </div>
-                    <button
-                      onClick={async () => {
-                        showToast?.('Đang tải lại dữ liệu hóa đơn...');
-                        const { data: invs } = await supabase.from('invoices').select('*').eq('appointment_id', selected.aptId).order('created_at', { ascending: true });
-                        let priorAmount = 0;
-                        let checkoutAmount = 0;
-                        const paidRecord = payments.find(p => p.appointment_id === selected.aptId);
-                        if (invs && invs.length > 0) {
-                          if (invs.length === 1) {
-                            checkoutAmount = invs[0].total_amount;
-                          } else {
-                            priorAmount = 0;
+                    <div className="flex gap-2">
+                      <button
+                        onClick={async () => {
+                          showToast?.('Đang tải dữ liệu biên lai...');
+                          const paidRecord = payments.find(p => p.appointment_id === selected.aptId);
+                          const { data: invs } = await supabase.from('invoices').select('*').eq('appointment_id', selected.aptId).order('created_at', { ascending: true });
+                          let checkoutAmount = paidRecord?.final_amount || 0;
+                          if (invs && invs.length > 0) {
                             checkoutAmount = invs[invs.length - 1].total_amount;
                           }
-                        } else if (paidRecord) {
-                          // Fallback if invoices table was manually cleared
-                          priorAmount = 0;
-                          checkoutAmount = paidRecord.final_amount;
-                        }
-                        setReceipt({
-                          ...selected,
-                          baseTotal: parseFee(selected.fee, 0) || 300000,
-                          usedServices,
-                          followUpFee: selected && followUpsMap[selected.patientId] ? 50000 : 0,
-                          total: paidRecord?.total_amount || total,
-                          prior: 0,
-                          discount: paidRecord?.discount_amount || 0,
-                          netPayable: checkoutAmount,
-                          method: paidRecord?.payment_method || '—',
-                          voucherCode: null,
-                          paidAt: paidRecord?.paid_at ? new Date(paidRecord.paid_at) : new Date(),
-                          initialTab: 'receipt',
-                        });
-                      }}
-                      className="flex-1 py-3 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
-                    >
-                      <Printer className="w-4 h-4 text-slate-500" /> In biên lai
-                    </button>
-                    <button
-                      onClick={() => {
-                        let priorAmount = 0;
-                        let checkoutAmount = 0;
-                        const paidRecord = payments.find(p => p.appointment_id === selected.aptId);
-                        if (invs && invs.length > 0) {
-                          if (invs.length === 1) {
-                            checkoutAmount = invs[0].total_amount;
-                          } else {
-                            priorAmount = 0;
+                          setReceipt({
+                            ...selected,
+                            baseTotal: parseFee(selected.fee, 0) || 300000,
+                            usedServices,
+                            followUpFee: selected && followUpsMap[selected.patientId] ? 50000 : 0,
+                            total: paidRecord?.total_amount || total,
+                            prior: 0,
+                            discount: paidRecord?.discount_amount || 0,
+                            netPayable: checkoutAmount,
+                            method: paidRecord?.payment_method || '—',
+                            voucherCode: null,
+                            paidAt: paidRecord?.paid_at ? new Date(paidRecord.paid_at) : new Date(),
+                          });
+                        }}
+                        className="flex-1 py-3 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
+                      >
+                        <Printer className="w-4 h-4 text-slate-500" /> In biên lai
+                      </button>
+                      <button
+                        onClick={async () => {
+                          showToast?.('Đang mở Hồ sơ bệnh án & Kết quả...');
+                          const paidRecord = payments.find(p => p.appointment_id === selected.aptId);
+                          const { data: invs } = await supabase.from('invoices').select('*').eq('appointment_id', selected.aptId).order('created_at', { ascending: true });
+                          let checkoutAmount = paidRecord?.final_amount || 0;
+                          if (invs && invs.length > 0) {
                             checkoutAmount = invs[invs.length - 1].total_amount;
                           }
-                        } else if (paidRecord) {
-                          priorAmount = 0;
-                          checkoutAmount = paidRecord.final_amount;
-                        }
-                        setEmrPrintData({
-                          ...selected,
-                          baseTotal: parseFee(selected.fee, 0) || 300000,
-                          usedServices,
-                          followUpFee: selected && followUpsMap[selected.patientId] ? 50000 : 0,
-                          total: paidRecord?.total_amount || total,
-                          prior: 0,
-                          discount: paidRecord?.discount_amount || 0,
-                          netPayable: checkoutAmount,
-                          method: paidRecord?.payment_method || '—',
-                          voucherCode: null,
-                          paidAt: paidRecord?.paid_at ? new Date(paidRecord.paid_at) : new Date(),
-                        });
-                      }}
-                      className="flex-1 py-3 rounded-xl bg-emerald-50 border border-emerald-200/80 text-emerald-800 text-xs font-bold hover:bg-emerald-100 cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
-                    >
-                      <FileText className="w-4 h-4 text-emerald-600" /> In Hồ sơ & Kết quả
-                    </button>
+                          setEmrPrintData({
+                            ...selected,
+                            baseTotal: parseFee(selected.fee, 0) || 300000,
+                            usedServices,
+                            followUpFee: selected && followUpsMap[selected.patientId] ? 50000 : 0,
+                            total: paidRecord?.total_amount || total,
+                            prior: 0,
+                            discount: paidRecord?.discount_amount || 0,
+                            netPayable: checkoutAmount,
+                            method: paidRecord?.payment_method || '—',
+                            voucherCode: null,
+                            paidAt: paidRecord?.paid_at ? new Date(paidRecord.paid_at) : new Date(),
+                          });
+                        }}
+                        className="flex-1 py-3 rounded-xl bg-emerald-50 border border-emerald-200/80 text-emerald-800 text-xs font-bold hover:bg-emerald-100 cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
+                      >
+                        <FileText className="w-4 h-4 text-emerald-600" /> In Hồ sơ & Kết quả
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <>
