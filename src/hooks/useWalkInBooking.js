@@ -1,6 +1,7 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { DoctorScheduleModel } from '../models/DoctorScheduleModel';
+import { createPaymentLink, getPaymentStatus } from '../utils/payos';
 
 // Blank walk-in patient record — reset every time the modal (re)opens.
 const BLANK_NEW_APT = {
@@ -66,6 +67,13 @@ export function useWalkInBooking({
   const [paymentPayload, setPaymentPayload] = useState(null);
   const [adminSchedules, setAdminSchedules] = useState([]);
 
+  // PayOS & Payment states
+  const [paymentMethod, setPaymentMethod] = useState('payos'); // 'payos' | 'cash'
+  const [payosData, setPayosData] = useState(null);
+  const [payosLoading, setPayosLoading] = useState(false);
+  const [orderCode, setOrderCode] = useState(null);
+  const [isPayOSPaid, setIsPayOSPaid] = useState(false);
+
   // Reset the whole form + refetch doctor shifts each time the modal opens.
   useEffect(() => {
     if (isAddOpen) {
@@ -75,6 +83,11 @@ export function useWalkInBooking({
       setErrorMessage('');
       setStep('form');
       setPaymentPayload(null);
+      setPaymentMethod('payos');
+      setPayosData(null);
+      setOrderCode(null);
+      setIsPayOSPaid(false);
+      setPayosLoading(false);
 
       const saved = localStorage.getItem('admin-services');
       let parsed = [];
@@ -99,6 +112,90 @@ export function useWalkInBooking({
       DoctorScheduleModel.getAllShifts().then((data) => setAdminSchedules(data || []));
     }
   }, [isAddOpen]);
+
+  // Handle PayOS Payment Polling when step === 'payment'
+  useEffect(() => {
+    if (step !== 'payment') return;
+
+    let isSubscribed = true;
+    const newOrderCode = Date.now();
+    setOrderCode(newOrderCode);
+    setPayosLoading(true);
+    setPayosData(null);
+
+    const initPayOS = async () => {
+      try {
+        const desc = `Coc dat lich ${newOrderCode}`.substring(0, 25);
+        const data = await createPaymentLink(newOrderCode, 50000, desc);
+        if (isSubscribed) {
+          setPayosData(data);
+          setPayosLoading(false);
+        }
+      } catch (err) {
+        console.error('PayOS init error:', err);
+        if (isSubscribed) {
+          setErrorMessage('Không thể khởi tạo mã QR PayOS. Bạn có thể xác nhận thủ công hoặc chọn tiền mặt.');
+          setPayosLoading(false);
+        }
+      }
+    };
+    initPayOS();
+
+    const interval = setInterval(async () => {
+      try {
+        const statusData = await getPaymentStatus(newOrderCode);
+        if (statusData && statusData.status === 'PAID') {
+          clearInterval(interval);
+          if (isSubscribed) setIsPayOSPaid(true);
+        }
+      } catch (e) {
+        // ignore polling error
+      }
+    }, 2500);
+
+    return () => {
+      isSubscribed = false;
+      clearInterval(interval);
+    };
+  }, [step]);
+
+  // Handle PayOS Success
+  useEffect(() => {
+    if (isPayOSPaid && step === 'payment' && paymentPayload) {
+      setIsPayOSPaid(false);
+      handleConfirmPayOSBooking(paymentPayload);
+    }
+  }, [isPayOSPaid, step, paymentPayload]);
+
+  const handleConfirmPayOSBooking = async (payloadToBook) => {
+    const finalPayload = payloadToBook || paymentPayload;
+    if (!finalPayload || isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+
+    try {
+      const result = await bookAppointment({
+        ...finalPayload,
+        paymentStatus: 'Đã thanh toán',
+        notes: (finalPayload.notes || 'Khám trực tiếp tại quầy') + ' (Đã cọc 50k qua PayOS QR)',
+      });
+
+      if (result.success) {
+        setStep('success');
+        showToast('Thanh toán PayOS thành công & Đã tạo lịch!', 'success');
+        setTimeout(() => {
+          isSubmittingRef.current = false;
+          setIsAddOpen(false);
+        }, 1500);
+      } else {
+        isSubmittingRef.current = false;
+        setErrorMessage(result.error || 'Có lỗi xảy ra khi xác nhận đặt lịch.');
+      }
+    } catch (err) {
+      console.error('PayOS confirm error:', err);
+      setErrorMessage(err.message || 'Có lỗi xảy ra khi đặt lịch.');
+      isSubmittingRef.current = false;
+    }
+  };
 
   // ─── Working Doctors for the selected date ───
   const workingDocs = useMemo(() => {
@@ -352,6 +449,13 @@ export function useWalkInBooking({
       return;
     }
 
+    if (paymentMethod === 'payos') {
+      setPaymentPayload(bookingPayload);
+      setStep('payment');
+      isSubmittingRef.current = false;
+      return;
+    }
+
     try {
       const result = await bookAppointment(bookingPayload);
       if (result.success) {
@@ -467,6 +571,15 @@ export function useWalkInBooking({
     isCheckingEmail,
     filteredSlots,
     isSubmittingRef,
+    step,
+    setStep,
+    paymentMethod,
+    setPaymentMethod,
+    payosData,
+    payosLoading,
+    orderCode,
+    paymentPayload,
+    handleConfirmPayOSBooking,
     // ── Toggle controls for the parent dashboard ──
     open: () => setIsAddOpen(true),
     close: () => setIsAddOpen(false),

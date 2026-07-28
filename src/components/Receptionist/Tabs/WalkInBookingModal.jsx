@@ -6,7 +6,7 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
-import { Plus, X, AlertCircle, Users, ClipboardList, Clock, AlertTriangle, Ticket } from 'lucide-react';
+import { Plus, X, AlertCircle, Users, ClipboardList, Clock, AlertTriangle, Ticket, QrCode, Banknote, Loader2, CheckCircle2 } from 'lucide-react';
 import GlassDatePicker from '../../common/GlassDatePicker';
 import GlassSelect from '../../common/GlassSelect';
 
@@ -30,6 +30,15 @@ export default function WalkInBookingModal({
   isCheckingEmail,
   filteredSlots,
   isSubmittingRef,
+  step = 'form',
+  setStep,
+  paymentMethod = 'payos',
+  setPaymentMethod,
+  payosData,
+  payosLoading,
+  orderCode,
+  paymentPayload,
+  handleConfirmPayOSBooking,
 }) {
   if (!isAddOpen) return null;
 
@@ -279,8 +288,8 @@ export default function WalkInBookingModal({
                     </div>
                   </div>
 
-                  {/* Booking Fee / Deposit Info matching patient flow */}
-                  <div className="bg-emerald-50/80 border border-emerald-200/80 rounded-2xl p-4 space-y-2 shrink-0 shadow-sm text-left">
+                  {/* Booking Fee / Deposit Info & Payment Method selector */}
+                  <div className="bg-emerald-50/80 border border-emerald-200/80 rounded-2xl p-4 space-y-3 shrink-0 shadow-sm text-left">
                     <div className="flex items-center justify-between font-bold text-slate-800">
                       <span className="flex items-center gap-1.5 text-emerald-800 text-xs font-bold">
                         <Ticket className="w-4 h-4 text-emerald-600" />
@@ -291,8 +300,41 @@ export default function WalkInBookingModal({
                       </span>
                     </div>
                     <p className="text-[10.5px] text-emerald-700/90 font-medium leading-relaxed">
-                      Thu trực tiếp tại quầy. Số tiền này sẽ được trừ vào chi phí khám bệnh thực tế khi bệnh nhân thanh toán dịch vụ.
+                      Số tiền này sẽ được trừ vào chi phí khám bệnh thực tế khi bệnh nhân thanh toán dịch vụ.
                     </p>
+
+                    {/* Payment Method Selector */}
+                    <div className="pt-2.5 border-t border-emerald-200/60 space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">
+                        Phương thức thu phí cọc:
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setPaymentMethod?.('payos')}
+                          className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                            paymentMethod === 'payos'
+                              ? 'bg-[#0d473b] text-white border-[#0d473b] shadow-sm'
+                              : 'bg-white/80 text-slate-700 border-slate-200 hover:border-emerald-400'
+                          }`}
+                        >
+                          <QrCode className="w-3.5 h-3.5" />
+                          Quét mã PayOS
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPaymentMethod?.('cash')}
+                          className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                            paymentMethod === 'cash'
+                              ? 'bg-[#0d473b] text-white border-[#0d473b] shadow-sm'
+                              : 'bg-white/80 text-slate-700 border-slate-200 hover:border-emerald-400'
+                          }`}
+                        >
+                          <Banknote className="w-3.5 h-3.5" />
+                          Tiền mặt tại quầy
+                        </button>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Bottom details and buttons */}
@@ -319,10 +361,10 @@ export default function WalkInBookingModal({
                         <button
                           type="submit"
                           disabled={isSubmittingRef.current}
-                          className="relative z-50 px-6 py-2 bg-[#0d473b] hover:bg-[#072d24] text-white font-bold rounded-xl text-xs leading-tight transition-all flex flex-col items-center justify-center min-h-[46px] min-w-[120px] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border-none shadow-sm"
+                          className="relative z-50 px-6 py-2 bg-[#0d473b] hover:bg-[#072d24] text-white font-bold rounded-xl text-xs leading-tight transition-all flex flex-col items-center justify-center min-h-[46px] min-w-[130px] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border-none shadow-sm"
                         >
-                          <span>Xác nhận lịch</span>
-                          <span className="text-[10px] opacity-90 font-semibold">(Thu cọc 50k)</span>
+                          <span>{paymentMethod === 'payos' ? 'Tạo mã Quét PayOS' : 'Xác nhận thu tiền'}</span>
+                          <span className="text-[10px] opacity-90 font-semibold">(Cọc 50k)</span>
                         </button>
                       </div>
                     </div>
@@ -330,6 +372,99 @@ export default function WalkInBookingModal({
 
                 </div>
               </form>
+              )}
+
+              {/* ── Step 2: PayOS QR Code Scanning View ── */}
+              {step === 'payment' && (
+                <div className="flex-1 p-8 flex flex-col items-center justify-center text-center overflow-y-auto min-h-[400px]">
+                  <div className="w-full max-w-md bg-white/80 backdrop-blur-xl border border-white/80 rounded-3xl p-6 shadow-xl space-y-5 relative">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                      <div className="flex items-center gap-2 text-emerald-800 font-extrabold text-sm">
+                        <QrCode className="w-5 h-5 text-emerald-600" />
+                        Thanh toán cọc qua mã PayOS (VietQR)
+                      </div>
+                      <span className="text-xs font-extrabold text-emerald-600 bg-emerald-100 px-3 py-1 rounded-full">
+                        50.000 VNĐ
+                      </span>
+                    </div>
+
+                    {/* QR image or loading */}
+                    <div className="bg-slate-50 border border-slate-200/80 p-4 rounded-2xl flex flex-col items-center justify-center min-h-[260px] relative overflow-hidden group">
+                      {payosLoading ? (
+                        <div className="flex flex-col items-center gap-3 py-10">
+                          <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+                          <span className="text-xs font-bold text-slate-500">Đang khởi tạo mã QR PayOS...</span>
+                        </div>
+                      ) : payosData ? (
+                        <>
+                          <img
+                            src={
+                              payosData.qrCode
+                                ? `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(payosData.qrCode)}`
+                                : `https://img.vietqr.io/image/${payosData.bin || '970422'}-${payosData.accountNumber}-compact2.png?amount=${payosData.amount}&addInfo=${encodeURIComponent(payosData.description)}&accountName=${encodeURIComponent(payosData.accountName)}`
+                            }
+                            alt="QR Code PayOS"
+                            className="w-56 h-56 object-contain rounded-xl shadow-xs mix-blend-multiply"
+                          />
+                          {orderCode && <div className="text-[10px] font-mono text-slate-600 mt-2">Mã đơn: {orderCode}</div>}
+                        </>
+                      ) : (
+                        <div className="text-xs text-rose-500 font-bold p-4">
+                          Không thể tải mã QR. Vui lòng bấm nút bên dưới để xác nhận thủ công.
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Live Polling Status Indicator */}
+                    <div className="flex items-center justify-center gap-2 bg-emerald-50 border border-emerald-200 px-4 py-2.5 rounded-xl">
+                      <Loader2 className="w-4 h-4 text-emerald-600 animate-spin" />
+                      <span className="text-xs font-bold text-emerald-800">
+                        Hệ thống đang tự động nhận diện thanh toán...
+                      </span>
+                    </div>
+
+                    {/* Error display */}
+                    {errorMessage && (
+                      <div className="bg-red-100 text-red-600 p-3 rounded-xl border border-red-200 text-xs font-bold flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 shrink-0" />
+                        <span>{errorMessage}</span>
+                      </div>
+                    )}
+
+                    {/* Actions */}
+                    <div className="flex gap-3 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setStep('form')}
+                        className="flex-1 py-3 px-4 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors text-xs border-none cursor-pointer"
+                      >
+                        Quay lại sửa
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleConfirmPayOSBooking(paymentPayload)}
+                        className="flex-1 py-3 px-4 rounded-xl font-bold text-white bg-[#0d473b] hover:bg-[#072d24] transition-all text-xs border-none cursor-pointer shadow-md flex items-center justify-center gap-1.5"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        Xác nhận đã nhận cọc
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Step 3: Success Confirmation View ── */}
+              {step === 'success' && (
+                <div className="flex-1 p-12 flex flex-col items-center justify-center text-center min-h-[350px]">
+                  <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', damping: 15 }}>
+                    <CheckCircle2 className="w-16 h-16 text-emerald-500 mb-4" />
+                  </motion.div>
+                  <h3 className="text-xl font-bold text-slate-800 mb-2">Đặt lịch & Thanh toán cọc thành công!</h3>
+                  <p className="text-xs text-slate-500 max-w-sm leading-relaxed mb-6">
+                    Lịch hẹn và hồ sơ bệnh nhân đã được khởi tạo và xác nhận thành công trên hệ thống.
+                  </p>
+                </div>
+              )}
             </motion.div>
           </div>,
           document.body
