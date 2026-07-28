@@ -124,7 +124,14 @@ Deno.serve(async (req) => {
       });
       const out = await res.json();
       if (out.code !== "00") {
-        return json({ error: out.desc || "Failed to get payment status" }, 502);
+        // PayOS answers code 101 for "order does not exist". That is a normal
+        // lookup miss, not an upstream failure — 502 made callers think the
+        // gateway was down. Everything else stays a 502.
+        const notFound = out.code === "101" || /không tồn tại|not found/i.test(out.desc || "");
+        return json(
+          { error: out.desc || "Failed to get payment status" },
+          notFound ? 404 : 502,
+        );
       }
       return json({ data: out.data });
     }

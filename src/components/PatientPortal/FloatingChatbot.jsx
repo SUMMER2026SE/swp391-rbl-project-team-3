@@ -14,6 +14,7 @@ import {
   imageUrlFromMessage,
   uploadChatImage,
 } from '../../models/ChatModel';
+import { getGuestChatId, GUEST_ID_KEY, GUEST_OPTS } from '../../guestChatClient';
 import { generateBotReply, isHandoffReply } from '../../services/GeminiService';
 import './FloatingChatbot.css';
 
@@ -24,28 +25,19 @@ const wantsHuman = (text) => {
   return HANDOFF_KEYWORDS.some((k) => t.includes(k));
 };
 
-// Per-browser guest thread id. RLS only grants anon access to threads matching
-// 'pat-guest-%', and the random uuid keeps each visitor's conversation private
-// (and out of every other guest's widget, unlike the old shared 'pat-guest').
-const GUEST_ID_KEY = 'dermasmart_guest_chat_id';
-
 // Set once the visitor has opened the chat at least once. From then on (and on
 // every later page load) the realtime subscriptions stay alive even while the
 // widget is closed, so a receptionist reply still reaches the closed widget
 // and surfaces as an unread badge on the floating button.
 const ENGAGED_KEY = 'dermasmart_chat_engaged';
-const getGuestChatId = () => {
-  try {
-    let id = localStorage.getItem(GUEST_ID_KEY);
-    if (!id || !id.startsWith('pat-guest-')) {
-      id = `pat-guest-${crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`}`;
-      localStorage.setItem(GUEST_ID_KEY, id);
-    }
-    return id;
-  } catch {
-    return 'pat-guest';
-  }
-};
+
+// How often the widget re-reads its thread. Guest threads no longer receive
+// realtime frames (their RLS policy is scoped to the x-guest-thread header,
+// which websockets cannot present), so polling is their only channel — every
+// tick while the panel is open, every 4th tick while it is closed so a
+// receptionist reply still lands on the unread badge without hammering the API.
+const POLL_MS = 5000;
+const CLOSED_POLL_EVERY = 4;
 
 /* ───────────────────────── Sub-components ───────────────────────── */
 
@@ -192,6 +184,10 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
     ? (String(user.id).startsWith('pat-') ? String(user.id) : `pat-${user.id}`)
     : getGuestChatId();
   const patientName = user?.name || 'Khách';
+  // Not signed in → every chat call goes through the guest client, which proves
+  // ownership of this thread with the x-guest-thread header. Signed-in visitors
+  // keep the authenticated client (their own 'pat-<uid>' policies apply).
+  const guestOpts = user?.id ? undefined : GUEST_OPTS;
 
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
@@ -228,6 +224,14 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
     setHasEngaged(true);
     try { localStorage.setItem(ENGAGED_KEY, '1'); } catch { /* ignore */ }
   }, []);
+
+  // Any surface can open the widget without prop-drilling — the landing-page
+  // footer's "Hỗ trợ kỹ thuật" link uses this instead of going nowhere.
+  useEffect(() => {
+    const handler = () => openChat();
+    window.addEventListener('dermasmart:open-chat', handler);
+    return () => window.removeEventListener('dermasmart:open-chat', handler);
+  }, [openChat]);
 
   // Merge an incoming message into state, de-duping by id (realtime INSERT can
   // race the optimistic local append / the safety poll).
@@ -382,7 +386,7 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
       if (seedInFlight.current) return;
       seedInFlight.current = true;
       try {
-        let msgs = await ReceptionistChatModel.getMessagesForPatient(patientId);
+        let msgs = await ReceptionistChatModel.getMessagesForPatient(patientId, guestOpts);
         if (!active) return;
         // Seed the greeting only while the widget is actually open — never
         // write rows just because an engaged visitor loaded the page.
@@ -394,8 +398,8 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
             text: 'Xin chào! Tôi là trợ lý AI của DermaSmart. Tôi có thể giúp bạn đặt lịch khám, kiểm tra tình trạng da hoặc giải đáp thắc mắc. Bạn cần hỗ trợ gì hôm nay?',
             mode: 'AI',
             patientId,
-          });
-          msgs = await ReceptionistChatModel.getMessagesForPatient(patientId);
+          }, guestOpts);
+          msgs = await ReceptionistChatModel.getMessagesForPatient(patientId, guestOpts);
         }
         if (active) setMessages(msgs || []);
       } catch (err) {
@@ -408,7 +412,7 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
 
     const loadSession = async () => {
       try {
-        const s = await ChatSessionModel.get(patientId);
+        const s = await ChatSessionModel.get(patientId, guestOpts);
         if (active && s) setSession(s);
       } catch (err) {
         console.error('Error loading chat session:', err);
@@ -446,10 +450,20 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
       if (mine) setSession(mine);
     });
 
-    // Safety net (localStorage fallback / missed frames) — slow, non-authoritative.
+    // Poll. For signed-in patients this is only a safety net behind realtime;
+    // for guests it IS the delivery channel (see POLL_MS above), so it keeps
+    // running — more slowly — while the panel is closed.
+    let tick = 0;
     const interval = setInterval(() => {
-      if (isOpenRef.current) seedAndLoad();
-    }, 5000);
+      tick += 1;
+      if (isOpenRef.current) {
+        seedAndLoad();
+        loadSession();
+      } else if (guestOpts && tick % CLOSED_POLL_EVERY === 0) {
+        seedAndLoad();
+        loadSession();
+      }
+    }, POLL_MS);
 
     return () => {
       active = false;
@@ -488,8 +502,10 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
 
     (async () => {
       try {
+        // The guest thread is read through the guest client even though we are
+        // signed in now — only the x-guest-thread header can unlock it.
         const [guestMsgs, ownMsgs] = await Promise.all([
-          ReceptionistChatModel.getMessagesForPatient(guestId),
+          ReceptionistChatModel.getMessagesForPatient(guestId, GUEST_OPTS),
           ReceptionistChatModel.getMessagesForPatient(patientId),
         ]);
         // Only worth merging if the guest actually said something.
@@ -510,7 +526,7 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
           }
         }
         // Retire the guest thread so it stops surfacing in the agent queue.
-        ChatSessionModel.setStatus(guestId, CHAT_STATUS.RESOLVED);
+        ChatSessionModel.setStatus(guestId, CHAT_STATUS.RESOLVED, GUEST_OPTS);
         try { localStorage.removeItem(GUEST_ID_KEY); } catch { /* ignore */ }
         if (!cancelled) seedAndLoadRef.current?.();
       } catch (err) {
@@ -530,7 +546,7 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
   const escalateToHuman = useCallback(async (note) => {
     setMode('Live');
     try {
-      await ChatSessionModel.requestAgent(patientId, patientName);
+      await ChatSessionModel.requestAgent(patientId, patientName, guestOpts);
       setSession((prev) => ({ ...(prev || { patientId }), status: CHAT_STATUS.WAITING }));
       const sys = await ReceptionistChatModel.addMessage({
         senderId: 'system',
@@ -539,22 +555,22 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
         text: note || 'Mình đã kết nối bạn với lễ tân. Vui lòng chờ trong giây lát, nhân viên sẽ phản hồi ngay ạ!',
         mode: 'Live',
         patientId,
-      });
+      }, guestOpts);
       if (sys) mergeMessage(sys);
     } catch (err) {
       console.error('Handoff to receptionist failed:', err);
     }
-  }, [patientId, patientName, mergeMessage]);
+  }, [patientId, patientName, mergeMessage, guestOpts]);
 
   // Debounced "patient is typing" presence flag (Live mode only).
   const signalPatientTyping = useCallback(() => {
     if (mode !== 'Live') return;
-    ChatSessionModel.setPatientTyping(patientId, true);
+    ChatSessionModel.setPatientTyping(patientId, true, guestOpts);
     clearTimeout(patientTypingTimer.current);
     patientTypingTimer.current = setTimeout(() => {
-      ChatSessionModel.setPatientTyping(patientId, false);
+      ChatSessionModel.setPatientTyping(patientId, false, guestOpts);
     }, 2500);
-  }, [mode, patientId]);
+  }, [mode, patientId, guestOpts]);
 
   const handleSend = async () => {
     const currentText = inputValue.trim();
@@ -567,7 +583,7 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
         const userMsg = await ReceptionistChatModel.addMessage({
           senderId: patientId, senderName: patientName, senderRole: 'PATIENT',
           text: currentText, mode: 'Live', patientId,
-        });
+        }, guestOpts);
         if (userMsg) mergeMessage(userMsg);
       } catch (err) { console.error('Failed to send message:', err); }
       await escalateToHuman();
@@ -582,7 +598,7 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
         text: currentText,
         mode,
         patientId,
-      });
+      }, guestOpts);
       if (newMsg) mergeMessage(newMsg);
 
       // The bot answers ONLY in AI mode. Once handed off, it stays silent so the
@@ -604,7 +620,7 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
             text: replyText,
             mode: 'AI',
             patientId,
-          });
+          }, guestOpts);
           if (reply) mergeMessage(reply);
 
           // Auto-handoff: if DermaBot signalled it wants a human, escalate.
@@ -622,9 +638,9 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
         // the agent dashboard re-surfaces the thread after a patient follow-up.
         signalPatientTyping();
         clearTimeout(patientTypingTimer.current);
-        ChatSessionModel.setPatientTyping(patientId, false);
+        ChatSessionModel.setPatientTyping(patientId, false, guestOpts);
         if (session?.status !== CHAT_STATUS.WITH_AGENT) {
-          ChatSessionModel.requestAgent(patientId, patientName);
+          ChatSessionModel.requestAgent(patientId, patientName, guestOpts);
         }
       }
     } catch (err) {
@@ -656,7 +672,7 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
         text: `${IMG_PREFIX}${url}`,
         mode,
         patientId,
-      });
+      }, guestOpts);
       if (msg) mergeMessage(msg);
 
       if (mode === 'AI') {
@@ -667,11 +683,11 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
           text: 'Mình đã nhận được ảnh của bạn. Trợ lý AI chưa xem được ảnh trong khung chat — bạn hãy dùng "Soi da AI" để phân tích da tự động, hoặc bấm "Gặp Lễ tân" để nhân viên xem ảnh và tư vấn trực tiếp nhé!',
           mode: 'AI',
           patientId,
-        });
+        }, guestOpts);
         if (hint) mergeMessage(hint);
       } else if (session?.status !== CHAT_STATUS.WITH_AGENT) {
         // An image in Live mode is a support request like any text message.
-        ChatSessionModel.requestAgent(patientId, patientName);
+        ChatSessionModel.requestAgent(patientId, patientName, guestOpts);
       }
     } catch (err) {
       console.error('Image upload failed:', err);
@@ -698,7 +714,7 @@ function FloatingChatbotContent({ onBookAppointment, onAIScan }) {
         text: `Đánh giá hỗ trợ: ${'★'.repeat(n)}${'☆'.repeat(5 - n)} (${n}/5)`,
         mode: 'Live',
         patientId,
-      });
+      }, guestOpts);
       if (msg) mergeMessage(msg);
     } catch (err) {
       console.error('Failed to send rating:', err);

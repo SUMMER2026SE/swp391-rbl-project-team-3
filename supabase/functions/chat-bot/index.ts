@@ -45,7 +45,22 @@ Deno.serve(async (req) => {
       generationConfig: { temperature: 0.7, maxOutputTokens: 512 },
     });
 
-    const result = await chat.sendMessage(message);
+    // Gemini answers 503 "high demand" often enough that a single attempt turns
+    // into a visible "bot is under maintenance" bubble. Retry transient upstream
+    // errors only; a bad key or quota error still fails fast.
+    const RETRYABLE = /\b(429|500|502|503|504)\b|high demand|overloaded|unavailable|timeout/i;
+    let result;
+    for (let attempt = 0; ; attempt++) {
+      try {
+        result = await chat.sendMessage(message);
+        break;
+      } catch (err) {
+        const msg = err?.message || '';
+        if (attempt >= 2 || !RETRYABLE.test(msg)) throw err;
+        console.warn(`chat-bot: retry ${attempt + 1}/2 after upstream error: ${msg.slice(0, 120)}`);
+        await new Promise((r) => setTimeout(r, 600 * 2 ** attempt));
+      }
+    }
     const text = result?.response?.text?.() || '';
 
     // 6. Return response

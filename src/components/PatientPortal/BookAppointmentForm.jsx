@@ -12,21 +12,12 @@ import { DoctorScheduleModel } from '../../models/DoctorScheduleModel';
 import { createPaymentLink, getPaymentStatus } from '../../utils/payos';
 import GlassSelect from '../common/GlassSelect';
 import GlassDatePicker from '../common/GlassDatePicker';
+import { SERVICE_CATEGORIES } from '../../constants/serviceCategories';
 
 // ─── Service categories (static reference data) ───────────────────────────────
-// There is no `services` table in Supabase yet, and categories are stable
-// reference data, so we keep them local. The `id` values mirror the
-// `specialization` codes stored on doctor profiles ("cat-01, cat-02, …") so the
-// doctor-matching filter (`doc.specialties.includes(selectedCategory)`) works.
-const serviceCategories = [
-  { id: 'cat-01', name: 'Khám da liễu tổng quát' },
-  { id: 'cat-02', name: 'Điều trị mụn & sẹo rỗ' },
-  { id: 'cat-03', name: 'Trị nám, tàn nhang & đốm nâu' },
-  { id: 'cat-04', name: 'Trẻ hóa & chống lão hóa da' },
-  { id: 'cat-05', name: 'Điều trị viêm da, vảy nến, eczema' },
-  { id: 'cat-06', name: 'Thẩm mỹ & chăm sóc da chuyên sâu' },
-  { id: 'cat-07', name: 'Soi da & tư vấn AI' },
-];
+// Shared with every surface that renders a practitioner's specialities — the
+// `id` values mirror the `specialization` codes stored on doctor profiles.
+const serviceCategories = SERVICE_CATEGORIES;
 
 // ─── Parse price string → number ─────────────────────────────────────────────
 function parsePriceToNumber(priceStr) {

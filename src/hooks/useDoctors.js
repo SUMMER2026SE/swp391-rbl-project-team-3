@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 import { anonSupabase } from '../anonClient';
+import { parseSpecialties } from '../constants/serviceCategories';
 
 export function useDoctors() {
   const [doctors, setDoctors] = useState([]);
@@ -67,25 +68,10 @@ export function useDoctors() {
         const emp = user.employee_profiles ? (Array.isArray(user.employee_profiles) ? user.employee_profiles[0] : user.employee_profiles) : {};
         const doc = emp.doctor_profiles ? (Array.isArray(emp.doctor_profiles) ? emp.doctor_profiles[0] : emp.doctor_profiles) : {};
         
-        // Parse specialties: "cat-01, cat-02" -> ["cat-01", "cat-02"]
-        let specialties = [];
-        if (emp?.specialization) {
-           specialties = emp.specialization.split(',')?.map?.(s => s.trim());
-        } else {
-           // Fallback: Nếu bác sĩ chưa có chuyên khoa, phân bổ ngẫu nhiên 3 chuyên khoa dựa trên ID để test
-           const allCats = ['cat-01', 'cat-02', 'cat-03', 'cat-04', 'cat-05', 'cat-06', 'cat-07'];
-           let hash = 0;
-           for (let i = 0; i < user.user_id.length; i++) hash += user.user_id.charCodeAt(i);
-           
-           specialties = [
-               allCats[hash % 7],
-               allCats[(hash + 3) % 7],
-               allCats[(hash + 5) % 7]
-           ];
-           // Đảm bảo mọi bác sĩ đều có cat-01 (Khám tổng quát) để dễ dàng test
-           specialties.push('cat-01');
-           specialties = Array.from(new Set(specialties));
-        }
+        // "cat-01, cat-02" -> ["Khám da liễu tổng quát", "Điều trị mụn & sẹo rỗ"].
+        // Chưa khai báo chuyên khoa thì để trống — trước đây hệ thống băm user_id
+        // thành 3 mã cat-0N ngẫu nhiên và giao diện in thẳng mã đó ra màn hình.
+        const specialties = parseSpecialties(emp?.specialization);
 
         // Parse schedule. Supports a JSON string/array OR a human-readable
         // string like "T2 - T7, 08:00-17:00" (the actual seed format), which is
@@ -214,12 +200,11 @@ export function useTechnicians() {
       const normalizedTechs = (data || []).map(user => {
         const emp = user.employee_profiles ? (Array.isArray(user.employee_profiles) ? user.employee_profiles[0] : user.employee_profiles) : {};
         
-        let specialties = [];
-        if (emp?.specialization) {
-          specialties = emp.specialization.split(',')?.map?.(s => s.trim());
-        } else {
-          specialties = ['Vận hành thiết bị', 'Hỗ trợ điều trị'];
-        }
+        // KTV chưa khai báo chuyên môn thì dùng mô tả nghiệp vụ chung (không phải
+        // mã nội bộ), nên giữ nguyên fallback này.
+        const specialties = emp?.specialization
+          ? parseSpecialties(emp.specialization)
+          : ['Vận hành thiết bị', 'Hỗ trợ điều trị'];
 
         const fStats = statsMap[user.user_id];
         const rating = fStats && fStats.count > 0 ? Number((fStats.sum / fStats.count).toFixed(1)) : null;

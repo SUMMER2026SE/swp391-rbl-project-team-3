@@ -55,6 +55,33 @@ function extractJson(text: string): Record<string, unknown> | null {
   }
 }
 
+// Gemini regularly answers 503 "model is currently experiencing high demand" for
+// a second or two. Without a retry that surfaced to the doctor as a failed
+// consultation summary, so transient upstream errors are retried with backoff;
+// anything else (bad key, quota, malformed request) fails immediately.
+const RETRYABLE = /\b(429|500|502|503|504)\b|high demand|overloaded|unavailable|timeout/i;
+
+async function generateWithRetry(
+  model: { generateContent: (req: unknown) => Promise<{ response?: { text?: () => string } }> },
+  request: unknown,
+  attempts = 3,
+) {
+  let lastError: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await model.generateContent(request);
+    } catch (err) {
+      lastError = err;
+      const message = (err as Error)?.message || '';
+      if (!RETRYABLE.test(message) || i === attempts - 1) throw err;
+      const backoff = 600 * 2 ** i; // 600ms, 1.2s
+      console.warn(`ambient-scribe: retry ${i + 1}/${attempts - 1} after upstream error: ${message.slice(0, 120)}`);
+      await new Promise((r) => setTimeout(r, backoff));
+    }
+  }
+  throw lastError;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -94,7 +121,7 @@ Deno.serve(async (req) => {
       'Hãy trích xuất và trả về JSON bản nháp bệnh án.',
     ].filter(Boolean).join('\n');
 
-    const result = await model.generateContent({
+    const result = await generateWithRetry(model, {
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: 0.2,

@@ -4,6 +4,7 @@ import { VoucherModel } from '../models/VoucherModel';
 import { useDoctors, useTechnicians } from '../hooks/useDoctors';
 import ChangePasswordModal from './ChangePasswordModal';
 import FreeSkinScanModal from '../components/FreeSkinScanModal';
+import LegalNoticeModal from '../components/LegalNoticeModal';
 import FloatingChatbot from '../components/PatientPortal/FloatingChatbot';
 import BookAppointmentForm from '../components/PatientPortal/BookAppointmentForm';
 import { GLASS_BASE } from '../components/common/GlassCard';
@@ -432,6 +433,8 @@ function LandingPage({ onLogout }) {
   const [isAIScanOpen, setIsAIScanOpen] = useState(false);
   const [isAllDoctorsOpen, setIsAllDoctorsOpen] = useState(false);
   const [selectedDoctor, setSelectedDoctor] = useState(null);
+  // Footer legal notice: 'privacy' | 'terms' | null (see LegalNoticeModal).
+  const [legalDoc, setLegalDoc] = useState(null);
   const [bookingDocId, setBookingDocId] = useState(null);
 
   // Carousel State
@@ -1347,15 +1350,34 @@ function LandingPage({ onLogout }) {
           <p className="text-on-surface-variant">© 2026 DermaSmart. Nền tảng y tế số thông minh.</p>
         </div>
         <div className="flex flex-wrap items-center justify-center gap-6">
-          <a className="text-on-surface-variant hover:text-secondary transition-colors duration-300 no-underline" href="#">Chính sách bảo mật</a>
-          <a className="text-on-surface-variant hover:text-secondary transition-colors duration-300 no-underline" href="#">Điều khoản dịch vụ</a>
-          <a className="text-on-surface-variant hover:text-secondary transition-colors duration-300 no-underline" href="#">Hỗ trợ kỹ thuật</a>
+          <button
+            type="button"
+            className="bg-transparent border-none cursor-pointer p-0 text-on-surface-variant hover:text-secondary transition-colors duration-300"
+            onClick={() => setLegalDoc('privacy')}
+          >
+            Chính sách bảo mật
+          </button>
+          <button
+            type="button"
+            className="bg-transparent border-none cursor-pointer p-0 text-on-surface-variant hover:text-secondary transition-colors duration-300"
+            onClick={() => setLegalDoc('terms')}
+          >
+            Điều khoản dịch vụ
+          </button>
+          <button
+            type="button"
+            className="bg-transparent border-none cursor-pointer p-0 text-on-surface-variant hover:text-secondary transition-colors duration-300"
+            onClick={() => window.dispatchEvent(new CustomEvent('dermasmart:open-chat'))}
+          >
+            Hỗ trợ kỹ thuật
+          </button>
         </div>
       </motion.footer>
       </div>
       <ChangePasswordModal isOpen={isChangePasswordOpen} onClose={() => setIsChangePasswordOpen(false)} />
       <FloatingChatbot onBookAppointment={() => setIsBookingOpen(true)} onAIScan={handleAIScanClick} />
       <FreeSkinScanModal isOpen={isAIScanOpen} onClose={() => setIsAIScanOpen(false)} onBookAppointment={() => setIsBookingOpen(true)} />
+      <LegalNoticeModal doc={legalDoc} onClose={() => setLegalDoc(null)} />
       {/* Doctor Profile Modal (Liquid Glass) */}
       <AnimatePresence>
         {selectedDoctor && (

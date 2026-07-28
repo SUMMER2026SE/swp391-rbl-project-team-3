@@ -1,4 +1,13 @@
 import { supabase } from '../supabaseClient';
+import { guestChatClient, isGuestThread } from '../guestChatClient';
+
+/* Guest (not-logged-in) chat threads are readable only by a caller that presents
+   the thread id in the `x-guest-thread` header — see src/guestChatClient.js and
+   migration 20260728110000_scope_guest_chat_to_thread.sql. Callers that act as a
+   visitor pass `{ guest: true }`; staff surfaces keep using the authenticated
+   client so their own RLS policies apply. */
+const clientFor = (patientId, opts) =>
+  opts?.guest && isGuestThread(patientId) ? guestChatClient(patientId) : supabase;
 
 const LOCAL_STORAGE_KEY = 'dermasmart_fallback_messages';
 const SESSION_STORAGE_KEY = 'dermasmart_fallback_chat_sessions';
@@ -210,9 +219,9 @@ export const ReceptionistChatModel = {
     }
   },
 
-  async getMessagesForPatient(patientId) {
+  async getMessagesForPatient(patientId, opts) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await clientFor(patientId, opts)
         .from('messages')
         .select('*')
         .eq('patient_id', patientId)
@@ -231,13 +240,16 @@ export const ReceptionistChatModel = {
     }
   },
 
-  async addMessage(msgData) {
+  async addMessage(msgData, opts) {
     try {
       const dbRow = mapToDB(msgData);
       delete dbRow.id;
       delete dbRow.created_at;
 
-      const { data, error } = await supabase.from('messages').insert([dbRow]).select();
+      const { data, error } = await clientFor(msgData.patientId, opts)
+        .from('messages')
+        .insert([dbRow])
+        .select();
       if (error) {
         if (error.code === 'PGRST205') {
           return addLocalMessage(msgData);
@@ -376,9 +388,9 @@ const upsertLocalSession = (patientId, patch) => {
 };
 
 export const ChatSessionModel = {
-  async get(patientId) {
+  async get(patientId, opts) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await clientFor(patientId, opts)
         .from('chat_sessions')
         .select('*')
         .eq('patient_id', patientId)
@@ -413,12 +425,12 @@ export const ChatSessionModel = {
   },
 
   // Upsert a partial session patch keyed by patientId.
-  async upsert(patientId, patch) {
+  async upsert(patientId, patch, opts) {
     const row = mapSessionToDB({ patientId, ...patch });
     // Strip undefined keys so we never null-out columns we didn't intend to set.
     Object.keys(row).forEach((k) => row[k] === undefined && delete row[k]);
     try {
-      const { data, error } = await supabase
+      const { data, error } = await clientFor(patientId, opts)
         .from('chat_sessions')
         .upsert(row, { onConflict: 'patient_id' })
         .select();
@@ -434,23 +446,23 @@ export const ChatSessionModel = {
   },
 
   // ── Convenience verbs over upsert ──
-  requestAgent(patientId, patientName) {
-    return this.upsert(patientId, { patientName, status: CHAT_STATUS.WAITING, agentTyping: false });
+  requestAgent(patientId, patientName, opts) {
+    return this.upsert(patientId, { patientName, status: CHAT_STATUS.WAITING, agentTyping: false }, opts);
   },
   claim(patientId, agentId) {
     return this.upsert(patientId, { status: CHAT_STATUS.WITH_AGENT, agentId, lastReadAt: new Date().toISOString() });
   },
-  setStatus(patientId, status) {
-    return this.upsert(patientId, { status });
+  setStatus(patientId, status, opts) {
+    return this.upsert(patientId, { status }, opts);
   },
   setAgentTyping(patientId, typing) {
     return this.upsert(patientId, { agentTyping: typing });
   },
-  setPatientTyping(patientId, typing) {
-    return this.upsert(patientId, { patientTyping: typing });
+  setPatientTyping(patientId, typing, opts) {
+    return this.upsert(patientId, { patientTyping: typing }, opts);
   },
-  markRead(patientId) {
-    return this.upsert(patientId, { lastReadAt: new Date().toISOString() });
+  markRead(patientId, opts) {
+    return this.upsert(patientId, { lastReadAt: new Date().toISOString() }, opts);
   },
 
   // Local-fallback change subscription (same-tab + cross-tab) so the UI stays

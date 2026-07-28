@@ -247,14 +247,6 @@ export default function FreeSkinScanModal({ isOpen, onClose, onBookAppointment }
         formData.append('file', file);
 
         try {
-            // ── Read file as base64 for Roboflow ─────────────────────────────
-            const ROBOFLOW_URL = import.meta.env.VITE_ROBOFLOW_MODEL_URL;
-            const API_KEY = import.meta.env.VITE_ROBOFLOW_API_KEY;
-
-            if (!ROBOFLOW_URL || !API_KEY) {
-                throw new Error("Thiếu cấu hình API Key của Roboflow trong file .env.local");
-            }
-
             // Convert file → base64 string
             const fullDataUri = await new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -265,25 +257,18 @@ export default function FreeSkinScanModal({ isOpen, onClose, onBookAppointment }
                 reader.readAsDataURL(file);
             });
 
-            // Strip prefix only for Roboflow API payload
+            // Strip prefix only for the inference payload
             const rawBase64 = fullDataUri.replace(/^data:image\/\w+;base64,/, '');
 
-            // POST to Roboflow Inference API
-            const response = await fetch(`${ROBOFLOW_URL}?api_key=${API_KEY}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: rawBase64
+            // Inference runs through the `skin-scan` Edge Function so the Roboflow
+            // key stays server-side (a VITE_* variable would ship in the bundle,
+            // and its absence used to break this feature on Vercel entirely).
+            const { data, error: fnError } = await supabase.functions.invoke('skin-scan', {
+                body: { imageBase64: rawBase64 },
             });
 
-            if (!response.ok) {
-                throw new Error(`Mã phản hồi lỗi: ${response.status}`);
-            }
-
-            const data = await response.json();
-
-            if (data.error) {
-                throw new Error(data.error);
-            }
+            if (fnError) throw fnError;
+            if (data?.error) throw new Error(data.error);
 
             // ── Map Roboflow predictions → existing aiResults shape ───────────
             // Roboflow returns { predictions: [{ class, confidence, ... }] }

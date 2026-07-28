@@ -1,5 +1,6 @@
 import { supabase } from '../supabaseClient';
 import { anonSupabase } from '../anonClient';
+import { parseSpecialties } from '../constants/serviceCategories';
 
 let cachedDoctors = [];
 
@@ -7,17 +8,10 @@ function normalizeDoctor(user) {
   const emp = user.employee_profiles ? (Array.isArray(user.employee_profiles) ? user.employee_profiles[0] : user.employee_profiles) : {};
   const doc = emp.doctor_profiles ? (Array.isArray(emp.doctor_profiles) ? emp.doctor_profiles[0] : emp.doctor_profiles) : {};
   
-  let specialties = [];
-  if (emp?.specialization) {
-     specialties = emp.specialization.split(',')?.map?.(s => s.trim());
-  } else {
-     const allCats = ['cat-01', 'cat-02', 'cat-03', 'cat-04', 'cat-05', 'cat-06', 'cat-07'];
-     let hash = 0;
-     for (let i = 0; i < user.user_id.length; i++) hash += user.user_id.charCodeAt(i);
-     specialties = [allCats[hash % 7], allCats[(hash + 3) % 7], allCats[(hash + 5) % 7]];
-     specialties.push('cat-01');
-     specialties = Array.from(new Set(specialties));
-  }
+  // A doctor with no `specialization` on file shows no speciality chips. The old
+  // fallback hashed the user id into three `cat-0N` codes, which the public
+  // profile then rendered literally ("cat-03 cat-06 cat-01").
+  const specialties = parseSpecialties(emp?.specialization);
 
   return {
     id: user.user_id,
