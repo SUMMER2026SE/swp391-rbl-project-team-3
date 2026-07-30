@@ -71,11 +71,9 @@ export const SkinAnalysisModel = {
           .eq('patient_id', patientId)
           .order('created_at', { ascending: true }); // oldest first
 
-        console.log('[SkinAnalysisModel] Total scans after insert:', allScans?.length, fetchErr?.message);
 
         if (!fetchErr && allScans && allScans.length > 4) {
           const excess = allScans.slice(0, allScans.length - 4); // oldest to delete
-          console.log('[SkinAnalysisModel] Pruning', excess.length, 'old scan(s)');
           for (const old of excess) {
             await SkinAnalysisModel.deleteScan(old.analysis_id, old.image_id, old.image?.image_url);
           }

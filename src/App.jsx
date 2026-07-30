@@ -5,7 +5,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import LiquidGlassFilter from './components/common/LiquidGlassFilter';
 import MedicalLoader from './components/common/MedicalLoader';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './index.css';
 
@@ -164,6 +164,18 @@ function GlobalToast() {
     return () => window.removeEventListener('show-toast', handleShowToast);
   }, []);
 
+  // Type-aware styling. Previously every toast rendered as a green "Thành công"
+  // banner, so it could not carry an error — which is why several flows still
+  // used a raw browser alert(). Now `type: 'error' | 'info' | 'success'` renders
+  // correctly and those alerts can route through here instead.
+  const TONE = {
+    success: { wrap: 'bg-emerald-50 text-emerald-700 shadow-emerald-500/20 border-emerald-200', badge: 'bg-emerald-100', icon: 'text-emerald-600', title: 'Thành công', Icon: CheckCircle2 },
+    error:   { wrap: 'bg-rose-50 text-rose-700 shadow-rose-500/20 border-rose-200',            badge: 'bg-rose-100',    icon: 'text-rose-600',    title: 'Có lỗi xảy ra', Icon: AlertCircle },
+    info:    { wrap: 'bg-sky-50 text-sky-700 shadow-sky-500/20 border-sky-200',                badge: 'bg-sky-100',     icon: 'text-sky-600',     title: 'Thông báo', Icon: Info },
+  };
+  const tone = TONE[toast?.type] || TONE.success;
+  const ToneIcon = tone.Icon;
+
   return (
     <AnimatePresence>
       {toast && (
@@ -171,13 +183,13 @@ function GlobalToast() {
           initial={{ opacity: 0, y: 50, scale: 0.9 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 20, scale: 0.9 }}
-          className="fixed bottom-6 right-6 z-[9999] flex items-center gap-3 bg-emerald-50 text-emerald-700 px-5 py-4 rounded-2xl shadow-xl shadow-emerald-500/20 border border-emerald-200"
+          className={`fixed bottom-6 right-6 z-[9999] flex items-center gap-3 px-5 py-4 rounded-2xl shadow-xl border ${tone.wrap}`}
         >
-          <div className="bg-emerald-100 rounded-full p-1">
-            <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+          <div className={`${tone.badge} rounded-full p-1`}>
+            <ToneIcon className={`w-6 h-6 ${tone.icon}`} />
           </div>
           <div>
-            <h4 className="font-bold text-sm">Thành công</h4>
+            <h4 className="font-bold text-sm">{toast.title || tone.title}</h4>
             <p className="text-xs font-semibold opacity-90">{toast.message}</p>
           </div>
         </motion.div>

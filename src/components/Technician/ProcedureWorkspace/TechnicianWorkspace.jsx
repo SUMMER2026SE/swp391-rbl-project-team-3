@@ -247,7 +247,9 @@ export default function TechnicianWorkspace({ task, onBack, onComplete, isReview
       }));
     } catch (err) {
       console.error('File upload error:', err);
-      alert('Tải ảnh lên thất bại. Vui lòng kiểm tra lại cấu hình storage của bạn.');
+      window.dispatchEvent(new CustomEvent('show-toast', {
+        detail: { message: 'Tải ảnh lên thất bại. Vui lòng kiểm tra lại cấu hình storage của bạn.', type: 'error' }
+      }));
     } finally {
       setIsUploading(false);
     }

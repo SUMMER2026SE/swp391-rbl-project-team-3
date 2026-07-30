@@ -113,14 +113,16 @@ export default function BillingCheckout({
     [appointments]
   );
 
-  // Realtime: the cashier list is derived from appointments (EXAMINED/PAID) and
-  // payments. Refresh the instant a doctor flips an appointment to "Chờ thanh
-  // toán" (Đã khám → EXAMINED) or a payment is recorded, so the desk stays live.
+  // Realtime: only `payments` is subscribed here. The parent dashboard already
+  // subscribes to `appointments` and calls the SAME onRefresh, so duplicating it
+  // made every appointment change fire two full refreshes (each pulling doctors +
+  // appointments + booked_slots + payments) — 8 full-table reads per change.
+  // A doctor flipping an appointment to "Chờ thanh toán" still lands instantly
+  // via the parent's channel.
   useEffect(() => {
     if (!onRefresh) return undefined;
     const channel = supabase
       .channel('receptionist-billing')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, () => { onRefresh(); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, () => { onRefresh(); })
       .subscribe();
     // CRITICAL: remove the channel on unmount to avoid leaking subscriptions.

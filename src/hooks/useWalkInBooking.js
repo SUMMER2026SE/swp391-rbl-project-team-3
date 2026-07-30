@@ -312,19 +312,16 @@ export function useWalkInBooking({
     const emailTrim = newApt.email.trim().toLowerCase();
 
     if (!selectedDate) {
-      alert('Lỗi: Chưa chọn ngày khám!');
       setErrorMessage('Vui lòng chọn ngày khám.');
       return;
     }
 
     if (!selectedTime) {
-      alert('Lỗi: Chưa chọn khung giờ khám!');
       setErrorMessage('Vui lòng chọn khung giờ khám.');
       return;
     }
 
     if (!emailTrim || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrim)) {
-      alert('Lỗi: Email không hợp lệ! ' + (emailTrim || '(trống)'));
       setErrorMessage('Vui lòng nhập Email (Gmail) hợp lệ.');
       return;
     }
@@ -339,25 +336,21 @@ export function useWalkInBooking({
     const isEdited = (field, value) => !isExistingPatient || !prefill || prefill[field] !== value;
 
     if (!nameTrim || !phoneClean) {
-      alert('Lỗi: Thiếu họ tên hoặc số điện thoại!');
       setErrorMessage('Vui lòng nhập đầy đủ họ tên và số điện thoại.');
       return;
     }
 
     if (isEdited('patientName', newApt.patientName)) {
       if (nameTrim.length < 4) {
-        alert('Lỗi: Họ và tên ngắn hơn 4 ký tự! ' + nameTrim);
         setErrorMessage('Họ và tên phải từ 4 ký tự trở lên.');
         return;
       }
       const nameRegex = /^[a-zA-Z\sàáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ]+$/;
       if (!nameRegex.test(nameTrim)) {
-        alert('Lỗi: Họ và tên chứa ký tự không hợp lệ! ' + nameTrim);
         setErrorMessage('Họ và tên chỉ được chứa chữ cái tiếng Việt và khoảng trắng.');
         return;
       }
       if (nameTrim.split(/\s+/).length < 2) {
-        alert('Lỗi: Họ và tên phải có ít nhất 2 từ! ' + nameTrim);
         setErrorMessage('Họ và tên phải bao gồm ít nhất Họ và Tên (2 từ).');
         return;
       }
@@ -366,7 +359,6 @@ export function useWalkInBooking({
     if (isEdited('phone', newApt.phone)) {
       const phoneRegex = /^(03|05|07|08|09)\d{8}$/;
       if (!phoneRegex.test(phoneClean)) {
-        alert('Lỗi: Số điện thoại không hợp lệ! ' + phoneClean);
         setErrorMessage('Số điện thoại không hợp lệ (gồm 10 chữ số, bắt đầu bằng 03, 05, 07, 08, 09).');
         return;
       }
@@ -374,13 +366,11 @@ export function useWalkInBooking({
 
     if (isEdited('dob', newApt.dob)) {
       if (!newApt.dob) {
-        alert('Lỗi: Chưa chọn ngày sinh!');
         setErrorMessage('Vui lòng chọn ngày sinh.');
         return;
       }
       const birthDate = new Date(newApt.dob);
       if (birthDate > new Date()) {
-        alert('Lỗi: Ngày sinh ở tương lai! ' + newApt.dob);
         setErrorMessage('Ngày sinh không thể ở tương lai.');
         return;
       }
@@ -388,7 +378,6 @@ export function useWalkInBooking({
 
     if (isEdited('district', newApt.district) || isEdited('province', newApt.province)) {
       if (!newApt.district.trim() || !newApt.province.trim()) {
-        alert('Lỗi: Chưa nhập Quận/Huyện hoặc Tỉnh/Thành phố!');
         setErrorMessage('Vui lòng nhập Quận/Huyện và Tỉnh/Thành phố.');
         return;
       }
@@ -397,7 +386,6 @@ export function useWalkInBooking({
     // Determine final doctor ID
     const finalDocId = selectedDoctor || (workingDocs.find((doc) => !isSlotBooked(doc.user_id || doc.id, selectedDate, selectedTime))?.user_id) || (workingDocs.find((doc) => !isSlotBooked(doc.user_id || doc.id, selectedDate, selectedTime))?.id);
     if (!finalDocId) {
-      alert('Lỗi: Không tìm thấy bác sĩ khả dụng cho ngày và giờ đã chọn!');
       setErrorMessage('Không tìm thấy bác sĩ khả dụng cho ngày và giờ đã chọn.');
       return;
     }
@@ -536,7 +524,6 @@ export function useWalkInBooking({
     // Validate booking
     const validation = await validateBooking(bookingPayload);
     if (!validation.valid) {
-      alert('Lỗi validateBooking từ controller: ' + validation.error);
       setErrorMessage(validation.error);
       isSubmittingRef.current = false;
       return;
@@ -558,12 +545,10 @@ export function useWalkInBooking({
           setIsAddOpen(false);
         }, 1500);
       } else {
-        alert('Lỗi bookAppointment từ controller: ' + result.error);
         isSubmittingRef.current = false;
         setErrorMessage(result.error || 'Có lỗi xảy ra khi xác nhận đặt lịch.');
       }
     } catch (err) {
-      alert('Lỗi catch bookAppointment: ' + err.message);
       console.error('Booking submit error:', err);
       setErrorMessage(err.message || 'Có lỗi xảy ra khi đặt lịch.');
       isSubmittingRef.current = false;

@@ -916,7 +916,24 @@ export const AppointmentModel = {
     if (patientId) {
       const patientAppointments = await this.getByPatientId(patientId);
       
-      // Rule 4: Max 2 upcoming appointments
+      // Rule 4: Max 2 upcoming appointments.
+      // "Upcoming" must mean TODAY OR LATER. Without the date check, an old
+      // appointment the front desk never closed out (still 'Đặt lịch thành công'
+      // from last month) counted forever — two of those permanently blocked the
+      // patient from booking again. Today's rows still count (including a visit
+      // in progress), so the real business intent is preserved.
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const isOnOrAfterToday = (a) => {
+        if (!a.appointment_date) return false;
+        const raw = String(a.appointment_date);
+        const [y, mo, d] = raw.includes('-')
+          ? raw.split('-').map(Number)
+          : raw.split('/').reverse().map(Number);
+        if (!y || !mo || !d) return false;
+        return new Date(y, mo - 1, d).getTime() >= todayStart.getTime();
+      };
+
       const upcoming = patientAppointments.filter(
         a => {
           if (bookingData.holdAptId && String(a.appointment_id || a.id) === String(bookingData.holdAptId)) return false;
@@ -936,7 +953,7 @@ export const AppointmentModel = {
             }
             return false;
           }
-          return (
+          const isActiveStatus = (
             a.status === 'Đang chờ' ||
             a.status === 'Đang chờ khám' ||
             a.status === 'Đã xác nhận' ||
@@ -944,6 +961,7 @@ export const AppointmentModel = {
             a.status === 'Chờ xác nhận' ||
             a.status === 'Pending'
           );
+          return isActiveStatus && isOnOrAfterToday(a);
         }
       );
       if (upcoming.length >= 2) {

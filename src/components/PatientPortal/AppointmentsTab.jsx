@@ -347,18 +347,9 @@ function RescheduleModal({ apt, onClose, onConfirm, rescheduleError }) {
     if (isSubmittingRef.current) return;
     isSubmittingRef.current = true;
 
-    // ── API observability: trace the exact payload dispatched to Supabase ──
-    console.log('[HungBB-Dev] RESCHEDULE PAYLOAD INITIATED:', {
-      originalAppointmentId: apt.id ?? apt.appointment_id,
-      newDoctorId: docId,
-      newDate: newDate,
-      newTime: newTime,
-    });
-
     try {
       const res = await onConfirm(newDate, newTime, docId);
       if (res && res.success) {
-        console.log('[HungBB-Dev] RESCHEDULE SUCCESS!');
         setStep('success');
         window.dispatchEvent(new CustomEvent('show-toast', {
           detail: { message: within24h ? 'Thanh toán phụ phí thành công!' : 'Đổi lịch hẹn thành công!', type: 'success' }

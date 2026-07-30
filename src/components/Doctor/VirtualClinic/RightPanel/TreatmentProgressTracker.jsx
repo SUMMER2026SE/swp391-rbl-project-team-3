@@ -44,7 +44,9 @@ export default function TreatmentProgressTracker({ appointment }) {
 
     const handleAddProgress = () => {
         if (!form.note.trim()) {
-            alert('Vui lòng nhập ghi chú tiến trình điều trị.');
+            window.dispatchEvent(new CustomEvent('show-toast', {
+                detail: { message: 'Vui lòng nhập ghi chú tiến trình điều trị.', type: 'error' }
+            }));
             return;
         }
 

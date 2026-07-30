@@ -105,7 +105,9 @@ export default function PaymentModal({ isOpen, onClose, appointment, onSuccess }
         }, 2500);
       } catch (err) {
         setIsProcessing(false);
-        alert('Thanh toán thất bại, vui lòng thử lại.');
+        window.dispatchEvent(new CustomEvent('show-toast', {
+          detail: { message: 'Thanh toán thất bại, vui lòng thử lại.', type: 'error' }
+        }));
       }
     }, 1500); // Spinner simulation
   };
@@ -113,7 +115,9 @@ export default function PaymentModal({ isOpen, onClose, appointment, onSuccess }
   const handleCreditCardSubmit = (e) => {
     e.preventDefault();
     if (!cardNumber || !cardName || !cardExpiry || !cardCvv) {
-      alert('Vui lòng điền đầy đủ thông tin thẻ.');
+      window.dispatchEvent(new CustomEvent('show-toast', {
+        detail: { message: 'Vui lòng điền đầy đủ thông tin thẻ.', type: 'error' }
+      }));
       return;
     }
     handleSuccessCheckout('Credit Card');

@@ -427,13 +427,11 @@ export function useAuthController(onSuccessCallback = null) {
         throw new Error('Định dạng email không hợp lệ.');
       }
 
-      console.log('[HungBB-Auth] SEND MAGIC LINK:', { email: normalizedEmail });
       const { error } = await withTimeout(AuthModel.sendMagicLink(normalizedEmail), 12000);
       if (error) throw error;
 
       safeSetSuccess('Đã gửi link, vui lòng kiểm tra hộp thư.');
     } catch (error) {
-      console.log('[HungBB-Auth] SEND MAGIC LINK FAILED:', error?.message || String(error));
       safeSetError(toVietnameseAuthError(error));
     } finally {
       pendingRequestRef.current = false;
@@ -477,7 +475,6 @@ export function useAuthController(onSuccessCallback = null) {
         throw new Error('Mật khẩu xác nhận không khớp.');
       }
 
-      console.log('[HungBB-Auth] FINALIZE REGISTRATION:', { fullName, phone });
       const { error } = await withTimeout(
         AuthModel.finalizeRegistration(passwordInput, fullName, phone),
         12000
@@ -486,7 +483,6 @@ export function useAuthController(onSuccessCallback = null) {
 
       // Success: discard the draft and land the user inside the app.
       localStorage.removeItem('derma_draft_form');
-      console.log('[HungBB-Auth] REGISTRATION COMPLETE — redirecting.');
       safeSetSuccess('Đăng ký hoàn tất! Đang chuyển hướng...');
       setTimeout(() => {
         if (isMountedRef.current) {
@@ -496,7 +492,6 @@ export function useAuthController(onSuccessCallback = null) {
       }, 800);
       return;
     } catch (error) {
-      console.log('[HungBB-Auth] FINALIZE REGISTRATION FAILED:', error?.message || String(error));
       safeSetError(toVietnameseAuthError(error));
     } finally {
       pendingRequestRef.current = false;

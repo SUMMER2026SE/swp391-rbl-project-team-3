@@ -20,20 +20,22 @@ export function useAppointmentController(patientId = null) {
       setLoading(true);
       await DoctorModel.getAllDoctors(); // Ensure doctors are cached for mapping
 
-      const [allApts, slotRows] = await Promise.all([
+      // Payments are independent of the doctor cache, so they ride along in the
+      // same parallel batch instead of a third sequential round-trip.
+      const [allApts, slotRows, pmts] = await Promise.all([
         AppointmentModel.getAllAppointments(),
         AppointmentModel.getBookedSlots(),
+        AppointmentModel.getAllPayments(),
       ]);
       setAllAppointments(allApts || []);
       setBookedSlots(slotRows || []);
-      
+
       if (patientId) {
         setAppointments((allApts || []).filter(a => String(a.patient_id || a.patientId) === String(patientId)));
       } else {
         setAppointments(allApts || []);
       }
 
-      const pmts = await AppointmentModel.getAllPayments();
       setPayments(pmts || []);
     } catch (e) {
       console.warn('Failed to load appointments/payments:', e.message);

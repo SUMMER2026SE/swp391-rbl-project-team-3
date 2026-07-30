@@ -880,7 +880,12 @@ export default function RevenueStatistics() {
   };
 
   const exportToCSV = () => {
-    if (filteredData.length === 0) return alert("Không có dữ liệu để xuất!");
+    if (filteredData.length === 0) {
+      window.dispatchEvent(new CustomEvent('show-toast', {
+        detail: { message: 'Không có dữ liệu để xuất!', type: 'info' }
+      }));
+      return;
+    }
     const headers = ["Ngay", "Gio", "Dich vu/San pham", "Bac si", "Loai", "Phuong thuc", "So tien (VND)"];
     const csvContent = [
       headers.join(","),

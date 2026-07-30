@@ -14,3 +14,6 @@ inspect_db.js
 .claude/
 .agents/
 skills-lock.json
+
+# Ban sao luu du lieu (chua thong tin ca nhan) - khong dua len git
+backup_*.json
