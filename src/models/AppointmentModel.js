@@ -765,8 +765,9 @@ export const AppointmentModel = {
         payment_method: method,
         payment_status: 'PAID',
         paid_at: new Date().toISOString(),
-        method,
-        status: 'Paid',
+        // `method` / `status` là 2 cột TRÙNG LẶP của payment_method / payment_status
+        // (dữ liệu luôn giống hệt nhau). Ngừng ghi để chuẩn bị xoá hẳn 2 cột đó —
+        // mọi chỗ đọc đã dùng payment_method/payment_status hoặc có fallback.
       };
 
       const { data, error } = await supabase.from('payments').upsert([row], { onConflict: 'appointment_id' }).select();
